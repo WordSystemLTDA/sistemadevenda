@@ -1,18 +1,19 @@
-import 'dart:convert';
-
 import 'package:app/src/features/produtos/interactor/models/categoria_model.dart';
 import 'package:app/src/features/produtos/interactor/services/categoria_service.dart';
-import 'package:http/http.dart' as http;
+import 'package:app/src/shared/services/api.dart';
+import 'package:dio/dio.dart';
 
 class CategoriaServiceImpl implements CategoriaService {
+  final Dio dio;
+
+  CategoriaServiceImpl(this.dio);
+
   @override
   Future<List<CategoriaModel>> listar() async {
-    final response = await http.get(Uri.parse(
-      'http://10.1.1.15/api_restaurantes/categorias/listar.php',
-    ));
+    final response = await dio.get('${Apis.baseUrl}categorias/listar.php');
 
     if (response.statusCode == 200) {
-      final json = jsonDecode(response.body);
+      // final json = jsonDecode(response.data);
 
       // return Future.delayed(const Duration(seconds: 2), () => List<CategoriaModel>.from(
       //   json.map((elemento) {
@@ -21,8 +22,8 @@ class CategoriaServiceImpl implements CategoriaService {
       //));
 
       return List<CategoriaModel>.from(
-        json.map((elemento) {
-          return CategoriaModel.fromJson(elemento);
+        response.data.map((elemento) {
+          return CategoriaModel.fromMap(elemento);
         }),
       );
     } else {

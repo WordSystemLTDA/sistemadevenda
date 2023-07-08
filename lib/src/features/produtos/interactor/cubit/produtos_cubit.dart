@@ -10,7 +10,7 @@ class ProdutosCubit extends Cubit<ProdutosState> {
   ProdutosCubit(this._service) : super(ProdutoInitialState());
 
   void getProdutos(category) async {
-    List<ProdutoModel> produtos = [];
+    List<ProdutoModel>? produtos = [];
 
     emit(ProdutoLoadingState());
     produtos = await _service.listar(category);

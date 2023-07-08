@@ -1,3 +1,4 @@
+import 'package:app/src/features/mesas/interactor/models/mesas_model.dart';
 import 'package:app/src/features/mesas/interactor/services/mesa_service.dart';
 import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 
@@ -9,10 +10,18 @@ class MesasCubit extends Cubit<MesasState> {
   MesasCubit(this._service) : super(MesaInitialState());
 
   void getMesas() async {
-    Map<String, dynamic> mesas = {};
+    MesasModel? mesas;
 
     emit(MesaLoadingState());
-    mesas = await _service.listar();
-    emit(MesaLoadedState(mesas: mesas));
+
+    try {
+      mesas = await _service.listar();
+
+      if (mesas != null) {
+        emit(MesaLoadedState(mesas: mesas));
+      }
+    } catch (e) {
+      emit(MesaErrorState(exception: Exception(e)));
+    }
   }
 }

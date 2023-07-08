@@ -1,32 +1,40 @@
-import 'dart:convert';
+import 'dart:developer';
 
+import 'package:app/src/features/mesas/interactor/models/mesas_model.dart';
 import 'package:app/src/features/mesas/interactor/services/mesa_service.dart';
 import 'package:app/src/shared/services/api.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 class MesaServiceImpl implements MesaService {
+  final Dio dio;
+
+  MesaServiceImpl(this.dio);
+
   @override
-  Future<Map<String, dynamic>> listar() async {
-    final response = await http.get(
-      Uri.parse('${Apis.baseUrl}mesas/listar.php'),
-    );
+  Future<MesasModel?> listar() async {
+    try {
+      final response = await dio.get('${Apis.baseUrl}mesas/listar.php').timeout(const Duration(seconds: 60));
 
-    if (response.statusCode == 200) {
-      if (response.body.isNotEmpty) {
-        final json = jsonDecode(response.body);
+      if (response.data.isNotEmpty) {
+        // final json = jsonDecode(response.data);
 
-        // return Map<dynamic, dynamic>.from(json.map((elemento) {
-        //   return MesasModel.fromJson(elemento);
-        // }));
+        // print(MesasModel.fromJson(response.data));
 
-        return json;
-
-        // return List.from(json).map((x) => MesasModel.fromJson(Map.from(x)));
-      } else {
-        return {};
+        return MesasModel.fromMap(response.data);
       }
-    } else {
-      return Future.error("Ops! Um erro ocorreu.");
+    } on DioException catch (exception) {
+      if (exception.type == DioExceptionType.connectionTimeout) {
+        throw Exception("Requisição Expirou");
+      } else if (exception.type == DioExceptionType.connectionError) {
+        throw Exception("Verifique sua conexão");
+      }
+
+      throw Exception(exception.message);
+    } catch (exception, stacktrace) {
+      log("error", error: exception, stackTrace: stacktrace);
+      throw Exception("Verifique sua conexão");
     }
+
+    return null;
   }
 }

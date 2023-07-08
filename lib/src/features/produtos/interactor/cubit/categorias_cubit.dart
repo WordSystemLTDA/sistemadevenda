@@ -9,7 +9,7 @@ class CategoriasCubit extends Cubit<CategoriasState> {
   CategoriasCubit(this._service) : super(CategoriaInitialState());
 
   void getCategorias() async {
-    List<CategoriaModel> categorias = [];
+    List<CategoriaModel> categorias;
 
     emit(CategoriaLoadingState());
     categorias = await _service.listar();

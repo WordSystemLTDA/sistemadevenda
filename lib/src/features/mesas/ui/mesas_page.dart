@@ -1,4 +1,4 @@
-import 'package:app/src/features/mesas/interactor/cubit/mesas/mesas_bloc.dart';
+import 'package:app/src/features/mesas/interactor/cubit/mesas_cubit.dart';
 import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 import 'package:app/src/features/mesas/ui/widgets/mesas_grid.dart';
 
@@ -25,18 +25,33 @@ class _MesasPageState extends State<MesasPage> {
     cubit.getMesas();
   }
 
+  Future<void> _tryAgain() async {
+    final cubit = context.read<MesasCubit>();
+    cubit.getMesas();
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.watch<MesasCubit>();
     final state = cubit.state;
     final mesas = state.mesas;
 
-    final mesasOcupadas = mesas['mesasOcupadas'];
-    final mesasLivres = mesas['mesasLivres'];
+    final mesasOcupadas = mesas?.mesasOcupadas;
+    final mesasLivres = mesas?.mesasLivres;
+
+    // print('ops');
+    // print(mesasOcupadas!.isEmpty);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mesas'),
+        actions: [
+          if (state is MesaErrorState)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _tryAgain,
+            ),
+        ],
       ),
       body: Stack(
         children: [
@@ -49,7 +64,7 @@ class _MesasPageState extends State<MesasPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (mesasOcupadas != null) ...[
+                    if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
                       Text(
                         'Pedidos em andamento ${mesasOcupadas.length}',
                         style: const TextStyle(fontSize: 18),
@@ -58,7 +73,7 @@ class _MesasPageState extends State<MesasPage> {
                       MesasGrid(mesas: mesasOcupadas),
                       const SizedBox(height: 40),
                     ],
-                    if (mesasLivres != null) ...[
+                    if (mesasLivres != null && mesasLivres.isNotEmpty) ...[
                       Text('Mesas livres (${mesasLivres.length})', style: const TextStyle(fontSize: 18)),
                       const SizedBox(height: 10),
                       MesasGrid(mesas: mesasLivres),

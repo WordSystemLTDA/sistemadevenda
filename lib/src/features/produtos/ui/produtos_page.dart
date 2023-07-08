@@ -51,14 +51,14 @@ class _ProdutosPageState extends State<ProdutosPage> with TickerProviderStateMix
       appBar: AppBar(
         automaticallyImplyLeading: false,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(10.0),
+          preferredSize: const Size.fromHeight(50.0),
           child: Column(
             children: [
               SearchBar(
                 controller: _searchController,
                 elevation: const MaterialStatePropertyAll(0),
                 padding: const MaterialStatePropertyAll(
-                  EdgeInsets.symmetric(horizontal: 20),
+                  EdgeInsets.symmetric(horizontal: 15),
                 ),
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width - 20,
@@ -82,42 +82,31 @@ class _ProdutosPageState extends State<ProdutosPage> with TickerProviderStateMix
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 5),
+              if (state is CategoriaLoadedState)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabs: categorias.map((e) => Tab(child: Text(e.nomeCategoria.toUpperCase()))).toList(),
+                  ),
+                ),
+              if (state is! CategoriaLoadedState) const SizedBox(height: 48),
             ],
           ),
         ),
       ),
       body: Stack(
         children: [
-          if (state is CategoriaLoadingState) const LinearProgressIndicator(),
+          if (state is CategoriaLoadingState) const SizedBox(height: 1, child: LinearProgressIndicator()),
           if (state is CategoriaLoadedState)
             DefaultTabController(
               length: categorias.length,
-              child: Scaffold(
-                appBar: AppBar(
-                  automaticallyImplyLeading: false,
-                  bottom: PreferredSize(
-                    preferredSize: const Size.fromHeight(0.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 7),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TabBar(
-                            controller: _tabController,
-                            isScrollable: true,
-                            tabs: categorias.map((e) => Tab(child: Text(e.nomeCategoria.toUpperCase()))).toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                body: TabBarView(
-                  controller: _tabController,
-                  physics: const CustomTabBarViewScrollPhysics(),
-                  children: categorias.map((e) => TabCustom(category: e.id)).toList(),
-                ),
+              child: TabBarView(
+                controller: _tabController,
+                physics: const CustomTabBarViewScrollPhysics(),
+                children: categorias.map((e) => TabCustom(key: Key(e.id), category: e.id)).toList(),
               ),
             ),
         ],
