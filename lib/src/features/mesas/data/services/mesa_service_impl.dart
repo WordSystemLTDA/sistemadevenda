@@ -16,10 +16,6 @@ class MesaServiceImpl implements MesaService {
       final response = await dio.get('${Apis.baseUrl}mesas/listar.php').timeout(const Duration(seconds: 60));
 
       if (response.data.isNotEmpty) {
-        // final json = jsonDecode(response.data);
-
-        // print(MesasModel.fromJson(response.data));
-
         return MesasModel.fromMap(response.data);
       }
     } on DioException catch (exception) {
@@ -35,6 +31,6 @@ class MesaServiceImpl implements MesaService {
       throw Exception("Verifique sua conexão");
     }
 
-    return null;
+    throw Exception('Ocorreu um erro, tente novamente.');
   }
 }

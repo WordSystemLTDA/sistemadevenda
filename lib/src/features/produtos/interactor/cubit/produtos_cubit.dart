@@ -12,8 +12,14 @@ class ProdutosCubit extends Cubit<ProdutosState> {
   void getProdutos(category) async {
     List<ProdutoModel>? produtos = [];
 
-    emit(ProdutoLoadingState());
+    if (!isClosed) {
+      emit(ProdutoLoadingState());
+    }
+
     produtos = await _service.listar(category);
-    emit(ProdutoLoadedState(produtos: produtos));
+
+    if (!isClosed) {
+      emit(ProdutoLoadedState(produtos: produtos));
+    }
   }
 }

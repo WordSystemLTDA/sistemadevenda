@@ -1,10 +1,9 @@
-import 'package:app/src/features/produtos/data/services/produto_service_impl.dart';
 import 'package:app/src/features/produtos/interactor/cubit/produtos_cubit.dart';
 import 'package:app/src/features/produtos/interactor/states/produtos_state.dart';
-import 'package:dio/dio.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class TabCustom extends StatefulWidget {
   final String category;
@@ -15,22 +14,22 @@ class TabCustom extends StatefulWidget {
 }
 
 class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixin {
-  final _produtosCubit = ProdutosCubit(ProdutoServiceImpl(Dio()));
-  // final _produtosCubit = Provider.of(context).;
+  final ProdutosCubit _produtosCubit = Modular.get<ProdutosCubit>();
 
   @override
   void initState() {
-    super.initState();
     _produtosCubit.getProdutos(widget.category);
+    super.initState();
   }
 
   @override
   void dispose() {
-    super.dispose();
     _produtosCubit.close();
+    super.dispose();
   }
 
   Future<void> _pullRefresh() async {
+    print('olá');
     _produtosCubit.getProdutos(widget.category);
   }
 
@@ -45,15 +44,12 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
         child: BlocBuilder<ProdutosCubit, ProdutosState>(
           bloc: _produtosCubit,
           builder: (context, state) {
-            final produtos = state.produtos;
-
-            if (state is ProdutoLoadingState) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is ProdutoLoadedState) {
+            if (state is ProdutoLoadingState) return const Center(child: CircularProgressIndicator());
+            if (state is ProdutoLoadedState) {
               return ListView.builder(
-                itemCount: produtos.isEmpty ? 1 : produtos.length,
+                itemCount: state.produtos.isEmpty ? 1 : state.produtos.length,
                 itemBuilder: (context, index) {
-                  if (produtos.isEmpty) {
+                  if (state.produtos.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 30),
                       child: Align(
@@ -63,7 +59,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                     );
                   }
 
-                  final produto = produtos[index];
+                  final produto = state.produtos[index];
 
                   return InkWell(
                     key: widget.key,
@@ -130,9 +126,9 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                   );
                 },
               );
-            } else {
-              return const Text('Sem produtos');
             }
+
+            return const Text('a');
           },
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:app/src/features/mesas/ui/widgets/mesas_grid.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class MesasPage extends StatefulWidget {
   const MesasPage({super.key});
@@ -13,77 +14,69 @@ class MesasPage extends StatefulWidget {
 }
 
 class _MesasPageState extends State<MesasPage> {
+  final MesasCubit _mesasCubit = Modular.get<MesasCubit>();
+
   @override
   void initState() {
-    final cubit = context.read<MesasCubit>();
-    cubit.getMesas();
+    _mesasCubit.getMesas();
     super.initState();
   }
 
   Future<void> _pullRefresh() async {
-    final cubit = context.read<MesasCubit>();
-    cubit.getMesas();
-  }
-
-  Future<void> _tryAgain() async {
-    final cubit = context.read<MesasCubit>();
-    cubit.getMesas();
+    _mesasCubit.getMesas();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<MesasCubit>();
-    final state = cubit.state;
-    final mesas = state.mesas;
+    return BlocBuilder<MesasCubit, MesasState>(
+      bloc: _mesasCubit,
+      builder: (context, state) {
+        final mesas = state.mesas;
 
-    final mesasOcupadas = mesas?.mesasOcupadas;
-    final mesasLivres = mesas?.mesasLivres;
+        final mesasOcupadas = mesas?.mesasOcupadas;
+        final mesasLivres = mesas?.mesasLivres;
 
-    // print('ops');
-    // print(mesasOcupadas!.isEmpty);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mesas'),
-        actions: [
-          if (state is MesaErrorState)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _tryAgain,
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          if (state is MesaLoadingState) const LinearProgressIndicator(),
-          if (state is MesaLoadedState)
-            RefreshIndicator(
-              onRefresh: _pullRefresh,
-              child: Padding(
-                padding: const EdgeInsets.all(30.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
-                      Text(
-                        'Pedidos em andamento ${mesasOcupadas.length}',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(height: 10),
-                      MesasGrid(mesas: mesasOcupadas),
-                      const SizedBox(height: 40),
-                    ],
-                    if (mesasLivres != null && mesasLivres.isNotEmpty) ...[
-                      Text('Mesas livres (${mesasLivres.length})', style: const TextStyle(fontSize: 18)),
-                      const SizedBox(height: 10),
-                      MesasGrid(mesas: mesasLivres),
-                    ],
-                  ],
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Mesas'),
+            actions: [
+              if (state is MesaErrorState)
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: _pullRefresh,
                 ),
-              ),
-            )
-        ],
-      ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              if (state is MesaLoadingState) const LinearProgressIndicator(),
+              if (state is MesaLoadedState)
+                Padding(
+                  padding: const EdgeInsets.all(30.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
+                        Text(
+                          'Pedidos em andamento ${mesasOcupadas.length}',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(height: 10),
+                        MesasGrid(mesas: mesasOcupadas),
+                        const SizedBox(height: 40),
+                      ],
+                      if (mesasLivres != null && mesasLivres.isNotEmpty) ...[
+                        Text('Mesas livres (${mesasLivres.length})', style: const TextStyle(fontSize: 18)),
+                        const SizedBox(height: 10),
+                        MesasGrid(mesas: mesasLivres),
+                      ],
+                    ],
+                  ),
+                )
+            ],
+          ),
+        );
+      },
     );
   }
 }
