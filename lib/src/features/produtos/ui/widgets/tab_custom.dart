@@ -29,7 +29,6 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   }
 
   Future<void> _pullRefresh() async {
-    print('olá');
     _produtosCubit.getProdutos(widget.category);
   }
 
