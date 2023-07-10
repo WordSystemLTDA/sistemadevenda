@@ -1,10 +1,11 @@
-import 'package:app/src/features/home/ui/home_page.dart';
 import 'package:app/src/features/produtos/interactor/models/produto_model.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class ProdutoPage extends StatefulWidget {
-  const ProdutoPage({super.key});
+  final ProdutoModel produto;
+  const ProdutoPage({super.key, required this.produto});
 
   @override
   State<ProdutoPage> createState() => _ProdutoPageState();
@@ -29,7 +30,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ProdutoModel produto = ModalRoute.of(context)!.settings.arguments as ProdutoModel;
+    final produto = widget.produto;
 
     return Scaffold(
       appBar: AppBar(
@@ -118,10 +119,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pop(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
+          Modular.to.pop();
         },
         child: const Icon(Icons.check),
       ),

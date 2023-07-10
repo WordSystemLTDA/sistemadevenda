@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class MesasGrid extends StatefulWidget {
   final List<dynamic> mesas;
@@ -27,7 +28,7 @@ class _MesasGridState extends State<MesasGrid> {
         if (mesas.isNotEmpty) {
           return ElevatedButton(
             onPressed: () {
-              Navigator.pushNamed(context, "/produtos", arguments: e['id']);
+              Modular.to.pushNamed('/produtos/${e['id']}');
             },
             style: ButtonStyle(
               backgroundColor: MaterialStatePropertyAll(e['mesaOcupada'] ? Colors.red : Colors.green),

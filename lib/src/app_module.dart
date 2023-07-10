@@ -30,7 +30,7 @@ class AppModule extends Module {
   List<ModularRoute> get routes => [
         ChildRoute('/', child: (context, args) => const HomePage()),
         ChildRoute('/mesas', child: (context, args) => const MesasPage()),
-        ChildRoute('/produtos', child: (context, args) => const ProdutosPage()),
-        ChildRoute('/produto', child: (context, args) => const ProdutoPage()),
+        ChildRoute('/produtos/:idMesa', child: (context, args) => ProdutosPage(idMesa: args.params['idMesa'])),
+        ChildRoute('/produto', child: (context, args) => ProdutoPage(produto: args.data)),
       ];
 }

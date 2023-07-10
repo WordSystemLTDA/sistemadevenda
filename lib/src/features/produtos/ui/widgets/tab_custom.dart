@@ -60,65 +60,69 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
 
                   final produto = state.produtos[index];
 
-                  return InkWell(
-                    key: widget.key,
-                    onTap: () {
-                      Navigator.pushNamed(context, "/produto", arguments: produto);
-                    },
-                    borderRadius: BorderRadius.circular(5),
-                    child: SizedBox(
-                      height: 100,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: FadeInImage.assetNetwork(
-                                width: 70,
-                                height: 70,
-                                fit: BoxFit.cover,
-                                fadeOutDuration: const Duration(milliseconds: 100),
-                                placeholder: 'assets/placeholder.png',
-                                image: produto.imagem,
+                  return Card(
+                    clipBehavior: Clip.hardEdge,
+                    child: InkWell(
+                      key: widget.key,
+                      onTap: () async {
+                        Modular.to.pushNamed("/produto", arguments: produto);
+                      },
+                      borderRadius: BorderRadius.circular(5),
+                      child: SizedBox(
+                        height: 100,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: FadeInImage.assetNetwork(
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                  fadeOutDuration: const Duration(milliseconds: 100),
+                                  placeholder: 'assets/placeholder.png',
+                                  image: produto.imagem,
+                                ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 9),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "${produto.nome} ${produto.tamanho}",
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 9),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${produto.nome} ${produto.tamanho}",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                  if (produto.descricao.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 5),
-                                      child: SizedBox(
-                                        width: 270,
-                                        child: Text(
-                                          produto.descricao,
-                                          overflow: TextOverflow.fade,
-                                          maxLines: 2,
-                                          style: const TextStyle(
-                                            color: Color.fromARGB(255, 111, 111, 111),
-                                            fontSize: 12,
+                                    if (produto.descricao.isNotEmpty)
+                                      SizedBox(
+                                        width: MediaQuery.of(context).size.width / 1.5,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 5),
+                                          child: Text(
+                                            produto.descricao,
+                                            overflow: TextOverflow.fade,
+                                            softWrap: false,
+                                            maxLines: 2,
+                                            style: const TextStyle(
+                                              color: Color.fromARGB(255, 111, 111, 111),
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
                                       ),
+                                    Text(
+                                      "R\$ ${produto.valor}",
+                                      style: const TextStyle(color: Colors.green),
                                     ),
-                                  Text(
-                                    "R\$ ${produto.valor}",
-                                    style: const TextStyle(color: Colors.green),
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
+                                  ],
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                       ),
                     ),
