@@ -58,7 +58,7 @@ class _MesasPageState extends State<MesasPage> {
                     children: [
                       if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
                         Text(
-                          'Pedidos em andamento ${mesasOcupadas.length}',
+                          'Pedidos em andamento (${mesasOcupadas.length})',
                           style: const TextStyle(fontSize: 18),
                         ),
                         const SizedBox(height: 10),

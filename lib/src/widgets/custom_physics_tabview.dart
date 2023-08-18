@@ -9,5 +9,5 @@ class CustomTabBarViewScrollPhysics extends ScrollPhysics {
   }
 
   @override
-  SpringDescription get spring => const SpringDescription(mass: 200, stiffness: 100, damping: 1);
+  SpringDescription get spring => const SpringDescription(mass: 200, stiffness: 100, damping: 0.8);
 }

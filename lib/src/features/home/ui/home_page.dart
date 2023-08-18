@@ -1,3 +1,4 @@
+import 'package:app/src/features/home/ui/widgets/card_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -17,6 +18,27 @@ class _HomePageState extends State<HomePage> {
     final double itemWidth = size.width / 2;
 
     return Scaffold(
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text('Drawer Header'),
+            ),
+            ListTile(
+              title: const Text('Editar Dados'),
+              onTap: () {},
+            ),
+            ListTile(
+              title: const Text('Sair'),
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
       appBar: AppBar(
         title: const Text('Início'),
       ),
@@ -29,95 +51,26 @@ class _HomePageState extends State<HomePage> {
           shrinkWrap: true,
           childAspectRatio: (itemWidth / itemHeight),
           children: [
-            ElevatedButton(
+            CardHome(
+              nome: 'Mesas',
+              icone: const Icon(Icons.table_bar_outlined, size: 40),
               onPressed: () {
                 Modular.to.pushNamed('/mesas');
               },
-              style: ButtonStyle(
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.table_bar_outlined, size: 40),
-                  SizedBox(height: 10),
-                  Text(
-                    'Mesas',
-                    style: TextStyle(fontSize: 18),
-                  )
-                ],
-              ),
             ),
-            ElevatedButton(
-              onPressed: () {},
-              style: ButtonStyle(
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.build, size: 40),
-                  SizedBox(height: 10),
-                  Text(
-                    'Cardápio',
-                    style: TextStyle(fontSize: 18),
-                  )
-                ],
-              ),
+            CardHome(
+              nome: 'Comandas',
+              icone: const Icon(Icons.fact_check_outlined, size: 40),
+              onPressed: () {
+                Modular.to.pushNamed('/comandas');
+              },
             ),
-            ElevatedButton(
-              onPressed: () {},
-              style: ButtonStyle(
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.build, size: 40),
-                  SizedBox(height: 10),
-                  Text(
-                    'Cardápio',
-                    style: TextStyle(fontSize: 18),
-                  )
-                ],
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {},
-              style: ButtonStyle(
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.build, size: 40),
-                  SizedBox(height: 10),
-                  Text(
-                    'Cardápio',
-                    style: TextStyle(fontSize: 18),
-                  )
-                ],
-              ),
+            CardHome(
+              nome: 'Balcão',
+              icone: const Icon(Icons.shopping_cart_outlined, size: 40),
+              onPressed: () {
+                Modular.to.pushNamed('/cardapio');
+              },
             ),
           ],
         ),

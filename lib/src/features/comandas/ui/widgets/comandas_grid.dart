@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class MesasGrid extends StatefulWidget {
-  final List<dynamic> mesas;
-  const MesasGrid({super.key, required this.mesas});
+class ComandasGrid extends StatefulWidget {
+  final List<dynamic> comandas;
+  const ComandasGrid({super.key, required this.comandas});
 
   @override
-  State<MesasGrid> createState() => _MesasGridState();
+  State<ComandasGrid> createState() => _ComandasGridState();
 }
 
-class _MesasGridState extends State<MesasGrid> {
+class _ComandasGridState extends State<ComandasGrid> {
   @override
   Widget build(BuildContext context) {
-    final mesas = widget.mesas;
+    final comandas = widget.comandas;
 
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -20,18 +20,18 @@ class _MesasGridState extends State<MesasGrid> {
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
-      itemCount: mesas.length,
+      itemCount: comandas.length,
       shrinkWrap: true,
       itemBuilder: (BuildContext context, int index) {
-        final e = mesas[index];
+        final e = comandas[index];
 
-        if (mesas.isNotEmpty) {
+        if (comandas.isNotEmpty) {
           return ElevatedButton(
             onPressed: () {
-              Modular.to.pushNamed('/cardapio/mesa/${e['id']}');
+              Modular.to.pushNamed('/cardapio/comanda/${e['id']}');
             },
             style: ButtonStyle(
-              backgroundColor: MaterialStatePropertyAll(e['mesaOcupada'] ? Colors.red : Colors.green),
+              backgroundColor: MaterialStatePropertyAll(e['comandaOcupada'] ? Colors.red : Colors.green),
               shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                 RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(2.0),
