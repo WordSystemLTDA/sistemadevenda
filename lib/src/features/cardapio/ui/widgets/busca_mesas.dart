@@ -31,9 +31,7 @@ class _BuscaMesasState extends State<BuscaMesas> {
   final trailing = [
     IconButton(
       icon: const Icon(Icons.keyboard_voice),
-      onPressed: () {
-        print('Use voice command');
-      },
+      onPressed: () {},
     ),
   ];
 

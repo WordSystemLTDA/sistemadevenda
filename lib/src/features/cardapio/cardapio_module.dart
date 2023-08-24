@@ -5,9 +5,10 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardapioModule extends Module {
   @override
   void routes(r) {
-    r.child('/', child: (context) => const CardapioPage());
-    r.child('/mesa/:id', child: (context) => CardapioPage(id: r.args.params['id']));
-    r.child('/comanda/:id', child: (context) => CardapioPage(id: r.args.params['id']));
-    r.child('/produto', child: (context) => ProdutoPage(produto: r.args.data));
+    r.child('/:tipo/:idLugar', child: (context) => CardapioPage(tipo: r.args.params['tipo'], idLugar: r.args.params['idLugar']));
+    r.child(
+      '/produto/:tipo/:idLugar',
+      child: (context) => ProdutoPage(produto: r.args.data, tipo: r.args.params['tipo'], idLugar: r.args.params['idLugar']),
+    );
   }
 }

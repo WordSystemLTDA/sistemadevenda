@@ -3,6 +3,7 @@ import 'package:app/src/features/login/interactor/states/autenticacao_state.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,6 +40,32 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  var verificando = true;
+
+  void verificarLogin() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool logado = prefs.containsKey('usuario');
+
+    Future.delayed(const Duration(seconds: 2)).then((value) => {
+          if (logado)
+            {
+              Modular.to.pushNamed('/inicio'),
+            }
+          else
+            {
+              setState(() {
+                verificando = false;
+              }),
+            }
+        });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    verificarLogin();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AutenticacaoCubit, AutenticacaoEstado>(
@@ -53,55 +80,57 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context, state) {
         return Scaffold(
           body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    controller: usuarioController,
-                    decoration: const InputDecoration(
-                      labelText: "E-mail",
-                      hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: senhaController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Senha",
-                      hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton(
-                      style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.green),
-                        side: MaterialStatePropertyAll(BorderSide.none),
-                        shape: MaterialStatePropertyAll(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(5)),
+            child: verificando
+                ? const CircularProgressIndicator()
+                : Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextField(
+                          controller: usuarioController,
+                          decoration: const InputDecoration(
+                            labelText: "Usuário",
+                            hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                            border: OutlineInputBorder(),
                           ),
                         ),
-                        foregroundColor: MaterialStatePropertyAll(Colors.white),
-                        textStyle: MaterialStatePropertyAll(TextStyle(fontSize: 18)),
-                      ),
-                      onPressed: () {
-                        _autenticacaoCubit.entrar(usuarioController.text, senhaController.text);
-                      },
-                      child: _conteudoBotaoEntrar(state),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: senhaController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: "Senha",
+                            hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton(
+                            style: const ButtonStyle(
+                              backgroundColor: MaterialStatePropertyAll(Colors.green),
+                              side: MaterialStatePropertyAll(BorderSide.none),
+                              shape: MaterialStatePropertyAll(
+                                RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(5)),
+                                ),
+                              ),
+                              foregroundColor: MaterialStatePropertyAll(Colors.white),
+                              textStyle: MaterialStatePropertyAll(TextStyle(fontSize: 18)),
+                            ),
+                            onPressed: () {
+                              _autenticacaoCubit.entrar(usuarioController.text, senhaController.text);
+                            },
+                            child: _conteudoBotaoEntrar(state),
+                          ),
+                        )
+                      ],
                     ),
-                  )
-                ],
-              ),
-            ),
+                  ),
           ),
         );
       },

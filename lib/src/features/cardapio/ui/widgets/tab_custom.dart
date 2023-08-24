@@ -9,7 +9,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class TabCustom extends StatefulWidget {
   final String category;
-  const TabCustom({super.key, required this.category});
+  final String? idLugar;
+  final String tipo;
+  const TabCustom({super.key, required this.category, this.idLugar, required this.tipo});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
@@ -82,7 +84,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                     child: InkWell(
                       key: widget.key,
                       onTap: () async {
-                        Modular.to.pushNamed("/cardapio/produto", arguments: produto);
+                        Modular.to.pushNamed("/cardapio/produto/${widget.tipo}/${widget.idLugar}", arguments: produto);
                       },
                       borderRadius: BorderRadius.circular(5),
                       child: Row(

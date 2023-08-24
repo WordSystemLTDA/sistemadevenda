@@ -11,6 +11,7 @@ import 'package:app/src/features/mesas/data/services/mesa_service_impl.dart';
 import 'package:app/src/features/mesas/interactor/cubit/mesas_cubit.dart';
 import 'package:app/src/features/mesas/interactor/services/mesa_service.dart';
 import 'package:app/src/features/mesas/ui/mesas_page.dart';
+import 'package:app/src/features/produto/data/services/salvar_produto_service_impl.dart';
 import 'package:app/src/features/produto/interactor/cubit/counter_cubit.dart';
 import 'package:app/src/features/cardapio/data/services/categoria_service_impl.dart';
 import 'package:app/src/features/cardapio/data/services/produto_service_impl.dart';
@@ -19,6 +20,8 @@ import 'package:app/src/features/cardapio/interactor/cubit/produtos_cubit.dart';
 import 'package:app/src/features/cardapio/interactor/services/categoria_service.dart';
 import 'package:app/src/features/cardapio/interactor/services/produto_service.dart';
 import 'package:app/src/features/cardapio/cardapio_module.dart';
+import 'package:app/src/features/produto/interactor/cubit/salvar_produto_cubit.dart';
+import 'package:app/src/features/produto/interactor/services/salvar_produto_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -26,17 +29,29 @@ class AppModule extends Module {
   @override
   void binds(i) {
     i.addInstance(Dio());
+
+    // Categorias
     i.add<CategoriaService>(CategoriaServiceImpl.new);
-    i.add<ProdutoService>(ProdutoServiceImpl.new);
+    i.addSingleton<CategoriasCubit>(CategoriasCubit.new);
+
+    // Mesas
     i.add<MesaService>(MesaServiceImpl.new);
+    i.addSingleton<MesasCubit>(MesasCubit.new);
+
+    // Comandas
+    i.addSingleton<ComandasCubit>(ComandasCubit.new);
     i.add<ComandaService>(ComandaServiceImpl.new);
+
+    // Autenticacao
+    i.add<AutenticacaoCubit>(AutenticacaoCubit.new);
     i.add<AutenticacaoService>(AutenticacaoServiceImpl.new);
+
+    // Produto
+    i.add<ProdutoService>(ProdutoServiceImpl.new);
+    i.add<SalvarProdutoService>(SalvarProdutoServiceImpl.new);
     i.add<ProdutosCubit>(ProdutosCubit.new);
     i.add<CounterCubit>(CounterCubit.new);
-    i.add<AutenticacaoCubit>(AutenticacaoCubit.new);
-    i.addSingleton<CategoriasCubit>(CategoriasCubit.new);
-    i.addSingleton<MesasCubit>(MesasCubit.new);
-    i.addSingleton<ComandasCubit>(ComandasCubit.new);
+    i.add<SalvarProdutoCubit>(SalvarProdutoCubit.new);
   }
 
   @override

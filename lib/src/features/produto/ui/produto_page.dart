@@ -1,6 +1,8 @@
 import 'package:app/src/features/produto/interactor/cubit/counter_cubit.dart';
+import 'package:app/src/features/produto/interactor/cubit/salvar_produto_cubit.dart';
 import 'package:app/src/features/produto/interactor/states/counter_state.dart';
 import 'package:app/src/features/cardapio/interactor/models/produto_model.dart';
+import 'package:app/src/features/produto/interactor/states/salvar_produto_state.dart';
 import 'package:app/src/shared/utils/utils.dart';
 
 import 'package:flutter/material.dart';
@@ -10,7 +12,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class ProdutoPage extends StatefulWidget {
   final ProdutoModel produto;
-  const ProdutoPage({super.key, required this.produto});
+  final String? tipo;
+  final String? idLugar;
+  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idLugar});
 
   @override
   State<ProdutoPage> createState() => _ProdutoPageState();
@@ -18,12 +22,33 @@ class ProdutoPage extends StatefulWidget {
 
 class _ProdutoPageState extends State<ProdutoPage> {
   final CounterCubit _counterCubit = Modular.get<CounterCubit>();
+  final SalvarProdutoCubit _salvarProdutoCubit = Modular.get<SalvarProdutoCubit>();
 
   TextEditingController controller = TextEditingController();
+
+  final snackBarErro = SnackBar(
+    content: const Text('Erro ao inserir, tente novamente.'),
+    action: SnackBarAction(
+      label: 'OK',
+      onPressed: () {},
+    ),
+  );
+
+  void inserir(idLugar, tipo, produto, quantidade) {
+    var idLugar_ = idLugar!.isEmpty ? null : idLugar;
+    var valor = produto.valor;
+    var idProduto = produto.id;
+    var observacaoMesa = '';
+    var observacao = controller.text;
+
+    _salvarProdutoCubit.inserir(idLugar_, tipo, valor, observacaoMesa, idProduto, quantidade, observacao);
+  }
 
   @override
   Widget build(BuildContext context) {
     final produto = widget.produto;
+    final idLugar = widget.idLugar;
+    final tipo = widget.tipo;
 
     return BlocBuilder<CounterCubit, CounterState>(
       bloc: _counterCubit,
@@ -39,6 +64,24 @@ class _ProdutoPageState extends State<ProdutoPage> {
           child: Scaffold(
             appBar: AppBar(
               title: Text("${produto.nome} ${produto.tamanho}"),
+            ),
+            floatingActionButton: BlocConsumer<SalvarProdutoCubit, SalvarProdutoState>(
+              bloc: _salvarProdutoCubit,
+              listener: (context, stateSalvarProduto) {
+                if (stateSalvarProduto is SalvarProdutoSucessoState) {
+                  Modular.to.pop();
+                } else if (stateSalvarProduto is SalvarProdutoErroState) {
+                  ScaffoldMessenger.of(context).showSnackBar(snackBarErro);
+                }
+              },
+              builder: (context, stateSalvarProduto) {
+                return FloatingActionButton(
+                  onPressed: () {
+                    inserir(idLugar, tipo, produto, state.counterValue);
+                  },
+                  child: stateSalvarProduto is SalvarProdutoCarregandoState ? const CircularProgressIndicator() : const Icon(Icons.check),
+                );
+              },
             ),
             body: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -138,12 +181,6 @@ class _ProdutoPageState extends State<ProdutoPage> {
                   )
                 ],
               ),
-            ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () {
-                Modular.to.pop();
-              },
-              child: const Icon(Icons.check),
             ),
           ),
         );

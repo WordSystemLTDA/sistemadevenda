@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:app/src/features/home/ui/widgets/card_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,6 +13,30 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  var nomeUsuario = '';
+
+  @override
+  void initState() {
+    super.initState();
+    pegarUsuario();
+  }
+
+  void pegarUsuario() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    var usuario = prefs.getString('usuario');
+
+    setState(() {
+      nomeUsuario = jsonDecode(usuario!)['nome'];
+    });
+  }
+
+  void sair() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.remove("usuario").then((value) => {
+          Modular.to.pushNamed('/'),
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -22,11 +49,11 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
+            DrawerHeader(
+              decoration: const BoxDecoration(
                 color: Colors.blue,
               ),
-              child: Text('Drawer Header'),
+              child: Text(nomeUsuario),
             ),
             ListTile(
               title: const Text('Editar Dados'),
@@ -34,7 +61,7 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               title: const Text('Sair'),
-              onTap: () {},
+              onTap: sair,
             ),
           ],
         ),
@@ -69,7 +96,7 @@ class _HomePageState extends State<HomePage> {
               nome: 'Balcão',
               icone: const Icon(Icons.shopping_cart_outlined, size: 40),
               onPressed: () {
-                Modular.to.pushNamed('/cardapio');
+                Modular.to.pushNamed('/cardapio/balcao/0');
               },
             ),
           ],
