@@ -13,8 +13,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 class ProdutoPage extends StatefulWidget {
   final ProdutoModel produto;
   final String? tipo;
-  final String? idLugar;
-  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idLugar});
+  final String? idComanda;
+  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idComanda});
 
   @override
   State<ProdutoPage> createState() => _ProdutoPageState();
@@ -34,20 +34,20 @@ class _ProdutoPageState extends State<ProdutoPage> {
     ),
   );
 
-  void inserir(idLugar, tipo, produto, quantidade) {
-    var idLugar_ = idLugar!.isEmpty ? null : idLugar;
-    var valor = produto.valor;
+  void inserir(comanda, produto, quantidade) {
+    var idComanda = comanda!.isEmpty ? null : comanda;
+    var valor = produto.valorVenda;
     var idProduto = produto.id;
     var observacaoMesa = '';
     var observacao = controller.text;
 
-    _salvarProdutoCubit.inserir(idLugar_, tipo, valor, observacaoMesa, idProduto, quantidade, observacao);
+    _salvarProdutoCubit.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
   }
 
   @override
   Widget build(BuildContext context) {
     final produto = widget.produto;
-    final idLugar = widget.idLugar;
+    final idComanda = widget.idComanda;
     final tipo = widget.tipo;
 
     return BlocBuilder<CounterCubit, CounterState>(
@@ -77,7 +77,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
               builder: (context, stateSalvarProduto) {
                 return FloatingActionButton(
                   onPressed: () {
-                    inserir(idLugar, tipo, produto, state.counterValue);
+                    inserir(idComanda, produto, state.counterValue);
                   },
                   child: stateSalvarProduto is SalvarProdutoCarregandoState ? const CircularProgressIndicator() : const Icon(Icons.check),
                 );
@@ -103,7 +103,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
                             child: Center(child: CircularProgressIndicator()),
                           ),
                           errorWidget: (context, url, error) => const Icon(Icons.error),
-                          imageUrl: produto.imagem,
+                          imageUrl: produto.foto,
                         ),
                       ),
                       Row(
@@ -151,7 +151,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
                         style: TextStyle(fontSize: 18),
                       ),
                       Text(
-                        Utils.coverterEmReal.format(produto.valor),
+                        Utils.coverterEmReal.format(double.parse(produto.valorVenda)),
                         style: const TextStyle(color: Colors.green, fontSize: 18),
                       ),
                     ],
@@ -163,7 +163,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
                         style: TextStyle(fontSize: 18),
                       ),
                       Text(
-                        Utils.coverterEmReal.format(produto.valor * state.counterValue),
+                        Utils.coverterEmReal.format(double.parse(produto.valorVenda) * state.counterValue),
                         style: const TextStyle(color: Colors.green, fontSize: 18),
                       ),
                     ],

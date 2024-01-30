@@ -15,4 +15,16 @@ class CategoriasCubit extends Cubit<CategoriasState> {
     categorias = await _service.listar();
     emit(CategoriaLoadedState(categorias: categorias));
   }
+
+  // RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR \\
+  Future<dynamic> listarComandasPedidos(String idComanda) async {
+    List<dynamic> listaComandosPedidos;
+
+    listaComandosPedidos = await _service.listarComandasPedidos(idComanda);
+    return listaComandosPedidos;
+  }
+
+  Future<dynamic> removerComandasPedidos(String idItemComanda) async {
+    return await _service.removerComandasPedidos(idItemComanda);
+  }
 }

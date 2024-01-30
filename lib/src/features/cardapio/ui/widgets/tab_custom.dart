@@ -9,9 +9,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class TabCustom extends StatefulWidget {
   final String category;
-  final String? idLugar;
+  final String? idComanda;
   final String tipo;
-  const TabCustom({super.key, required this.category, this.idLugar, required this.tipo});
+  const TabCustom({super.key, required this.category, this.idComanda, required this.tipo});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
@@ -84,11 +84,12 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                     child: InkWell(
                       key: widget.key,
                       onTap: () async {
-                        Modular.to.pushNamed("/cardapio/produto/${widget.tipo}/${widget.idLugar}", arguments: produto);
+                        Modular.to.pushNamed("/cardapio/produto/${widget.tipo}/${widget.idComanda}", arguments: produto);
                       },
                       borderRadius: BorderRadius.circular(5),
                       child: Row(
                         children: [
+                          // const Text('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
                             child: CachedNetworkImage(
@@ -102,7 +103,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                                 child: Center(child: CircularProgressIndicator()),
                               ),
                               errorWidget: (context, url, error) => const Icon(Icons.error),
-                              imageUrl: produto.imagem,
+                              imageUrl: produto.foto,
                             ),
                           ),
                           Padding(
@@ -147,7 +148,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                                   child: Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
-                                      Utils.coverterEmReal.format(produto.valor),
+                                      Utils.coverterEmReal.format(double.parse(produto.valorVenda)),
                                       style: const TextStyle(color: Colors.green, fontSize: 17),
                                     ),
                                   ),

@@ -1,3 +1,3 @@
 abstract interface class SalvarProdutoService {
-  Future<bool> inserir(idLugar, tipo, valor, observacaoMesa, idProduto, quantidade, observacao);
+  Future<bool> inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
 }

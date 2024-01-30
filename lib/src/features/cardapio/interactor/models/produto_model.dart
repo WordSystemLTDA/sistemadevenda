@@ -1,21 +1,20 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 class ProdutoModel {
-  String id;
-  String nome;
-  String tamanho;
-  String imagem;
-  num valor;
-  String descricao;
+  final String id;
+  final String nome;
+  final String tamanho;
+  final String foto;
+  final String descricao;
+  final String valorVenda;
 
   ProdutoModel({
     required this.id,
     required this.nome,
     required this.tamanho,
-    required this.imagem,
-    required this.valor,
+    required this.foto,
     required this.descricao,
+    required this.valorVenda,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,9 +22,9 @@ class ProdutoModel {
       'id': id,
       'nome': nome,
       'tamanho': tamanho,
-      'imagem': imagem,
-      'valor': valor,
+      'foto': foto,
       'descricao': descricao,
+      'valorVenda': valorVenda,
     };
   }
 
@@ -34,9 +33,9 @@ class ProdutoModel {
       id: map['id'] as String,
       nome: map['nome'] as String,
       tamanho: map['tamanho'] as String,
-      imagem: map['imagem'] as String,
-      valor: map['valor'] as num,
+      foto: map['foto'] as String,
       descricao: map['descricao'] as String,
+      valorVenda: map['valorVenda'] as String,
     );
   }
 

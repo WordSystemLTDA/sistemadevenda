@@ -8,12 +8,12 @@ class SalvarProdutoCubit extends Cubit<SalvarProdutoState> {
 
   SalvarProdutoCubit(this._service) : super(SalvarProdutoInicioState());
 
-  void inserir(idLugar, tipo, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+  void inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
     bool sucesso = false;
 
     emit(SalvarProdutoCarregandoState());
 
-    sucesso = await _service.inserir(idLugar, tipo, valor, observacaoMesa, idProduto, quantidade, observacao);
+    sucesso = await _service.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
 
     if (sucesso) {
       emit(SalvarProdutoSucessoState());

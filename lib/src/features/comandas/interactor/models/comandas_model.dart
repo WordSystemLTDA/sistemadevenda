@@ -1,27 +1,33 @@
 import 'dart:convert';
 
-// ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:app/src/features/comandas/interactor/models/comanda_model.dart';
 
 class ComandasModel {
-  List<dynamic>? comandasOcupadas;
-  List<dynamic>? comandasLivres;
+  String titulo;
+  List<ComandaModel>? comandas;
 
   ComandasModel({
-    required this.comandasOcupadas,
-    required this.comandasLivres,
+    required this.titulo,
+    required this.comandas,
   });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'comandasOcupadas': comandasOcupadas,
-      'comandasLivres': comandasLivres,
+      'titulo': titulo,
+      'comandas': comandas!.map((x) => x?.toMap()).toList(),
     };
   }
 
   factory ComandasModel.fromMap(Map<String, dynamic> map) {
     return ComandasModel(
-      comandasOcupadas: map['comandasOcupadas'] != null ? List<dynamic>.from((map['comandasOcupadas'] as List<dynamic>)) : null,
-      comandasLivres: map['comandasLivres'] != null ? List<dynamic>.from((map['comandasLivres'] as List<dynamic>)) : null,
+      titulo: map['titulo'] as String,
+      comandas: map['comandas'] != null
+          ? List<ComandaModel>.from(
+              (map['comandas'] as List<dynamic>).map<ComandaModel?>(
+                (x) => ComandaModel.fromMap(x as Map<String, dynamic>),
+              ),
+            )
+          : null,
     );
   }
 

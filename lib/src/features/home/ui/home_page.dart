@@ -26,7 +26,7 @@ class _HomePageState extends State<HomePage> {
     var usuario = prefs.getString('usuario');
 
     setState(() {
-      nomeUsuario = jsonDecode(usuario!)['nome'];
+      // nomeUsuario = jsonDecode(usuario!)['nome'];
     });
   }
 

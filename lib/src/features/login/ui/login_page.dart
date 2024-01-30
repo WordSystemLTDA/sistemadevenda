@@ -43,14 +43,13 @@ class _LoginPageState extends State<LoginPage> {
   var verificando = true;
 
   void verificarLogin() async {
+    Modular.to.pushNamed('/inicio');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     bool logado = prefs.containsKey('usuario');
 
     Future.delayed(const Duration(seconds: 2)).then((value) => {
           if (logado)
-            {
-              Modular.to.pushNamed('/inicio'),
-            }
+            {}
           else
             {
               setState(() {

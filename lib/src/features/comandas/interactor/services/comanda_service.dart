@@ -1,5 +1,5 @@
 import 'package:app/src/features/comandas/interactor/models/comandas_model.dart';
 
 abstract interface class ComandaService {
-  Future<ComandasModel?> listar();
+  Future<List<ComandasModel>> listar();
 }

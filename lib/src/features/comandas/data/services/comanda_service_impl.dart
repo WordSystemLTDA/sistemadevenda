@@ -11,12 +11,13 @@ class ComandaServiceImpl implements ComandaService {
   ComandaServiceImpl(this.dio);
 
   @override
-  Future<ComandasModel?> listar() async {
+  Future<List<ComandasModel>> listar() async {
     try {
       final response = await dio.get('${Apis.baseUrl}comandas/listar.php').timeout(const Duration(seconds: 60));
 
       if (response.data.isNotEmpty) {
-        return ComandasModel.fromMap(response.data);
+        // return ComandasModel.fromMap(response.data);
+        return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
       }
     } on DioException catch (exception) {
       if (exception.type == DioExceptionType.connectionTimeout) {

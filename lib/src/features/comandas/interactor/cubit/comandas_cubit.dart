@@ -10,7 +10,7 @@ class ComandasCubit extends Cubit<ComandasState> {
   ComandasCubit(this._service) : super(ComandaInitialState());
 
   void getComandas() async {
-    ComandasModel? comandas;
+    List<ComandasModel> comandas;
 
     emit(ComandaLoadingState());
 

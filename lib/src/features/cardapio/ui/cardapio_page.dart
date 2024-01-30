@@ -1,5 +1,6 @@
 import 'package:app/src/features/cardapio/interactor/cubit/categorias_cubit.dart';
 import 'package:app/src/features/cardapio/interactor/states/categorias_state.dart';
+import 'package:app/src/features/cardapio/ui/itens_comanda_page.dart';
 import 'package:app/src/features/cardapio/ui/widgets/busca_mesas.dart';
 import 'package:app/src/features/cardapio/ui/widgets/tab_custom.dart';
 import 'package:app/src/shared/widgets/custom_physics_tabview.dart';
@@ -9,9 +10,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardapioPage extends StatefulWidget {
-  final String? idLugar;
+  final String? idComanda;
   final String tipo;
-  const CardapioPage({super.key, this.idLugar, required this.tipo});
+  const CardapioPage({super.key, this.idComanda, required this.tipo});
 
   @override
   State<CardapioPage> createState() => _CardapioPageState();
@@ -21,10 +22,25 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
   final CategoriasCubit _categoriasCubit = Modular.get<CategoriasCubit>();
   late TabController _tabController;
 
+  late List<dynamic> listaComandosPedidos;
+  int quantidadeTotal = 0;
+  double precoTotal = 0;
+
+  void listarComandasPedidos() async {
+    listaComandosPedidos = await _categoriasCubit.listarComandasPedidos(widget.idComanda!);
+    listaComandosPedidos.map((e) {
+      quantidadeTotal += int.parse(double.parse(e['quantidade']).toStringAsFixed(0));
+      precoTotal += double.parse(e['valor']) * num.parse(e['quantidade']);
+    }).toList();
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     _categoriasCubit.getCategorias();
+
+    listarComandasPedidos();
   }
 
   @override
@@ -37,7 +53,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
-
     final double itemWidth = size.width / 3;
 
     return BlocBuilder<CategoriasCubit, CategoriasState>(
@@ -58,7 +73,13 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
               color: const Color.fromARGB(255, 61, 61, 61),
               child: InkWell(
                 onTap: () {
-                  //print('called on tap');
+                  // Modular.to.pushNamed('/cardapio/balcao/0');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ItensComandaPage(listaComandosPedidos: listaComandosPedidos),
+                    ),
+                  );
                 },
                 child: SizedBox(
                   height: kToolbarHeight,
@@ -66,27 +87,39 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
+                      SizedBox(
                         width: itemWidth,
-                        padding: const EdgeInsets.only(left: 30),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.balance, size: 18),
-                            SizedBox(width: 8),
-                            Text('4', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.left),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 30),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.balance, size: 18, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                // listaComandosPedidos.length.toString(),
+                                quantidadeTotal.toString(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                textAlign: TextAlign.left,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       SizedBox(
                         width: itemWidth,
-                        child: const Text('Ver itens', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                        child: const Text(
+                          'Ver itens',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       Container(
                         width: itemWidth,
                         padding: const EdgeInsets.only(right: 30),
-                        child: const Text('R\$ 5,00',
-                            style: TextStyle(
+                        child: Text('R\$ ${precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                             textAlign: TextAlign.right),
                       ),
@@ -136,7 +169,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                     children: categorias
                         .map((e) => TabCustom(
                               category: e.id,
-                              idLugar: widget.idLugar == '0' ? '' : widget.idLugar,
+                              idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                               tipo: widget.tipo,
                             ))
                         .toList(),

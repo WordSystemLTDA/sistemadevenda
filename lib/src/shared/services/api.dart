@@ -1,3 +1,3 @@
 class Apis {
-  static const baseUrl = 'http://10.1.1.15/api_restaurantes/';
+  static const baseUrl = 'http://192.168.2.129/api_restaurantes/';
 }
