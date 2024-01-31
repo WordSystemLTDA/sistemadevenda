@@ -22,7 +22,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
 
   @override
   void initState() {
-    _produtosCubit.getProdutos(widget.category);
+    // _produtosCubit.getProdutos(widget.category);
     super.initState();
   }
 
@@ -89,7 +89,6 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                       borderRadius: BorderRadius.circular(5),
                       child: Row(
                         children: [
-                          // const Text('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
                             child: CachedNetworkImage(

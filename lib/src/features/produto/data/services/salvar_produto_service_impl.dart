@@ -15,29 +15,29 @@ class SalvarProdutoServiceImpl implements SalvarProdutoService {
 
   @override
   Future<bool> inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
-    const url = '${Apis.baseUrl}pedidos/inserir.php';
+    // const url = '${Apis.baseUrl}pedidos/inserir.php';
 
-    final response = await dio.post(
-      url,
-      data: jsonEncode({
-        'idComanda': idComanda,
-        'valor': valor,
-        'observacaoMesa': observacaoMesa,
-        'idProduto': idProduto,
-        'quantidade': quantidade,
-        'observacao': observacao,
-      }),
-      options: Options(headers: {
-        HttpHeaders.contentTypeHeader: 'application/json',
-      }),
-    );
+    // final response = await dio.post(
+    //   url,
+    //   data: jsonEncode({
+    //     'idComanda': idComanda,
+    //     'valor': valor,
+    //     'observacaoMesa': observacaoMesa,
+    //     'idProduto': idProduto,
+    //     'quantidade': quantidade,
+    //     'observacao': observacao,
+    //   }),
+    //   options: Options(headers: {
+    //     HttpHeaders.contentTypeHeader: 'application/json',
+    //   }),
+    // );
 
-    final Map<dynamic, dynamic> result = response.data;
-    final bool sucesso = result['sucesso'];
+    // final Map<dynamic, dynamic> result = response.data;
+    // final bool sucesso = result['sucesso'];
 
-    if (response.statusCode == 200 && sucesso == true) {
-      return sucesso;
-    }
+    // if (response.statusCode == 200 && sucesso == true) {
+    //   return sucesso;
+    // }
 
     return false;
   }

@@ -14,6 +14,7 @@ class ProdutosCubit extends Cubit<ProdutosState> {
 
     emit(ProdutoLoadingState());
     produtos = await _service.listar(category);
+    print(produtos);
     emit(ProdutoLoadedState(produtos: produtos));
   }
 }

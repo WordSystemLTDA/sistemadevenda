@@ -1,3 +1,4 @@
+import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
 import 'package:app/src/features/produto/interactor/cubit/counter_cubit.dart';
 import 'package:app/src/features/produto/interactor/cubit/salvar_produto_cubit.dart';
 import 'package:app/src/features/produto/interactor/states/counter_state.dart';
@@ -24,6 +25,8 @@ class _ProdutoPageState extends State<ProdutoPage> {
   final CounterCubit _counterCubit = Modular.get<CounterCubit>();
   final SalvarProdutoCubit _salvarProdutoCubit = Modular.get<SalvarProdutoCubit>();
 
+  final ItensComandaState stateItensComanda = ItensComandaState();
+
   TextEditingController controller = TextEditingController();
 
   final snackBarErro = SnackBar(
@@ -34,14 +37,26 @@ class _ProdutoPageState extends State<ProdutoPage> {
     ),
   );
 
-  void inserir(comanda, produto, quantidade) {
-    var idComanda = comanda!.isEmpty ? null : comanda;
-    var valor = produto.valorVenda;
-    var idProduto = produto.id;
-    var observacaoMesa = '';
-    var observacao = controller.text;
+  void inserir(comanda, produto, quantidade) async {
+    // var idComanda = comanda!.isEmpty ? null : comanda;
+    // var valor = produto.valorVenda;
+    // var idProduto = produto.id;
+    // var observacaoMesa = '';
+    // var observacao = controller.text;
 
-    _salvarProdutoCubit.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
+    // final res = await stateItensComanda.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
+
+    // if (res) {
+    //   Navigator.pop(context);
+    //   return;
+    // }
+
+    // ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    //   content: Text('Ocorreu um erro'),
+    //   showCloseIcon: true,
+    // ));
+    // // _salvarProdutoCubit.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
   }
 
   @override
@@ -76,8 +91,27 @@ class _ProdutoPageState extends State<ProdutoPage> {
               },
               builder: (context, stateSalvarProduto) {
                 return FloatingActionButton(
-                  onPressed: () {
-                    inserir(idComanda, produto, state.counterValue);
+                  onPressed: () async {
+                    // inserir(idComanda, produto, state.counterValue);
+                    var comanda = idComanda!.isEmpty ? null : idComanda;
+                    var valor = produto.valorVenda;
+                    var idProduto = produto.id;
+                    var observacaoMesa = '';
+                    var observacao = controller.text;
+
+                    final res = await stateItensComanda.inserir(comanda, valor, observacaoMesa, idProduto, state.counterValue, observacao);
+
+                    if (res) {
+                      Navigator.pop(context);
+                      return;
+                    }
+
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Ocorreu um erro'),
+                      showCloseIcon: true,
+                    ));
+                    // _salvarProdutoCubit.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
                   },
                   child: stateSalvarProduto is SalvarProdutoCarregandoState ? const CircularProgressIndicator() : const Icon(Icons.check),
                 );

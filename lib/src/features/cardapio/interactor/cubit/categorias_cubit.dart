@@ -8,23 +8,14 @@ class CategoriasCubit extends Cubit<CategoriasState> {
 
   CategoriasCubit(this._service) : super(CategoriaInitialState());
 
+  // Future<List<CategoriaModel>> getCategorias() async {
   void getCategorias() async {
     List<CategoriaModel> categorias;
 
     emit(CategoriaLoadingState());
     categorias = await _service.listar();
     emit(CategoriaLoadedState(categorias: categorias));
-  }
 
-  // RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR RETIRAR \\
-  Future<dynamic> listarComandasPedidos(String idComanda) async {
-    List<dynamic> listaComandosPedidos;
-
-    listaComandosPedidos = await _service.listarComandasPedidos(idComanda);
-    return listaComandosPedidos;
-  }
-
-  Future<dynamic> removerComandasPedidos(String idItemComanda) async {
-    return await _service.removerComandasPedidos(idItemComanda);
+    // return await _service.listar();
   }
 }
