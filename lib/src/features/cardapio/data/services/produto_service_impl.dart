@@ -4,9 +4,7 @@ import 'package:app/src/shared/services/api.dart';
 import 'package:dio/dio.dart';
 
 class ProdutoServiceImpl implements ProdutoService {
-  final Dio dio;
-
-  ProdutoServiceImpl(this.dio);
+  final Dio dio = Dio();
 
   @override
   Future<List<ProdutoModel>> listar(String category) async {
@@ -21,7 +19,7 @@ class ProdutoServiceImpl implements ProdutoService {
         return [];
       }
     } else {
-      return Future.error("Ops! Um erro ocorreu.");
+      return [];
     }
   }
 }

@@ -7,9 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AutenticacaoServiceImpl implements AutenticacaoService {
-  final Dio dio;
-
-  AutenticacaoServiceImpl(this.dio);
+  final Dio dio = Dio();
 
   @override
   Future<bool> entrar(usuario, senha) async {
@@ -32,11 +30,8 @@ class AutenticacaoServiceImpl implements AutenticacaoService {
     bool sucesso = result['sucesso'];
     dynamic dados = result['resultado'];
 
-    // print(dados['id']);
-
     if (response.statusCode == 200 && sucesso == true) {
       await prefs.setString('usuario', jsonEncode(dados));
-
       return sucesso;
     } else {
       return false;

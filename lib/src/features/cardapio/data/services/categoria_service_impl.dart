@@ -4,9 +4,7 @@ import 'package:app/src/shared/services/api.dart';
 import 'package:dio/dio.dart';
 
 class CategoriaServiceImpl implements CategoriaService {
-  final Dio dio;
-
-  CategoriaServiceImpl(this.dio);
+  final Dio dio = Dio();
 
   @override
   Future<List<CategoriaModel>> listar() async {

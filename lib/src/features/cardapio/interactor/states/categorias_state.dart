@@ -1,25 +1,13 @@
-import 'package:app/src/features/cardapio/interactor/models/categoria_model.dart';
+import 'package:app/src/features/cardapio/data/services/categoria_service_impl.dart';
+import 'package:flutter/material.dart';
 
-sealed class CategoriasState {
-  final List<CategoriaModel> categorias;
+final ValueNotifier categoriaState = ValueNotifier([]);
 
-  CategoriasState({required this.categorias});
-}
+class CategortiaState {
+  final CategoriaServiceImpl _service = CategoriaServiceImpl();
 
-class CategoriaInitialState extends CategoriasState {
-  CategoriaInitialState() : super(categorias: []);
-}
-
-class CategoriaLoadingState extends CategoriasState {
-  CategoriaLoadingState() : super(categorias: []);
-}
-
-class CategoriaLoadedState extends CategoriasState {
-  CategoriaLoadedState({required List<CategoriaModel> categorias}) : super(categorias: categorias);
-}
-
-class CategoriaErrorState extends CategoriasState {
-  final Exception exception;
-
-  CategoriaErrorState({required this.exception}) : super(categorias: []);
+  void listarCategorias() async {
+    final res = await _service.listar();
+    categoriaState.value = res;
+  }
 }

@@ -6,9 +6,8 @@ import 'package:app/src/shared/services/api.dart';
 import 'package:dio/dio.dart';
 
 class ComandaServiceImpl implements ComandaService {
-  final Dio dio;
-
-  ComandaServiceImpl(this.dio);
+  final Dio dio = Dio();
+  // ComandaServiceImpl(this.dio);
 
   @override
   Future<List<ComandasModel>> listar() async {

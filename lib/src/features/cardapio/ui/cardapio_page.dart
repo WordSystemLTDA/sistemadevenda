@@ -1,14 +1,14 @@
-import 'package:app/src/features/cardapio/interactor/cubit/categorias_cubit.dart';
-import 'package:app/src/features/cardapio/interactor/cubit/produtos_cubit.dart';
+import 'package:app/src/features/cardapio/interactor/models/produto_model.dart';
 import 'package:app/src/features/cardapio/interactor/states/categorias_state.dart';
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
+import 'package:app/src/features/cardapio/interactor/states/produtos_state.dart';
 import 'package:app/src/features/cardapio/ui/itens_comanda_page.dart';
-import 'package:app/src/features/cardapio/ui/widgets/busca_mesas.dart';
 import 'package:app/src/features/cardapio/ui/widgets/tab_custom.dart';
+import 'package:app/src/shared/utils/utils.dart';
 import 'package:app/src/shared/widgets/custom_physics_tabview.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardapioPage extends StatefulWidget {
@@ -21,25 +21,29 @@ class CardapioPage extends StatefulWidget {
 }
 
 class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMixin {
-  final CategoriasCubit _categoriasCubit = Modular.get<CategoriasCubit>();
-
-  final ProdutosCubit _produtosCubit = Modular.get<ProdutosCubit>();
+  final ItensComandaState _stateItensComanda = ItensComandaState();
+  final CategortiaState _stateCategorias = CategortiaState();
+  late final ProdutoState _stateProdutos;
 
   late TabController _tabController;
-
-  final ItensComandaState stateItensComanda = ItensComandaState();
 
   List<String> listaCategorias = [];
   int indexTabBar = 0;
 
   void listarComandasPedidos() async {
-    await stateItensComanda.listarComandasPedidos(widget.idComanda!);
+    await _stateItensComanda.listarComandasPedidos(widget.idComanda!);
+  }
+
+  void listarCategorias() async {
+    _stateCategorias.listarCategorias();
   }
 
   @override
   void initState() {
     super.initState();
-    _categoriasCubit.getCategorias();
+
+    _stateProdutos = ProdutoState([]);
+    listarCategorias();
 
     listarComandasPedidos();
   }
@@ -55,14 +59,12 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
     var size = MediaQuery.of(context).size;
     final double itemWidth = size.width / 3;
 
-    return BlocBuilder<CategoriasCubit, CategoriasState>(
-      bloc: _categoriasCubit,
-      builder: (context, state) {
-        final categorias = state.categorias;
-
+    return ValueListenableBuilder(
+      valueListenable: categoriaState,
+      builder: (context, value, child) {
         _tabController = TabController(
           initialIndex: indexTabBar,
-          length: categorias.length,
+          length: value.length,
           vsync: this,
         );
 
@@ -141,10 +143,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
               preferredSize: const Size.fromHeight(50.0),
               child: Column(
                 children: [
-                  // BuscaMesas(
-                  //   category: listaCategorias[indexTabBar],
-                  //   // category: '0',
-                  // ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: TextField(
@@ -160,40 +158,40 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                           icon: const Icon(Icons.arrow_back_outlined),
                         ),
                       ),
-                      onChanged: (value) => _produtosCubit.getProdutos(listaCategorias[indexTabBar]),
+                      onChanged: (value) => _stateProdutos.listarProdutos(listaCategorias[indexTabBar]),
                     ),
                   ),
                   const SizedBox(height: 5),
-                  if (state is CategoriaLoadedState)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        tabs: categorias
+                  // if (state is CategoriaLoadedState)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabs: [
+                        ...value
                             .map((e) => Tab(
                                     child: Text(
                                   e.nomeCategoria.toUpperCase(),
                                   style: const TextStyle(fontSize: 16),
                                 )))
-                            .toList(),
-                      ),
+                            .toList()
+                      ],
                     ),
-                  if (state is! CategoriaLoadedState) const SizedBox(height: 48),
+                  ),
                 ],
               ),
             ),
           ),
           body: Stack(
             children: [
-              if (state is CategoriaLoadingState) const SizedBox(height: 1, child: LinearProgressIndicator()),
-              if (state is CategoriaLoadedState)
-                DefaultTabController(
-                  length: categorias.length,
-                  child: TabBarView(
-                    controller: _tabController,
-                    physics: const CustomTabBarViewScrollPhysics(),
-                    children: categorias.map((e) {
+              DefaultTabController(
+                length: value.length,
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const CustomTabBarViewScrollPhysics(),
+                  children: [
+                    ...value.map((e) {
                       listaCategorias.add(e.id);
 
                       return TabCustom(
@@ -201,9 +199,10 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                         idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                         tipo: widget.tipo,
                       );
-                    }).toList(),
-                  ),
+                    }).toList()
+                  ],
                 ),
+              ),
             ],
           ),
         );

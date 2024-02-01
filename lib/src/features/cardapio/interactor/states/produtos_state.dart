@@ -1,25 +1,49 @@
-import 'package:app/src/features/cardapio/interactor/models/produto_model.dart';
+import 'package:app/src/features/cardapio/data/services/produto_service_impl.dart';
+import 'package:app/src/features/cardapio/interactor/models/lista_produtos_modelo.dart';
+import 'package:flutter/material.dart';
 
-sealed class ProdutosState {
-  final List<ProdutoModel> produtos;
+class ProdutoState extends ValueNotifier {
+  ProdutoState(super.value);
 
-  ProdutosState({required this.produtos});
+  final ProdutoServiceImpl _service = ProdutoServiceImpl();
+
+  void listarProdutos(String category) async {
+    final res = await _service.listar(category);
+    if (res.isEmpty) return;
+
+    final contain = value.where((e) => e.categoria == category);
+
+    if (contain.isNotEmpty) {
+      final int index = value.indexWhere((e) => e.categoria == category);
+      value[index] = ListaProdutosModelo(categoria: category, listaProdutos: res);
+    } else {
+      value = [...value, ListaProdutosModelo(categoria: category, listaProdutos: res)];
+    }
+  }
 }
 
-class ProdutoInitialState extends ProdutosState {
-  ProdutoInitialState() : super(produtos: []);
-}
+// final ValueNotifier<List<ListaProdutosModelo>> produtoState = ValueNotifier([]);
 
-class ProdutoLoadingState extends ProdutosState {
-  ProdutoLoadingState() : super(produtos: []);
-}
+// class ProdutoState {
+//   final ProdutoServiceImpl _service = ProdutoServiceImpl();
 
-class ProdutoLoadedState extends ProdutosState {
-  ProdutoLoadedState({required List<ProdutoModel> produtos}) : super(produtos: produtos);
-}
+//   void listarProdutos(String category) async {
+//     final res = await _service.listar(category);
+//     if (res.isEmpty) return;
 
-class ProdutoErrorState extends ProdutosState {
-  final Exception exception;
+//     final contain = produtoState.value.where((e) => e.categoria == category);
 
-  ProdutoErrorState({required this.exception}) : super(produtos: []);
-}
+//     if (contain.isNotEmpty) {
+//       final int index = produtoState.value.indexWhere((e) => e.categoria == category);
+//       produtoState.value[index] = ListaProdutosModelo(categoria: category, listaProdutos: res);
+//     } else {
+//       // produtoState.value.add(
+//       //   ListaProdutosModelo(categoria: category, listaProdutos: res),
+//       // );
+//       produtoState.value = [...produtoState.value, ListaProdutosModelo(categoria: category, listaProdutos: res)];
+
+//       // print('foi');
+//       // print(produtoState.value[0].categoria);
+//     }
+//   }
+// }

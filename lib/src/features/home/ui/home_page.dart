@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:app/src/features/home/ui/widgets/card_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
