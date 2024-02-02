@@ -1,26 +1,37 @@
-import 'package:app/src/features/mesas/interactor/models/mesa_model.dart';
-import 'package:app/src/features/mesas/interactor/models/mesas_model.dart';
+import 'package:app/src/features/mesas/data/services/mesa_service_impl.dart';
+import 'package:flutter/material.dart';
 
-sealed class MesasState {
-  final MesasModel? mesas;
+final ValueNotifier listaMesaState = ValueNotifier([]);
 
-  MesasState({required this.mesas});
+class MesaState {
+  final MesaServiceImpl _service = MesaServiceImpl();
+
+  void listarMesas() async {
+    final res = await _service.listar();
+    listaMesaState.value = res;
+  }
 }
 
-class MesaInitialState extends MesasState {
-  MesaInitialState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List.empty()));
-}
+// sealed class MesasState {
+//   final MesasModel? mesas;
 
-class MesaLoadingState extends MesasState {
-  MesaLoadingState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
-}
+//   MesasState({required this.mesas});
+// }
 
-class MesaLoadedState extends MesasState {
-  MesaLoadedState({required MesasModel? mesas}) : super(mesas: mesas);
-}
+// class MesaInitialState extends MesasState {
+//   MesaInitialState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List.empty()));
+// }
 
-class MesaErrorState extends MesasState {
-  final Exception exception;
+// class MesaLoadingState extends MesasState {
+//   MesaLoadingState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
+// }
 
-  MesaErrorState({required this.exception}) : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
-}
+// class MesaLoadedState extends MesasState {
+//   MesaLoadedState({required MesasModel? mesas}) : super(mesas: mesas);
+// }
+
+// class MesaErrorState extends MesasState {
+//   final Exception exception;
+
+//   MesaErrorState({required this.exception}) : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
+// }

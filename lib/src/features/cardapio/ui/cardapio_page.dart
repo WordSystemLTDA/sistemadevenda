@@ -1,13 +1,9 @@
-import 'package:app/src/features/cardapio/interactor/models/produto_model.dart';
 import 'package:app/src/features/cardapio/interactor/states/categorias_state.dart';
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
 import 'package:app/src/features/cardapio/interactor/states/produtos_state.dart';
 import 'package:app/src/features/cardapio/ui/itens_comanda_page.dart';
 import 'package:app/src/features/cardapio/ui/widgets/tab_custom.dart';
-import 'package:app/src/shared/utils/utils.dart';
 import 'package:app/src/shared/widgets/custom_physics_tabview.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -42,7 +38,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
   void initState() {
     super.initState();
 
-    _stateProdutos = ProdutoState([]);
     listarCategorias();
 
     listarComandasPedidos();
@@ -162,7 +157,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 5),
-                  // if (state is CategoriaLoadedState)
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TabBar(
@@ -183,27 +177,23 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
               ),
             ),
           ),
-          body: Stack(
-            children: [
-              DefaultTabController(
-                length: value.length,
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const CustomTabBarViewScrollPhysics(),
-                  children: [
-                    ...value.map((e) {
-                      listaCategorias.add(e.id);
+          body: DefaultTabController(
+            length: value.length,
+            child: TabBarView(
+              controller: _tabController,
+              physics: const CustomTabBarViewScrollPhysics(),
+              children: [
+                ...value.map((e) {
+                  listaCategorias.add(e.id);
 
-                      return TabCustom(
-                        category: e.id,
-                        idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
-                        tipo: widget.tipo,
-                      );
-                    }).toList()
-                  ],
-                ),
-              ),
-            ],
+                  return TabCustom(
+                    category: e.id,
+                    idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
+                    tipo: widget.tipo,
+                  );
+                }).toList()
+              ],
+            ),
           ),
         );
       },

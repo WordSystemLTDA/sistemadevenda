@@ -51,4 +51,12 @@ class ItensComandaState {
     }
     return res;
   }
+
+  Future<dynamic> lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
+    final res = await _service.lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
+    if (res) {
+      await listarComandasPedidos(idComanda);
+    }
+    return res;
+  }
 }

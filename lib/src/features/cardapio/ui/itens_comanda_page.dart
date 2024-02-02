@@ -12,6 +12,7 @@ class ItensComandaPage extends StatefulWidget {
 
 class _ItensComandaPageState extends State<ItensComandaPage> {
   final ItensComandaState state = ItensComandaState();
+  bool isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +24,41 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
         appBar: AppBar(
           title: const Text('Comanda'),
           centerTitle: true,
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () async {
+            // final lista = [...value.listaComandosPedidos.map((e) => e.nome)];
+            setState(() => isLoading = !isLoading);
+            final res = await state.lancarPedido(
+              widget.idComanda,
+              value.precoTotal,
+              value.quantidadeTotal,
+              '',
+              [...value.listaComandosPedidos.map((e) => e.id)],
+            );
+            setState(() => isLoading = !isLoading);
+
+            if (res) {
+              Navigator.pop(context);
+              return;
+            }
+
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Ocorreu um erro'),
+              showCloseIcon: true,
+            ));
+          },
+          label: isLoading
+              ? const CircularProgressIndicator()
+              : const Row(
+                  children: [
+                    Text('Salvar'),
+                    SizedBox(width: 10),
+                    Icon(Icons.check),
+                  ],
+                ),
         ),
         bottomNavigationBar: Visibility(
           visible: true,

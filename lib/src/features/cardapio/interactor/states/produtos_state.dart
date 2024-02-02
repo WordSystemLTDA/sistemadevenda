@@ -2,6 +2,27 @@ import 'package:app/src/features/cardapio/data/services/produto_service_impl.dar
 import 'package:app/src/features/cardapio/interactor/models/lista_produtos_modelo.dart';
 import 'package:flutter/material.dart';
 
+// class ProdutoState extends ChangeNotifier {
+//   final ProdutoServiceImpl _service = ProdutoServiceImpl();
+
+//   List<ListaProdutosModelo> listaProdutoState = [];
+
+//   void listarProdutos(String category) async {
+//     final res = await _service.listar(category);
+//     if (res.isEmpty) return;
+
+//     final contain = listaProdutoState.where((e) => e.categoria == category);
+
+//     if (contain.isNotEmpty) {
+//       final int index = listaProdutoState.indexWhere((e) => e.categoria == category);
+//       listaProdutoState[index] = ListaProdutosModelo(categoria: category, listaProdutos: res);
+//     } else {
+//       listaProdutoState = [...listaProdutoState, ListaProdutosModelo(categoria: category, listaProdutos: res)];
+//     }
+//     notifyListeners();
+//   }
+// }
+
 class ProdutoState extends ValueNotifier {
   ProdutoState(super.value);
 
@@ -20,7 +41,13 @@ class ProdutoState extends ValueNotifier {
       value = [...value, ListaProdutosModelo(categoria: category, listaProdutos: res)];
     }
   }
+
+  void setarCategoriasDosProdutos() async {}
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \\
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \\
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \\
 
 // final ValueNotifier<List<ListaProdutosModelo>> produtoState = ValueNotifier([]);
 

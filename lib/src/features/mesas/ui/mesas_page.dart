@@ -16,10 +16,14 @@ class MesasPage extends StatefulWidget {
 class _MesasPageState extends State<MesasPage> {
   // final MesasCubit _mesasCubit = Modular.get<MesasCubit>();
 
+  final MesaState _state = MesaState();
+
   @override
   void initState() {
     // _mesasCubit.getMesas();
     super.initState();
+
+    _state.listarMesas();
   }
 
   Future<void> _pullRefresh() async {
@@ -38,44 +42,57 @@ class _MesasPageState extends State<MesasPage> {
     // final mesasOcupadas = mesas?.mesasOcupadas;
     // final mesasLivres = mesas?.mesasLivres;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mesas'),
-        actions: [
-          // if (state is MesaErrorState)
-          //   IconButton(
-          //     icon: const Icon(Icons.refresh),
-          //     onPressed: _pullRefresh,
-          //   ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // if (state is MesaLoadingState) const LinearProgressIndicator(),
-          // if (state is MesaLoadedState)
-          //   Padding(
-          //     padding: const EdgeInsets.all(30.0),
-          //     child: Column(
-          //       crossAxisAlignment: CrossAxisAlignment.start,
-          //       children: [
-          //         if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
-          //           Text(
-          //             'Pedidos em andamento (${mesasOcupadas.length})',
-          //             style: const TextStyle(fontSize: 18),
-          //           ),
-          //           const SizedBox(height: 10),
-          //           MesasGrid(mesas: mesasOcupadas),
-          //           const SizedBox(height: 40),
-          //         ],
-          //         if (mesasLivres != null && mesasLivres.isNotEmpty) ...[
-          //           Text('Mesas livres (${mesasLivres.length})', style: const TextStyle(fontSize: 18)),
-          //           const SizedBox(height: 10),
-          //           MesasGrid(mesas: mesasLivres),
-          //         ],
-          //       ],
-          //     ),
-          //   )
-        ],
+    return ValueListenableBuilder(
+      valueListenable: listaMesaState,
+      builder: (context, value, child) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Mesas'),
+          actions: const [
+            // if (state is MesaErrorState)
+            //   IconButton(
+            //     icon: const Icon(Icons.refresh),
+            //     onPressed: _pullRefresh,
+            //   ),
+          ],
+        ),
+        body: ListView.builder(
+          shrinkWrap: true,
+          itemCount: value.length,
+          itemBuilder: (context, index) {
+            final item = value[index];
+            return Card(
+              child: Text(item['nome']),
+            );
+          },
+        ),
+        // body: const Stack(
+        //   children: [
+        //     // if (state is MesaLoadingState) const LinearProgressIndicator(),
+        //     // if (state is MesaLoadedState)
+        //     //   Padding(
+        //     //     padding: const EdgeInsets.all(30.0),
+        //     //     child: Column(
+        //     //       crossAxisAlignment: CrossAxisAlignment.start,
+        //     //       children: [
+        //     //         if (mesasOcupadas != null && mesasOcupadas.isNotEmpty) ...[
+        //     //           Text(
+        //     //             'Pedidos em andamento (${mesasOcupadas.length})',
+        //     //             style: const TextStyle(fontSize: 18),
+        //     //           ),
+        //     //           const SizedBox(height: 10),
+        //     //           MesasGrid(mesas: mesasOcupadas),
+        //     //           const SizedBox(height: 40),
+        //     //         ],
+        //     //         if (mesasLivres != null && mesasLivres.isNotEmpty) ...[
+        //     //           Text('Mesas livres (${mesasLivres.length})', style: const TextStyle(fontSize: 18)),
+        //     //           const SizedBox(height: 10),
+        //     //           MesasGrid(mesas: mesasLivres),
+        //     //         ],
+        //     //       ],
+        //     //     ),
+        //     //   )
+        //   ],
+        // ),
       ),
     );
     //   },
