@@ -2,6 +2,7 @@ import 'package:app/src/features/cardapio/interactor/states/categorias_state.dar
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
 import 'package:app/src/features/cardapio/interactor/states/produtos_state.dart';
 import 'package:app/src/features/cardapio/ui/itens_comanda_page.dart';
+import 'package:app/src/features/cardapio/ui/widgets/busca_mesas.dart';
 import 'package:app/src/features/cardapio/ui/widgets/tab_custom.dart';
 import 'package:app/src/shared/widgets/custom_physics_tabview.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +11,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardapioPage extends StatefulWidget {
   final String? idComanda;
   final String tipo;
-  const CardapioPage({super.key, this.idComanda, required this.tipo});
+  final String idMesa;
+  const CardapioPage({super.key, this.idComanda, required this.tipo, required this.idMesa});
 
   @override
   State<CardapioPage> createState() => _CardapioPageState();
@@ -138,23 +140,12 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
               preferredSize: const Size.fromHeight(50.0),
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        filled: true,
-                        fillColor: Colors.white,
-                        hintText: 'Pesquisar...',
-                        prefixIcon: IconButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.arrow_back_outlined),
-                        ),
-                      ),
-                      onChanged: (value) => _stateProdutos.listarProdutos(listaCategorias[indexTabBar]),
-                    ),
+                  BuscaMesas(
+                    idComanda: widget.idComanda!,
+                    tipo: widget.tipo,
+                    idMesa: widget.idMesa,
+                    // categoria: listaCategorias[indexTabBar] ?? '',
+                    // categoria: '1',
                   ),
                   const SizedBox(height: 5),
                   Align(
@@ -188,6 +179,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
 
                   return TabCustom(
                     category: e.id,
+                    idMesa: widget.idMesa,
                     idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                     tipo: widget.tipo,
                   );

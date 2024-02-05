@@ -1,4 +1,5 @@
 import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
+import 'package:app/src/features/comandas/ui/widgets/comanda_desocupada_dialog.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -71,90 +72,99 @@ class _ComandasPageState extends State<ComandasPage> {
                               ),
                               scrollDirection: Axis.vertical,
                               itemCount: item.comandas!.length,
-                              padding: const EdgeInsets.only(left: 18, right: 10, bottom: 30),
+                              padding: const EdgeInsets.only(top: 5, bottom: 10),
                               itemBuilder: (_, index) {
                                 var itemComanda = item.comandas![index];
                                 return Card(
                                   child: InkWell(
                                     onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) {
-                                          return SizedBox(
-                                            child: Dialog(
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(10),
-                                                child: Column(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Card(
-                                                          child: SizedBox(
-                                                            width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            child: InkWell(
-                                                              onTap: () {
-                                                                Modular.to.pushNamed('/cardapio/balcao/${itemComanda.id}');
-                                                                Navigator.pop(context);
-                                                              },
-                                                              borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                              child: const Center(child: Icon(Icons.add)),
+                                      if (!itemComanda.comandaOcupada) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return const ComandaDesocupadaDialog();
+                                          },
+                                        );
+                                      } else {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return SizedBox(
+                                              child: Dialog(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(10),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Card(
+                                                            child: SizedBox(
+                                                              width: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              height: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              child: InkWell(
+                                                                onTap: () {
+                                                                  Modular.to.pushNamed('/cardapio/Comanda/${itemComanda.id}/0');
+                                                                  Navigator.pop(context);
+                                                                },
+                                                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                                                child: const Center(child: Icon(Icons.add)),
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                        Card(
-                                                          child: SizedBox(
-                                                            width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            child: InkWell(
-                                                              onTap: () {
-                                                                Navigator.pop(context);
-                                                              },
-                                                              borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                              child: const Center(child: Icon(Icons.production_quantity_limits)),
+                                                          Card(
+                                                            child: SizedBox(
+                                                              width: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              height: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              child: InkWell(
+                                                                onTap: () {
+                                                                  Navigator.pop(context);
+                                                                },
+                                                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                                                child: const Center(child: Icon(Icons.production_quantity_limits)),
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    Row(
-                                                      children: [
-                                                        Card(
-                                                          child: SizedBox(
-                                                            width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            child: InkWell(
-                                                              onTap: () {
-                                                                Navigator.pop(context);
-                                                              },
-                                                              borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                              child: const Center(child: Icon(Icons.print)),
+                                                        ],
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Card(
+                                                            child: SizedBox(
+                                                              width: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              height: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              child: InkWell(
+                                                                onTap: () {
+                                                                  Navigator.pop(context);
+                                                                },
+                                                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                                                child: const Center(child: Icon(Icons.print)),
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                        Card(
-                                                          child: SizedBox(
-                                                            width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                            child: InkWell(
-                                                              onTap: () {
-                                                                Navigator.pop(context);
-                                                              },
-                                                              borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                              child: const Center(child: Icon(Icons.edit)),
+                                                          Card(
+                                                            child: SizedBox(
+                                                              width: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              height: (MediaQuery.of(context).size.width - 120) / 2,
+                                                              child: InkWell(
+                                                                onTap: () {
+                                                                  Navigator.pop(context);
+                                                                },
+                                                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                                                child: const Center(child: Icon(Icons.edit)),
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                      ],
-                                                    )
-                                                  ],
+                                                        ],
+                                                      )
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          );
-                                        },
-                                      );
+                                            );
+                                          },
+                                        );
+                                      }
                                     },
                                     borderRadius: const BorderRadius.all(Radius.circular(8)),
                                     child: Row(
@@ -162,6 +172,7 @@ class _ComandasPageState extends State<ComandasPage> {
                                       children: [
                                         const SizedBox(width: 15),
                                         const Icon(Icons.topic_outlined),
+                                        // const Icon(Icons.fact_check_outlined),
                                         const SizedBox(width: 10),
                                         Text(itemComanda.nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                                       ],

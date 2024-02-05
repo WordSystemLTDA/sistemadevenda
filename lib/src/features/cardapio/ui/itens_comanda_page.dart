@@ -24,42 +24,103 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
         appBar: AppBar(
           title: const Text('Comanda'),
           centerTitle: true,
+          actions: [
+            if (value.listaComandosPedidos.isNotEmpty) ...[
+              IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      child: ListView(
+                        padding: const EdgeInsets.all(20),
+                        shrinkWrap: true,
+                        children: [
+                          const Text(
+                            'Deseja realmente excluir todos?',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                          const SizedBox(height: 15),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Carcelar'),
+                                ),
+                                const SizedBox(width: 10),
+                                TextButton(
+                                  onPressed: () async {
+                                    List<String> listaIdItemComanda = [];
+                                    for (int index = 0; index < value.listaComandosPedidos.length; index++) {
+                                      listaIdItemComanda.add(value.listaComandosPedidos[index].id);
+                                    }
+
+                                    final res = await state.removerComandasPedidos(widget.idComanda, listaIdItemComanda);
+
+                                    Navigator.pop(context);
+
+                                    if (res) return;
+
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                      content: Text('Ocorreu um erro'),
+                                      showCloseIcon: true,
+                                    ));
+                                  },
+                                  child: const Text('excluir'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.delete),
+              ),
+            ]
+          ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            // final lista = [...value.listaComandosPedidos.map((e) => e.nome)];
-            setState(() => isLoading = !isLoading);
-            final res = await state.lancarPedido(
-              widget.idComanda,
-              value.precoTotal,
-              value.quantidadeTotal,
-              '',
-              [...value.listaComandosPedidos.map((e) => e.id)],
-            );
-            setState(() => isLoading = !isLoading);
+        floatingActionButton: value.listaComandosPedidos.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () async {
+                  setState(() => isLoading = !isLoading);
+                  final res = await state.lancarPedido(
+                    widget.idComanda,
+                    value.precoTotal,
+                    value.quantidadeTotal,
+                    '',
+                    [...value.listaComandosPedidos.map((e) => e.id)],
+                  );
+                  setState(() => isLoading = !isLoading);
 
-            if (res) {
-              Navigator.pop(context);
-              return;
-            }
+                  if (res) {
+                    Navigator.pop(context);
+                    return;
+                  }
 
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Ocorreu um erro'),
-              showCloseIcon: true,
-            ));
-          },
-          label: isLoading
-              ? const CircularProgressIndicator()
-              : const Row(
-                  children: [
-                    Text('Salvar'),
-                    SizedBox(width: 10),
-                    Icon(Icons.check),
-                  ],
-                ),
-        ),
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Ocorreu um erro'),
+                    showCloseIcon: true,
+                  ));
+                },
+                label: isLoading
+                    ? const CircularProgressIndicator()
+                    : const Row(
+                        children: [
+                          Text('Salvar'),
+                          SizedBox(width: 10),
+                          Icon(Icons.check),
+                        ],
+                      ),
+              ),
         bottomNavigationBar: Visibility(
           visible: true,
           child: Material(
@@ -195,7 +256,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                                           const SizedBox(width: 10),
                                                           TextButton(
                                                             onPressed: () async {
-                                                              final res = await state.removerComandasPedidos(widget.idComanda, item.id);
+                                                              final res = await state.removerComandasPedidos(widget.idComanda, [item.id]);
 
                                                               Navigator.pop(context);
 

@@ -7,9 +7,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class ProdutoPage extends StatefulWidget {
   final ProdutoModel produto;
-  final String? tipo;
-  final String? idComanda;
-  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idComanda});
+  final String tipo;
+  final String idComanda;
+  final String idMesa;
+  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idMesa});
 
   @override
   State<ProdutoPage> createState() => _ProdutoPageState();
@@ -29,6 +30,15 @@ class _ProdutoPageState extends State<ProdutoPage> {
     } else {
       setState(() => counter++);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    print('Tipo: ${widget.tipo}');
+    print('Mesa: ${widget.idMesa}');
+    print('Comanda: ${widget.idComanda}');
   }
 
   @override
@@ -58,7 +68,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
             var observacao = controller.text;
 
             setState(() => isLoading = !isLoading);
-            final res = await stateItensComanda.inserir(comanda, valor, observacaoMesa, idProduto, counter, observacao);
+            final res = await stateItensComanda.inserir(widget.idMesa, comanda, valor, observacaoMesa, idProduto, counter, observacao);
             setState(() => isLoading = !isLoading);
 
             if (res) {

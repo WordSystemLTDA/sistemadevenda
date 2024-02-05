@@ -6,7 +6,7 @@ final ValueNotifier listaMesaState = ValueNotifier([]);
 class MesaState {
   final MesaServiceImpl _service = MesaServiceImpl();
 
-  void listarMesas() async {
+  Future<void> listarMesas() async {
     final res = await _service.listar();
     listaMesaState.value = res;
   }

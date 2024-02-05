@@ -29,12 +29,12 @@ class ItensComandaServiceImpl {
     // }
   }
 
-  Future<bool> removerComandasPedidos(String idItemComanda) async {
+  Future<bool> removerComandasPedidos(List<String> listaIdItemComanda) async {
     const url = '${Apis.baseUrl}/pedidos/remover.php';
 
     final response = await dio.post(
       url,
-      data: {'idItemComanda': idItemComanda},
+      data: {'listaIdItemComanda': listaIdItemComanda},
     );
 
     if (response.statusCode == 200) {
@@ -44,7 +44,7 @@ class ItensComandaServiceImpl {
     return false;
   }
 
-  Future<bool> inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+  Future<bool> inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
     const url = '${Apis.baseUrl}pedidos/inserir.php';
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
@@ -52,6 +52,7 @@ class ItensComandaServiceImpl {
     final response = await dio.post(
       url,
       data: jsonEncode({
+        'idMesa': idMesa,
         'idComanda': idComanda,
         'valor': valor,
         'observacaoMesa': observacaoMesa,
@@ -103,7 +104,6 @@ class ItensComandaServiceImpl {
     if (response.statusCode == 200 && sucesso == true) {
       return sucesso;
     }
-    // print(response.data);
 
     return false;
   }

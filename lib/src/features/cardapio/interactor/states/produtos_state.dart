@@ -1,5 +1,6 @@
 import 'package:app/src/features/cardapio/data/services/produto_service_impl.dart';
 import 'package:app/src/features/cardapio/interactor/models/lista_produtos_modelo.dart';
+import 'package:app/src/features/cardapio/interactor/models/produto_model.dart';
 import 'package:flutter/material.dart';
 
 // class ProdutoState extends ChangeNotifier {
@@ -28,8 +29,8 @@ class ProdutoState extends ValueNotifier {
 
   final ProdutoServiceImpl _service = ProdutoServiceImpl();
 
-  void listarProdutos(String category) async {
-    final res = await _service.listar(category);
+  Future<void> listarProdutosPorCategoria(String category) async {
+    final res = await _service.listarPorCategoria(category);
     if (res.isEmpty) return;
 
     final contain = value.where((e) => e.categoria == category);
@@ -42,7 +43,9 @@ class ProdutoState extends ValueNotifier {
     }
   }
 
-  void setarCategoriasDosProdutos() async {}
+  Future<List<ProdutoModel>> listarProdutosPorNome(String pesquisa) async {
+    return await _service.listarPorNome(pesquisa);
+  }
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \\

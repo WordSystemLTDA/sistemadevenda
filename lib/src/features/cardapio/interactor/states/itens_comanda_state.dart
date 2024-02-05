@@ -36,23 +36,23 @@ class ItensComandaState {
     );
   }
 
-  Future<dynamic> removerComandasPedidos(String idComanda, String idItemComanda) async {
-    final res = await _service.removerComandasPedidos(idItemComanda);
+  Future<bool> removerComandasPedidos(String idComanda, List<String> listaIdItemComanda) async {
+    final res = await _service.removerComandasPedidos(listaIdItemComanda);
     if (res) {
       await listarComandasPedidos(idComanda);
     }
     return res;
   }
 
-  Future<dynamic> inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
-    final res = await _service.inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
+  Future<bool> inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+    final res = await _service.inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
     if (res) {
       await listarComandasPedidos(idComanda);
     }
     return res;
   }
 
-  Future<dynamic> lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
+  Future<bool> lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
     final res = await _service.lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
     if (res) {
       await listarComandasPedidos(idComanda);
