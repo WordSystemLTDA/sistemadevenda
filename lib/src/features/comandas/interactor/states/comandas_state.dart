@@ -10,35 +10,20 @@ class ComandasState {
     final res = await _service.listar();
     comandasState.value = res;
   }
+
+  Future<List<dynamic>> listarMesas(String pesquisa) async {
+    return await _service.listarMesa(pesquisa);
+  }
+
+  Future<List<dynamic>> listarClientes(String pesquisa) async {
+    return await _service.listarClientes(pesquisa);
+  }
+
+  Future<dynamic> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
+    final res = await _service.inserirComandaOcupada(id, idMesa, idCliente, obs);
+    if (res) {
+      listarComandas();
+    }
+    return res;
+  }
 }
-
-// import 'package:app/src/features/comandas/interactor/models/comanda_model.dart';
-// import 'package:app/src/features/comandas/interactor/models/comandas_model.dart';
-
-// sealed class ComandasState {
-//   final List<ComandasModel> comandas;
-
-//   ComandasState({required this.comandas});
-// }
-
-// class ComandaInitialState extends ComandasState {
-//   // ComandaInitialState() : super(comandas: ComandasModel(comandasLivres: List<ComandaModel>.empty(), comandasOcupadas: List.empty()));
-//   ComandaInitialState() : super(comandas: []);
-// }
-
-// class ComandaLoadingState extends ComandasState {
-//   ComandaLoadingState() : super(comandas: []);
-//   // ComandaLoadingState() : super(comandas: ComandasModel(comandasLivres: List<ComandaModel>.empty(), comandasOcupadas: List<ComandaModel>.empty()));
-// }
-
-// class ComandaLoadedState extends ComandasState {
-//   ComandaLoadedState({required List<ComandasModel> comandas}) : super(comandas: comandas);
-// }
-
-// class ComandaErrorState extends ComandasState {
-//   final Exception exception;
-
-//   ComandaErrorState({required this.exception})
-//       // : super(comandas: ComandasModel(comandasLivres: List<ComandaModel>.empty(), comandasOcupadas: List<ComandaModel>.empty()));
-//       : super(comandas: []);
-// }

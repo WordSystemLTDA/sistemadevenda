@@ -1,23 +1,21 @@
-import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
+import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 import 'package:flutter/material.dart';
 
-class ComandaDesocupadaDialog extends StatefulWidget {
+class MesaDesocupadaDialog extends StatefulWidget {
   final String id;
-  const ComandaDesocupadaDialog({super.key, required this.id});
+  const MesaDesocupadaDialog({super.key, required this.id});
 
   @override
-  State<ComandaDesocupadaDialog> createState() => _ComandaDesocupadaStateDialog();
+  State<MesaDesocupadaDialog> createState() => _MesaDesocupadaDialogState();
 }
 
-class _ComandaDesocupadaStateDialog extends State<ComandaDesocupadaDialog> {
-  final _mesaDestinoSearchController = SearchController();
+class _MesaDesocupadaDialogState extends State<MesaDesocupadaDialog> {
   final _clienteSearchController = SearchController();
   final _obsconstroller = TextEditingController();
 
-  String idMesa = '0';
   String idCliente = '0';
 
-  final ComandasState _state = ComandasState();
+  final MesaState _state = MesaState();
 
   @override
   Widget build(BuildContext context) {
@@ -34,46 +32,6 @@ class _ComandaDesocupadaStateDialog extends State<ComandaDesocupadaDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SearchAnchor(
-                  searchController: _mesaDestinoSearchController,
-                  builder: (BuildContext context, SearchController controller) {
-                    return TextField(
-                      controller: _mesaDestinoSearchController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.all(12),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                        hintText: 'Mesa de Destino',
-                      ),
-                      onTap: () => _mesaDestinoSearchController.openView(),
-                    );
-                  },
-                  suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                    final keyword = controller.value.text;
-                    final res = await _state.listarMesas(keyword);
-
-                    return [
-                      ...res.map((e) => Card(
-                            elevation: 3.0,
-                            margin: const EdgeInsets.all(5.0),
-                            child: InkWell(
-                              onTap: () {
-                                _mesaDestinoSearchController.closeView(e['nome']);
-                                idMesa = e['id'];
-                              },
-                              borderRadius: const BorderRadius.all(Radius.circular(8)),
-                              child: ListTile(
-                                leading: const Icon(Icons.table_bar_outlined),
-                                title: Text(e['nome']),
-                                subtitle: Text('ID: ${e['id']}'),
-                              ),
-                            ),
-                          )),
-                    ];
-                  },
-                ),
-                const SizedBox(height: 10),
                 SearchAnchor(
                   searchController: _clienteSearchController,
                   builder: (BuildContext context, SearchController controller) {
@@ -132,7 +90,7 @@ class _ComandaDesocupadaStateDialog extends State<ComandaDesocupadaDialog> {
                     const SizedBox(width: 10),
                     TextButton(
                       onPressed: () async {
-                        final res = await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text);
+                        final res = await _state.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text);
 
                         Navigator.pop(context);
 

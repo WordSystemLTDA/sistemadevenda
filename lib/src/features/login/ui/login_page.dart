@@ -1,4 +1,5 @@
 import 'package:app/src/features/login/data/services/autenticacao_service_impl.dart';
+import 'package:app/src/features/login/ui/configuracao_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     }
     setState(() => isLoading = !isLoading);
     final res = await _service.entrar(usuarioController.text, senhaController.text);
-    setState(() => isLoading = !isLoading);
+
     if (!res) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -97,6 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                         controller: usuarioController,
                         onSubmitted: (a) => entrar(),
                         decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.all(13),
                           labelText: "Usuário",
                           hintStyle: TextStyle(fontWeight: FontWeight.w300),
                           border: OutlineInputBorder(),
@@ -108,6 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: true,
                         onSubmitted: (a) => entrar(),
                         decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.all(13),
                           labelText: "Senha",
                           hintStyle: TextStyle(fontWeight: FontWeight.w300),
                           border: OutlineInputBorder(),
@@ -118,21 +121,29 @@ class _LoginPageState extends State<LoginPage> {
                         width: double.infinity,
                         height: 50,
                         child: OutlinedButton(
-                          style: const ButtonStyle(
-                            backgroundColor: MaterialStatePropertyAll(Colors.green),
-                            side: MaterialStatePropertyAll(BorderSide.none),
-                            shape: MaterialStatePropertyAll(
+                          style: ButtonStyle(
+                            // backgroundColor: MaterialStatePropertyAll(Colors.green),
+                            backgroundColor: MaterialStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
+                            side: const MaterialStatePropertyAll(BorderSide.none),
+                            shape: const MaterialStatePropertyAll(
                               RoundedRectangleBorder(
                                 borderRadius: BorderRadius.all(Radius.circular(5)),
                               ),
                             ),
-                            foregroundColor: MaterialStatePropertyAll(Colors.white),
-                            textStyle: MaterialStatePropertyAll(TextStyle(fontSize: 18)),
+                            // foregroundColor: const MaterialStatePropertyAll(Colors.white),
+                            textStyle: const MaterialStatePropertyAll(TextStyle(fontSize: 18)),
                           ),
                           onPressed: entrar,
                           child: isLoading ? const CircularProgressIndicator() : const Text('Entrar'),
                         ),
-                      )
+                      ),
+                      const SizedBox(height: 5),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfiguracaoPage()));
+                        },
+                        child: const Text('Configurações'),
+                      ),
                     ],
                   ),
                 ),

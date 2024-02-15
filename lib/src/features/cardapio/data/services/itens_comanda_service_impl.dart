@@ -9,8 +9,10 @@ class ItensComandaServiceImpl {
   final Dio dio = Dio();
   final sharedPrefs = SharedPrefsConfig();
 
-  Future<List<dynamic>> listarComandasPedidos(String idComanda) async {
-    final url = '${Apis.baseUrl}/pedidos/listar.php?id_comanda=$idComanda';
+  Future<List<dynamic>> listarComandasPedidos(String idComanda, String idMesa) async {
+    final comanda = idComanda.isEmpty ? 0 : idComanda;
+    final mesa = idMesa.isEmpty ? 0 : idMesa;
+    final url = '${Apis.baseUrl}/pedidos/listar.php?id_comanda=$comanda&id_mesa=$mesa';
 
     final response = await dio.get(url);
 
@@ -44,14 +46,16 @@ class ItensComandaServiceImpl {
     return false;
   }
 
-  Future<bool> inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
     const url = '${Apis.baseUrl}pedidos/inserir.php';
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
     final response = await dio.post(
       url,
       data: jsonEncode({
+        'tipo': tipo,
         'idMesa': idMesa,
         'idComanda': idComanda,
         'valor': valor,
@@ -60,6 +64,7 @@ class ItensComandaServiceImpl {
         'quantidade': quantidade,
         'observacao': observacao,
         'idUsuario': idUsuario,
+        'empresa': empresa,
       }),
       options: Options(headers: {
         HttpHeaders.contentTypeHeader: 'application/json',
@@ -76,7 +81,7 @@ class ItensComandaServiceImpl {
     return false;
   }
 
-  Future<bool> lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
+  Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
     const url = '${Apis.baseUrl}pedidos/lancar_pedido.php';
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
@@ -86,6 +91,7 @@ class ItensComandaServiceImpl {
       url,
       data: jsonEncode({
         'usuario': idUsuario,
+        'idMesa': idMesa,
         'id_comanda': idComanda,
         'observacoes': observacao,
         'valor_total_pedido': valorTotal,

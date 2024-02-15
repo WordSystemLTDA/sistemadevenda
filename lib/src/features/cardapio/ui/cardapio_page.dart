@@ -29,7 +29,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
   int indexTabBar = 0;
 
   void listarComandasPedidos() async {
-    await _stateItensComanda.listarComandasPedidos(widget.idComanda!);
+    await _stateItensComanda.listarComandasPedidos(widget.idComanda!, widget.idMesa);
   }
 
   void listarCategorias() async {
@@ -77,7 +77,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                 child: InkWell(
                   onTap: () {
                     Modular.to.push(
-                      MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!)),
+                      MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
                     );
                     // Navigator.push(
                     //   context,

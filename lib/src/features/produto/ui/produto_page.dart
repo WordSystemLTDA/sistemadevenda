@@ -35,17 +35,13 @@ class _ProdutoPageState extends State<ProdutoPage> {
   @override
   void initState() {
     super.initState();
-
-    print('Tipo: ${widget.tipo}');
-    print('Mesa: ${widget.idMesa}');
-    print('Comanda: ${widget.idComanda}');
   }
 
   @override
   Widget build(BuildContext context) {
     final produto = widget.produto;
     final idComanda = widget.idComanda;
-    final tipo = widget.tipo;
+    final idMesa = widget.idMesa;
 
     return GestureDetector(
       onTap: () {
@@ -61,14 +57,15 @@ class _ProdutoPageState extends State<ProdutoPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () async {
-            var comanda = idComanda!.isEmpty ? null : idComanda;
+            var comanda = idComanda.isEmpty ? 0 : idComanda;
+            var mesa = idMesa.isEmpty ? 0 : idMesa;
             var valor = produto.valorVenda;
             var idProduto = produto.id;
             var observacaoMesa = '';
             var observacao = controller.text;
 
             setState(() => isLoading = !isLoading);
-            final res = await stateItensComanda.inserir(widget.idMesa, comanda, valor, observacaoMesa, idProduto, counter, observacao);
+            final res = await stateItensComanda.inserir(widget.tipo, mesa, comanda, valor, observacaoMesa, idProduto, counter, observacao);
             setState(() => isLoading = !isLoading);
 
             if (res) {

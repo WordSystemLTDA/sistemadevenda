@@ -8,8 +8,8 @@ final ValueNotifier itensComandaState = ValueNotifier(ItensComandaModelo(listaCo
 class ItensComandaState {
   final ItensComandaServiceImpl _service = ItensComandaServiceImpl();
 
-  Future<dynamic> listarComandasPedidos(String idComanda) async {
-    List<dynamic> listaComandosPedidos = await _service.listarComandasPedidos(idComanda);
+  Future<dynamic> listarComandasPedidos(String idComanda, String idMesa) async {
+    List<dynamic> listaComandosPedidos = await _service.listarComandasPedidos(idComanda, idMesa);
 
     List<ItemComandaModelo> listaItens = [];
     num quantidadeTotal = 0;
@@ -36,26 +36,26 @@ class ItensComandaState {
     );
   }
 
-  Future<bool> removerComandasPedidos(String idComanda, List<String> listaIdItemComanda) async {
+  Future<bool> removerComandasPedidos(String idComanda, String idMesa, List<String> listaIdItemComanda) async {
     final res = await _service.removerComandasPedidos(listaIdItemComanda);
     if (res) {
-      await listarComandasPedidos(idComanda);
+      await listarComandasPedidos(idComanda, idMesa);
     }
     return res;
   }
 
-  Future<bool> inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
-    final res = await _service.inserir(idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
+  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+    final res = await _service.inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
     if (res) {
-      await listarComandasPedidos(idComanda);
+      await listarComandasPedidos(idComanda, idMesa);
     }
     return res;
   }
 
-  Future<bool> lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
-    final res = await _service.lancarPedido(idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
+  Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
+    final res = await _service.lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
     if (res) {
-      await listarComandasPedidos(idComanda);
+      await listarComandasPedidos(idComanda, idMesa);
     }
     return res;
   }

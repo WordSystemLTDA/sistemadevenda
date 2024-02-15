@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:app/src/shared/services/api.dart';
 import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
 import 'package:dio/dio.dart';
@@ -26,56 +25,34 @@ class MesaServiceImpl {
       return [];
     }
   }
-  // Future<MesasModel?> listar() async {
-  //   try {
-  //     final response = await dio.get('${Apis.baseUrl}mesas/listar.php').timeout(const Duration(seconds: 60));
 
-  //     if (response.data.isNotEmpty) {
-  //       return MesasModel.fromMap(response.data);
-  //     }
-  //   } on DioException catch (exception) {
-  //     if (exception.type == DioExceptionType.connectionTimeout) {
-  //       throw Exception("Requisição Expirou");
-  //     } else if (exception.type == DioExceptionType.connectionError) {
-  //       throw Exception("Verifique sua conexão");
-  //     }
+  Future<List<dynamic>> listarClientes(String pesquisa) async {
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-  //     throw Exception(exception.message);
-  //   } catch (exception, stacktrace) {
-  //     log("error", error: exception, stackTrace: stacktrace);
-  //     throw Exception("Verifique sua conexão");
-  //   }
+    final url = '${Apis.baseUrl}comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
 
-  //   throw Exception('Ocorreu um erro, tente novamente.');
-  // }
+    final response = await dio.get(url).timeout(const Duration(seconds: 60));
+
+    return response.data;
+  }
+
+  Future<bool> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
+    const url = '${Apis.baseUrl}mesas/inserir_mesa_ocupada.php';
+
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final usuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
+
+    final response = await dio.post(
+      url,
+      data: {
+        'idMesa': idMesa,
+        'idCliente': idCliente,
+        'obs': obs,
+        'empresa': empresa,
+        'usuario': usuario,
+      },
+    ).timeout(const Duration(seconds: 60));
+
+    return response.data['sucesso'];
+  }
 }
-
-// class MesaServiceImpl implements MesaService {
-//   final Dio dio;
-
-//   MesaServiceImpl(this.dio);
-
-//   @override
-//   Future<MesasModel?> listar() async {
-//     try {
-//       final response = await dio.get('${Apis.baseUrl}mesas/listar.php').timeout(const Duration(seconds: 60));
-
-//       if (response.data.isNotEmpty) {
-//         return MesasModel.fromMap(response.data);
-//       }
-//     } on DioException catch (exception) {
-//       if (exception.type == DioExceptionType.connectionTimeout) {
-//         throw Exception("Requisição Expirou");
-//       } else if (exception.type == DioExceptionType.connectionError) {
-//         throw Exception("Verifique sua conexão");
-//       }
-
-//       throw Exception(exception.message);
-//     } catch (exception, stacktrace) {
-//       log("error", error: exception, stackTrace: stacktrace);
-//       throw Exception("Verifique sua conexão");
-//     }
-
-//     throw Exception('Ocorreu um erro, tente novamente.');
-//   }
-// }

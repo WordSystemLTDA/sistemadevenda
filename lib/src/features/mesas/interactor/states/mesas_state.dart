@@ -10,28 +10,16 @@ class MesaState {
     final res = await _service.listar();
     listaMesaState.value = res;
   }
+
+  Future<List<dynamic>> listarClientes(String pesquisa) async {
+    return await _service.listarClientes(pesquisa);
+  }
+
+  Future<bool> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
+    final res = await _service.inserirMesaOcupada(idMesa, idCliente, obs);
+    if (res) {
+      listarMesas();
+    }
+    return res;
+  }
 }
-
-// sealed class MesasState {
-//   final MesasModel? mesas;
-
-//   MesasState({required this.mesas});
-// }
-
-// class MesaInitialState extends MesasState {
-//   MesaInitialState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List.empty()));
-// }
-
-// class MesaLoadingState extends MesasState {
-//   MesaLoadingState() : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
-// }
-
-// class MesaLoadedState extends MesasState {
-//   MesaLoadedState({required MesasModel? mesas}) : super(mesas: mesas);
-// }
-
-// class MesaErrorState extends MesasState {
-//   final Exception exception;
-
-//   MesaErrorState({required this.exception}) : super(mesas: MesasModel(mesasLivres: List<MesaModel>.empty(), mesasOcupadas: List<MesaModel>.empty()));
-// }

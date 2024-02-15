@@ -81,9 +81,7 @@ class _ComandasPageState extends State<ComandasPage> {
                                       if (!itemComanda.comandaOcupada) {
                                         showDialog(
                                           context: context,
-                                          builder: (context) {
-                                            return const ComandaDesocupadaDialog();
-                                          },
+                                          builder: (context) => ComandaDesocupadaDialog(id: itemComanda.id),
                                         );
                                       } else {
                                         showDialog(

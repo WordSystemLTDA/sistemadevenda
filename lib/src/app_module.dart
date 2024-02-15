@@ -1,5 +1,3 @@
-import 'package:app/src/features/comandas/data/services/comanda_service_impl.dart';
-import 'package:app/src/features/comandas/interactor/services/comanda_service.dart';
 import 'package:app/src/features/comandas/ui/comandas_page.dart';
 import 'package:app/src/features/home/ui/home_page.dart';
 import 'package:app/src/features/login/data/services/autenticacao_service_impl.dart';
@@ -33,7 +31,7 @@ class AppModule extends Module {
 
     // Comandas
     // i.addSingleton<ComandasCubit>(ComandasCubit.new);
-    i.add<ComandaService>(ComandaServiceImpl.new);
+    // i.add<ComandaService>(ComandaServiceImpl.new);
 
     // Autenticacao
     // i.add<AutenticacaoCubit>(AutenticacaoCubit.new);

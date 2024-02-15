@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/src/features/home/ui/widgets/card_home.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -11,7 +13,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  var nomeUsuario = '';
+  String nome = '';
+  String email = '';
 
   @override
   void initState() {
@@ -24,7 +27,8 @@ class _HomePageState extends State<HomePage> {
     var usuario = prefs.getString('usuario');
 
     setState(() {
-      // nomeUsuario = jsonDecode(usuario!)['nome'];
+      nome = jsonDecode(usuario!)['nome'];
+      email = jsonDecode(usuario)['email'];
     });
   }
 
@@ -47,17 +51,24 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.blue,
+            UserAccountsDrawerHeader(
+              accountName: Text(nome),
+              accountEmail: Text(email),
+              currentAccountPicture: const CircleAvatar(
+                child: ClipOval(
+                  child: Icon(Icons.person),
+                ),
               ),
-              child: Text(nomeUsuario),
             ),
             ListTile(
+              leading: const Icon(Icons.edit),
               title: const Text('Editar Dados'),
               onTap: () {},
             ),
             ListTile(
+              iconColor: Colors.red,
+              textColor: Colors.red,
+              leading: const Icon(Icons.logout),
               title: const Text('Sair'),
               onTap: sair,
             ),

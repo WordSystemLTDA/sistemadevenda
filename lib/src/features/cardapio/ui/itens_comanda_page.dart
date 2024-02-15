@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 class ItensComandaPage extends StatefulWidget {
   final String idComanda;
-  const ItensComandaPage({super.key, required this.idComanda});
+  final String idMesa;
+  const ItensComandaPage({super.key, required this.idComanda, required this.idMesa});
 
   @override
   State<ItensComandaPage> createState() => _ItensComandaPageState();
@@ -58,7 +59,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                       listaIdItemComanda.add(value.listaComandosPedidos[index].id);
                                     }
 
-                                    final res = await state.removerComandasPedidos(widget.idComanda, listaIdItemComanda);
+                                    final res = await state.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda);
 
                                     Navigator.pop(context);
 
@@ -92,6 +93,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
                   final res = await state.lancarPedido(
+                    widget.idMesa,
                     widget.idComanda,
                     value.precoTotal,
                     value.quantidadeTotal,
@@ -221,7 +223,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                         SizedBox(
                                           width: MediaQuery.of(context).size.width - 190,
                                           child: Text(
-                                            '${item.nome}',
+                                            '${item.nome} ID: ${item.id}',
                                             style: const TextStyle(
                                               fontSize: 17,
                                               overflow: TextOverflow.ellipsis,
@@ -256,7 +258,11 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                                           const SizedBox(width: 10),
                                                           TextButton(
                                                             onPressed: () async {
-                                                              final res = await state.removerComandasPedidos(widget.idComanda, [item.id]);
+                                                              final res = await state.removerComandasPedidos(
+                                                                widget.idComanda,
+                                                                widget.idMesa,
+                                                                [item.id],
+                                                              );
 
                                                               Navigator.pop(context);
 
