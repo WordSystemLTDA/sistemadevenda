@@ -32,7 +32,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = !isLoading);
     final res = await _service.entrar(usuarioController.text, senhaController.text);
 
-    if (!res) {
+    if (mounted && !res) {
+      setState(() => isLoading = !isLoading);
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Usuário ou Senha incorretos'),
@@ -47,17 +48,6 @@ class _LoginPageState extends State<LoginPage> {
   void verificarLogin() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     bool logado = prefs.containsKey('usuario');
-
-    // Future.delayed(const Duration(seconds: 2)).then((value) => {
-    //       if (logado)
-    //         {}
-    //       else
-    //         {
-    //           setState(() {
-    //             verificando = false;
-    //           }),
-    //         }
-    //     });
 
     Future.delayed(const Duration(seconds: 2)).then((value) {
       if (logado) {

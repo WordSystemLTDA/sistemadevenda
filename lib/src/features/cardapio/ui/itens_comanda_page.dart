@@ -102,22 +102,24 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                   );
                   setState(() => isLoading = !isLoading);
 
-                  if (res) {
+                  if (mounted && res) {
                     Navigator.pop(context);
                     return;
                   }
 
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Ocorreu um erro'),
-                    showCloseIcon: true,
-                  ));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Ocorreu um erro'),
+                      showCloseIcon: true,
+                    ));
+                  }
                 },
                 label: isLoading
                     ? const CircularProgressIndicator()
                     : const Row(
                         children: [
-                          Text('Salvar'),
+                          Text('Finalizar'),
                           SizedBox(width: 10),
                           Icon(Icons.check),
                         ],

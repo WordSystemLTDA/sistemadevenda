@@ -39,7 +39,7 @@ class AppModule extends Module {
 
     // Produto
     i.add<ProdutoService>(ProdutoServiceImpl.new);
-    i.add<SalvarProdutoService>(SalvarProdutoServiceImpl.new);
+    // i.add<SalvarProdutoService>(SalvarProdutoServiceImpl.new);
     // i.add<CounterCubit>(CounterCubit.new);
     // i.add<SalvarProdutoCubit>(SalvarProdutoCubit.new);
   }
