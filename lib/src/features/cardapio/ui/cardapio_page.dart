@@ -68,72 +68,103 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
         _tabController.addListener(() => indexTabBar = _tabController.index);
 
         return Scaffold(
-          bottomNavigationBar: ValueListenableBuilder(
+          // floatingActionButton: Badge(
+          //   label: Text('12'),
+          //   isLabelVisible: true,
+          //   child: Icon(
+          //     Icons.shopping_cart,
+          //     size: 40,
+          //   ),
+          // ),
+          floatingActionButton: ValueListenableBuilder(
             valueListenable: itensComandaState,
-            builder: (context, value, child) => Visibility(
-              visible: true,
-              child: Material(
-                color: const Color.fromARGB(255, 61, 61, 61),
-                child: InkWell(
-                  onTap: () {
-                    Modular.to.push(
-                      MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
-                    );
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (context) => ItensComandaPage(idComanda: widget.idComanda!),
-                    //   ),
-                    // );
-                  },
-                  child: SizedBox(
-                    height: kToolbarHeight,
-                    width: double.infinity,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          width: itemWidth,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 30),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.balance, size: 18, color: Colors.white),
-                                const SizedBox(width: 8),
-                                Text(
-                                  value.quantidadeTotal.toStringAsFixed(0),
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                                  textAlign: TextAlign.left,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: itemWidth,
-                          child: const Text(
-                            'Ver itens',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        Container(
-                          width: itemWidth,
-                          padding: const EdgeInsets.only(right: 30),
-                          child: Text('R\$ ${value.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.right),
-                        ),
-                      ],
-                    ),
-                  ),
+            builder: (context, value, child) => FloatingActionButton(
+              onPressed: () {
+                Modular.to.push(
+                  MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
+                );
+              },
+              shape: const CircleBorder(),
+              child: Badge(
+                largeSize: 30,
+                textStyle: const TextStyle(fontSize: 15),
+                padding: value.quantidadeTotal < 10 ? const EdgeInsets.symmetric(vertical: 5, horizontal: 10) : const EdgeInsets.all(5),
+                offset: const Offset(20, -20),
+                label: Text(value.quantidadeTotal.toStringAsFixed(0)),
+                isLabelVisible: true,
+                child: const Icon(
+                  Icons.shopping_cart,
+                  size: 30,
                 ),
               ),
             ),
           ),
+          // bottomNavigationBar: ValueListenableBuilder(
+          //   valueListenable: itensComandaState,
+          //   builder: (context, value, child) => Visibility(
+          //     visible: true,
+          //     child: Material(
+          //       color: const Color.fromARGB(255, 61, 61, 61),
+          //       child: InkWell(
+          //         onTap: () {
+          //           Modular.to.push(
+          //             MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
+          //           );
+          //           // Navigator.push(
+          //           //   context,
+          //           //   MaterialPageRoute(
+          //           //     builder: (context) => ItensComandaPage(idComanda: widget.idComanda!),
+          //           //   ),
+          //           // );
+          //         },
+          //         child: SizedBox(
+          //           height: kToolbarHeight,
+          //           width: double.infinity,
+          //           child: Row(
+          //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //             children: [
+          //               SizedBox(
+          //                 width: itemWidth,
+          //                 child: Padding(
+          //                   padding: const EdgeInsets.only(left: 30),
+          //                   child: Row(
+          //                     children: [
+          //                       const Icon(Icons.balance, size: 18, color: Colors.white),
+          //                       const SizedBox(width: 8),
+          //                       Text(
+          //                         value.quantidadeTotal.toStringAsFixed(0),
+          //                         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          //                         textAlign: TextAlign.left,
+          //                       ),
+          //                     ],
+          //                   ),
+          //                 ),
+          //               ),
+          //               SizedBox(
+          //                 width: itemWidth,
+          //                 child: const Text(
+          //                   'Ver itens',
+          //                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          //                   textAlign: TextAlign.center,
+          //                 ),
+          //               ),
+          //               Container(
+          //                 width: itemWidth,
+          //                 padding: const EdgeInsets.only(right: 30),
+          //                 child: Text('R\$ ${value.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+          //                     style: const TextStyle(
+          //                       fontWeight: FontWeight.bold,
+          //                       color: Colors.white,
+          //                     ),
+          //                     textAlign: TextAlign.right),
+          //               ),
+          //             ],
+          //           ),
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
           appBar: AppBar(
             automaticallyImplyLeading: false,
             bottom: PreferredSize(
@@ -152,6 +183,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                     alignment: Alignment.centerLeft,
                     child: TabBar(
                       controller: _tabController,
+                      tabAlignment: TabAlignment.start,
                       isScrollable: true,
                       tabs: [
                         ...value

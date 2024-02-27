@@ -8,7 +8,9 @@ class CategoriaServiceImpl implements CategoriaService {
 
   @override
   Future<List<CategoriaModel>> listar() async {
-    final response = await dio.get('${Apis.baseUrl}categorias/listar.php');
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final response = await dio.get('${conexao['servidor']}categorias/listar.php');
 
     if (response.statusCode == 200) {
       return List<CategoriaModel>.from(

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:app/src/shared/services/api.dart';
 import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
 import 'package:dio/dio.dart';
@@ -12,7 +11,10 @@ class ItensComandaServiceImpl {
   Future<List<dynamic>> listarComandasPedidos(String idComanda, String idMesa) async {
     final comanda = idComanda.isEmpty ? 0 : idComanda;
     final mesa = idMesa.isEmpty ? 0 : idMesa;
-    final url = '${Apis.baseUrl}/pedidos/listar.php?id_comanda=$comanda&id_mesa=$mesa';
+
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}/pedidos/listar.php?id_comanda=$comanda&id_mesa=$mesa';
 
     final response = await dio.get(url);
 
@@ -32,7 +34,9 @@ class ItensComandaServiceImpl {
   }
 
   Future<bool> removerComandasPedidos(List<String> listaIdItemComanda) async {
-    const url = '${Apis.baseUrl}/pedidos/remover.php';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}/pedidos/remover.php';
 
     final response = await dio.post(
       url,
@@ -46,8 +50,10 @@ class ItensComandaServiceImpl {
     return false;
   }
 
-  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
-    const url = '${Apis.baseUrl}pedidos/inserir.php';
+  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais) async {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}pedidos/inserir.php';
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
@@ -63,6 +69,7 @@ class ItensComandaServiceImpl {
         'idProduto': idProduto,
         'quantidade': quantidade,
         'observacao': observacao,
+        'listaAdicionais': [...listaAdicionais.map((e) => e.toMap())],
         'idUsuario': idUsuario,
         'empresa': empresa,
       }),
@@ -82,7 +89,9 @@ class ItensComandaServiceImpl {
   }
 
   Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
-    const url = '${Apis.baseUrl}pedidos/lancar_pedido.php';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}pedidos/lancar_pedido.php';
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];

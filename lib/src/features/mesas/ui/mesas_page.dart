@@ -68,6 +68,7 @@ class _MesasPageState extends State<MesasPage> {
                           final item = value['mesasOcupadas'][index];
 
                           return Card(
+                            color: Theme.of(context).colorScheme.inversePrimary,
                             child: InkWell(
                               onTap: () {
                                 Modular.to.pushNamed('/cardapio/Mesa/0/${item["id"]}');

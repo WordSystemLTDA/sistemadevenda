@@ -12,7 +12,9 @@ class SalvarProdutoService {
   // late final idUsuario = usuarioProvider['id'];
 
   Future<List<AdicionaisModelo>> listarAdicionais(String id) async {
-    final url = '${Apis.baseUrl}/produtos/listar_adicionais.php?id=$id';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}/produtos/listar_adicionais.php?id=$id';
 
     final response = await dio.get(
       url,

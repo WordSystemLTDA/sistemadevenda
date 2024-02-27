@@ -11,7 +11,9 @@ class ComandaServiceImpl {
 
   Future<List<ComandasModel>> listar() async {
     try {
-      final response = await dio.get('${Apis.baseUrl}comandas/listar.php').timeout(const Duration(seconds: 60));
+      final conexao = await Apis().getConexao();
+      if (conexao == null) return [];
+      final response = await dio.get('${conexao['servidor']}comandas/listar.php').timeout(const Duration(seconds: 60));
 
       if (response.data.isNotEmpty) {
         return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
@@ -35,7 +37,9 @@ class ComandaServiceImpl {
   Future<List<dynamic>> listarMesa(String pesquisa) async {
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-    final url = '${Apis.baseUrl}comandas/listar_mesas.php?pesquisa=$pesquisa&empresa=$empresa';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}comandas/listar_mesas.php?pesquisa=$pesquisa&empresa=$empresa';
 
     final response = await dio.get(url).timeout(const Duration(seconds: 60));
 
@@ -45,7 +49,9 @@ class ComandaServiceImpl {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-    final url = '${Apis.baseUrl}comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
 
     final response = await dio.get(url).timeout(const Duration(seconds: 60));
 
@@ -53,7 +59,9 @@ class ComandaServiceImpl {
   }
 
   Future<bool> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
-    const url = '${Apis.baseUrl}comandas/inserir_comanda_ocupada.php';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}comandas/inserir_comanda_ocupada.php';
 
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
     final usuario = jsonDecode(await sharedPrefs.getUsuario())['id'];

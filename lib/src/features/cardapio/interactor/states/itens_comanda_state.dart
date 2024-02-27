@@ -44,8 +44,8 @@ class ItensComandaState {
     return res;
   }
 
-  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
-    final res = await _service.inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao);
+  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais) async {
+    final res = await _service.inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais);
     if (res) {
       await listarComandasPedidos(idComanda, idMesa);
     }

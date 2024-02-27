@@ -3,11 +3,12 @@ import 'package:app/src/shared/services/api.dart';
 import 'package:dio/dio.dart';
 
 class ProdutoServiceImpl {
-// implements ProdutoService {
   final Dio dio = Dio();
 
   Future<List<ProdutoModel>> listarPorCategoria(String category) async {
-    final response = await dio.get('${Apis.baseUrl}produtos/listar_por_categoria.php?categoria=$category');
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final response = await dio.get('${conexao['servidor']}produtos/listar_por_categoria.php?categoria=$category');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
@@ -23,7 +24,9 @@ class ProdutoServiceImpl {
   }
 
   Future<List<ProdutoModel>> listarPorNome(String pesquisa) async {
-    final response = await dio.get('${Apis.baseUrl}produtos/listar.php?pesquisa=$pesquisa');
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final response = await dio.get('${conexao['servidor']}produtos/listar.php?pesquisa=$pesquisa');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {

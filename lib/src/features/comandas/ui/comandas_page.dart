@@ -75,7 +75,10 @@ class _ComandasPageState extends State<ComandasPage> {
                               padding: const EdgeInsets.only(top: 5, bottom: 10),
                               itemBuilder: (_, index) {
                                 var itemComanda = item.comandas![index];
+
                                 return Card(
+                                  color: itemComanda.comandaOcupada ? Theme.of(context).colorScheme.inversePrimary : null,
+                                  // color: itemComanda.comandaOcupada ? Theme.of(context).colorScheme.primary : null,
                                   child: InkWell(
                                     onTap: () {
                                       if (!itemComanda.comandaOcupada) {

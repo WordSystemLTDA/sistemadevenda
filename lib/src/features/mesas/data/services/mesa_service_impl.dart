@@ -10,7 +10,9 @@ class MesaServiceImpl {
   Future<dynamic> listar() async {
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-    final response = await dio.get('${Apis.baseUrl}mesas/listar.php?empresa=$empresa');
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final response = await dio.get('${conexao['servidor']}mesas/listar.php?empresa=$empresa');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
@@ -29,7 +31,9 @@ class MesaServiceImpl {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-    final url = '${Apis.baseUrl}comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
 
     final response = await dio.get(url).timeout(const Duration(seconds: 60));
 
@@ -37,7 +41,9 @@ class MesaServiceImpl {
   }
 
   Future<bool> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
-    const url = '${Apis.baseUrl}mesas/inserir_mesa_ocupada.php';
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}mesas/inserir_mesa_ocupada.php';
 
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
     final usuario = jsonDecode(await sharedPrefs.getUsuario())['id'];

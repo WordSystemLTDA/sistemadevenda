@@ -1,3 +1,4 @@
+import 'package:app/src/shared/constantes/assets_constantes.dart';
 import 'package:app/src/shared/utils/utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -40,22 +41,24 @@ class _CardProdutoState extends State<CardProduto> {
         borderRadius: BorderRadius.circular(5),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8.0),
-              child: CachedNetworkImage(
-                width: 100,
-                height: 100,
-                fit: BoxFit.contain,
-                fadeOutDuration: const Duration(milliseconds: 100),
-                placeholder: (context, url) => const SizedBox(
-                  height: 50.0,
-                  width: 50.0,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => const Icon(Icons.error),
-                imageUrl: widget.item.foto,
-              ),
-            ),
+            widget.item.foto.isEmpty
+                ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: CachedNetworkImage(
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.contain,
+                      fadeOutDuration: const Duration(milliseconds: 100),
+                      placeholder: (context, url) => const SizedBox(
+                        height: 50.0,
+                        width: 50.0,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                      imageUrl: widget.item.foto,
+                    ),
+                  ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: Column(

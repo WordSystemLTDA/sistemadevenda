@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +15,18 @@ class _ConfiguracaoPageState extends State<ConfiguracaoPage> {
   final tipoConexaoController = TextEditingController();
   final servidorController = TextEditingController();
 
+  final SharedPrefsConfig _config = SharedPrefsConfig();
+
   bool isLoading = false;
+
+  void buscarConexao() async {
+    final conexao = await _config.getConexao();
+
+    if (conexao == null) return;
+
+    tipoConexaoController.text = conexao['tipoConexao'];
+    servidorController.text = conexao['servidor'];
+  }
 
   void verificar() async {
     if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty) {
@@ -35,16 +47,24 @@ class _ConfiguracaoPageState extends State<ConfiguracaoPage> {
         }));
 
     setState(() => isLoading = !isLoading);
-    Navigator.pop(context);
-    // print();
-    // print();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    tipoConexaoController.text = 'localhost';
+    buscarConexao();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conexão'),
+        title: const Text('Configurar Conexão'),
         centerTitle: true,
       ),
       body: InkWell(
@@ -58,12 +78,13 @@ class _ConfiguracaoPageState extends State<ConfiguracaoPage> {
           child: ListView(
             children: [
               DropdownMenu(
-                controller: tipoConexaoController,
                 width: MediaQuery.of(context).size.width - 20,
+                onSelected: (value) => setState(() => tipoConexaoController.text = value ?? ''),
                 label: const Text('Conexão'),
+                initialSelection: 'localhost',
                 dropdownMenuEntries: const [
-                  DropdownMenuEntry(value: 'localhost', label: 'localhost'),
-                  DropdownMenuEntry(value: 'online', label: 'online'),
+                  DropdownMenuEntry(value: 'localhost', label: 'Local'),
+                  DropdownMenuEntry(value: 'online', label: 'Online'),
                 ],
                 inputDecorationTheme: const InputDecorationTheme(
                   contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
@@ -71,17 +92,18 @@ class _ConfiguracaoPageState extends State<ConfiguracaoPage> {
                 ),
               ),
               const SizedBox(height: 10),
-              TextField(
-                controller: servidorController,
-                obscureText: true,
-                onSubmitted: (a) => verificar(),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(12),
-                  labelText: "Servidor",
-                  hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                  border: OutlineInputBorder(),
+              if (tipoConexaoController.text == 'localhost') ...[
+                TextField(
+                  controller: servidorController,
+                  onSubmitted: (a) => verificar(),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.all(12),
+                    labelText: 'Endereço de IP',
+                    hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,

@@ -1,6 +1,8 @@
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
+import 'package:app/src/shared/constantes/assets_constantes.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class ItensComandaPage extends StatefulWidget {
   final String idComanda;
@@ -61,15 +63,19 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
 
                                     final res = await state.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda);
 
-                                    Navigator.pop(context);
+                                    if (mounted) {
+                                      Navigator.pop(context);
+                                    }
 
                                     if (res) return;
 
-                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                      content: Text('Ocorreu um erro'),
-                                      showCloseIcon: true,
-                                    ));
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                        content: Text('Ocorreu um erro'),
+                                        showCloseIcon: true,
+                                      ));
+                                    }
                                   },
                                   child: const Text('excluir'),
                                 ),
@@ -103,7 +109,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                   setState(() => isLoading = !isLoading);
 
                   if (mounted && res) {
-                    Navigator.pop(context);
+                    Modular.to.pushNamed('/comandas');
                     return;
                   }
 
@@ -169,7 +175,6 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
         ),
         body: Padding(
           padding: const EdgeInsets.only(top: 10, left: 5, right: 5),
-          // child: widget.listaComandosPedidos.isEmpty
           child: value.listaComandosPedidos.isEmpty
               ? ListView(
                   children: const [
@@ -194,22 +199,24 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: CachedNetworkImage(
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.contain,
-                                fadeOutDuration: const Duration(milliseconds: 100),
-                                placeholder: (context, url) => const SizedBox(
-                                  height: 50.0,
-                                  width: 50.0,
-                                  child: Center(child: CircularProgressIndicator()),
-                                ),
-                                errorWidget: (context, url, error) => const Icon(Icons.error),
-                                imageUrl: item.foto,
-                              ),
-                            ),
+                            item.foto.isEmpty
+                                ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    child: CachedNetworkImage(
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.contain,
+                                      fadeOutDuration: const Duration(milliseconds: 100),
+                                      placeholder: (context, url) => const SizedBox(
+                                        height: 100,
+                                        width: 100,
+                                        child: Center(child: CircularProgressIndicator()),
+                                      ),
+                                      errorWidget: (context, url, error) => const Icon(Icons.error),
+                                      imageUrl: item.foto,
+                                    ),
+                                  ),
                             const SizedBox(width: 10),
                             Padding(
                               padding: const EdgeInsets.all(0),
@@ -225,7 +232,7 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                         SizedBox(
                                           width: MediaQuery.of(context).size.width - 190,
                                           child: Text(
-                                            '${item.nome} ID: ${item.id}',
+                                            item.nome,
                                             style: const TextStyle(
                                               fontSize: 17,
                                               overflow: TextOverflow.ellipsis,
@@ -266,15 +273,19 @@ class _ItensComandaPageState extends State<ItensComandaPage> {
                                                                 [item.id],
                                                               );
 
-                                                              Navigator.pop(context);
+                                                              if (mounted) {
+                                                                Navigator.pop(context);
+                                                              }
 
                                                               if (res) return;
 
-                                                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                                content: Text('Ocorreu um erro'),
-                                                                showCloseIcon: true,
-                                                              ));
+                                                              if (mounted) {
+                                                                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                                                  content: Text('Ocorreu um erro'),
+                                                                  showCloseIcon: true,
+                                                                ));
+                                                              }
                                                             },
                                                             child: const Text('excluir'),
                                                           ),

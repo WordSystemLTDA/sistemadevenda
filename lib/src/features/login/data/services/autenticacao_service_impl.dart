@@ -18,8 +18,10 @@ class AutenticacaoServiceImpl implements AutenticacaoService {
       "senha": senha,
     };
 
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
     final response = await dio.post(
-      '${Apis.baseUrl}autenticacao/entrar.php',
+      '${conexao['servidor']}autenticacao/entrar.php',
       options: Options(headers: {
         HttpHeaders.contentTypeHeader: "application/json",
       }),
