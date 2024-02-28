@@ -167,6 +167,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
           // ),
           appBar: AppBar(
             automaticallyImplyLeading: false,
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(50.0),
               child: Column(

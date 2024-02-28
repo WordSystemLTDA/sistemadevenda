@@ -5,7 +5,7 @@ import 'package:app/src/features/cardapio/interactor/models/item_Comanda_modelo.
 class ItensComandaModelo {
   final List<ItemComandaModelo> listaComandosPedidos;
   final num quantidadeTotal;
-  final double precoTotal;
+  double precoTotal;
 
   ItensComandaModelo({
     required this.listaComandosPedidos,

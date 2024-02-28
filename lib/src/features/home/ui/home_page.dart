@@ -77,6 +77,7 @@ class _HomePageState extends State<HomePage> {
       ),
       appBar: AppBar(
         title: const Text('Início'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),

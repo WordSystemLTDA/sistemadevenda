@@ -1,4 +1,5 @@
 import 'package:app/src/features/cardapio/data/services/itens_comanda_service_impl.dart';
+import 'package:app/src/features/cardapio/interactor/models/adicional_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/models/item_Comanda_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/models/itens_comanda_modelo.dart';
 import 'package:flutter/material.dart';
@@ -24,9 +25,22 @@ class ItensComandaState {
         foto: item['foto'],
         valor: double.parse(item['valor']),
         quantidade: num.parse(item['quantidade']),
+        listaAdicionais: [
+          ...item['listaAdicionais'].map(
+            (e) => AdicionalModelo(
+              id: e['id'],
+              quantidade: num.parse(e['quantidade']),
+              valorAdicional: double.parse(e['valorAdicional']),
+              nome: e['nome'],
+            ),
+          ),
+        ],
       ));
       quantidadeTotal += num.parse(item['quantidade']);
       precoTotal += double.parse(item['valor']) * num.parse(item['quantidade']);
+      item['listaAdicionais'].map((e) {
+        precoTotal += double.parse(e['valorAdicional']) * num.parse(e['quantidade']);
+      }).toList();
     }
 
     itensComandaState.value = ItensComandaModelo(

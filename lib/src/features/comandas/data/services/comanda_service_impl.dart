@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'package:app/src/features/comandas/interactor/models/comanda_model.dart';
 import 'package:app/src/features/comandas/interactor/models/comandas_model.dart';
 import 'package:app/src/shared/services/api.dart';
 import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
@@ -10,28 +11,48 @@ class ComandaServiceImpl {
   final sharedPrefs = SharedPrefsConfig();
 
   Future<List<ComandasModel>> listar() async {
-    try {
-      final conexao = await Apis().getConexao();
-      if (conexao == null) return [];
-      final response = await dio.get('${conexao['servidor']}comandas/listar.php').timeout(const Duration(seconds: 60));
+    // try {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final response = await dio.get('${conexao['servidor']}comandas/listar.php').timeout(const Duration(seconds: 60));
 
-      if (response.data.isNotEmpty) {
-        return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
-      }
-    } on DioException catch (exception) {
-      if (exception.type == DioExceptionType.connectionTimeout) {
-        throw Exception("Requisição Expirou");
-      } else if (exception.type == DioExceptionType.connectionError) {
-        throw Exception("Verifique sua conexão");
-      }
-
-      throw Exception(exception.message);
-    } catch (exception, stacktrace) {
-      log("error", error: exception, stackTrace: stacktrace);
-      throw Exception("Verifique sua conexão");
+    if (response.data.isNotEmpty) {
+      // return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
+      return [
+        ...response.data.map(
+          (e) => ComandasModel(
+            titulo: e['titulo'],
+            comandas: [
+              ...e['comandas'].map(
+                (el) => ComandaModel(
+                  id: el['id'],
+                  nome: el['nome'],
+                  nomeCliente: el['nomeCliente'] ?? 'Sem Cliente',
+                  nomeMesa: el['nomeMesa'] ?? 'Sem Mesa',
+                  comandaOcupada: el['comandaOcupada'],
+                ),
+              ),
+            ],
+          ),
+        )
+      ];
     }
 
-    throw Exception('Ocorreu um erro, tente novamente.');
+    return [];
+    // } on DioException catch (exception) {
+    //   if (exception.type == DioExceptionType.connectionTimeout) {
+    //     throw Exception("Requisição Expirou");
+    //   } else if (exception.type == DioExceptionType.connectionError) {
+    //     throw Exception("Verifique sua conexão");
+    //   }
+
+    //   throw Exception(exception.message);
+    // } catch (exception, stacktrace) {
+    //   log("error", error: exception, stackTrace: stacktrace);
+    //   throw Exception("Verifique sua conexão");
+    // }
+
+    // throw Exception('Ocorreu um erro, tente novamente.');
   }
 
   Future<List<dynamic>> listarMesa(String pesquisa) async {
@@ -74,6 +95,27 @@ class ComandaServiceImpl {
         'idCliente': idCliente,
         'obs': obs,
         'usuario': usuario,
+        'empresa': empresa,
+      },
+    ).timeout(const Duration(seconds: 60));
+
+    return response.data['sucesso'];
+  }
+
+  Future<bool> inserirCliente(String nome, String celular, String email, String obs) async {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}comandas/inserir_cliente.php';
+
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+
+    final response = await dio.post(
+      url,
+      data: {
+        'nome': nome,
+        'celular': celular,
+        'email': email,
+        'obs': obs,
         'empresa': empresa,
       },
     ).timeout(const Duration(seconds: 60));

@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:app/src/features/cardapio/interactor/models/adicional_modelo.dart';
+
 class ItemComandaModelo {
   final String id;
   final String nome;
   final String foto;
   final double valor;
-  final num quantidade;
+  num quantidade;
+  final List<AdicionalModelo> listaAdicionais;
 
   ItemComandaModelo({
     required this.id,
@@ -13,6 +16,7 @@ class ItemComandaModelo {
     required this.foto,
     required this.valor,
     required this.quantidade,
+    required this.listaAdicionais,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,6 +26,7 @@ class ItemComandaModelo {
       'foto': foto,
       'valor': valor,
       'quantidade': quantidade,
+      'listaAdicionais': listaAdicionais.map((x) => x.toMap()).toList(),
     };
   }
 
@@ -32,6 +37,11 @@ class ItemComandaModelo {
       foto: map['foto'] as String,
       valor: map['valor'] as double,
       quantidade: map['quantidade'] as num,
+      listaAdicionais: List<AdicionalModelo>.from(
+        (map['listaAdicionais'] as List<int>).map<AdicionalModelo>(
+          (x) => AdicionalModelo.fromMap(x as Map<String, dynamic>),
+        ),
+      ),
     );
   }
 

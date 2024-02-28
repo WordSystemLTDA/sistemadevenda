@@ -26,4 +26,9 @@ class ComandasState {
     }
     return res;
   }
+
+  Future<bool> inserirCliente(String nome, String celular, String email, String obs) async {
+    final res = await _service.inserirCliente(nome, celular, email, obs);
+    return res;
+  }
 }

@@ -89,6 +89,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text("${produto.nome} ${produto.tamanho}"),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
         // backgroundColor: Colors.white,
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -133,7 +134,10 @@ class _ProdutoPageState extends State<ProdutoPage> {
               : Row(
                   children: [
                     const SizedBox(width: 10),
-                    Text('R\$ ${(precoTotalProduto + precoTotalAdicionais).toStringAsFixed(2).replaceAll('.', ',')}'),
+                    // Text('R\$ ${(precoTotalProduto + precoTotalAdicionais).toStringAsFixed(2).replaceAll('.', ',')}'),
+                    Text(
+                      '${counter}x R\$ ${produto.valorVenda.replaceAll('.', ',')} + R\$ ${precoTotalAdicionais.toStringAsFixed(2).replaceAll('.', ',')}',
+                    ),
                     const SizedBox(width: 10),
                     const Icon(Icons.check),
                     const SizedBox(width: 10),
