@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'package:app/src/features/comandas/interactor/models/comanda_model.dart';
 import 'package:app/src/features/comandas/interactor/models/comandas_model.dart';
 import 'package:app/src/shared/services/api.dart';
@@ -27,8 +26,9 @@ class ComandaServiceImpl {
                 (el) => ComandaModel(
                   id: el['id'],
                   nome: el['nome'],
-                  nomeCliente: el['nomeCliente'] ?? 'Sem Cliente',
-                  nomeMesa: el['nomeMesa'] ?? 'Sem Mesa',
+                  ativo: el['ativo'],
+                  nomeCliente: el['nomeCliente'] ?? '',
+                  nomeMesa: el['nomeMesa'] ?? '',
                   comandaOcupada: el['comandaOcupada'],
                 ),
               ),
@@ -53,6 +53,63 @@ class ComandaServiceImpl {
     // }
 
     // throw Exception('Ocorreu um erro, tente novamente.');
+  }
+
+  Future<bool> editarAtivo(String id, String ativo) async {
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+    final url = '${conexao['servidor']}comandas/editar_ativo_comanda.php';
+
+    final response = await dio.post(url, data: {
+      'id': id,
+      'ativo': ativo,
+      'empresa': empresa,
+    });
+
+    return response.data['sucesso'];
+  }
+
+  Future<Map<String, dynamic>> excluirComanda(String id) async {
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+
+    final conexao = await Apis().getConexao();
+    if (conexao == null) {
+      return {
+        'sucesso': false,
+        'mensagem': null,
+      };
+    }
+    final url = '${conexao['servidor']}comandas/excluir_comanda.php';
+
+    final response = await dio.post(url, data: {
+      'id': id,
+      'empresa': empresa,
+    });
+
+    print(response.data);
+
+    return {
+      'sucesso': response.data['sucesso'],
+      'mensagem': response.data['mensagem'],
+    };
+  }
+
+  Future<bool> cadastrarComanda(String nome) async {
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+
+    final url = '${conexao['servidor']}comandas/cadastrar_comanda.php';
+
+    final response = await dio.post(url, data: {
+      'nome': nome,
+      'empresa': empresa,
+    });
+
+    return response.data['sucesso'];
   }
 
   Future<List<dynamic>> listarMesa(String pesquisa) async {

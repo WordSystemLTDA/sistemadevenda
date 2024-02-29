@@ -28,7 +28,24 @@ class ComandasState {
   }
 
   Future<bool> inserirCliente(String nome, String celular, String email, String obs) async {
-    final res = await _service.inserirCliente(nome, celular, email, obs);
+    return await _service.inserirCliente(nome, celular, email, obs);
+  }
+
+  Future<bool> editarAtivo(String id, String ativo) async {
+    final res = await _service.editarAtivo(id, ativo);
+    listarComandas();
+    return res;
+  }
+
+  Future<Map<String, dynamic>> excluirComanda(String id) async {
+    final res = await _service.excluirComanda(id);
+    listarComandas();
+    return res;
+  }
+
+  Future<bool> cadastrarComanda(String nome) async {
+    final res = await _service.cadastrarComanda(nome);
+    listarComandas();
     return res;
   }
 }

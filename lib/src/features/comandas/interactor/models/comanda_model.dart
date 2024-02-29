@@ -3,6 +3,7 @@ import 'dart:convert';
 class ComandaModel {
   String id;
   String nome;
+  String ativo;
   String nomeCliente;
   String nomeMesa;
   bool comandaOcupada;
@@ -10,6 +11,7 @@ class ComandaModel {
   ComandaModel({
     required this.id,
     required this.nome,
+    required this.ativo,
     required this.nomeCliente,
     required this.nomeMesa,
     required this.comandaOcupada,
@@ -19,6 +21,7 @@ class ComandaModel {
     return <String, dynamic>{
       'id': id,
       'nome': nome,
+      'ativo': ativo,
       'nomeCliente': nomeCliente,
       'nomeMesa': nomeMesa,
       'comandaOcupada': comandaOcupada,
@@ -29,6 +32,7 @@ class ComandaModel {
     return ComandaModel(
       id: map['id'] as String,
       nome: map['nome'] as String,
+      ativo: map['ativo'] as String,
       nomeCliente: map['nomeCliente'] as String,
       nomeMesa: map['nomeMesa'] as String,
       comandaOcupada: map['comandaOcupada'] as bool,
