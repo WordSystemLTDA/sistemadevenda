@@ -1,18 +1,18 @@
-import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
+import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 import 'package:flutter/material.dart';
 
-class NovaComanda extends StatefulWidget {
+class NovaMesa extends StatefulWidget {
   final bool editar;
   final String? nome;
   final String? id;
-  const NovaComanda({super.key, this.nome, this.id, required this.editar});
+  const NovaMesa({super.key, this.nome, this.id, required this.editar});
 
   @override
-  State<NovaComanda> createState() => _NovaComandaState();
+  State<NovaMesa> createState() => _NovaMesaState();
 }
 
-class _NovaComandaState extends State<NovaComanda> {
-  final ComandasState _state = ComandasState();
+class _NovaMesaState extends State<NovaMesa> {
+  final MesaState _state = MesaState();
 
   final nomeController = TextEditingController();
 
@@ -68,16 +68,16 @@ class _NovaComandaState extends State<NovaComanda> {
                   late final bool res;
 
                   if (widget.editar) {
-                    res = await _state.editarComanda(widget.id!, nomeController.text);
+                    res = await _state.editarMesa(widget.id!, nomeController.text);
                   } else {
-                    res = await _state.cadastrarComanda(nomeController.text);
+                    res = await _state.cadastrarMesa(nomeController.text);
                   }
 
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: res ? Text(widget.editar ? 'Comanda Editada' : 'Comanda Cadastrada') : const Text('Ocorreu um erro'),
+                      content: res ? Text(widget.editar ? 'Mesa Editada' : 'Mesa Cadastrada') : const Text('Ocorreu um erro'),
                       showCloseIcon: true,
                     ));
                   }

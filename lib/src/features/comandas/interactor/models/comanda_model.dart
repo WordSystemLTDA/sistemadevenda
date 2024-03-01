@@ -6,6 +6,8 @@ class ComandaModel {
   String ativo;
   String nomeCliente;
   String nomeMesa;
+  String dataAbertura;
+  String horaAbertura;
   bool comandaOcupada;
 
   ComandaModel({
@@ -14,6 +16,8 @@ class ComandaModel {
     required this.ativo,
     required this.nomeCliente,
     required this.nomeMesa,
+    required this.dataAbertura,
+    required this.horaAbertura,
     required this.comandaOcupada,
   });
 
@@ -24,6 +28,8 @@ class ComandaModel {
       'ativo': ativo,
       'nomeCliente': nomeCliente,
       'nomeMesa': nomeMesa,
+      'dataAbertura': dataAbertura,
+      'horaAbertura': horaAbertura,
       'comandaOcupada': comandaOcupada,
     };
   }
@@ -35,6 +41,8 @@ class ComandaModel {
       ativo: map['ativo'] as String,
       nomeCliente: map['nomeCliente'] as String,
       nomeMesa: map['nomeMesa'] as String,
+      dataAbertura: map['dataAbertura'] as String,
+      horaAbertura: map['horaAbertura'] as String,
       comandaOcupada: map['comandaOcupada'] as bool,
     );
   }

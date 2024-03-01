@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:app/src/features/home/ui/widgets/card_home.dart';
+import 'package:app/src/features/home/ui/widgets/drawer_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,32 +11,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String nome = '';
-  String email = '';
-
-  @override
-  void initState() {
-    super.initState();
-    pegarUsuario();
-  }
-
-  void pegarUsuario() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var usuario = prefs.getString('usuario');
-
-    setState(() {
-      nome = jsonDecode(usuario!)['nome'];
-      email = jsonDecode(usuario)['email'];
-    });
-  }
-
-  void sair() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.remove("usuario").then((value) => {
-          Modular.to.pushNamed('/'),
-        });
-  }
-
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -47,34 +19,7 @@ class _HomePageState extends State<HomePage> {
     final double itemWidth = size.width / 2;
 
     return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              accountName: Text(nome),
-              accountEmail: Text(email),
-              currentAccountPicture: const CircleAvatar(
-                child: ClipOval(
-                  child: Icon(Icons.person),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('Editar Dados'),
-              onTap: () {},
-            ),
-            ListTile(
-              iconColor: Colors.red,
-              textColor: Colors.red,
-              leading: const Icon(Icons.logout),
-              title: const Text('Sair'),
-              onTap: sair,
-            ),
-          ],
-        ),
-      ),
+      drawer: const DrawerWidget(),
       appBar: AppBar(
         title: const Text('Início'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,

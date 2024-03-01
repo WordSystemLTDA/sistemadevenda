@@ -1,7 +1,6 @@
-import 'dart:math' as math;
 import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
-import 'package:app/src/features/comandas/ui/comanda_desocupada_page.dart';
 import 'package:app/src/features/comandas/ui/todas_comanadas.dart';
+import 'package:app/src/features/comandas/ui/widgets/card_comanda.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -18,7 +17,7 @@ class _ComandasPageState extends State<ComandasPage> {
 
   void listarComandas() async {
     setState(() => isLoading = !isLoading);
-    await _state.listarComandas();
+    await _state.listarComandas('');
     setState(() => isLoading = !isLoading);
   }
 
@@ -52,7 +51,7 @@ class _ComandasPageState extends State<ComandasPage> {
             menuChildren: [
               MenuItemButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const TodasComandas()));
+                  Modular.to.push(MaterialPageRoute(builder: (context) => const TodasComandas()));
                 },
                 child: const Row(
                   children: [
@@ -95,7 +94,7 @@ class _ComandasPageState extends State<ComandasPage> {
                                 shrinkWrap: true,
                                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                                  mainAxisExtent: 75,
+                                  mainAxisExtent: 100,
                                   mainAxisSpacing: 2,
                                   crossAxisSpacing: 2,
                                 ),
@@ -105,165 +104,7 @@ class _ComandasPageState extends State<ComandasPage> {
                                 itemBuilder: (_, index) {
                                   var itemComanda = item.comandas![index];
 
-                                  return Card(
-                                    margin: const EdgeInsets.all(3),
-                                    // color: itemComanda.comandaOcupada ? null : Theme.of(context).colorScheme.inversePrimary,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        gradient: itemComanda.comandaOcupada
-                                            ? LinearGradient(
-                                                colors: [
-                                                  Theme.of(context).colorScheme.inversePrimary,
-                                                  Theme.of(context).colorScheme.primary,
-                                                ],
-                                                end: Alignment.bottomRight,
-                                              )
-                                            : null,
-                                      ),
-                                      child: InkWell(
-                                        onTap: () {
-                                          if (!itemComanda.comandaOcupada) {
-                                            Modular.to.push(MaterialPageRoute(
-                                                builder: (context) => ComandaDesocupadaPage(
-                                                      id: itemComanda.id,
-                                                      nome: itemComanda.nome,
-                                                    )));
-                                          } else {
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) {
-                                                return SizedBox(
-                                                  child: Dialog(
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.all(10),
-                                                      child: Column(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Row(
-                                                            children: [
-                                                              Card(
-                                                                child: SizedBox(
-                                                                  width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  child: InkWell(
-                                                                    onTap: () {
-                                                                      Modular.to.pushNamed('/cardapio/Comanda/${itemComanda.id}/0');
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                                    child: const Center(child: Icon(Icons.add)),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              Card(
-                                                                child: SizedBox(
-                                                                  width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  child: InkWell(
-                                                                    onTap: () {
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                                    child: const Center(child: Icon(Icons.production_quantity_limits)),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          Row(
-                                                            children: [
-                                                              Card(
-                                                                child: SizedBox(
-                                                                  width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  child: InkWell(
-                                                                    onTap: () {
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                                    child: const Center(child: Icon(Icons.print)),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              Card(
-                                                                child: SizedBox(
-                                                                  width: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  height: (MediaQuery.of(context).size.width - 120) / 2,
-                                                                  child: InkWell(
-                                                                    onTap: () {
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                                                    child: const Center(child: Icon(Icons.edit)),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          )
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          }
-                                        },
-                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                const SizedBox(width: 15),
-                                                const Icon(Icons.topic_outlined, size: 30),
-                                                const SizedBox(width: 10),
-                                                SizedBox(
-                                                  width: MediaQuery.of(context).size.width / 2 - 70,
-                                                  child: Text(
-                                                    'Comanda: ${itemComanda.nome}',
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                    maxLines: 1,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            if (itemComanda.comandaOcupada) ...[
-                                              Row(
-                                                children: [
-                                                  const SizedBox(width: 25),
-                                                  if (itemComanda.nomeMesa.isNotEmpty) ...[
-                                                    Text(
-                                                      itemComanda.nomeMesa.split(' ')[1],
-                                                      style: TextStyle(
-                                                        fontSize: 17,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                  SizedBox(width: itemComanda.nomeCliente.isNotEmpty ? 20 : 30),
-                                                  Text(
-                                                    itemComanda.nomeCliente.isNotEmpty ? itemComanda.nomeCliente : 'Diversos',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
+                                  return CardComanda(itemComanda: itemComanda);
                                 },
                               ),
                             ],

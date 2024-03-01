@@ -8,6 +8,7 @@ class ItemComandaModelo {
   final String foto;
   final double valor;
   num quantidade;
+  bool estaExpandido;
   final List<AdicionalModelo> listaAdicionais;
 
   ItemComandaModelo({
@@ -16,6 +17,7 @@ class ItemComandaModelo {
     required this.foto,
     required this.valor,
     required this.quantidade,
+    required this.estaExpandido,
     required this.listaAdicionais,
   });
 
@@ -26,6 +28,7 @@ class ItemComandaModelo {
       'foto': foto,
       'valor': valor,
       'quantidade': quantidade,
+      'estaExpandido': estaExpandido,
       'listaAdicionais': listaAdicionais.map((x) => x.toMap()).toList(),
     };
   }
@@ -37,6 +40,7 @@ class ItemComandaModelo {
       foto: map['foto'] as String,
       valor: map['valor'] as double,
       quantidade: map['quantidade'] as num,
+      estaExpandido: map['estaExpandido'] as bool,
       listaAdicionais: List<AdicionalModelo>.from(
         (map['listaAdicionais'] as List<int>).map<AdicionalModelo>(
           (x) => AdicionalModelo.fromMap(x as Map<String, dynamic>),

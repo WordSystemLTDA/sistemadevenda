@@ -6,8 +6,8 @@ final ValueNotifier comandasState = ValueNotifier([]);
 class ComandasState {
   final ComandaServiceImpl _service = ComandaServiceImpl();
 
-  Future<void> listarComandas() async {
-    final res = await _service.listar();
+  Future<void> listarComandas(String pesquisa) async {
+    final res = await _service.listar(pesquisa);
     comandasState.value = res;
   }
 
@@ -22,7 +22,7 @@ class ComandasState {
   Future<dynamic> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
     final res = await _service.inserirComandaOcupada(id, idMesa, idCliente, obs);
     if (res) {
-      listarComandas();
+      listarComandas('');
     }
     return res;
   }
@@ -33,19 +33,25 @@ class ComandasState {
 
   Future<bool> editarAtivo(String id, String ativo) async {
     final res = await _service.editarAtivo(id, ativo);
-    listarComandas();
+    listarComandas('');
     return res;
   }
 
   Future<Map<String, dynamic>> excluirComanda(String id) async {
     final res = await _service.excluirComanda(id);
-    listarComandas();
+    listarComandas('');
     return res;
   }
 
   Future<bool> cadastrarComanda(String nome) async {
     final res = await _service.cadastrarComanda(nome);
-    listarComandas();
+    listarComandas('');
+    return res;
+  }
+
+  Future<bool> editarComanda(String id, String nome) async {
+    final res = await _service.editarComanda(id, nome);
+    listarComandas('');
     return res;
   }
 }

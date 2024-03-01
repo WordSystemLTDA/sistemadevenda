@@ -1,23 +1,23 @@
-import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
-import 'package:app/src/features/comandas/ui/nova_comanda.dart';
+import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
+import 'package:app/src/features/mesas/ui/widgets/nova_mesa.dart';
 import 'package:flutter/material.dart';
 
-class TodasComandas extends StatefulWidget {
-  const TodasComandas({super.key});
+class TodasMesas extends StatefulWidget {
+  const TodasMesas({super.key});
 
   @override
-  State<TodasComandas> createState() => _TodasComandasState();
+  State<TodasMesas> createState() => _TodasMesasState();
 }
 
-class _TodasComandasState extends State<TodasComandas> {
-  final ComandasState _state = ComandasState();
+class _TodasMesasState extends State<TodasMesas> {
+  final MesaState _state = MesaState();
   bool isLoading = false;
 
   final pesquisaController = TextEditingController();
 
-  void listarComandas() async {
+  void listar() async {
     setState(() => isLoading = !isLoading);
-    await _state.listarComandas('');
+    await _state.listarMesas('');
     setState(() => isLoading = !isLoading);
   }
 
@@ -25,21 +25,21 @@ class _TodasComandasState extends State<TodasComandas> {
   void initState() {
     super.initState();
 
-    listarComandas();
+    listar();
   }
 
   @override
   void dispose() {
     super.dispose();
 
-    _state.listarComandas('');
+    _state.listarMesas('');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Comandas'),
+        title: const Text('Mesas'),
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
@@ -49,17 +49,17 @@ class _TodasComandasState extends State<TodasComandas> {
             context: context,
             isScrollControlled: true,
             showDragHandle: true,
-            builder: (context) => const NovaComanda(editar: false),
+            builder: (context) => const NovaMesa(editar: false),
           );
         },
         child: const Icon(Icons.add),
       ),
       body: ValueListenableBuilder(
-        valueListenable: comandasState,
+        valueListenable: listaMesaState,
         builder: (context, value, child) {
-          final listaComandas = [
-            ...value[0].comandas,
-            ...value[1].comandas,
+          final listaMesas = [
+            ...value['mesasOcupadas'],
+            ...value['mesasLivres'],
           ];
 
           return InkWell(
@@ -70,7 +70,7 @@ class _TodasComandasState extends State<TodasComandas> {
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
             child: RefreshIndicator(
               onRefresh: () async {
-                _state.listarComandas('');
+                _state.listarMesas('');
                 pesquisaController.text = '';
               },
               child: Padding(
@@ -80,7 +80,7 @@ class _TodasComandasState extends State<TodasComandas> {
                     TextField(
                       controller: pesquisaController,
                       onChanged: (value) {
-                        _state.listarComandas(value);
+                        _state.listarMesas(value);
                       },
                       decoration: const InputDecoration(
                         hintText: 'Pesquisa',
@@ -93,17 +93,17 @@ class _TodasComandasState extends State<TodasComandas> {
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),
-                            Center(child: Text('Não há Comandas')),
+                            Center(child: Text('Não há Mesas')),
                           ]))
                         : Expanded(
                             child: ListView.builder(
                               shrinkWrap: true,
-                              itemCount: listaComandas.length + 1,
+                              itemCount: listaMesas.length + 1,
                               itemBuilder: (context, index) {
-                                if (listaComandas.length == index) {
-                                  return const SizedBox(height: 100, child: Center(child: Text('Fim da Lista de Comandas')));
+                                if (listaMesas.length == index) {
+                                  return const SizedBox(height: 100, child: Center(child: Text('Fim da Lista de Mesas')));
                                 }
-                                final item = listaComandas[index];
+                                final item = listaMesas[index];
 
                                 return SizedBox(
                                   height: 80,
@@ -126,7 +126,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                   ),
                                                 ),
                                                 child: VerticalDivider(
-                                                  color: item.ativo == 'Sim' ? Colors.green : Colors.red,
+                                                  color: item['ativo'] == 'Sim' ? Colors.green : Colors.red,
                                                   thickness: 5,
                                                 ),
                                               ),
@@ -136,12 +136,12 @@ class _TodasComandasState extends State<TodasComandas> {
                                                   mainAxisAlignment: MainAxisAlignment.center,
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    Text('ID: ${item.id}'),
+                                                    Text('ID: ${item['id']}'),
                                                     const SizedBox(height: 10),
                                                     Row(
                                                       children: [
                                                         const Text('Nome: '),
-                                                        Text(item.nome),
+                                                        Text(item['nome']),
                                                       ],
                                                     )
                                                   ],
@@ -157,7 +157,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                   width: 50,
                                                   child: InkWell(
                                                       onTap: () async {
-                                                        final res = await _state.editarAtivo(item.id, item.ativo == 'Sim' ? 'Não' : 'Sim');
+                                                        final res = await _state.editarAtivo(item['id'], item['ativo'] == 'Sim' ? 'Não' : 'Sim');
 
                                                         if (mounted && !res) {
                                                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -170,7 +170,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                         }
                                                       },
                                                       borderRadius: const BorderRadius.only(topRight: Radius.circular(8)),
-                                                      child: item.ativo == 'Sim'
+                                                      child: item['ativo'] == 'Sim'
                                                           ? const Icon(Icons.check_box_outlined)
                                                           : const Icon(Icons.check_box_outline_blank_rounded)),
                                                 ),
@@ -200,10 +200,10 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           context: context,
                                                           isScrollControlled: true,
                                                           showDragHandle: true,
-                                                          builder: (context) => NovaComanda(editar: true, nome: item.nome, id: item.id),
+                                                          builder: (context) => NovaMesa(editar: true, nome: item['nome'], id: item['id']),
                                                         );
                                                       },
-                                                      child: const Text('Editar Comanda'),
+                                                      child: const Text('Editar Mesa'),
                                                     ),
                                                     MenuItemButton(
                                                       onPressed: () async {
@@ -232,7 +232,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                       const SizedBox(width: 10),
                                                                       TextButton(
                                                                         onPressed: () async {
-                                                                          final res = await _state.excluirComanda(item.id);
+                                                                          final res = await _state.excluirMesa(item['id']);
 
                                                                           if (mounted) {
                                                                             Navigator.pop(context);
@@ -258,7 +258,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           ),
                                                         );
                                                       },
-                                                      child: const Text('Excluir Comanda'),
+                                                      child: const Text('Excluir Mesa'),
                                                     ),
                                                   ],
                                                 ),

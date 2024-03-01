@@ -25,6 +25,7 @@ class ItensComandaState {
         foto: item['foto'],
         valor: double.parse(item['valor']),
         quantidade: num.parse(item['quantidade']),
+        estaExpandido: false,
         listaAdicionais: [
           ...item['listaAdicionais'].map(
             (e) => AdicionalModelo(

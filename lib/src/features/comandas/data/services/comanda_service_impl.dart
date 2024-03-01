@@ -9,11 +9,14 @@ class ComandaServiceImpl {
   final Dio dio = Dio();
   final sharedPrefs = SharedPrefsConfig();
 
-  Future<List<ComandasModel>> listar() async {
+  Future<List<ComandasModel>> listar(String pesquisa) async {
     // try {
+    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+
     final conexao = await Apis().getConexao();
     if (conexao == null) return [];
-    final response = await dio.get('${conexao['servidor']}comandas/listar.php').timeout(const Duration(seconds: 60));
+    final response =
+        await dio.get('${conexao['servidor']}comandas/listar.php?pesquisa=$pesquisa&empresa=$empresa').timeout(const Duration(seconds: 60));
 
     if (response.data.isNotEmpty) {
       // return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
@@ -29,6 +32,8 @@ class ComandaServiceImpl {
                   ativo: el['ativo'],
                   nomeCliente: el['nomeCliente'] ?? '',
                   nomeMesa: el['nomeMesa'] ?? '',
+                  dataAbertura: el['dataAbertura'] ?? '',
+                  horaAbertura: el['horaAbertura'] ?? '',
                   comandaOcupada: el['comandaOcupada'],
                 ),
               ),
@@ -84,11 +89,9 @@ class ComandaServiceImpl {
     final url = '${conexao['servidor']}comandas/excluir_comanda.php';
 
     final response = await dio.post(url, data: {
-      'id': id,
+      'idComanda': id,
       'empresa': empresa,
     });
-
-    print(response.data);
 
     return {
       'sucesso': response.data['sucesso'],
@@ -107,6 +110,20 @@ class ComandaServiceImpl {
     final response = await dio.post(url, data: {
       'nome': nome,
       'empresa': empresa,
+    });
+
+    return response.data['sucesso'];
+  }
+
+  Future<bool> editarComanda(String id, String nome) async {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return false;
+
+    final url = '${conexao['servidor']}comandas/editar_comanda.php';
+
+    final response = await dio.post(url, data: {
+      'id': id,
+      'nome': nome,
     });
 
     return response.data['sucesso'];
