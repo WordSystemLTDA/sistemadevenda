@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/features/mesas/interactor/models/mesa_modelo.dart';
 import 'package:app/src/shared/services/api.dart';
 import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
 import 'package:dio/dio.dart';
@@ -7,16 +8,43 @@ class MesaServiceImpl {
   final Dio dio = Dio();
   final sharedPrefs = SharedPrefsConfig();
 
-  Future<dynamic> listar(String pesquisa) async {
+  Future<Map<String, List<MesaModelo>>> listar(String pesquisa) async {
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
     final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
+    if (conexao == null) return {'mesasOcupadas': [], 'mesasLivres': []};
     final response = await dio.get('${conexao['servidor']}mesas/listar.php?pesquisa=$pesquisa&empresa=$empresa');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        return response.data;
+        return {
+          'mesasOcupadas': [
+            ...response.data['mesasOcupadas'].map((e) {
+              return MesaModelo(
+                id: e['id'],
+                nome: e['nome'],
+                nomeCliente: e['nomeCliente'],
+                dataAbertura: e['data_abertura'],
+                horaAbertura: e['hora_abertura'],
+                ativo: e['ativo'],
+                mesaOcupada: e['mesaOcupada'],
+              );
+            })
+          ],
+          'mesasLivres': [
+            ...response.data['mesasLivres'].map((e) {
+              return MesaModelo(
+                id: e['id'],
+                nome: e['nome'],
+                nomeCliente: '',
+                dataAbertura: '',
+                horaAbertura: '',
+                ativo: e['ativo'],
+                mesaOcupada: e['mesaOcupada'],
+              );
+            })
+          ],
+        };
         // return List<ProdutoModel>.from(response.data.map((elemento) {
         //   return ProdutoModel.fromMap(elemento);
         // }));

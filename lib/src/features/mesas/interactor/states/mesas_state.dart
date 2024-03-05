@@ -1,7 +1,8 @@
 import 'package:app/src/features/mesas/data/services/mesa_service_impl.dart';
+import 'package:app/src/features/mesas/interactor/models/mesa_modelo.dart';
 import 'package:flutter/material.dart';
 
-final ValueNotifier listaMesaState = ValueNotifier({});
+final ValueNotifier<Map<String, List<MesaModelo>>> listaMesaState = ValueNotifier({'mesasOcupadas': [], 'mesasLivres': []});
 
 class MesaState {
   final MesaServiceImpl _service = MesaServiceImpl();

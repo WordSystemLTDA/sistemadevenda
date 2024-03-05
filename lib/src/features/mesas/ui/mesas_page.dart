@@ -1,6 +1,7 @@
 import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 import 'package:app/src/features/mesas/ui/mesa_desocupada_page.dart';
 import 'package:app/src/features/mesas/ui/todas_mesas.dart';
+import 'package:app/src/features/mesas/ui/widgets/card_mesa_ocupada.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -67,7 +68,6 @@ class _MesasPageState extends State<MesasPage> {
             ),
           ],
         ),
-        // mesaOcupada
         body: RefreshIndicator(
           onRefresh: () async => listar(),
           child: ListView(
@@ -86,58 +86,18 @@ class _MesasPageState extends State<MesasPage> {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                          mainAxisExtent: 75,
+                          // mainAxisExtent: 75,
+                          // mainAxisSpacing: 2,
+                          // crossAxisSpacing: 2,
+                          mainAxisExtent: 100,
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
                         ),
-                        itemCount: value['mesasOcupadas'].length,
+                        itemCount: value['mesasOcupadas']!.length,
                         itemBuilder: (context, index) {
-                          final item = value['mesasOcupadas'][index];
+                          final item = value['mesasOcupadas']![index];
 
-                          return Card(
-                            // color: Theme.of(context).colorScheme.inversePrimary,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Theme.of(context).colorScheme.inversePrimary,
-                                    Theme.of(context).colorScheme.primary,
-                                  ],
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
-                              child: InkWell(
-                                onTap: () {
-                                  Modular.to.pushNamed('/cardapio/Mesa/0/${item["id"]}');
-                                },
-                                borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        const SizedBox(width: 15),
-                                        const Icon(Icons.table_bar_outlined),
-                                        const SizedBox(width: 10),
-                                        Text(item['nome'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        const SizedBox(width: 48),
-                                        Text(
-                                          item['nomeCliente'].isNotEmpty ? item['nomeCliente'] : 'Diversos',
-                                          style: const TextStyle(fontSize: 14, color: Colors.black),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
+                          return CardMesaOcupada(item: item);
                         },
                       ),
                       const SizedBox(height: 5),
@@ -148,22 +108,23 @@ class _MesasPageState extends State<MesasPage> {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                          mainAxisExtent: 75,
+                          mainAxisExtent: 100,
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
                         ),
-                        itemCount: value['mesasLivres'].length,
+                        itemCount: value['mesasLivres']!.length,
                         itemBuilder: (context, index) {
-                          final item = value['mesasLivres'][index];
+                          final item = value['mesasLivres']![index];
 
                           return Card(
+                            margin: const EdgeInsets.all(3),
                             child: InkWell(
                               onTap: () {
                                 Modular.to.push(
                                   MaterialPageRoute(
                                     builder: (context) => MesaDesocupadaPage(
-                                      id: item['id'],
-                                      nome: item['nome'],
+                                      id: item.id,
+                                      nome: item.nome,
                                     ),
                                   ),
                                 );
@@ -175,7 +136,7 @@ class _MesasPageState extends State<MesasPage> {
                                   const SizedBox(width: 15),
                                   const Icon(Icons.table_bar_outlined),
                                   const SizedBox(width: 10),
-                                  Text(item['nome'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  Text(item.nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ),

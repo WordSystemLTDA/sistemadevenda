@@ -25,7 +25,7 @@ class _CardComandaState extends State<CardComanda> {
       if (mounted) {
         _timeStreamController.add(temporizador.main(
           widget.itemComanda.horaAbertura,
-          // widget.itemComanda.dataAbertura,
+          widget.itemComanda.dataAbertura,
         ));
       } else {
         timer.cancel();
@@ -33,37 +33,9 @@ class _CardComandaState extends State<CardComanda> {
     });
   }
 
-  void atualizar() {
-    // Timer.periodic(const Duration(seconds: 1), (timer) {
-    //   if (mounted) {
-    //     // _timeStreamController.add(DateTime.now());
-    //     main();
-    //   } else {
-    //     timer.cancel();
-    //   }
-    // });
-
-    // if (widget.itemComanda.comandaOcupada) {
-    //   DateTime dataAbertura = DateTime.parse(widget.itemComanda.dataAbertura);
-    //   DateTime dataAtual = DateTime.now();
-
-    //   int diferencaEmDias = dataAtual.difference(dataAbertura).inDays - 1;
-
-    //   final horas = diferencaEmDias * 24;
-    //   print('$horas:00:00');
-    //   // print('${widget.itemComanda.nome} - $dataAbertura - Diferença em dias: $diferencaEmDias');
-    // }
-    // final aaa = widget.itemComanda.dataAbertura.split('-');
-    // print(aaa);
-    // print(widget.itemComanda.dataAbertura);
-    // DateTime.parse('${aaa[0]}-${aaa[1]}-${aaa[2]} 00:00:00');
-  }
-
   @override
   void initState() {
     super.initState();
-
-    atualizar();
 
     _timeStreamController = StreamController<String>();
     _timeStream = _timeStreamController.stream;
@@ -212,7 +184,7 @@ class _CardComandaState extends State<CardComanda> {
               if (widget.itemComanda.comandaOcupada) ...[
                 Row(
                   children: [
-                    SizedBox(width: widget.itemComanda.nomeCliente.isNotEmpty ? 60 : 60),
+                    const SizedBox(width: 15),
                     Text(
                       widget.itemComanda.nomeCliente.isNotEmpty ? widget.itemComanda.nomeCliente : 'Diversos',
                       style: TextStyle(
@@ -228,11 +200,11 @@ class _CardComandaState extends State<CardComanda> {
                   children: [
                     Row(
                       children: [
-                        const SizedBox(width: 25),
+                        const SizedBox(width: 15),
                         Text(
-                          widget.itemComanda.nomeMesa.isNotEmpty ? widget.itemComanda.nomeMesa.split(' ')[1] : '',
+                          widget.itemComanda.nomeMesa.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa.split(' ')[1]}' : '',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
                           ),
@@ -241,27 +213,37 @@ class _CardComandaState extends State<CardComanda> {
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.watch_later_outlined),
-                        const SizedBox(width: 5),
                         StreamBuilder<String>(
                           stream: _timeStream,
                           builder: (context, snapshot) {
                             if (snapshot.hasData) {
                               String formattedTime = snapshot.data!;
 
-                              return Text(
-                                formattedTime,
-                                style: const TextStyle(color: Colors.black, fontSize: 16),
+                              return Row(
+                                children: [
+                                  const Icon(Icons.watch_later_outlined, size: 14, color: Colors.black),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    formattedTime,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               );
                             } else {
                               return const Text(
                                 'Carregando...',
-                                style: TextStyle(color: Colors.black),
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                ),
                               );
                             }
                           },
                         ),
-                        const SizedBox(width: 25),
+                        const SizedBox(width: 15),
                       ],
                     ),
                   ],
@@ -274,58 +256,3 @@ class _CardComandaState extends State<CardComanda> {
     );
   }
 }
-
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:flutter_modular/flutter_modular.dart';
-
-// class ComandasGrid extends StatefulWidget {
-//   final List<dynamic> comandas;
-//   const ComandasGrid({super.key, required this.comandas});
-
-//   @override
-//   State<ComandasGrid> createState() => _ComandasGridState();
-// }
-
-// class _ComandasGridState extends State<ComandasGrid> {
-//   @override
-//   Widget build(BuildContext context) {
-//     final comandas = widget.comandas;
-
-//     return GridView.builder(
-//       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-//         crossAxisCount: 4,
-//         crossAxisSpacing: 10,
-//         mainAxisSpacing: 10,
-//       ),
-//       itemCount: comandas.length,
-//       shrinkWrap: true,
-//       itemBuilder: (BuildContext context, int index) {
-//         final e = comandas[index];
-
-//         if (comandas.isNotEmpty) {
-//           return ElevatedButton(
-//             onPressed: () {
-//               Modular.to.pushNamed('/cardapio/comanda/${e['id']}');
-//             },
-//             style: ButtonStyle(
-//               backgroundColor: MaterialStatePropertyAll(e['comandaOcupada'] ? Colors.red : Colors.green),
-//               shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-//                 RoundedRectangleBorder(
-//                   borderRadius: BorderRadius.circular(2.0),
-//                 ),
-//               ),
-//             ),
-//             child: Text(
-//               e['nome'],
-//               style: const TextStyle(fontSize: 18, color: Colors.white),
-//             ),
-//           );
-//         }
-//         return null;
-//       },
-//     );
-//   }
-// }

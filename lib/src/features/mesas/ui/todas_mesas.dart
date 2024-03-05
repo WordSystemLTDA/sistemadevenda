@@ -58,8 +58,8 @@ class _TodasMesasState extends State<TodasMesas> {
         valueListenable: listaMesaState,
         builder: (context, value, child) {
           final listaMesas = [
-            ...value['mesasOcupadas'],
-            ...value['mesasLivres'],
+            ...value['mesasOcupadas']!,
+            ...value['mesasLivres']!,
           ];
 
           return InkWell(
@@ -126,7 +126,7 @@ class _TodasMesasState extends State<TodasMesas> {
                                                   ),
                                                 ),
                                                 child: VerticalDivider(
-                                                  color: item['ativo'] == 'Sim' ? Colors.green : Colors.red,
+                                                  color: item.ativo == 'Sim' ? Colors.green : Colors.red,
                                                   thickness: 5,
                                                 ),
                                               ),
@@ -136,12 +136,12 @@ class _TodasMesasState extends State<TodasMesas> {
                                                   mainAxisAlignment: MainAxisAlignment.center,
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    Text('ID: ${item['id']}'),
+                                                    Text('ID: ${item.id}'),
                                                     const SizedBox(height: 10),
                                                     Row(
                                                       children: [
                                                         const Text('Nome: '),
-                                                        Text(item['nome']),
+                                                        Text(item.nome),
                                                       ],
                                                     )
                                                   ],
@@ -157,7 +157,7 @@ class _TodasMesasState extends State<TodasMesas> {
                                                   width: 50,
                                                   child: InkWell(
                                                       onTap: () async {
-                                                        final res = await _state.editarAtivo(item['id'], item['ativo'] == 'Sim' ? 'Não' : 'Sim');
+                                                        final res = await _state.editarAtivo(item.id, item.ativo == 'Sim' ? 'Não' : 'Sim');
 
                                                         if (mounted && !res) {
                                                           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -170,7 +170,7 @@ class _TodasMesasState extends State<TodasMesas> {
                                                         }
                                                       },
                                                       borderRadius: const BorderRadius.only(topRight: Radius.circular(8)),
-                                                      child: item['ativo'] == 'Sim'
+                                                      child: item.ativo == 'Sim'
                                                           ? const Icon(Icons.check_box_outlined)
                                                           : const Icon(Icons.check_box_outline_blank_rounded)),
                                                 ),
@@ -200,7 +200,7 @@ class _TodasMesasState extends State<TodasMesas> {
                                                           context: context,
                                                           isScrollControlled: true,
                                                           showDragHandle: true,
-                                                          builder: (context) => NovaMesa(editar: true, nome: item['nome'], id: item['id']),
+                                                          builder: (context) => NovaMesa(editar: true, nome: item.nome, id: item.id),
                                                         );
                                                       },
                                                       child: const Text('Editar Mesa'),
@@ -232,7 +232,7 @@ class _TodasMesasState extends State<TodasMesas> {
                                                                       const SizedBox(width: 10),
                                                                       TextButton(
                                                                         onPressed: () async {
-                                                                          final res = await _state.excluirMesa(item['id']);
+                                                                          final res = await _state.excluirMesa(item.id);
 
                                                                           if (mounted) {
                                                                             Navigator.pop(context);

@@ -13,22 +13,23 @@ class Temporizador {
     return (int.parse(hora) * 60 * 60 + int.parse(minuto) * 60 + int.parse(segungo));
   }
 
-  // int converterDataParaSegundo(String value) {
-  //   DateTime dataAbertura = DateTime.parse(value);
-  //   DateTime dataAtual = DateTime.now();
+  int converterDataParaSegundo(String value) {
+    final DateTime dataComparacao = DateTime.parse('1971-01-01');
 
-  //   int diferencaEmDias = (dataAtual.difference(dataAbertura).inDays - 1) * 24;
+    DateTime data = DateTime.parse(value);
 
-  //   return converterParaSegundo('$diferencaEmDias:00:00');
-  // }
+    int diferencaEmDias = (data.difference(dataComparacao).inDays - 1) * 24;
 
-  int retornarDiferenca(int horaCadastro, int horaAtual) {
+    return converterParaSegundo('$diferencaEmDias:00:00');
+  }
+
+  int retornarDiferenca(int horaAbertura, int horaAtual) {
     late final int diferenca;
 
-    if (horaCadastro >= horaAtual) {
-      diferenca = horaCadastro - horaAtual;
+    if (horaAbertura >= horaAtual) {
+      diferenca = horaAbertura - horaAtual;
     } else {
-      diferenca = horaAtual - horaCadastro;
+      diferenca = horaAtual - horaAbertura;
     }
 
     return diferenca;
@@ -50,16 +51,25 @@ class Temporizador {
     return ('$hora:$minuto:$segundo');
   }
 
-  String main(
-    String hora,
-    // String data,
-  ) {
-    final horaCadastro = converterParaSegundo(hora);
-    // final dataCadastro = converterDataParaSegundo(data);
-    final horaAtual = converterParaSegundo(DateFormat.Hms().format(DateTime.now()));
+  String main(String hora, String data) {
+    // final horaAbertura = converterParaSegundo(hora);
+    // // final dataCadastro = converterDataParaSegundo(data);
+    // final horaAtual = converterParaSegundo(DateFormat.Hms().format(DateTime.now()));
 
+    // // final diferenca = retornarDiferenca(horaCadastro + dataCadastro, horaAtual);
+    // final diferenca = retornarDiferenca(horaAbertura, horaAtual);
+
+    // final horaFormatada = converterParaHora(diferenca);
+
+    // return horaFormatada;
+
+    final horaAbertura = converterParaSegundo(hora);
+    final dataAbertura = converterDataParaSegundo(data);
+    final horaAtual = converterParaSegundo(DateFormat.Hms().format(DateTime.now()));
+    final dataAtual = converterDataParaSegundo(DateTime.now().toString());
     // final diferenca = retornarDiferenca(horaCadastro + dataCadastro, horaAtual);
-    final diferenca = retornarDiferenca(horaCadastro, horaAtual);
+    // final diferenca = retornarDiferenca(horaAbertura, horaAtual);
+    final diferenca = retornarDiferenca(horaAbertura + dataAbertura, horaAtual + dataAtual);
 
     final horaFormatada = converterParaHora(diferenca);
 
