@@ -65,21 +65,28 @@ class _NovaComandaState extends State<NovaComanda> {
                 onPressed: () async {
                   if (nomeController.text.isEmpty) return;
 
-                  late final bool res;
-
                   if (widget.editar) {
-                    res = await _state.editarComanda(widget.id!, nomeController.text);
+                    await _state.editarComanda(widget.id!, nomeController.text).then((sucesso) {
+                      if (mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: sucesso ? Text(widget.editar ? 'Comanda Editada' : 'Comanda Cadastrada') : const Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    });
                   } else {
-                    res = await _state.cadastrarComanda(nomeController.text);
-                  }
-
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: res ? Text(widget.editar ? 'Comanda Editada' : 'Comanda Cadastrada') : const Text('Ocorreu um erro'),
-                      showCloseIcon: true,
-                    ));
+                    await _state.cadastrarComanda(nomeController.text).then((sucesso) {
+                      if (mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: sucesso ? Text(widget.editar ? 'Comanda Editada' : 'Comanda Cadastrada') : const Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    });
                   }
                 },
                 child: const SizedBox(

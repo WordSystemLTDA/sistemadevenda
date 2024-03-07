@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:app/src/features/mesas/interactor/models/mesa_modelo.dart';
-import 'package:app/src/shared/utils/temporizador.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -14,18 +13,18 @@ class CardMesaOcupada extends StatefulWidget {
 }
 
 class _CardMesaOcupadaState extends State<CardMesaOcupada> {
-  late StreamController<String> _timeStreamController;
-  late Stream<String> _timeStream;
+  // late StreamController<String> _timeStreamController;
+  // late Stream<String> _timeStream;
 
-  final Temporizador temporizador = Temporizador();
+  // final Temporizador temporizador = Temporizador();
 
   void _updateTime() {
     Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        _timeStreamController.add(temporizador.main(
-          widget.item.horaAbertura,
-          widget.item.dataAbertura,
-        ));
+        // _timeStreamController.add(temporizador.main(
+        //   widget.item.horaAbertura,
+        //   widget.item.dataAbertura,
+        // ));
       } else {
         timer.cancel();
       }
@@ -36,8 +35,8 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
   void initState() {
     super.initState();
 
-    _timeStreamController = StreamController<String>();
-    _timeStream = _timeStreamController.stream;
+    // _timeStreamController = StreamController<String>();
+    // _timeStream = _timeStreamController.stream;
 
     if (widget.item.mesaOcupada) {
       _updateTime();
@@ -86,40 +85,40 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                   ),
                 ],
               ),
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  StreamBuilder<String>(
-                    stream: _timeStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        String formattedTime = snapshot.data!;
+                  // StreamBuilder<String>(
+                  //   stream: _timeStream,
+                  //   builder: (context, snapshot) {
+                  //     if (snapshot.hasData) {
+                  //       String formattedTime = snapshot.data!;
 
-                        return Row(
-                          children: [
-                            const Icon(Icons.watch_later_outlined, size: 14, color: Colors.black),
-                            const SizedBox(width: 5),
-                            Text(
-                              formattedTime,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return const Text(
-                          'Carregando...',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 15),
+                  //       return Row(
+                  //         children: [
+                  //           const Icon(Icons.watch_later_outlined, size: 14, color: Colors.black),
+                  //           const SizedBox(width: 5),
+                  //           Text(
+                  //             formattedTime,
+                  //             style: const TextStyle(
+                  //               color: Colors.black,
+                  //               fontSize: 14,
+                  //             ),
+                  //           ),
+                  //         ],
+                  //       );
+                  //     } else {
+                  //       return const Text(
+                  //         'Carregando...',
+                  //         style: TextStyle(
+                  //           color: Colors.black,
+                  //           fontSize: 14,
+                  //         ),
+                  //       );
+                  //     }
+                  //   },
+                  // ),
+                  SizedBox(width: 15),
                 ],
               ),
             ],

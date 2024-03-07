@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/features/cardapio/interactor/models/adicional_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/acompanhamentos_modelo.dart';
 
 class ItemComandaModelo {
   final String id;
@@ -10,6 +11,8 @@ class ItemComandaModelo {
   num quantidade;
   bool estaExpandido;
   final List<AdicionalModelo> listaAdicionais;
+  final List<AcompanhamentosModelo> listaAcompanhamentos;
+  final String tamanhoSelecionado;
 
   ItemComandaModelo({
     required this.id,
@@ -19,6 +22,8 @@ class ItemComandaModelo {
     required this.quantidade,
     required this.estaExpandido,
     required this.listaAdicionais,
+    required this.listaAcompanhamentos,
+    required this.tamanhoSelecionado,
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +35,8 @@ class ItemComandaModelo {
       'quantidade': quantidade,
       'estaExpandido': estaExpandido,
       'listaAdicionais': listaAdicionais.map((x) => x.toMap()).toList(),
+      'listaAcompanhamentos': listaAcompanhamentos.map((x) => x.toMap()).toList(),
+      'tamanhoSelecionado': tamanhoSelecionado,
     };
   }
 
@@ -42,10 +49,16 @@ class ItemComandaModelo {
       quantidade: map['quantidade'] as num,
       estaExpandido: map['estaExpandido'] as bool,
       listaAdicionais: List<AdicionalModelo>.from(
-        (map['listaAdicionais'] as List<int>).map<AdicionalModelo>(
+        (map['listaAdicionais'] as List<dynamic>).map<AdicionalModelo>(
           (x) => AdicionalModelo.fromMap(x as Map<String, dynamic>),
         ),
       ),
+      listaAcompanhamentos: List<AcompanhamentosModelo>.from(
+        (map['listaAcompanhamentos'] as List<dynamic>).map<AcompanhamentosModelo>(
+          (x) => AcompanhamentosModelo.fromMap(x as Map<String, dynamic>),
+        ),
+      ),
+      tamanhoSelecionado: map['tamanhoSelecionado'] as String,
     );
   }
 

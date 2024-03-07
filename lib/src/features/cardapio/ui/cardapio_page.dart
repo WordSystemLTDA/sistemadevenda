@@ -1,7 +1,5 @@
 import 'package:app/src/features/cardapio/interactor/states/categorias_state.dart';
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
-import 'package:app/src/features/cardapio/interactor/states/produtos_state.dart';
-import 'package:app/src/features/cardapio/ui/itens_comanda_page.dart';
 import 'package:app/src/features/cardapio/ui/widgets/busca_mesas.dart';
 import 'package:app/src/features/cardapio/ui/widgets/tab_custom.dart';
 import 'package:app/src/shared/widgets/custom_physics_tabview.dart';
@@ -21,7 +19,6 @@ class CardapioPage extends StatefulWidget {
 class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMixin {
   final ItensComandaState _stateItensComanda = ItensComandaState();
   final CategortiaState _stateCategorias = CategortiaState();
-  late final ProdutoState _stateProdutos;
 
   late TabController _tabController;
 
@@ -41,7 +38,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
     super.initState();
 
     listarCategorias();
-
     listarComandasPedidos();
   }
 
@@ -53,9 +49,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    var size = MediaQuery.of(context).size;
-    final double itemWidth = size.width / 3;
-
     return ValueListenableBuilder(
       valueListenable: categoriaState,
       builder: (context, value, child) {
@@ -68,27 +61,17 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
         _tabController.addListener(() => indexTabBar = _tabController.index);
 
         return Scaffold(
-          // floatingActionButton: Badge(
-          //   label: Text('12'),
-          //   isLabelVisible: true,
-          //   child: Icon(
-          //     Icons.shopping_cart,
-          //     size: 40,
-          //   ),
-          // ),
           floatingActionButton: ValueListenableBuilder(
             valueListenable: itensComandaState,
             builder: (context, value, child) => FloatingActionButton(
               onPressed: () {
-                Modular.to.push(
-                  MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
-                );
+                Modular.to.pushNamed('/cardapio/carrinho/${widget.idComanda!}/${widget.idMesa}');
               },
               shape: const CircleBorder(),
               child: Badge(
-                largeSize: 30,
-                textStyle: const TextStyle(fontSize: 15),
-                padding: value.quantidadeTotal < 10 ? const EdgeInsets.symmetric(vertical: 5, horizontal: 10) : const EdgeInsets.all(5),
+                largeSize: 25,
+                textStyle: const TextStyle(fontSize: 16),
+                padding: value.quantidadeTotal < 10 ? const EdgeInsets.symmetric(vertical: 0, horizontal: 9) : const EdgeInsets.all(5),
                 offset: const Offset(20, -20),
                 label: Text(value.quantidadeTotal.toStringAsFixed(0)),
                 isLabelVisible: true,
@@ -99,72 +82,6 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
               ),
             ),
           ),
-          // bottomNavigationBar: ValueListenableBuilder(
-          //   valueListenable: itensComandaState,
-          //   builder: (context, value, child) => Visibility(
-          //     visible: true,
-          //     child: Material(
-          //       color: const Color.fromARGB(255, 61, 61, 61),
-          //       child: InkWell(
-          //         onTap: () {
-          //           Modular.to.push(
-          //             MaterialPageRoute(builder: (context) => ItensComandaPage(idComanda: widget.idComanda!, idMesa: widget.idMesa)),
-          //           );
-          //           // Navigator.push(
-          //           //   context,
-          //           //   MaterialPageRoute(
-          //           //     builder: (context) => ItensComandaPage(idComanda: widget.idComanda!),
-          //           //   ),
-          //           // );
-          //         },
-          //         child: SizedBox(
-          //           height: kToolbarHeight,
-          //           width: double.infinity,
-          //           child: Row(
-          //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //             children: [
-          //               SizedBox(
-          //                 width: itemWidth,
-          //                 child: Padding(
-          //                   padding: const EdgeInsets.only(left: 30),
-          //                   child: Row(
-          //                     children: [
-          //                       const Icon(Icons.balance, size: 18, color: Colors.white),
-          //                       const SizedBox(width: 8),
-          //                       Text(
-          //                         value.quantidadeTotal.toStringAsFixed(0),
-          //                         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          //                         textAlign: TextAlign.left,
-          //                       ),
-          //                     ],
-          //                   ),
-          //                 ),
-          //               ),
-          //               SizedBox(
-          //                 width: itemWidth,
-          //                 child: const Text(
-          //                   'Ver itens',
-          //                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          //                   textAlign: TextAlign.center,
-          //                 ),
-          //               ),
-          //               Container(
-          //                 width: itemWidth,
-          //                 padding: const EdgeInsets.only(right: 30),
-          //                 child: Text('R\$ ${value.precoTotal.toStringAsFixed(2).replaceAll('.', ',')}',
-          //                     style: const TextStyle(
-          //                       fontWeight: FontWeight.bold,
-          //                       color: Colors.white,
-          //                     ),
-          //                     textAlign: TextAlign.right),
-          //               ),
-          //             ],
-          //           ),
-          //         ),
-          //       ),
-          //     ),
-          //   ),
-          // ),
           appBar: AppBar(
             automaticallyImplyLeading: false,
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -183,6 +100,7 @@ class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMix
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
                       controller: _tabController,
                       tabAlignment: TabAlignment.start,
                       isScrollable: true,

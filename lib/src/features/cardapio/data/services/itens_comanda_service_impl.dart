@@ -1,5 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:app/src/features/produto/interactor/modelos/acompanhamentos_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/adicionais_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/tamanhos_modelo.dart';
 import 'package:app/src/shared/services/api.dart';
 import 'package:app/src/shared/shared_prefs/shared_prefs_config.dart';
 import 'package:dio/dio.dart';
@@ -21,16 +25,6 @@ class ItensComandaServiceImpl {
     if (response.statusCode == 200) return response.data;
 
     return [];
-
-    //     if (response.statusCode == 200) {
-    //   return List<CategoriaModel>.from(
-    //     response.data.map((elemento) {
-    //       return CategoriaModel.fromMap(elemento);
-    //     }),
-    //   );
-    // } else {
-    //   return Future.error("Ops! Um erro ocorreu.");
-    // }
   }
 
   Future<bool> removerComandasPedidos(List<String> listaIdItemComanda) async {
@@ -50,7 +44,19 @@ class ItensComandaServiceImpl {
     return false;
   }
 
-  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais) async {
+  Future<bool> inserir(
+    tipo,
+    idMesa,
+    idComanda,
+    valor,
+    observacaoMesa,
+    idProduto,
+    quantidade,
+    observacao,
+    List<AdicionaisModelo> listaAdicionais,
+    List<AcompanhamentosModelo> listaAcompanhamentos,
+    TamanhosModelo? tamanhoSelecionado,
+  ) async {
     final conexao = await Apis().getConexao();
     if (conexao == null) return false;
     final url = '${conexao['servidor']}pedidos/inserir.php';
@@ -70,6 +76,8 @@ class ItensComandaServiceImpl {
         'quantidade': quantidade,
         'observacao': observacao,
         'listaAdicionais': [...listaAdicionais.map((e) => e.toMap())],
+        'listaAcompanhamentos': [...listaAcompanhamentos.map((e) => e.toMap())],
+        'tamanhoSelecionado': tamanhoSelecionado != null ? tamanhoSelecionado.id : 0,
         'idUsuario': idUsuario,
         'empresa': empresa,
       }),

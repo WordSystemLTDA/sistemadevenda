@@ -14,7 +14,7 @@ class ComandasModel {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'titulo': titulo,
-      'comandas': comandas!.map((x) => x?.toMap()).toList(),
+      'comandas': comandas!.map((x) => x.toMap()).toList(),
     };
   }
 

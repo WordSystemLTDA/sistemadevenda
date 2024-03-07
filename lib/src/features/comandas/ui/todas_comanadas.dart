@@ -157,22 +157,20 @@ class _TodasComandasState extends State<TodasComandas> {
                                                   width: 50,
                                                   child: InkWell(
                                                       onTap: () async {
-                                                        final res = await _state.editarAtivo(item.id, item.ativo == 'Sim' ? 'Não' : 'Sim');
-
-                                                        if (mounted && !res) {
-                                                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text('Ocorreu um erro!'),
-                                                              showCloseIcon: true,
-                                                            ),
-                                                          );
-                                                        }
+                                                        await _state.editarAtivo(item.id, item.ativo == 'Sim' ? 'Não' : 'Sim').then((sucesso) {
+                                                          if (mounted && !sucesso) {
+                                                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                            ScaffoldMessenger.of(context).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text('Ocorreu um erro!'),
+                                                                showCloseIcon: true,
+                                                              ),
+                                                            );
+                                                          }
+                                                        });
                                                       },
                                                       borderRadius: const BorderRadius.only(topRight: Radius.circular(8)),
-                                                      child: item.ativo == 'Sim'
-                                                          ? const Icon(Icons.check_box_outlined)
-                                                          : const Icon(Icons.check_box_outline_blank_rounded)),
+                                                      child: item.ativo == 'Sim' ? const Icon(Icons.check_box_outlined) : const Icon(Icons.check_box_outline_blank_rounded)),
                                                 ),
                                               ),
                                               Expanded(
@@ -232,21 +230,21 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                       const SizedBox(width: 10),
                                                                       TextButton(
                                                                         onPressed: () async {
-                                                                          final res = await _state.excluirComanda(item.id);
+                                                                          await _state.excluirComanda(item.id).then((value) {
+                                                                            if (mounted) {
+                                                                              Navigator.pop(context);
+                                                                            }
 
-                                                                          if (mounted) {
-                                                                            Navigator.pop(context);
-                                                                          }
-
-                                                                          if (mounted && !res['sucesso']) {
-                                                                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                                            ScaffoldMessenger.of(context).showSnackBar(
-                                                                              SnackBar(
-                                                                                content: Text(res['mensagem'] ?? 'Ocorreu um erro!'),
-                                                                                showCloseIcon: true,
-                                                                              ),
-                                                                            );
-                                                                          }
+                                                                            if (mounted && !value['sucesso']) {
+                                                                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                                                SnackBar(
+                                                                                  content: Text(value['mensagem'] ?? 'Ocorreu um erro!'),
+                                                                                  showCloseIcon: true,
+                                                                                ),
+                                                                              );
+                                                                            }
+                                                                          });
                                                                         },
                                                                         child: const Text('excluir'),
                                                                       ),

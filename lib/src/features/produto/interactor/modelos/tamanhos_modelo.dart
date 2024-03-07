@@ -1,21 +1,17 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-class AdicionaisModelo {
+class TamanhosModelo {
   final String id;
   final String nome;
   final String valor;
   final String foto;
-  bool estaSelecionado;
-  int quantidade;
 
-  AdicionaisModelo({
+  TamanhosModelo({
     required this.id,
     required this.nome,
     required this.valor,
     required this.foto,
-    required this.quantidade,
-    required this.estaSelecionado,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,23 +20,19 @@ class AdicionaisModelo {
       'nome': nome,
       'valor': valor,
       'foto': foto,
-      'quantidade': quantidade,
-      'estaSelecionado': estaSelecionado,
     };
   }
 
-  factory AdicionaisModelo.fromMap(Map<String, dynamic> map) {
-    return AdicionaisModelo(
+  factory TamanhosModelo.fromMap(Map<String, dynamic> map) {
+    return TamanhosModelo(
       id: map['id'] as String,
       nome: map['nome'] as String,
       valor: map['valor'] as String,
       foto: map['foto'] as String,
-      quantidade: map['quantidade'] as int,
-      estaSelecionado: map['estaSelecionado'] as bool,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory AdicionaisModelo.fromJson(String source) => AdicionaisModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory TamanhosModelo.fromJson(String source) => TamanhosModelo.fromMap(json.decode(source) as Map<String, dynamic>);
 }

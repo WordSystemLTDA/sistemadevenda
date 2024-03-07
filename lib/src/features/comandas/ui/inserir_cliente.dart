@@ -38,24 +38,26 @@ class _InserirClienteState extends State<InserirCliente> {
             return;
           }
 
-          final res = await _state.inserirCliente(
+          await _state
+              .inserirCliente(
             nomeController.text,
             celularController.text,
             emailController.text,
             obsController.text,
-          );
+          )
+              .then((sucesso) {
+            if (mounted && sucesso) {
+              Navigator.pop(context);
+            }
 
-          if (mounted && res) {
-            Navigator.pop(context);
-          }
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: res ? const Text('Cliente Cadastrado') : const Text('Ocorreu um erro'),
-              showCloseIcon: true,
-            ));
-          }
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: sucesso ? const Text('Cliente Cadastrado') : const Text('Ocorreu um erro'),
+                showCloseIcon: true,
+              ));
+            }
+          });
         },
         label: const Row(
           children: [

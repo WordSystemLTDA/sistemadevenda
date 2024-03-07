@@ -25,21 +25,24 @@ class _BuscaMesasState extends State<BuscaMesas> {
       builder: (BuildContext context, SearchController controller) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: TextField(
-            readOnly: true,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              filled: true,
-              fillColor: Colors.white,
-              hintText: 'Pesquisar...',
-              prefixIcon: IconButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.arrow_back_outlined),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: TextField(
+              readOnly: true,
+              decoration: InputDecoration(
+                filled: true,
+                border: InputBorder.none,
+                fillColor: Colors.white,
+                hintText: 'Pesquisar...',
+                prefixIcon: IconButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.arrow_back_outlined),
+                ),
               ),
+              onTap: () => _searchController.openView(),
             ),
-            onTap: () => _searchController.openView(),
           ),
         );
       },
@@ -47,14 +50,16 @@ class _BuscaMesasState extends State<BuscaMesas> {
         final keyword = controller.value.text;
         final res = await _state.listarProdutosPorNome(keyword);
         return [
-          ...res.map((e) => CardProduto(
-                estaPesquisando: true,
-                searchController: controller,
-                item: e,
-                tipo: widget.tipo,
-                idComanda: widget.idComanda,
-                idMesa: widget.idMesa,
-              )),
+          ...res.map(
+            (e) => CardProduto(
+              estaPesquisando: true,
+              searchController: controller,
+              item: e,
+              tipo: widget.tipo,
+              idComanda: widget.idComanda,
+              idMesa: widget.idMesa,
+            ),
+          ),
         ];
       },
     );

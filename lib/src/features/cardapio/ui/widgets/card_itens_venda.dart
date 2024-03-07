@@ -1,5 +1,7 @@
+import 'package:app/src/features/cardapio/interactor/models/adicional_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/models/item_Comanda_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/states/itens_comanda_state.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
 class CardItensVenda extends StatefulWidget {
@@ -58,6 +60,20 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    var item = widget.item;
+
+    var soma = item.listaAdicionais.fold(
+      AdicionalModelo(id: '', nome: '', valorAdicional: 0, quantidade: 0),
+      (previousValue, element) {
+        return AdicionalModelo(
+          id: '',
+          nome: '',
+          valorAdicional: (previousValue.valorAdicional + (element.valorAdicional * element.quantidade)),
+          quantidade: 0,
+        );
+      },
+    );
+
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(5),
@@ -66,110 +82,105 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 100,
+            height: 115,
             child: InkWell(
               onTap: () {
                 _expandOnChanged();
               },
               child: Padding(
                 padding: const EdgeInsets.all(10.0),
-                child: Row(
+                child: Stack(
                   children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    '${widget.item.quantidade.toStringAsFixed(0)}x ${widget.item.nome} ',
-                                    // item.nome,
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w500,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  '${widget.item.quantidade.toStringAsFixed(0)}x ${widget.item.nome} ',
+                                  // item.nome,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 30),
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 10),
-                                  child: Text(
-                                    'R\$ ${(widget.item.valor * widget.item.quantidade).toStringAsFixed(2).replaceAll('.', ',')}',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w500,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    maxLines: 1,
-                                  ),
+                              ),
+                              const SizedBox(width: 30),
+                              Text(
+                                ((widget.item.valor + soma.valorAdicional) * widget.item.quantidade).obterReal(),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w500,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
-                              ],
-                            ),
+                                maxLines: 1,
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                TextButton(
-                                  onPressed: () {},
-                                  child: const Row(
-                                    children: [
-                                      Icon(Icons.edit, size: 18),
-                                      SizedBox(width: 5),
-                                      Text('Editar'),
-                                    ],
+                        ),
+                        Text(item.tamanhoSelecionado),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: GestureDetector(
+                                  onTap: () {},
+                                  child: const Text(
+                                    'Editar',
+                                    style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w500),
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: widget.item.quantidade <= 1
-                                          ? const Icon(Icons.delete_outline_outlined)
-                                          : const Icon(Icons.remove_circle_outline_outlined),
-                                      onPressed: () {
-                                        if (widget.item.quantidade <= 1) {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => Dialog(
-                                              child: ListView(
-                                                padding: const EdgeInsets.all(20),
-                                                shrinkWrap: true,
-                                                children: [
-                                                  const Text(
-                                                    'Deseja realmente excluir?',
-                                                    style: TextStyle(fontSize: 20),
-                                                  ),
-                                                  const SizedBox(height: 15),
-                                                  Expanded(
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.end,
-                                                      children: [
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(context);
-                                                          },
-                                                          child: const Text('Carcelar'),
-                                                        ),
-                                                        const SizedBox(width: 10),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            final res = await state.removerComandasPedidos(
-                                                              widget.idComanda,
-                                                              widget.idMesa,
-                                                              [widget.item.id],
-                                                            );
-
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: widget.item.quantidade <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
+                                    onPressed: () {
+                                      if (widget.item.quantidade <= 1) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => Dialog(
+                                            child: ListView(
+                                              padding: const EdgeInsets.all(20),
+                                              shrinkWrap: true,
+                                              children: [
+                                                const Text(
+                                                  'Deseja realmente excluir?',
+                                                  style: TextStyle(fontSize: 20),
+                                                ),
+                                                const SizedBox(height: 15),
+                                                Expanded(
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.end,
+                                                    children: [
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.pop(context);
+                                                        },
+                                                        child: const Text('Carcelar'),
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      TextButton(
+                                                        onPressed: () async {
+                                                          await state.removerComandasPedidos(
+                                                            widget.idComanda,
+                                                            widget.idMesa,
+                                                            [widget.item.id],
+                                                          ).then((sucesso) {
                                                             if (mounted) {
                                                               Navigator.pop(context);
                                                             }
 
-                                                            if (res) return;
+                                                            if (sucesso) return;
 
                                                             if (mounted) {
                                                               ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -178,82 +189,64 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
                                                                 showCloseIcon: true,
                                                               ));
                                                             }
-                                                          },
-                                                          child: const Text('excluir'),
-                                                        ),
-                                                      ],
-                                                    ),
+                                                          });
+                                                        },
+                                                        child: const Text('excluir'),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
-                                          );
-                                        } else {
-                                          widget.setarQuantidade(false);
-                                          // setState(() => --widget.item.quantidade);
-
-                                          // double precoTotal = 0;
-                                          // widget.value.listaComandosPedidos.map((e) {
-                                          //   precoTotal += e.valor * e.quantidade;
-
-                                          //   e.listaAdicionais.map((el) => precoTotal += el.valorAdicional * el.quantidade).toList();
-                                          // }).toList();
-
-                                          // setState(() => widget.value.precoTotal = precoTotal);
-                                        }
-                                      },
+                                          ),
+                                        );
+                                      } else {
+                                        widget.setarQuantidade(false);
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 10),
+                                  SizedBox(
+                                    width: 30,
+                                    child: Text(
+                                      widget.item.quantidade.toStringAsFixed(0),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 16),
                                     ),
-                                    const SizedBox(width: 10),
-                                    SizedBox(
-                                      width: 30,
-                                      child: Text(
-                                        widget.item.quantidade.toStringAsFixed(0),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 16),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    IconButton(
-                                      icon: const Icon(Icons.add_circle_outline_outlined),
-                                      onPressed: () {
-                                        widget.setarQuantidade(true);
-
-                                        // setState(() => widget.item.quantidade++);
-
-                                        // double precoTotal = 0;
-                                        // widget.value.listaComandosPedidos.map((e) {
-                                        //   precoTotal += e.valor * e.quantidade;
-
-                                        //   e.listaAdicionais.map((el) => precoTotal += el.valorAdicional * el.quantidade).toList();
-                                        // }).toList();
-
-                                        // setState(() => widget.value.precoTotal = precoTotal);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 20,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        transitionBuilder: (child, anim) => RotationTransition(
-                          turns: child.key == const ValueKey('icon1')
-                              ? Tween<double>(begin: 0.75, end: 1).animate(anim)
-                              : Tween<double>(begin: 1, end: 1).animate(anim),
-                          child: ScaleTransition(scale: anim, child: child),
-                        ),
-                        child: _isExpanded
-                            ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
-                            : const Icon(
-                                Icons.keyboard_arrow_up_outlined,
-                                key: ValueKey('icon2'),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline_outlined),
+                                    onPressed: () {
+                                      widget.setarQuantidade(true);
+                                    },
+                                  ),
+                                ],
                               ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SizedBox(
+                        width: 20,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          transitionBuilder: (child, anim) => RotationTransition(
+                            turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                            child: ScaleTransition(scale: anim, child: child),
+                          ),
+                          child: _isExpanded
+                              ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
+                              : const Icon(
+                                  Icons.keyboard_arrow_up_outlined,
+                                  key: ValueKey('icon2'),
+                                ),
+                        ),
                       ),
                     ),
                   ],
@@ -266,20 +259,57 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.item.listaAdicionais.isNotEmpty) ...[
-                  const Divider(height: 1),
+                const Divider(height: 1),
+                if (item.tamanhoSelecionado != '') ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10, bottom: 10),
+                    child: Text(item.tamanhoSelecionado),
+                  )
+                ],
+                if (item.listaAcompanhamentos.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  ListView.builder(
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: item.listaAcompanhamentos.length,
+                    itemBuilder: (context, index) {
+                      final adicional = item.listaAcompanhamentos[index];
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            adicional.nome,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          Text(
+                            double.parse(adicional.valor) == 0 ? 'Grátis' : double.parse(adicional.valor).toString(),
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+                if (item.listaAdicionais.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, top: 0),
                     child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   ListView.builder(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: widget.item.listaAdicionais.length,
+                    itemCount: item.listaAdicionais.length,
                     itemBuilder: (context, index) {
-                      final adicional = widget.item.listaAdicionais[index];
-
+                      final adicional = item.listaAdicionais[index];
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -288,7 +318,7 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
                             style: const TextStyle(fontSize: 15),
                           ),
                           Text(
-                            'R\$ ${(adicional.valorAdicional * adicional.quantidade).toStringAsFixed(2).replaceAll('.', ',')}',
+                            (adicional.valorAdicional * adicional.quantidade).obterReal(),
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],
@@ -296,6 +326,49 @@ class _CardItensVendaState extends State<CardItensVenda> with TickerProviderStat
                     },
                   ),
                 ],
+                Padding(
+                  padding: EdgeInsets.only(left: 10, top: item.listaAdicionais.isEmpty ? 10 : 0),
+                  child: const Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Produto'),
+                          Text(
+                            "${item.quantidade > 1 ? '${item.quantidade}x de' : ''} ${item.valor.obterReal()}",
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      if (soma.valorAdicional > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Adicionais'),
+                            Text(
+                              "${item.quantidade > 1 && soma.valorAdicional > 0 ? '${item.quantidade}x de' : ''} ${soma.valorAdicional.obterReal()}",
+                              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ],
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total'),
+                          Text(
+                            ((item.valor + soma.valorAdicional) * item.quantidade).obterReal(),
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

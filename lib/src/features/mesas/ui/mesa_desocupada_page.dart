@@ -31,19 +31,19 @@ class _MesaDesocupadaPageState extends State<MesaDesocupadaPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final res = await _state.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text);
+          await _state.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text).then((sucesso) {
+            if (mounted) {
+              Navigator.pop(context);
+            }
 
-          if (mounted) {
-            Navigator.pop(context);
-          }
-
-          if (mounted && !res) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Ocorreu um erro'),
-              showCloseIcon: true,
-            ));
-          }
+            if (mounted && !sucesso) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Ocorreu um erro'),
+                showCloseIcon: true,
+              ));
+            }
+          });
         },
         label: const Row(
           children: [

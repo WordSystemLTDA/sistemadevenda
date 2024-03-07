@@ -1,5 +1,4 @@
 import 'package:app/src/features/comandas/interactor/states/comandas_state.dart';
-import 'package:app/src/features/comandas/ui/inserir_cliente.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -33,25 +32,26 @@ class _ComandaDesocupadaPageState extends State<ComandaDesocupadaPage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final res = await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text);
+          await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
+            if (mounted) {
+              if (sucesso) {
+                Modular.to.pop();
+                Modular.to.pushNamed('/cardapio/Comanda/${widget.id}/0');
+              }
 
-          if (mounted) {
-            if (res) {
-              Navigator.pop(context);
+              if (!sucesso) {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Ocorreu um erro'),
+                  showCloseIcon: true,
+                ));
+              }
             }
-
-            if (!res) {
-              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Ocorreu um erro'),
-                showCloseIcon: true,
-              ));
-            }
-          }
+          });
         },
         label: const Row(
           children: [
-            Text('Salvar'),
+            Text('Abrir Comanda'),
             SizedBox(width: 10),
             Icon(Icons.check),
           ],
@@ -130,7 +130,7 @@ class _ComandaDesocupadaPageState extends State<ComandaDesocupadaPage> {
                       hintText: 'Selecione o Cliente',
                       suffixIcon: IconButton(
                         onPressed: () {
-                          Modular.to.push(MaterialPageRoute(builder: (context) => const InserirCliente()));
+                          Modular.to.pushNamed('/inserirCliente');
                         },
                         icon: const Icon(Icons.add),
                       ),
@@ -142,22 +142,24 @@ class _ComandaDesocupadaPageState extends State<ComandaDesocupadaPage> {
                   final keyword = controller.value.text;
                   final res = await _state.listarClientes(keyword);
                   return [
-                    ...res.map((e) => Card(
-                          elevation: 3.0,
-                          margin: const EdgeInsets.all(5.0),
-                          child: InkWell(
-                            onTap: () {
-                              _clienteSearchController.closeView(e['nome']);
-                              idCliente = e['id'];
-                            },
-                            borderRadius: const BorderRadius.all(Radius.circular(8)),
-                            child: ListTile(
-                              leading: const Icon(Icons.person_2_outlined),
-                              title: Text(e['nome']),
-                              subtitle: Text('ID: ${e['id']}'),
-                            ),
+                    ...res.map(
+                      (e) => Card(
+                        elevation: 3.0,
+                        margin: const EdgeInsets.all(5.0),
+                        child: InkWell(
+                          onTap: () {
+                            _clienteSearchController.closeView(e['nome']);
+                            idCliente = e['id'];
+                          },
+                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          child: ListTile(
+                            leading: const Icon(Icons.person_2_outlined),
+                            title: Text(e['nome']),
+                            subtitle: Text('ID: ${e['id']}'),
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
                   ];
                 },
               ),

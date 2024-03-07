@@ -4,7 +4,11 @@ class Temporizador {
   int converterParaSegundo(String value) {
     final tempo = value.split(':');
 
-    final duracao = Duration(hours: int.parse(tempo[0]), minutes: int.parse(tempo[1]), seconds: int.parse(tempo[2]));
+    var horas = int.tryParse(tempo[0]) ?? 0;
+    var minutos = int.tryParse(tempo[1]) ?? 0;
+    var segundos = int.tryParse(tempo[2]) ?? 0;
+
+    final duracao = Duration(hours: horas, minutes: minutos, seconds: segundos);
 
     String hora = duracao.inHours.toString().padLeft(0, '2');
     String minuto = duracao.inMinutes.remainder(60).toString().padLeft(2, '0');

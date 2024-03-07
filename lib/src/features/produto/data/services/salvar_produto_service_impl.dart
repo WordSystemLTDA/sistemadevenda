@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'package:app/src/features/produto/interactor/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/features/produto/interactor/modelos/adicionais_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/tamanhos_modelo.dart';
 import 'package:app/src/shared/services/api.dart';
 import 'package:dio/dio.dart';
 
@@ -14,30 +15,46 @@ class SalvarProdutoService {
   Future<List<AdicionaisModelo>> listarAdicionais(String id) async {
     final conexao = await Apis().getConexao();
     if (conexao == null) return [];
-    final url = '${conexao['servidor']}/produtos/listar_adicionais.php?id=$id';
+    final url = '${conexao['servidor']}/produtos/listar_adicionais.php?produto=$id';
 
-    final response = await dio.get(
-      url,
-      options: Options(headers: {
-        HttpHeaders.contentTypeHeader: 'application/json',
-      }),
-    );
+    final response = await dio.get(url);
 
-    final dados = response.data;
+    if (response.data.isNotEmpty) {
+      return List<AdicionaisModelo>.from(response.data.map((e) {
+        return AdicionaisModelo.fromMap(e);
+      }));
+    }
 
-    if (dados.isNotEmpty) {
-      return [
-        ...dados.map(
-          (e) => AdicionaisModelo(
-            id: e['id'],
-            nome: e['nome'],
-            valor: e['valor'],
-            foto: e['foto'],
-            quantidade: 1,
-            estaSelecionado: false,
-          ),
-        ),
-      ];
+    return [];
+  }
+
+  Future<List<AcompanhamentosModelo>> listarAcompanhamentos(String id) async {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}/produtos/listar_acompanhamentos.php?produto=$id';
+
+    final response = await dio.get(url);
+
+    if (response.data.isNotEmpty) {
+      return List<AcompanhamentosModelo>.from(response.data.map((e) {
+        return AcompanhamentosModelo.fromMap(e);
+      }));
+    }
+
+    return [];
+  }
+
+  Future<List<TamanhosModelo>> listarTamanhos(String id) async {
+    final conexao = await Apis().getConexao();
+    if (conexao == null) return [];
+    final url = '${conexao['servidor']}/produtos/listar_tamanhos.php?produto=$id';
+
+    final response = await dio.get(url);
+
+    if (response.data.isNotEmpty) {
+      return List<TamanhosModelo>.from(response.data.map((e) {
+        return TamanhosModelo.fromMap(e);
+      }));
     }
 
     return [];

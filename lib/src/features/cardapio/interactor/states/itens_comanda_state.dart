@@ -2,6 +2,9 @@ import 'package:app/src/features/cardapio/data/services/itens_comanda_service_im
 import 'package:app/src/features/cardapio/interactor/models/adicional_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/models/item_Comanda_modelo.dart';
 import 'package:app/src/features/cardapio/interactor/models/itens_comanda_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/acompanhamentos_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/adicionais_modelo.dart';
+import 'package:app/src/features/produto/interactor/modelos/tamanhos_modelo.dart';
 import 'package:flutter/material.dart';
 
 final ValueNotifier itensComandaState = ValueNotifier(ItensComandaModelo(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0));
@@ -26,6 +29,10 @@ class ItensComandaState {
         valor: double.parse(item['valor']),
         quantidade: num.parse(item['quantidade']),
         estaExpandido: false,
+        listaAcompanhamentos: List<AcompanhamentosModelo>.from(item['listaAcompanhamentos'].map((e) {
+          return AcompanhamentosModelo.fromMap(e);
+        })),
+        tamanhoSelecionado: item['tamanhoSelecionado'],
         listaAdicionais: [
           ...item['listaAdicionais'].map(
             (e) => AdicionalModelo(
@@ -59,10 +66,23 @@ class ItensComandaState {
     return res;
   }
 
-  Future<bool> inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais) async {
-    final res = await _service.inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais);
+  Future<bool> inserir(
+    tipo,
+    idMesa,
+    idComanda,
+    valor,
+    observacaoMesa,
+    idProduto,
+    quantidade,
+    observacao,
+    List<AdicionaisModelo> listaAdicionais,
+    List<AcompanhamentosModelo> listaAcompanhamentos,
+    TamanhosModelo? tamanhoSelecionado,
+  ) async {
+    final res =
+        await _service.inserir(tipo, idMesa, idComanda, valor, observacaoMesa, idProduto, quantidade, observacao, listaAdicionais, listaAcompanhamentos, tamanhoSelecionado);
     if (res) {
-      await listarComandasPedidos(idComanda, idMesa);
+      await listarComandasPedidos(idComanda.toString(), idMesa);
     }
     return res;
   }

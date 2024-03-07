@@ -1,6 +1,5 @@
 import 'package:app/src/features/mesas/interactor/states/mesas_state.dart';
 import 'package:app/src/features/mesas/ui/mesa_desocupada_page.dart';
-import 'package:app/src/features/mesas/ui/todas_mesas.dart';
 import 'package:app/src/features/mesas/ui/widgets/card_mesa_ocupada.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -54,7 +53,7 @@ class _MesasPageState extends State<MesasPage> {
               menuChildren: [
                 MenuItemButton(
                   onPressed: () {
-                    Modular.to.push(MaterialPageRoute(builder: (context) => const TodasMesas()));
+                    Modular.to.pushNamed('/todasMesas');
                   },
                   child: const Row(
                     children: [
