@@ -1,0 +1,150 @@
+import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
+import 'package:app/src/modulos/cardapio/interactor/provedor/cardapio_provedor.dart';
+import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
+import 'package:app/src/modulos/cardapio/ui/pagina_carrinho.dart';
+import 'package:app/src/modulos/cardapio/ui/widgets/busca_mesas.dart';
+import 'package:app/src/modulos/cardapio/ui/widgets/tab_custom.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+
+class CardapioPage extends StatefulWidget {
+  final String? idComanda;
+  final String tipo;
+  final String idMesa;
+  const CardapioPage({super.key, this.idComanda, required this.tipo, required this.idMesa});
+
+  @override
+  State<CardapioPage> createState() => _CardapioPageState();
+}
+
+class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMixin {
+  final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
+  final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
+
+  late TabController _tabController;
+
+  List<String> listaCategorias = [];
+  int indexTabBar = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    listarCategorias();
+    listarComandasPedidos();
+  }
+
+  void listarComandasPedidos() async {
+    await carrinhoProvedor.listarComandasPedidos(widget.idComanda!, widget.idMesa);
+  }
+
+  void listarCategorias() async {
+    cardapioProvedor.listarCategorias();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: cardapioProvedor,
+      builder: (context, _) {
+        _tabController = TabController(
+          initialIndex: indexTabBar,
+          length: cardapioProvedor.categorias.length,
+          vsync: this,
+        );
+
+        _tabController.addListener(() => indexTabBar = _tabController.index);
+
+        return Scaffold(
+          floatingActionButton: AnimatedBuilder(
+            animation: carrinhoProvedor,
+            builder: (context, _) {
+              return FloatingActionButton(
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) {
+                      return PaginaCarrinho(idComanda: widget.idComanda!, idMesa: widget.idMesa);
+                    },
+                  ));
+                },
+                shape: const CircleBorder(),
+                child: Badge(
+                  largeSize: 25,
+                  textStyle: const TextStyle(fontSize: 16),
+                  padding: carrinhoProvedor.itensCarrinho.quantidadeTotal < 10 ? const EdgeInsets.symmetric(vertical: 0, horizontal: 9) : const EdgeInsets.all(5),
+                  offset: const Offset(20, -20),
+                  label: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0)),
+                  isLabelVisible: true,
+                  child: const Icon(
+                    Icons.shopping_cart,
+                    size: 30,
+                  ),
+                ),
+              );
+            },
+          ),
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(50.0),
+              child: Column(
+                children: [
+                  BuscaMesas(
+                    idComanda: widget.idComanda!,
+                    tipo: widget.tipo,
+                    idMesa: widget.idMesa,
+                    // categoria: listaCategorias[indexTabBar] ?? '',
+                    // categoria: '1',
+                  ),
+                  const SizedBox(height: 5),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      controller: _tabController,
+                      tabAlignment: TabAlignment.start,
+                      isScrollable: true,
+                      tabs: [
+                        ...cardapioProvedor.categorias.map((e) => Tab(
+                                child: Text(
+                              e.nomeCategoria.toUpperCase(),
+                              style: const TextStyle(fontSize: 16),
+                            )))
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          body: DefaultTabController(
+            length: cardapioProvedor.categorias.length,
+            child: TabBarView(
+              controller: _tabController,
+              physics: const CustomTabBarViewScrollPhysics(),
+              children: [
+                ...cardapioProvedor.categorias.map((e) {
+                  listaCategorias.add(e.id);
+
+                  return TabCustom(
+                    category: e.id,
+                    idMesa: widget.idMesa,
+                    idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
+                    tipo: widget.tipo,
+                  );
+                })
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
