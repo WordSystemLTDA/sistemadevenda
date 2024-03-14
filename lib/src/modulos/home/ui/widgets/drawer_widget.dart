@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/modulos/comandas/ui/todas_comanadas.dart';
+import 'package:app/src/modulos/login/ui/configuracao_page.dart';
 import 'package:app/src/modulos/login/ui/login_page.dart';
 import 'package:app/src/modulos/mesas/ui/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
@@ -119,6 +120,17 @@ class _DrawerWidgetState extends State<DrawerWidget> with TickerProviderStateMix
                 ),
               ],
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.manage_accounts_outlined),
+            title: const Text('Configurações'),
+            onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) {
+                  return const ConfiguracaoPage();
+                },
+              ));
+            },
           ),
           ListTile(
             leading: const Icon(Icons.edit),
