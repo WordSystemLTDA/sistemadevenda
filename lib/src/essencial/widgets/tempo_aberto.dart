@@ -3,59 +3,49 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class TempoAberto extends StatefulWidget {
-  const TempoAberto({super.key});
+  final TextStyle? textStyle;
+  const TempoAberto({super.key, this.textStyle});
 
   @override
   State<TempoAberto> createState() => _TempoAbertoState();
 }
 
 class _TempoAbertoState extends State<TempoAberto> {
-  late StreamController<DateTime> _timeStreamController;
-  late Stream<DateTime> _timeStream;
+  late Stopwatch stopwatch;
+  late Timer t;
 
   @override
   void initState() {
     super.initState();
-    _timeStreamController = StreamController<DateTime>();
-    _timeStream = _timeStreamController.stream;
-    _updateTime();
+    stopwatch = Stopwatch();
+    stopwatch.start();
+
+    t = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {});
+    });
+  }
+
+  String returnFormattedText() {
+    var milli = stopwatch.elapsed.inMilliseconds;
+
+    String seconds = ((milli ~/ 1000) % 60).toString().padLeft(2, "0"); // this is for the second
+    String minutes = ((milli ~/ 1000) ~/ 60).toString().padLeft(2, "0"); // this is for the minute
+
+    return "$minutes:$seconds";
   }
 
   @override
   void dispose() {
-    _timeStreamController.close();
+    t.cancel();
+    stopwatch.stop();
     super.dispose();
-  }
-
-  void _updateTime() {
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        _timeStreamController.add(DateTime.now());
-      } else {
-        timer.cancel();
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DateTime>(
-      stream: _timeStream,
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          DateTime currentTime = snapshot.data!;
-          String formattedTime = "${currentTime.hour}:${currentTime.minute}:${currentTime.second < 10 ? '0${currentTime.second}' : currentTime.second}";
-          return Text(
-            formattedTime,
-            style: const TextStyle(color: Colors.grey),
-          );
-        } else {
-          return const Text(
-            'Carregando...',
-            style: TextStyle(color: Colors.grey),
-          );
-        }
-      },
+    return Text(
+      returnFormattedText(),
+      style: widget.textStyle ?? const TextStyle(color: Colors.white),
     );
   }
 }

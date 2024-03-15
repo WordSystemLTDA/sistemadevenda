@@ -1,17 +1,17 @@
-import 'package:app/src/modulos/home/ui/home_page.dart';
+import 'package:app/src/modulos/inicio/ui/pagina_inicio.dart';
 import 'package:app/src/modulos/login/data/services/autenticacao_service_impl.dart';
-import 'package:app/src/modulos/login/ui/configuracao_page.dart';
+import 'package:app/src/modulos/login/ui/pagina_configuracao.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class PaginaLogin extends StatefulWidget {
+  const PaginaLogin({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<PaginaLogin> createState() => _PaginaLoginState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _PaginaLoginState extends State<PaginaLogin> {
   final TextEditingController usuarioController = TextEditingController();
   final TextEditingController senhaController = TextEditingController();
 
@@ -42,11 +42,10 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Navigator.of(context).pushNamed('/inicio/');
     if (mounted) {
       Navigator.of(context).push(MaterialPageRoute(
         builder: (context) {
-          return const HomePage();
+          return const PaginaInicio();
         },
       ));
     }
@@ -58,10 +57,9 @@ class _LoginPageState extends State<LoginPage> {
 
     Future.delayed(const Duration(seconds: 2)).then((value) {
       if (logado) {
-        // Navigator.of(context).pushNamed('/inicio/');
         Navigator.of(context).push(MaterialPageRoute(
           builder: (context) {
-            return const HomePage();
+            return const PaginaInicio();
           },
         ));
       } else {
@@ -144,7 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 5),
                         TextButton(
                           onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfiguracaoPage()));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const PaginaConfiguracao()));
                           },
                           child: const Text('Configurações'),
                         ),

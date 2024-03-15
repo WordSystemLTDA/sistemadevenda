@@ -17,3 +17,4 @@ Fechar Conta
 
 [ ] Fechar imprimir e mudar o status, e continuar na página
 [ ] Abrir mudar o status e abrir a tela de cardapio
+[ ] Mudar ComandasState para ChangeNotifier

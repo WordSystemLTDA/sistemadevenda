@@ -7,6 +7,7 @@ import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_model
 import 'package:app/src/modulos/produto/interactor/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/tamanhos_modelo.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ItensComandaServiceImpl {
   final Dio dio = Dio();
@@ -51,22 +52,27 @@ class ItensComandaServiceImpl {
     valor,
     observacaoMesa,
     idProduto,
+    String nomeProduto,
     quantidade,
     observacao,
     List<AdicionaisModelo> listaAdicionais,
     List<AcompanhamentosModelo> listaAcompanhamentos,
     TamanhosModelo? tamanhoSelecionado,
   ) async {
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return false;
-    final url = '${conexao['servidor']}pedidos/inserir.php';
+    // final conexao = await Apis().getConexao();
+    // if (conexao == null) return false;
+    // final url = '${conexao['servidor']}pedidos/inserir.php';
+
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    var carrinhoString = prefs.getString('carrinho');
+    var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
     final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
     final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
 
-    final response = await dio.post(
-      url,
-      data: jsonEncode({
+    var salvarCarrinho = [
+      {
+        'nome': nomeProduto,
         'tipo': tipo,
         'idMesa': idMesa,
         'idComanda': idComanda,
@@ -80,20 +86,13 @@ class ItensComandaServiceImpl {
         'tamanhoSelecionado': tamanhoSelecionado != null ? tamanhoSelecionado.id : 0,
         'idUsuario': idUsuario,
         'empresa': empresa,
-      }),
-      options: Options(headers: {
-        HttpHeaders.contentTypeHeader: 'application/json',
-      }),
-    );
+      },
+      ...carrinho,
+    ];
 
-    final Map<dynamic, dynamic> result = response.data;
-    final bool sucesso = result['sucesso'];
+    await prefs.setString('carrinho', jsonEncode(salvarCarrinho));
 
-    if (response.statusCode == 200 && sucesso == true) {
-      return sucesso;
-    }
-
-    return false;
+    return true;
   }
 
   Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {

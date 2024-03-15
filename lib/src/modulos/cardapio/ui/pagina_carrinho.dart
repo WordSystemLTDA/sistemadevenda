@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
 import 'package:app/src/modulos/cardapio/ui/widgets/card_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -70,6 +71,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                                     await carrinhoProvedor.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda).then((sucesso) {
                                       if (mounted) {
+                                        carrinhoProvedor.listarComandasPedidos(widget.idComanda, widget.idMesa);
                                         Navigator.pop(context);
                                       }
 
@@ -118,11 +120,14 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                     [...carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) => e.id)],
                   ).then((sucesso) {
                     if (sucesso) {
+                      EnviarPedido.enviarPedido('0', '0');
                       if (mounted) {
                         if (widget.idComanda != '0') {
                           Navigator.of(context).pop();
                           Navigator.of(context).pop();
+                          Navigator.of(context).pop();
                         } else if (widget.idMesa != '0') {
+                          Navigator.of(context).pop();
                           Navigator.of(context).pop();
                           Navigator.of(context).pop();
                         }

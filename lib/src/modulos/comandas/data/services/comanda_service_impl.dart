@@ -28,6 +28,7 @@ class ComandaServiceImpl {
               ...e['comandas'].map(
                 (el) => ComandaModel(
                   id: el['id'],
+                  idComandaPedido: el['idComandaPedido'] ?? '',
                   nome: el['nome'],
                   ativo: el['ativo'],
                   nomeCliente: el['nomeCliente'] ?? '',

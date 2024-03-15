@@ -3,14 +3,14 @@ import 'package:app/src/modulos/comandas/ui/todas_comanadas.dart';
 import 'package:app/src/modulos/comandas/ui/widgets/card_comanda.dart';
 import 'package:flutter/material.dart';
 
-class ComandasPage extends StatefulWidget {
-  const ComandasPage({super.key});
+class PaginaComandas extends StatefulWidget {
+  const PaginaComandas({super.key});
 
   @override
-  State<ComandasPage> createState() => _ComandasPageState();
+  State<PaginaComandas> createState() => _PaginaComandasState();
 }
 
-class _ComandasPageState extends State<ComandasPage> {
+class _PaginaComandasState extends State<PaginaComandas> {
   final ComandasState _state = ComandasState();
   bool isLoading = false;
 
@@ -23,7 +23,6 @@ class _ComandasPageState extends State<ComandasPage> {
   @override
   void initState() {
     super.initState();
-
     listarComandas();
   }
 

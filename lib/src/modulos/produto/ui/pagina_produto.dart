@@ -10,18 +10,18 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class ProdutoPage extends StatefulWidget {
+class PaginaProduto extends StatefulWidget {
   final ProdutoModel produto;
   final String tipo;
   final String idComanda;
   final String idMesa;
-  const ProdutoPage({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idMesa});
+  const PaginaProduto({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idMesa});
 
   @override
-  State<ProdutoPage> createState() => _ProdutoPageState();
+  State<PaginaProduto> createState() => _PaginaProdutoState();
 }
 
-class _ProdutoPageState extends State<ProdutoPage> {
+class _PaginaProdutoState extends State<PaginaProduto> {
   final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
   final ProdutoProvedor _produtoProvedor = Modular.get<ProdutoProvedor>();
 
@@ -77,6 +77,7 @@ class _ProdutoPageState extends State<ProdutoPage> {
       valor,
       observacaoMesa,
       idProduto,
+      produto.nome,
       _produtoProvedor.quantidade,
       observacao,
       _produtoProvedor.listaAdicionais.where((e) => e.estaSelecionado == true).toList(),

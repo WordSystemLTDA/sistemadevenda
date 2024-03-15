@@ -1,7 +1,9 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 class ComandaModel {
   String id;
+  String idComandaPedido;
   String nome;
   String ativo;
   String nomeCliente;
@@ -12,6 +14,7 @@ class ComandaModel {
 
   ComandaModel({
     required this.id,
+    required this.idComandaPedido,
     required this.nome,
     required this.ativo,
     required this.nomeCliente,
@@ -24,6 +27,7 @@ class ComandaModel {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
+      'idComandaPedido': idComandaPedido,
       'nome': nome,
       'ativo': ativo,
       'nomeCliente': nomeCliente,
@@ -37,6 +41,7 @@ class ComandaModel {
   factory ComandaModel.fromMap(Map<String, dynamic> map) {
     return ComandaModel(
       id: map['id'] as String,
+      idComandaPedido: map['idComandaPedido'] as String,
       nome: map['nome'] as String,
       ativo: map['ativo'] as String,
       nomeCliente: map['nomeCliente'] as String,

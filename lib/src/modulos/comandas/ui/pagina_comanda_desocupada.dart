@@ -1,17 +1,18 @@
+import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/comandas/interactor/states/comandas_state.dart';
 import 'package:app/src/modulos/comandas/ui/inserir_cliente.dart';
 import 'package:flutter/material.dart';
 
-class ComandaDesocupadaPage extends StatefulWidget {
+class PaginaComandaDesocupada extends StatefulWidget {
   final String id;
   final String nome;
-  const ComandaDesocupadaPage({super.key, required this.id, required this.nome});
+  const PaginaComandaDesocupada({super.key, required this.id, required this.nome});
 
   @override
-  State<ComandaDesocupadaPage> createState() => _ComandaDesocupadaPageState();
+  State<PaginaComandaDesocupada> createState() => _PaginaComandaDesocupadaState();
 }
 
-class _ComandaDesocupadaPageState extends State<ComandaDesocupadaPage> {
+class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   final _mesaDestinoSearchController = SearchController();
   final _clienteSearchController = SearchController();
   final _obsconstroller = TextEditingController();
@@ -35,6 +36,7 @@ class _ComandaDesocupadaPageState extends State<ComandaDesocupadaPage> {
           await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
             if (mounted) {
               if (sucesso) {
+                EnviarPedido.enviarPedido('0', '0');
                 Navigator.of(context).pop();
                 // Navigator.of(context).pushNamed('/cardapio/Comanda/${widget.id}/0/');
 

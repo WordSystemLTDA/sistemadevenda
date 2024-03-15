@@ -1,18 +1,18 @@
-import 'package:app/src/modulos/cardapio/ui/cardapio_page.dart';
-import 'package:app/src/modulos/comandas/ui/comandas_page.dart';
-import 'package:app/src/modulos/home/ui/widgets/card_home.dart';
-import 'package:app/src/modulos/home/ui/widgets/drawer_widget.dart';
+import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
+import 'package:app/src/modulos/comandas/ui/pagina_comandas.dart';
+import 'package:app/src/modulos/inicio/ui/widgets/card_home.dart';
+import 'package:app/src/modulos/inicio/ui/widgets/drawer_widget.dart';
 import 'package:app/src/modulos/mesas/ui/pagina_mesas.dart';
 import 'package:flutter/material.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class PaginaInicio extends StatefulWidget {
+  const PaginaInicio({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<PaginaInicio> createState() => _PaginaInicioState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _PaginaInicioState extends State<PaginaInicio> {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) {
-                    return const ComandasPage();
+                    return const PaginaComandas();
                   },
                 ));
               },
@@ -65,7 +65,7 @@ class _HomePageState extends State<HomePage> {
 
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) {
-                    return const CardapioPage(
+                    return const PaginaCardapio(
                       tipo: 'balcao',
                       idMesa: '0',
                       idComanda: '0',

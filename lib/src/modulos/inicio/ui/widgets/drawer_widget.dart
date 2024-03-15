@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:app/src/modulos/comandas/ui/todas_comanadas.dart';
-import 'package:app/src/modulos/login/ui/configuracao_page.dart';
-import 'package:app/src/modulos/login/ui/login_page.dart';
+import 'package:app/src/modulos/login/ui/pagina_configuracao.dart';
+import 'package:app/src/modulos/login/ui/pagina_login.dart';
 import 'package:app/src/modulos/mesas/ui/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -72,7 +72,7 @@ class _DrawerWidgetState extends State<DrawerWidget> with TickerProviderStateMix
       // Navigator.of(context).pushNamed('/'),
       Navigator.of(context).push(MaterialPageRoute(
         builder: (context) {
-          return const LoginPage();
+          return const PaginaLogin();
         },
       ));
     });
@@ -127,7 +127,7 @@ class _DrawerWidgetState extends State<DrawerWidget> with TickerProviderStateMix
             onTap: () {
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) {
-                  return const ConfiguracaoPage();
+                  return const PaginaConfiguracao();
                 },
               ));
             },

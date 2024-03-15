@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 import 'package:app/src/modulos/cardapio/interactor/models/adicional_modelo.dart';
@@ -13,6 +14,14 @@ class CarrinhoModelo {
   final List<AdicionalModelo> listaAdicionais;
   final List<AcompanhamentosModelo> listaAcompanhamentos;
   final String tamanhoSelecionado;
+  String? tipo;
+  String? idMesa;
+  String? idComanda;
+  String? observacaoMesa;
+  String? idProduto;
+  String? observacao;
+  String? idUsuario;
+  String? empresa;
 
   CarrinhoModelo({
     required this.id,
@@ -24,6 +33,14 @@ class CarrinhoModelo {
     required this.listaAdicionais,
     required this.listaAcompanhamentos,
     required this.tamanhoSelecionado,
+    this.tipo,
+    this.idMesa,
+    this.idComanda,
+    this.observacaoMesa,
+    this.idProduto,
+    this.observacao,
+    this.idUsuario,
+    this.empresa,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,6 +54,14 @@ class CarrinhoModelo {
       'listaAdicionais': listaAdicionais.map((x) => x.toMap()).toList(),
       'listaAcompanhamentos': listaAcompanhamentos.map((x) => x.toMap()).toList(),
       'tamanhoSelecionado': tamanhoSelecionado,
+      'tipo': tipo,
+      'idMesa': idMesa,
+      'idComanda': idComanda,
+      'observacaoMesa': observacaoMesa,
+      'idProduto': idProduto,
+      'observacao': observacao,
+      'idUsuario': idUsuario,
+      'empresa': empresa,
     };
   }
 
@@ -59,6 +84,14 @@ class CarrinhoModelo {
         ),
       ),
       tamanhoSelecionado: map['tamanhoSelecionado'] as String,
+      tipo: map['tipo'] != null ? map['tipo'] as String : null,
+      idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
+      idComanda: map['idComanda'] != null ? map['idComanda'] as String : null,
+      observacaoMesa: map['observacaoMesa'] != null ? map['observacaoMesa'] as String : null,
+      idProduto: map['idProduto'] != null ? map['idProduto'] as String : null,
+      observacao: map['observacao'] != null ? map['observacao'] as String : null,
+      idUsuario: map['idUsuario'] != null ? map['idUsuario'] as String : null,
+      empresa: map['empresa'] != null ? map['empresa'] as String : null,
     );
   }
 

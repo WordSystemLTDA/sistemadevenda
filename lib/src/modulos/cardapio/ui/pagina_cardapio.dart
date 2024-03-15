@@ -7,17 +7,17 @@ import 'package:app/src/modulos/cardapio/ui/widgets/tab_custom.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class CardapioPage extends StatefulWidget {
+class PaginaCardapio extends StatefulWidget {
   final String? idComanda;
   final String tipo;
   final String idMesa;
-  const CardapioPage({super.key, this.idComanda, required this.tipo, required this.idMesa});
+  const PaginaCardapio({super.key, this.idComanda, required this.tipo, required this.idMesa});
 
   @override
-  State<CardapioPage> createState() => _CardapioPageState();
+  State<PaginaCardapio> createState() => _PaginaCardapioState();
 }
 
-class _CardapioPageState extends State<CardapioPage> with TickerProviderStateMixin {
+class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
   final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
   final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
 

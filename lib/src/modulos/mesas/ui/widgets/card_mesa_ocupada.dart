@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:app/src/modulos/cardapio/ui/cardapio_page.dart';
+import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
 import 'package:app/src/modulos/mesas/interactor/models/mesa_modelo.dart';
 import 'package:flutter/material.dart';
 
@@ -64,7 +64,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
             // Navigator.of(context).pushNamed('/cardapio/Mesa/0/${widget.item.id}');
             Navigator.of(context).push(MaterialPageRoute(
               builder: (context) {
-                return CardapioPage(
+                return PaginaCardapio(
                   tipo: "Mesa",
                   idMesa: widget.item.id,
                   idComanda: '0',

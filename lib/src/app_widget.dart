@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/login/ui/login_page.dart';
+import 'package:app/src/modulos/login/ui/pagina_login.dart';
 import 'package:flutter/material.dart';
 
 class AppWidget extends StatelessWidget {
@@ -12,10 +12,10 @@ class AppWidget extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      initialRoute: "inicio",
+      initialRoute: "login",
       routes: {
-        'inicio': (context) {
-          return const LoginPage();
+        'login': (context) {
+          return const PaginaLogin();
         }
       },
       // routerConfig: Modular.routerConfig,

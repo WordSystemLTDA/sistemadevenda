@@ -1,6 +1,6 @@
-import 'package:app/src/modulos/cardapio/ui/cardapio_page.dart';
+import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/ui/pagina_carrinho.dart';
-import 'package:app/src/modulos/produto/ui/produto_page.dart';
+import 'package:app/src/modulos/produto/ui/pagina_produto.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardapioModule extends Module {
@@ -8,7 +8,7 @@ class CardapioModule extends Module {
   void routes(r) {
     r.child(
       '/:tipo/:idComanda/:idMesa',
-      child: (context) => CardapioPage(
+      child: (context) => PaginaCardapio(
         tipo: r.args.params['tipo'],
         idComanda: r.args.params['idComanda'],
         idMesa: r.args.params['idMesa'],
@@ -16,7 +16,7 @@ class CardapioModule extends Module {
     );
     r.child(
       '/produto/:tipo/:idComanda/:idMesa',
-      child: (context) => ProdutoPage(
+      child: (context) => PaginaProduto(
         produto: r.args.data,
         tipo: r.args.params['tipo'],
         idComanda: r.args.params['idComanda'],

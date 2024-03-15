@@ -1,7 +1,7 @@
 import 'package:app/src/essencial/widgets/pagina_detalhes_pedidos.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/comandas/interactor/models/comanda_model.dart';
-import 'package:app/src/modulos/comandas/ui/comanda_desocupada_page.dart';
+import 'package:app/src/modulos/comandas/ui/pagina_comanda_desocupada.dart';
 import 'package:flutter/material.dart';
 
 class CardComanda extends StatefulWidget {
@@ -71,7 +71,7 @@ class _CardComandaState extends State<CardComanda> {
             if (!widget.itemComanda.comandaOcupada) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => ComandaDesocupadaPage(id: widget.itemComanda.id, nome: widget.itemComanda.nome),
+                  builder: (context) => PaginaComandaDesocupada(id: widget.itemComanda.id, nome: widget.itemComanda.nome),
                 ),
               );
             } else {
@@ -80,89 +80,6 @@ class _CardComandaState extends State<CardComanda> {
                   builder: (context) => PaginaDetalhesPedido(idComanda: widget.itemComanda.id),
                 ),
               );
-              //   showDialog(
-              //     context: context,
-              //     builder: (context) {
-              //       return SizedBox(
-              //         child: Dialog(
-              //           child: Padding(
-              //             padding: const EdgeInsets.all(10),
-              //             child: Column(
-              //               mainAxisSize: MainAxisSize.min,
-              //               children: [
-              //                 Row(
-              //                   children: [
-              //                     Card(
-              //                       child: SizedBox(
-              //                         width: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         height: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         child: InkWell(
-              //                           onTap: () {
-              //                             // Navigator.of(context).pushNamed('/cardapio/Comanda/${widget.itemComanda.id}/0');
-              //                             Navigator.pop(context);
-              // Navigator.push(context, MaterialPageRoute(
-              //   builder: (context) {
-              //     return CardapioPage(tipo: 'Comanda', idComanda: widget.itemComanda.id, idMesa: '0');
-              //   },
-              // ));
-              //                           },
-              //                           borderRadius: const BorderRadius.all(Radius.circular(10)),
-              //                           child: const Center(child: Icon(Icons.add)),
-              //                         ),
-              //                       ),
-              //                     ),
-              //                     Card(
-              //                       child: SizedBox(
-              //                         width: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         height: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         child: InkWell(
-              //                           onTap: () {
-              //                             Navigator.pop(context);
-              //                           },
-              //                           borderRadius: const BorderRadius.all(Radius.circular(10)),
-              //                           child: const Center(child: Icon(Icons.production_quantity_limits)),
-              //                         ),
-              //                       ),
-              //                     ),
-              //                   ],
-              //                 ),
-              //                 Row(
-              //                   children: [
-              //                     Card(
-              //                       child: SizedBox(
-              //                         width: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         height: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         child: InkWell(
-              //                           onTap: () {
-              //                             Navigator.pop(context);
-              //                           },
-              //                           borderRadius: const BorderRadius.all(Radius.circular(10)),
-              //                           child: const Center(child: Icon(Icons.print)),
-              //                         ),
-              //                       ),
-              //                     ),
-              //                     Card(
-              //                       child: SizedBox(
-              //                         width: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         height: (MediaQuery.of(context).size.width - 120) / 2,
-              //                         child: InkWell(
-              //                           onTap: () {
-              //                             Navigator.pop(context);
-              //                           },
-              //                           borderRadius: const BorderRadius.all(Radius.circular(10)),
-              //                           child: const Center(child: Icon(Icons.edit)),
-              //                         ),
-              //                       ),
-              //                     ),
-              //                   ],
-              //                 )
-              //               ],
-              //             ),
-              //           ),
-              //         ),
-              //       );
-              //     },
-              //   );
             }
           },
           borderRadius: const BorderRadius.all(Radius.circular(8)),
@@ -222,36 +139,6 @@ class _CardComandaState extends State<CardComanda> {
                     const Row(
                       children: [
                         TempoAberto(),
-                        // StreamBuilder<String>(
-                        //   stream: _timeStream,
-                        //   builder: (context, snapshot) {
-                        //     if (snapshot.hasData) {
-                        //       String formattedTime = snapshot.data!;
-
-                        //       return Row(
-                        //         children: [
-                        //           const Icon(Icons.watch_later_outlined, size: 14, color: Colors.black),
-                        //           const SizedBox(width: 5),
-                        //           Text(
-                        //             formattedTime,
-                        //             style: const TextStyle(
-                        //               color: Colors.black,
-                        //               fontSize: 14,
-                        //             ),
-                        //           ),
-                        //         ],
-                        //       );
-                        //     } else {
-                        //       return const Text(
-                        //         'Carregando...',
-                        //         style: TextStyle(
-                        //           color: Colors.black,
-                        //           fontSize: 14,
-                        //         ),
-                        //       );
-                        //     }
-                        //   },
-                        // ),
                         SizedBox(width: 15),
                       ],
                     ),

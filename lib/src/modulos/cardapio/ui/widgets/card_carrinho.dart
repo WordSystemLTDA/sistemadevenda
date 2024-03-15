@@ -126,7 +126,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                             ],
                           ),
                         ),
-                        Text(item.tamanhoSelecionado),
+                        Text(item.tamanhoSelecionado != '' && item.tamanhoSelecionado != '0' ? item.tamanhoSelecionado : ''),
                         Expanded(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -178,6 +178,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                             [widget.item.id],
                                                           ).then((sucesso) {
                                                             if (mounted) {
+                                                              carrinhoProvedor.listarComandasPedidos(widget.idComanda, widget.idMesa);
                                                               Navigator.pop(context);
                                                             }
 
@@ -261,7 +262,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(height: 1),
-                if (item.tamanhoSelecionado != '') ...[
+                if (item.tamanhoSelecionado != '' && item.tamanhoSelecionado != '0') ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
                     child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

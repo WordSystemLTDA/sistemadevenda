@@ -1,5 +1,5 @@
-import 'package:app/src/modulos/comandas/ui/comandas_page.dart';
 import 'package:app/src/modulos/comandas/ui/inserir_cliente.dart';
+import 'package:app/src/modulos/comandas/ui/pagina_comandas.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class ComandasModule extends Module {
@@ -7,7 +7,7 @@ class ComandasModule extends Module {
   void routes(r) {
     r.child(
       '/',
-      child: (context) => const ComandasPage(),
+      child: (context) => const PaginaComandas(),
     );
     r.child(
       '/inserirCliente/',

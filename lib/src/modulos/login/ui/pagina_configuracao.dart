@@ -4,14 +4,14 @@ import 'package:app/src/essencial/shared_prefs/shared_prefs_config.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ConfiguracaoPage extends StatefulWidget {
-  const ConfiguracaoPage({super.key});
+class PaginaConfiguracao extends StatefulWidget {
+  const PaginaConfiguracao({super.key});
 
   @override
-  State<ConfiguracaoPage> createState() => _ConfiguracaoPageState();
+  State<PaginaConfiguracao> createState() => _PaginaConfiguracaoState();
 }
 
-class _ConfiguracaoPageState extends State<ConfiguracaoPage> {
+class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   final tipoConexaoController = TextEditingController();
   final servidorController = TextEditingController();
 

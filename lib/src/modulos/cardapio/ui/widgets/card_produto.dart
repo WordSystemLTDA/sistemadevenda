@@ -1,6 +1,6 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/essencial/utils/utils.dart';
-import 'package:app/src/modulos/produto/ui/produto_page.dart';
+import 'package:app/src/modulos/produto/ui/pagina_produto.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -36,11 +36,10 @@ class _CardProdutoState extends State<CardProduto> {
           if (widget.estaPesquisando) {
             widget.searchController!.closeView(widget.item.nome);
           }
-          // Navigator.of(context).pushNamed("/cardapio/produto/${widget.tipo}/${widget.idComanda}/${widget.idMesa}", arguments: widget.item);
 
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
-              return ProdutoPage(idComanda: widget.idComanda, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
+              return PaginaProduto(idComanda: widget.idComanda, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
             },
           ));
         },
