@@ -1,5 +1,5 @@
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
-import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/ui/pagina_comanda_desocupada.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -63,10 +63,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   height: 60,
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      shape: MaterialStatePropertyAll(
+                      shape: WidgetStatePropertyAll(
                         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      backgroundColor: MaterialStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
+                      backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
                     ),
                     onPressed: () {
                       if (widget.idComanda != null) {
@@ -106,7 +106,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   height: 60,
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      shape: MaterialStatePropertyAll(
+                      shape: WidgetStatePropertyAll(
                         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -133,7 +133,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   height: 60,
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      shape: MaterialStatePropertyAll(
+                      shape: WidgetStatePropertyAll(
                         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -205,7 +205,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                     height: 60,
                                     child: ElevatedButton(
                                       style: ButtonStyle(
-                                        shape: MaterialStatePropertyAll(
+                                        shape: WidgetStatePropertyAll(
                                           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                       ),
@@ -233,7 +233,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                     height: 60,
                                     child: ElevatedButton(
                                       style: ButtonStyle(
-                                        shape: MaterialStatePropertyAll(
+                                        shape: WidgetStatePropertyAll(
                                           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                       ),

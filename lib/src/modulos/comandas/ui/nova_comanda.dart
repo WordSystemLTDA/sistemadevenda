@@ -52,15 +52,15 @@ class _NovaComandaState extends State<NovaComanda> {
               width: double.infinity,
               child: OutlinedButton(
                 style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(Theme.of(context).colorScheme.primary),
-                  side: const MaterialStatePropertyAll(BorderSide.none),
-                  shape: const MaterialStatePropertyAll(
+                  backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.primary),
+                  side: const WidgetStatePropertyAll(BorderSide.none),
+                  shape: const WidgetStatePropertyAll(
                     RoundedRectangleBorder(
                       borderRadius: BorderRadius.all(Radius.circular(5)),
                     ),
                   ),
-                  foregroundColor: const MaterialStatePropertyAll(Colors.white),
-                  textStyle: const MaterialStatePropertyAll(TextStyle(fontSize: 18)),
+                  foregroundColor: const WidgetStatePropertyAll(Colors.white),
+                  textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                 ),
                 onPressed: () async {
                   if (nomeController.text.isEmpty) return;

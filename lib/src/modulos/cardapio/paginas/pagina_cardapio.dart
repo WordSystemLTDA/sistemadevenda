@@ -1,9 +1,9 @@
 import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/cardapio_provedor.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
-import 'package:app/src/modulos/cardapio/ui/pagina_carrinho.dart';
-import 'package:app/src/modulos/cardapio/ui/widgets/busca_mesas.dart';
-import 'package:app/src/modulos/cardapio/ui/widgets/tab_custom.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/busca_mesas.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -19,7 +19,7 @@ class PaginaCardapio extends StatefulWidget {
 
 class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
   final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
-  final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   late TabController _tabController;
 

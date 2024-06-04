@@ -1,6 +1,6 @@
 // import 'package:app/src/modulos/cardapio/interactor/cubit/produtos_cubit.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/cardapio_provedor.dart';
-import 'package:app/src/modulos/cardapio/ui/widgets/card_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 

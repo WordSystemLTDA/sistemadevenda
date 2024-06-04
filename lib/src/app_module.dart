@@ -1,9 +1,7 @@
-import 'package:app/src/modulos/cardapio/data/services/categoria_service_impl.dart';
-import 'package:app/src/modulos/cardapio/data/services/produto_service_impl.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/cardapio_provedor.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
-import 'package:app/src/modulos/cardapio/interactor/services/categoria_service.dart';
-import 'package:app/src/modulos/cardapio/interactor/services/produto_service.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_produto.dart';
 import 'package:app/src/modulos/login/data/services/autenticacao_service_impl.dart';
 import 'package:app/src/modulos/login/interactor/services/autenticacao_service.dart';
 import 'package:app/src/modulos/mesas/data/services/mesa_service_impl.dart';
@@ -18,7 +16,7 @@ class AppModule extends Module {
     i.addInstance(Dio());
 
     // Categorias
-    i.add<CategoriaService>(CategoriaServiceImpl.new);
+    i.add(ServicosCategoria.new);
 
     // Mesas
     i.add<MesaService>(MesaServiceImpl.new);
@@ -27,13 +25,13 @@ class AppModule extends Module {
     i.add<ProdutoProvedor>(ProdutoProvedor.new);
 
     // Cardapio
-    i.addSingleton<CarrinhoProvedor>(CarrinhoProvedor.new);
+    i.addSingleton(ProvedorCarrinho.new);
     i.add<CardapioProvedor>(CardapioProvedor.new);
 
     // Autenticacao
     i.add<AutenticacaoService>(AutenticacaoServiceImpl.new);
 
     // Produto
-    i.add<ProdutoService>(ProdutoServiceImpl.new);
+    i.add(ServicosProduto.new);
   }
 }

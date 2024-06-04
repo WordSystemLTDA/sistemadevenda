@@ -17,7 +17,7 @@ class _CardHomeState extends State<CardHome> {
     return ElevatedButton(
       onPressed: widget.onPressed,
       style: ButtonStyle(
-        shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.0),
           ),

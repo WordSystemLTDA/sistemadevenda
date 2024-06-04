@@ -8,6 +8,9 @@ class EnviarPedido {
 
     await channel.ready.then((_) {
       channel.sink.add('Atualizou');
+      channel.sink.close();
+    }).onError((error, stackTrace) {
+      // print('Erro ao conectar ao PHP');
     });
   }
 }

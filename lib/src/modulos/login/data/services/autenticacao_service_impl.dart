@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:app/src/essencial/services/api.dart';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/modulos/login/interactor/services/autenticacao_service.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';

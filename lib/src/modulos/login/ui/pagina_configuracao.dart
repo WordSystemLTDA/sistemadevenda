@@ -37,14 +37,16 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
       ));
       return;
     }
+
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     await prefs.setString(
-        'conexao',
-        jsonEncode({
-          'tipoConexao': tipoConexaoController.text,
-          'servidor': servidorController.text,
-        }));
+      'conexao',
+      jsonEncode({
+        'tipoConexao': tipoConexaoController.text,
+        'servidor': servidorController.text,
+      }),
+    );
 
     setState(() => isLoading = !isLoading);
     if (mounted) {
@@ -110,14 +112,14 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                 height: 50,
                 child: OutlinedButton(
                   style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
-                    side: const MaterialStatePropertyAll(BorderSide.none),
-                    shape: const MaterialStatePropertyAll(
+                    backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
+                    side: const WidgetStatePropertyAll(BorderSide.none),
+                    shape: const WidgetStatePropertyAll(
                       RoundedRectangleBorder(
                         borderRadius: BorderRadius.all(Radius.circular(5)),
                       ),
                     ),
-                    textStyle: const MaterialStatePropertyAll(TextStyle(fontSize: 18)),
+                    textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                   ),
                   onPressed: verificar,
                   child: isLoading ? const CircularProgressIndicator() : const Text('Verificar'),

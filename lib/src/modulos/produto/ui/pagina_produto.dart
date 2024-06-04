@@ -1,6 +1,6 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
-import 'package:app/src/modulos/cardapio/interactor/models/produto_model.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/tamanhos_modelo.dart';
@@ -22,7 +22,7 @@ class PaginaProduto extends StatefulWidget {
 }
 
 class _PaginaProdutoState extends State<PaginaProduto> {
-  final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProdutoProvedor _produtoProvedor = Modular.get<ProdutoProvedor>();
 
   bool isLoading = false;

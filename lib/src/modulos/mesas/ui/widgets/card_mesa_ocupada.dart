@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/mesas/interactor/models/mesa_modelo.dart';
 import 'package:flutter/material.dart';
 
@@ -88,9 +88,11 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
               Row(
                 children: [
                   const SizedBox(width: 15),
-                  Text(
-                    widget.item.nomeCliente.isNotEmpty ? widget.item.nomeCliente : 'Diversos',
-                    style: const TextStyle(fontSize: 14, color: Colors.black),
+                  Flexible(
+                    child: Text(
+                      widget.item.nomeCliente.isNotEmpty ? widget.item.nomeCliente : 'Diversos',
+                      style: const TextStyle(fontSize: 14, color: Colors.black),
+                    ),
                   ),
                 ],
               ),

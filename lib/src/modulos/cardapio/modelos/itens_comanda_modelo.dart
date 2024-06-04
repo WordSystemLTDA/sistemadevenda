@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/cardapio/interactor/models/carrinho_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/carrinho_modelo.dart';
 
 class ItensComandaModelo {
   final List<CarrinhoModelo> listaComandosPedidos;

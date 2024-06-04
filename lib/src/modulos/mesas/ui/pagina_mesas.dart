@@ -104,6 +104,12 @@ class _PaginaMesasState extends State<PaginaMesas> {
                           return CardMesaOcupada(item: item);
                         },
                       ),
+                      if (value['mesasOcupadas']!.isEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 20),
+                          child: Text('Nenhuma mesa ocupada.'),
+                        ),
+                      ],
                       const SizedBox(height: 5),
                       const Text('Mesas livres', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 5),
@@ -148,6 +154,12 @@ class _PaginaMesasState extends State<PaginaMesas> {
                           );
                         },
                       ),
+                      if (value['mesasLivres']!.isEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 20),
+                          child: Text('Nenhuma mesa livre.'),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                     ],
                   ),

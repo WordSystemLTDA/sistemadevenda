@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-import 'package:app/src/modulos/cardapio/interactor/models/adicional_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/adicional_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_modelo.dart';
 
 class CarrinhoModelo {

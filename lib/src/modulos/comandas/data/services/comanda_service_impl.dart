@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/essencial/services/api.dart';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/shared_prefs/shared_prefs_config.dart';
 import 'package:app/src/modulos/comandas/interactor/models/comanda_model.dart';
 import 'package:app/src/modulos/comandas/interactor/models/comandas_model.dart';

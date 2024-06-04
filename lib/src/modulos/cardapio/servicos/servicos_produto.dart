@@ -1,8 +1,8 @@
-import 'package:app/src/essencial/services/api.dart';
-import 'package:app/src/modulos/cardapio/interactor/models/produto_model.dart';
+import 'package:app/src/essencial/api/conexao.dart';
+import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
 import 'package:dio/dio.dart';
 
-class ProdutoServiceImpl {
+class ServicosProduto {
   final Dio dio = Dio();
 
   Future<List<ProdutoModel>> listarPorCategoria(String category) async {

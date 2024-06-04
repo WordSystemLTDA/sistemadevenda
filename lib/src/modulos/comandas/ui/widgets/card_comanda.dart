@@ -95,7 +95,7 @@ class _CardComandaState extends State<CardComanda> {
                   SizedBox(
                     width: MediaQuery.of(context).size.width / 2 - 70,
                     child: Text(
-                      'Comanda: ${widget.itemComanda.nome}',
+                      widget.itemComanda.nome,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

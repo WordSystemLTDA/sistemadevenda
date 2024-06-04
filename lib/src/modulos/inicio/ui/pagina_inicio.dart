@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/cardapio/ui/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/ui/pagina_comandas.dart';
 import 'package:app/src/modulos/inicio/ui/widgets/card_home.dart';
 import 'package:app/src/modulos/inicio/ui/widgets/drawer_widget.dart';

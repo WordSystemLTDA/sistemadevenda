@@ -125,15 +125,15 @@ class _PaginaLoginState extends State<PaginaLogin> {
                           child: OutlinedButton(
                             style: ButtonStyle(
                               // backgroundColor: MaterialStatePropertyAll(Colors.green),
-                              backgroundColor: MaterialStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
-                              side: const MaterialStatePropertyAll(BorderSide.none),
-                              shape: const MaterialStatePropertyAll(
+                              backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
+                              side: const WidgetStatePropertyAll(BorderSide.none),
+                              shape: const WidgetStatePropertyAll(
                                 RoundedRectangleBorder(
                                   borderRadius: BorderRadius.all(Radius.circular(5)),
                                 ),
                               ),
                               // foregroundColor: const MaterialStatePropertyAll(Colors.white),
-                              textStyle: const MaterialStatePropertyAll(TextStyle(fontSize: 18)),
+                              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                             ),
                             onPressed: entrar,
                             child: isLoading ? const CircularProgressIndicator() : const Text('Entrar'),

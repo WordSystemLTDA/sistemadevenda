@@ -1,6 +1,6 @@
 import 'package:app/src/essencial/utils/enviar_pedido.dart';
-import 'package:app/src/modulos/cardapio/interactor/provedor/carrinho_provedor.dart';
-import 'package:app/src/modulos/cardapio/ui/widgets/card_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -15,7 +15,7 @@ class PaginaCarrinho extends StatefulWidget {
 }
 
 class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStateMixin {
-  final CarrinhoProvedor carrinhoProvedor = Modular.get<CarrinhoProvedor>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   bool isLoading = false;
 
   @override

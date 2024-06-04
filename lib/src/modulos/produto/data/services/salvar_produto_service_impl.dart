@@ -1,4 +1,4 @@
-import 'package:app/src/essencial/services/api.dart';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/interactor/modelos/tamanhos_modelo.dart';

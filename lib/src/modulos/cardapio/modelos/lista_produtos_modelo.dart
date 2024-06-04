@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/cardapio/interactor/models/produto_model.dart';
+import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
 
 class ListaProdutosModelo {
   final String categoria;
