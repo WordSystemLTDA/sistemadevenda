@@ -1,20 +1,21 @@
 import 'dart:convert';
 
 import 'package:app/src/modulos/comandas/ui/todas_comanadas.dart';
+import 'package:app/src/modulos/listar_vendas/paginas/pagina_listar_vendas.dart';
 import 'package:app/src/modulos/login/ui/pagina_configuracao.dart';
 import 'package:app/src/modulos/login/ui/pagina_login.dart';
 import 'package:app/src/modulos/mesas/ui/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class DrawerWidget extends StatefulWidget {
-  const DrawerWidget({super.key});
+class DrawerCustomizado extends StatefulWidget {
+  const DrawerCustomizado({super.key});
 
   @override
-  State<DrawerWidget> createState() => _DrawerWidgetState();
+  State<DrawerCustomizado> createState() => _DrawerCustomizadoState();
 }
 
-class _DrawerWidgetState extends State<DrawerWidget> with TickerProviderStateMixin {
+class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProviderStateMixin {
   String nome = '';
   String email = '';
 
@@ -118,6 +119,13 @@ class _DrawerWidgetState extends State<DrawerWidget> with TickerProviderStateMix
                     Navigator.of(context).push(MaterialPageRoute(builder: (context) => const TodasComandas()));
                   },
                 ),
+                // ListTile(
+                //   title: const Row(children: [SizedBox(width: 42), Text('Vendas')]),
+                //   onTap: () {
+                //     Navigator.pop(context);
+                //     Navigator.of(context).push(MaterialPageRoute(builder: (context) => const PaginaListarVendas()));
+                //   },
+                // ),
               ],
             ),
           ),

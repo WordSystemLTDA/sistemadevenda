@@ -1,7 +1,8 @@
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/ui/pagina_comandas.dart';
 import 'package:app/src/modulos/inicio/ui/widgets/card_home.dart';
-import 'package:app/src/modulos/inicio/ui/widgets/drawer_widget.dart';
+import 'package:app/src/essencial/widgets/drawer_customizado.dart';
+import 'package:app/src/modulos/listar_vendas/paginas/pagina_listar_vendas.dart';
 import 'package:app/src/modulos/mesas/ui/pagina_mesas.dart';
 import 'package:flutter/material.dart';
 
@@ -21,7 +22,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
     final double itemWidth = size.width / 2;
 
     return Scaffold(
-      drawer: const DrawerWidget(),
+      drawer: const DrawerCustomizado(),
       appBar: AppBar(
         title: const Text('Início'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -74,6 +75,17 @@ class _PaginaInicioState extends State<PaginaInicio> {
                 ));
               },
             ),
+            // CardHome(
+            //   nome: 'Vendas',
+            //   icone: const Icon(Icons.sell, size: 40),
+            //   onPressed: () {
+            //     Navigator.of(context).push(MaterialPageRoute(
+            //       builder: (context) {
+            //         return const PaginaListarVendas();
+            //       },
+            //     ));
+            //   },
+            // ),
           ],
         ),
       ),
