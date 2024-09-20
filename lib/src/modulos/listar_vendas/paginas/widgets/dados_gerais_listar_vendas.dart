@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/custom_text_field.dart';
 import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 
 class DadosGeraisListarVendas extends StatefulWidget {
@@ -57,7 +58,7 @@ class _DadosGeraisListarVendasState extends State<DadosGeraisListarVendas> {
                   suggestionsBuilder: (context, controller) async {
                     final pesquisa = controller.text;
 
-                    final res = await ServicosListarVendas().listarClientes(pesquisa);
+                    final res = await Modular.get<ServicosListarVendas>().listarClientes(pesquisa);
 
                     return [
                       ...res.map((e) {
@@ -107,7 +108,7 @@ class _DadosGeraisListarVendasState extends State<DadosGeraisListarVendas> {
                   suggestionsBuilder: (context, controller) async {
                     final pesquisa = controller.text;
 
-                    final res = await ServicosListarVendas().listarNatureza(pesquisa);
+                    final res = await Modular.get<ServicosListarVendas>().listarNatureza(pesquisa);
 
                     return [
                       ...res.map((e) => SizedBox(
@@ -153,7 +154,7 @@ class _DadosGeraisListarVendasState extends State<DadosGeraisListarVendas> {
                   suggestionsBuilder: (context, controller) async {
                     final pesquisa = controller.text;
 
-                    final res = await ServicosListarVendas().listarVendedor(pesquisa);
+                    final res = await Modular.get<ServicosListarVendas>().listarVendedor(pesquisa);
 
                     return [
                       ...res.map((e) => SizedBox(

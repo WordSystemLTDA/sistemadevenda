@@ -1,7 +1,7 @@
-import 'package:app/src/essencial/shared_prefs/shared_prefs_config.dart';
+import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 
 class Apis {
-  final SharedPrefsConfig _config = SharedPrefsConfig();
+  final ConfigSharedPreferences _config = ConfigSharedPreferences();
 
   dynamic getConexao() async {
     var conexao = await _config.getConexao();

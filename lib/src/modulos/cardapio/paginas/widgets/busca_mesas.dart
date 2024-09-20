@@ -1,6 +1,6 @@
 // import 'package:app/src/modulos/cardapio/interactor/cubit/produtos_cubit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
-import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -15,7 +15,7 @@ class BuscaMesas extends StatefulWidget {
 }
 
 class _BuscaMesasState extends State<BuscaMesas> {
-  final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final _searchController = SearchController();
 
   @override
@@ -48,7 +48,7 @@ class _BuscaMesasState extends State<BuscaMesas> {
       },
       suggestionsBuilder: (BuildContext context, SearchController controller) async {
         final keyword = controller.value.text;
-        final res = await cardapioProvedor.listarProdutosPorNome(keyword);
+        final res = await provedorCardapio.listarProdutosPorNome(keyword);
         return [
           ...res.map(
             (e) => CardProduto(

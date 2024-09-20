@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/custom_text_field.dart';
 import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class TransportadoraListarVendas extends StatefulWidget {
   final TextEditingController transportadoraController;
@@ -68,7 +69,7 @@ class _TransportadoraListarVendasState extends State<TransportadoraListarVendas>
                   suggestionsBuilder: (context, controller) async {
                     final pesquisa = controller.text;
 
-                    final res = await ServicosListarVendas().listarTransportadoras(pesquisa);
+                    final res = await Modular.get<ServicosListarVendas>().listarTransportadoras(pesquisa);
 
                     return [
                       ...res.map((e) => SizedBox(
@@ -114,7 +115,7 @@ class _TransportadoraListarVendasState extends State<TransportadoraListarVendas>
                   suggestionsBuilder: (context, controller) async {
                     final pesquisa = controller.text;
 
-                    final res = await ServicosListarVendas().listarFrete(pesquisa);
+                    final res = await Modular.get<ServicosListarVendas>().listarFrete(pesquisa);
 
                     return [
                       ...res.map((e) => SizedBox(

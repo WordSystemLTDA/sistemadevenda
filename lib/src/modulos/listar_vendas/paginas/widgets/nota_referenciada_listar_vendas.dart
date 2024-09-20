@@ -45,8 +45,6 @@ class _NotaReferenciadaListarVendasState extends State<NotaReferenciadaListarVen
                     );
                   },
                   suggestionsBuilder: (context, controller) {
-                    final pesquisa = controller.text;
-
                     final res = [];
 
                     return [

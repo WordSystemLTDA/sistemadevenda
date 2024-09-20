@@ -4,7 +4,6 @@ import 'package:app/src/modulos/listar_vendas/provedores/provedores_listar_venda
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class PaginaListarVendas extends StatefulWidget {
   const PaginaListarVendas({super.key});
@@ -214,7 +213,7 @@ class _PaginaListarVendasState extends State<PaginaListarVendas> {
                                         ),
                                       );
                                     },
-                                    menuChildren: [
+                                    menuChildren: const [
                                       // MenuItemButton(
                                       //   onPressed: () {
                                       //     showDialog(

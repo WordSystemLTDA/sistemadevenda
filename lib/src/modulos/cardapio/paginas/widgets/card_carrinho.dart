@@ -1,6 +1,6 @@
 import 'package:app/src/modulos/cardapio/modelos/adicional_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/carrinho_modelo.dart';
-import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -177,14 +177,14 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                             widget.idMesa,
                                                             [widget.item.id],
                                                           ).then((sucesso) {
-                                                            if (mounted) {
+                                                            if (context.mounted) {
                                                               carrinhoProvedor.listarComandasPedidos(widget.idComanda, widget.idMesa);
                                                               Navigator.pop(context);
                                                             }
 
                                                             if (sucesso) return;
 
-                                                            if (mounted) {
+                                                            if (context.mounted) {
                                                               ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                                                                 content: Text('Ocorreu um erro'),

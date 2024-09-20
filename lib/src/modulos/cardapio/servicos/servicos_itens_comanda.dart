@@ -1,27 +1,25 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:app/src/essencial/api/conexao.dart';
-import 'package:app/src/essencial/shared_prefs/shared_prefs_config.dart';
-import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_modelo.dart';
-import 'package:app/src/modulos/produto/interactor/modelos/adicionais_modelo.dart';
-import 'package:app/src/modulos/produto/interactor/modelos/tamanhos_modelo.dart';
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
+import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
+import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ServicosItensComanda {
-  final Dio dio = Dio();
-  final sharedPrefs = SharedPrefsConfig();
+  final DioCliente dio;
+  final UsuarioProvedor usuarioProvedor;
+  ServicosItensComanda(this.dio, this.usuarioProvedor);
 
   Future<List<dynamic>> listarComandasPedidos(String idComanda, String idMesa) async {
     final comanda = idComanda.isEmpty ? 0 : idComanda;
     final mesa = idMesa.isEmpty ? 0 : idMesa;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/pedidos/listar.php?id_comanda=$comanda&id_mesa=$mesa';
-
-    final response = await dio.get(url);
+    final url = 'pedidos/listar.php?id_comanda=$comanda&id_mesa=$mesa';
+    final response = await dio.cliente.get(url);
 
     if (response.statusCode == 200) return response.data;
 
@@ -29,11 +27,9 @@ class ServicosItensComanda {
   }
 
   Future<bool> removerComandasPedidos(List<String> listaIdItemComanda) async {
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return false;
-    final url = '${conexao['servidor']}/pedidos/remover.php';
+    const url = '/pedidos/remover.php';
 
-    final response = await dio.post(
+    final response = await dio.cliente.post(
       url,
       data: {'listaIdItemComanda': listaIdItemComanda},
     );
@@ -59,16 +55,12 @@ class ServicosItensComanda {
     List<AcompanhamentosModelo> listaAcompanhamentos,
     TamanhosModelo? tamanhoSelecionado,
   ) async {
-    // final conexao = await Apis().getConexao();
-    // if (conexao == null) return false;
-    // final url = '${conexao['servidor']}pedidos/inserir.php';
-
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     var carrinhoString = prefs.getString('carrinho');
     var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
-    final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final idUsuario = usuarioProvedor.usuario!.id;
+    final empresa = usuarioProvedor.usuario!.empresa;
 
     var salvarCarrinho = [
       {
@@ -96,14 +88,12 @@ class ServicosItensComanda {
   }
 
   Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return false;
-    final url = '${conexao['servidor']}pedidos/lancar_pedido.php';
+    const url = 'pedidos/lancar_pedido.php';
 
-    final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final idUsuario = usuarioProvedor.usuario!.id;
+    final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.post(
+    final response = await dio.cliente.post(
       url,
       data: jsonEncode({
         'usuario': idUsuario,

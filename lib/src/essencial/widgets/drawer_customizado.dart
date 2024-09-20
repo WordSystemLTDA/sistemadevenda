@@ -1,10 +1,9 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/comandas/ui/todas_comanadas.dart';
-import 'package:app/src/modulos/listar_vendas/paginas/pagina_listar_vendas.dart';
-import 'package:app/src/modulos/login/ui/pagina_configuracao.dart';
-import 'package:app/src/modulos/login/ui/pagina_login.dart';
-import 'package:app/src/modulos/mesas/ui/pagina_lista_mesas.dart';
+import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
+import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
+import 'package:app/src/modulos/comandas/paginas/todas_comanadas.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -70,12 +69,13 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
   void sair() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.remove("usuario").then((value) {
-      // Navigator.of(context).pushNamed('/'),
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (context) {
-          return const PaginaLogin();
-        },
-      ));
+      if (mounted) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) {
+            return const PaginaLogin();
+          },
+        ));
+      }
     });
   }
 

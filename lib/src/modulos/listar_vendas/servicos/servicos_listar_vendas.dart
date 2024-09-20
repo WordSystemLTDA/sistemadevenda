@@ -1,28 +1,24 @@
-import 'dart:convert';
-
-import 'package:app/src/essencial/api/conexao.dart';
-import 'package:app/src/essencial/shared_prefs/shared_prefs_config.dart';
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/listar_vendas/modelos/itens_insercao_listar_vendas_modelo.dart';
 import 'package:app/src/modulos/listar_vendas/modelos/listar_vendas_modelo.dart';
-import 'package:app/src/modulos/listar_vendas/modelos/salvar_listar_vendas_modelo.dart';
-import 'package:dio/dio.dart';
 
 class ServicosListarVendas {
-  final Dio dio = Dio();
-  final sharedPrefs = SharedPrefsConfig();
+  final DioCliente dio;
+  final UsuarioProvedor usuarioProvedor;
+
+  ServicosListarVendas(this.dio, this.usuarioProvedor);
 
   static const String caminho = 'listar_vendas';
 
   Future<List<ListarVendasModelo>> listar(String pesquisa, String dataInicial, String dataFinal) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
-    final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
-    final nivel = jsonDecode(await sharedPrefs.getUsuario())['nivel'];
+    final empresa = usuarioProvedor.usuario!.empresa;
+    final idUsuario = usuarioProvedor.usuario!.id;
+    final nivel = usuarioProvedor.usuario!.nivel;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar.php';
+    const url = '/$caminho/listar.php';
 
-    final response = await dio.post(url, data: {
+    final response = await dio.cliente.post(url, data: {
       'id_empresa': empresa,
       'id_usuario': idUsuario,
       'nivel_usuario': nivel,
@@ -43,13 +39,13 @@ class ServicosListarVendas {
   }
 
   // Future<bool> inserir(SalvarListarVendasModelo modelo) async {
-  // final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+  // final empresa = usuarioProvedor.usuario!.empresa;
 
-  // final conexao = await Apis().getConexao();
-  // if (conexao == null) return [];
-  // final url = '${conexao['servidor']}/$caminho/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
+  //
+  //
+  // final url = '/$caminho/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
 
-  // final response = await dio.get(url);
+  // final response = await dio.cliente.get(url);
 
   // final jsonData = response.data;
 
@@ -60,13 +56,11 @@ class ServicosListarVendas {
   // }
 
   Future<List<ItensInsercaoListarVendasModelo>> listarClientes(String pesquisa) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final empresa = usuarioProvedor.usuario!.empresa;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
+    final url = '/$caminho/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
 
-    final response = await dio.get(url);
+    final response = await dio.cliente.get(url);
 
     final jsonData = response.data;
 
@@ -76,13 +70,11 @@ class ServicosListarVendas {
   }
 
   Future<List<ItensInsercaoListarVendasModelo>> listarNatureza(String pesquisa) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final empresa = usuarioProvedor.usuario!.empresa;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar_natureza.php?pesquisa=$pesquisa&empresa=$empresa';
+    final url = '/$caminho/listar_natureza.php?pesquisa=$pesquisa&empresa=$empresa';
 
-    final response = await dio.get(url);
+    final response = await dio.cliente.get(url);
 
     final jsonData = response.data;
 
@@ -92,13 +84,11 @@ class ServicosListarVendas {
   }
 
   Future<List<ItensInsercaoListarVendasModelo>> listarVendedor(String pesquisa) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final empresa = usuarioProvedor.usuario!.empresa;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar_vendedor.php?pesquisa=$pesquisa&empresa=$empresa';
+    final url = '/$caminho/listar_vendedor.php?pesquisa=$pesquisa&empresa=$empresa';
 
-    final response = await dio.get(url);
+    final response = await dio.cliente.get(url);
 
     final jsonData = response.data;
 
@@ -108,13 +98,11 @@ class ServicosListarVendas {
   }
 
   Future<List<ItensInsercaoListarVendasModelo>> listarTransportadoras(String pesquisa) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
+    final empresa = usuarioProvedor.usuario!.empresa;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar_transportadora.php?pesquisa=$pesquisa&empresa=$empresa';
+    final url = '/$caminho/listar_transportadora.php?pesquisa=$pesquisa&empresa=$empresa';
 
-    final response = await dio.get(url);
+    final response = await dio.cliente.get(url);
 
     final jsonData = response.data;
 
@@ -124,14 +112,12 @@ class ServicosListarVendas {
   }
 
   Future<List<ItensInsercaoListarVendasModelo>> listarFrete(String pesquisa) async {
-    final empresa = jsonDecode(await sharedPrefs.getUsuario())['empresa'];
-    final idUsuario = jsonDecode(await sharedPrefs.getUsuario())['id'];
+    final empresa = usuarioProvedor.usuario!.empresa;
+    final idUsuario = usuarioProvedor.usuario!.id;
 
-    final conexao = await Apis().getConexao();
-    if (conexao == null) return [];
-    final url = '${conexao['servidor']}/$caminho/listar_frete.php?pesquisa=$pesquisa&id_empresa=$empresa&id_usuario=$idUsuario';
+    final url = '/$caminho/listar_frete.php?pesquisa=$pesquisa&id_empresa=$empresa&id_usuario=$idUsuario';
 
-    final response = await dio.get(url);
+    final response = await dio.cliente.get(url);
 
     final jsonData = response.data;
 

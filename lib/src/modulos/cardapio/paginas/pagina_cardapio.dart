@@ -2,8 +2,8 @@ import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/busca_mesas.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
-import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
-import 'package:app/src/modulos/cardapio/provedor/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -18,7 +18,7 @@ class PaginaCardapio extends StatefulWidget {
 }
 
 class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
-  final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   late TabController _tabController;
@@ -39,7 +39,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   }
 
   void listarCategorias() async {
-    cardapioProvedor.listarCategorias();
+    provedorCardapio.listarCategorias();
   }
 
   @override
@@ -51,11 +51,11 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: cardapioProvedor,
+      animation: provedorCardapio,
       builder: (context, _) {
         _tabController = TabController(
           initialIndex: indexTabBar,
-          length: cardapioProvedor.categorias.length,
+          length: provedorCardapio.categorias.length,
           vsync: this,
         );
 
@@ -112,7 +112,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                       tabAlignment: TabAlignment.start,
                       isScrollable: true,
                       tabs: [
-                        ...cardapioProvedor.categorias.map((e) => Tab(
+                        ...provedorCardapio.categorias.map((e) => Tab(
                                 child: Text(
                               e.nomeCategoria.toUpperCase(),
                               style: const TextStyle(fontSize: 16),
@@ -125,12 +125,12 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             ),
           ),
           body: DefaultTabController(
-            length: cardapioProvedor.categorias.length,
+            length: provedorCardapio.categorias.length,
             child: TabBarView(
               controller: _tabController,
               physics: const CustomTabBarViewScrollPhysics(),
               children: [
-                ...cardapioProvedor.categorias.map((e) {
+                ...provedorCardapio.categorias.map((e) {
                   listaCategorias.add(e.id);
 
                   return TabCustom(

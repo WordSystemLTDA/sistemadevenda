@@ -1,8 +1,10 @@
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/comandas/ui/pagina_comanda_desocupada.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaDetalhesPedido extends StatefulWidget {
   final String? idComanda;
@@ -14,6 +16,20 @@ class PaginaDetalhesPedido extends StatefulWidget {
 }
 
 class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+
+  @override
+  void initState() {
+    super.initState();
+    listarComandasPedidos();
+  }
+
+  void listarComandasPedidos() async {
+    await carrinhoProvedor.listarComandasPedidos(widget.idComanda ?? '0', widget.idMesa ?? '0').then((value) {
+      // print(value);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var nomeTipo = widget.idComanda != null

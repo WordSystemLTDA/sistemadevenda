@@ -116,7 +116,7 @@ class _CadastrarListarVendasState extends State<CadastrarListarVendas> with Tick
   }
 
   void listarNatureza() async {
-    final res = await ServicosListarVendas().listarNatureza('');
+    final res = await Modular.get<ServicosListarVendas>().listarNatureza('');
 
     res.map((e) {
       if (e.nome == 'Venda') {

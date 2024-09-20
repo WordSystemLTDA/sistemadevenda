@@ -1,5 +1,5 @@
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
-import 'package:app/src/modulos/cardapio/provedor/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -17,10 +17,10 @@ class TabCustom extends StatefulWidget {
 class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-  final CardapioProvedor cardapioProvedor = Modular.get<CardapioProvedor>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
 
   void listarProdutos(categoria) async {
-    cardapioProvedor.listarProdutosPorCategoria(categoria);
+    provedorCardapio.listarProdutosPorCategoria(categoria);
   }
 
   void pesquisarProdutos(categoria) {
@@ -41,19 +41,19 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
     return RefreshIndicator(
       onRefresh: () async => listarProdutos(widget.category),
       child: AnimatedBuilder(
-        animation: cardapioProvedor,
+        animation: provedorCardapio,
         builder: (context, _) {
-          return cardapioProvedor.produtos.isEmpty
+          return provedorCardapio.produtos.isEmpty
               ? ListView(
                   children: const [SizedBox(height: 100, child: Center(child: Text('Não há Itens')))],
                 )
               : ListView.builder(
-                  itemCount: cardapioProvedor.produtos.length + 1,
+                  itemCount: provedorCardapio.produtos.length + 1,
                   itemBuilder: (context, index) {
-                    if (index == cardapioProvedor.produtos.length) {
+                    if (index == provedorCardapio.produtos.length) {
                       return const SizedBox(height: 80, child: Center(child: Text('Fim da Lista')));
                     }
-                    final item = cardapioProvedor.produtos[index];
+                    final item = provedorCardapio.produtos[index];
 
                     return CardProduto(
                       estaPesquisando: false,

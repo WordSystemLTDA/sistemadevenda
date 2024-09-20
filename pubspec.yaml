@@ -38,7 +38,7 @@ dependencies:
   # flutter_modular: ^6.0.1
   flutter_modular: ^6.3.2
   cached_network_image: ^3.2.3
-  shared_preferences: ^2.2.0
+  shared_preferences: ^2.3.1
   intl: ^0.19.0
   brasil_fields: ^1.14.3
   web_socket_channel: ^2.4.4

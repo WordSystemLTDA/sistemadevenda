@@ -1,6 +1,6 @@
-import 'package:app/src/modulos/mesas/ui/pagina_abrir_mesa.dart';
-import 'package:app/src/modulos/mesas/ui/pagina_lista_mesas.dart';
-import 'package:app/src/modulos/mesas/ui/pagina_mesas.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_abrir_mesa.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class MesasModule extends Module {

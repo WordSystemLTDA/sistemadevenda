@@ -2,7 +2,7 @@
 import 'dart:convert';
 
 import 'package:app/src/modulos/cardapio/modelos/adicional_modelo.dart';
-import 'package:app/src/modulos/produto/interactor/modelos/acompanhamentos_modelo.dart';
+import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 
 class CarrinhoModelo {
   final String id;

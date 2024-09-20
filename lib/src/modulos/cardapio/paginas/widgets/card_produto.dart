@@ -1,6 +1,6 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
-import 'package:app/src/essencial/utils/utils.dart';
-import 'package:app/src/modulos/produto/ui/pagina_produto.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -106,7 +106,7 @@ class _CardProdutoState extends State<CardProduto> {
                     child: Align(
                       alignment: Alignment.bottomRight,
                       child: Text(
-                        Utils.coverterEmReal.format(double.parse(widget.item.valorVenda)),
+                        double.parse(widget.item.valorVenda).obterReal(),
                         style: const TextStyle(color: Colors.green, fontSize: 17),
                       ),
                     ),

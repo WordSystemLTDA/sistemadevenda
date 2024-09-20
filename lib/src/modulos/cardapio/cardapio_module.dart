@@ -1,6 +1,6 @@
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
-import 'package:app/src/modulos/produto/ui/pagina_produto.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardapioModule extends Module {

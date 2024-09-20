@@ -2,12 +2,13 @@ import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
 
 class DioCliente {
-  // Future<Dio> call() async {
-  var cliente = Dio(
-    BaseOptions(
-      baseUrl: Apis().getConexao(),
-      connectTimeout: const Duration(seconds: 30),
-    ),
-  );
-  // }
+  DioCliente() {
+    configurar();
+  }
+
+  var cliente = Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
+
+  void configurar() async {
+    cliente.options.baseUrl = (await Apis().getConexao())['servidor'];
+  }
 }
