@@ -1,14 +1,24 @@
 import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinho extends StatefulWidget {
   final String idComanda;
+  final String idComandaPedido;
   final String idMesa;
-  const PaginaCarrinho({super.key, required this.idComanda, required this.idMesa});
+  final String idCliente;
+
+  const PaginaCarrinho({
+    super.key,
+    required this.idComanda,
+    required this.idComandaPedido,
+    required this.idCliente,
+    required this.idMesa,
+  });
 
   @override
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
@@ -16,6 +26,7 @@ class PaginaCarrinho extends StatefulWidget {
 
 class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   bool isLoading = false;
 
   @override
@@ -111,16 +122,18 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  await carrinhoProvedor.lancarPedido(
+                  await servicoCardapio.inserirProdutosComanda(
+                    [],
                     widget.idMesa,
+                    widget.idComandaPedido,
                     widget.idComanda,
-                    carrinhoProvedor.itensCarrinho.precoTotal,
-                    carrinhoProvedor.itensCarrinho.quantidadeTotal,
-                    '',
-                    [...carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) => e.id)],
-                  ).then((sucesso) {
+                    widget.idCliente,
+                  ).then((resposta) {
+                    var (sucesso, mensagem) = resposta;
+
                     if (sucesso) {
                       EnviarPedido.enviarPedido('0', '0');
+
                       if (context.mounted) {
                         if (widget.idComanda != '0') {
                           Navigator.of(context).pop();
@@ -132,6 +145,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                           Navigator.of(context).pop();
                         }
                       }
+
                       return;
                     }
 
@@ -183,9 +197,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         double precoTotal = 0;
                         carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                          precoTotal += e.valor * e.quantidade;
+                          precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                          e.listaAdicionais.map((el) => precoTotal += el.valorAdicional * el.quantidade).toList();
+                          e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
                         }).toList();
 
                         setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
@@ -194,9 +208,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         double precoTotal = 0;
                         carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                          precoTotal += e.valor * e.quantidade;
+                          precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                          e.listaAdicionais.map((el) => precoTotal += el.valorAdicional * el.quantidade).toList();
+                          e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
                         }).toList();
 
                         setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);

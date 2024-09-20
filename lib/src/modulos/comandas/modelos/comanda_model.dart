@@ -3,52 +3,52 @@ import 'dart:convert';
 
 class ComandaModel {
   String id;
-  String idComandaPedido;
   String nome;
   String ativo;
-  String nomeCliente;
-  String nomeMesa;
-  String dataAbertura;
-  String horaAbertura;
   bool comandaOcupada;
+  String? nomeCliente;
+  String? nomeMesa;
+  String? dataAbertura;
+  String? horaAbertura;
+  String? idComandaPedido;
 
   ComandaModel({
     required this.id,
-    required this.idComandaPedido,
     required this.nome,
     required this.ativo,
-    required this.nomeCliente,
-    required this.nomeMesa,
-    required this.dataAbertura,
-    required this.horaAbertura,
     required this.comandaOcupada,
+    this.nomeCliente,
+    this.nomeMesa,
+    this.dataAbertura,
+    this.horaAbertura,
+    this.idComandaPedido,
   });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
-      'idComandaPedido': idComandaPedido,
       'nome': nome,
       'ativo': ativo,
+      'comandaOcupada': comandaOcupada,
       'nomeCliente': nomeCliente,
       'nomeMesa': nomeMesa,
       'dataAbertura': dataAbertura,
       'horaAbertura': horaAbertura,
-      'comandaOcupada': comandaOcupada,
+      'idComandaPedido': idComandaPedido,
     };
   }
 
   factory ComandaModel.fromMap(Map<String, dynamic> map) {
     return ComandaModel(
       id: map['id'] as String,
-      idComandaPedido: map['idComandaPedido'] as String,
       nome: map['nome'] as String,
       ativo: map['ativo'] as String,
-      nomeCliente: map['nomeCliente'] as String,
-      nomeMesa: map['nomeMesa'] as String,
-      dataAbertura: map['dataAbertura'] as String,
-      horaAbertura: map['horaAbertura'] as String,
       comandaOcupada: map['comandaOcupada'] as bool,
+      nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
+      nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
+      dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
+      horaAbertura: map['horaAbertura'] != null ? map['horaAbertura'] as String : null,
+      idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
     );
   }
 

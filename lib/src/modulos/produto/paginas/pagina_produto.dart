@@ -1,5 +1,5 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
-import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaProduto extends StatefulWidget {
-  final ProdutoModel produto;
+  final ModeloProduto produto;
   final String tipo;
   final String idComanda;
   final String idMesa;
@@ -71,6 +71,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     setState(() => isLoading = !isLoading);
     await carrinhoProvedor
         .inserir(
+      widget.produto,
       widget.tipo,
       mesa,
       comanda,
@@ -196,20 +197,14 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                 ),
                               ],
                             ),
-                            const Text(
-                              "Preço",
-                              style: TextStyle(fontSize: 18),
-                            ),
+                            const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
                               _provedorProduto.retornarPrecoProdutoOriginal(widget.produto.valorVenda),
                               style: const TextStyle(color: Colors.green, fontSize: 18),
                             ),
                             const Row(
                               children: [
-                                Text(
-                                  "Total",
-                                  style: TextStyle(fontSize: 18),
-                                ),
+                                Text("Total", style: TextStyle(fontSize: 18)),
                               ],
                             ),
                           ],
@@ -222,10 +217,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Observações: ',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                        const Text('Observações: ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         Text(
                           _provedorProduto.retornarTotalPedido(widget.produto.valorVenda).obterReal(),
                           style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),

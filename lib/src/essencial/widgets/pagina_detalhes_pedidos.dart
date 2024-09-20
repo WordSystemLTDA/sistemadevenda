@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -8,15 +9,24 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaDetalhesPedido extends StatefulWidget {
   final String? idComanda;
+  final String? idComandaPedido;
   final String? idMesa;
-  const PaginaDetalhesPedido({super.key, this.idComanda, this.idMesa});
+
+  const PaginaDetalhesPedido({
+    super.key,
+    this.idComanda,
+    this.idComandaPedido,
+    this.idMesa,
+  });
 
   @override
   State<PaginaDetalhesPedido> createState() => _PaginaDetalhesPedidoState();
 }
 
 class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+
+  Modeloworddadoscardapio? dados;
 
   @override
   void initState() {
@@ -25,19 +35,30 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
   }
 
   void listarComandasPedidos() async {
-    await carrinhoProvedor.listarComandasPedidos(widget.idComanda ?? '0', widget.idMesa ?? '0').then((value) {
-      // print(value);
+    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda).then((value) {
+      setState(() {
+        dados = value;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    var nomeTipo = widget.idComanda != null
+    var nomeTipo = widget.idComandaPedido != null
         ? 'Comanda'
         : widget.idMesa != null
             ? 'Mesa'
             : '';
-    var idTipo = widget.idComanda ?? (widget.idMesa ?? '');
+
+    if (dados == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: Text('Detalhes da $nomeTipo'),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -58,18 +79,18 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                     const Icon(Icons.topic_outlined, size: 30),
                     const SizedBox(width: 10),
                     Text(
-                      '$nomeTipo $idTipo',
+                      dados!.nome!,
                       style: const TextStyle(fontSize: 18),
                     ),
                   ],
                 ),
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.person_outline_outlined, size: 30),
-                    SizedBox(width: 10),
+                    const Icon(Icons.person_outline_outlined, size: 30),
+                    const SizedBox(width: 10),
                     Text(
-                      'João Pedro Siqueira Chiquitin',
-                      style: TextStyle(fontSize: 18),
+                      dados!.nomeCliente!,
+                      style: const TextStyle(fontSize: 18),
                     ),
                   ],
                 ),
@@ -85,10 +106,16 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
                     ),
                     onPressed: () {
-                      if (widget.idComanda != null) {
+                      if (widget.idComandaPedido != null) {
                         Navigator.push(context, MaterialPageRoute(
                           builder: (context) {
-                            return PaginaCardapio(tipo: 'Comanda', idComanda: widget.idComanda, idMesa: '0');
+                            return PaginaCardapio(
+                              tipo: 'Comanda',
+                              idComanda: dados!.idComanda,
+                              idMesa: '0',
+                              idCliente: dados!.idCliente!,
+                              idComandaPedido: widget.idComandaPedido,
+                            );
                           },
                         ));
                       } else if (widget.idMesa != null) {
@@ -318,7 +345,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             ),
                           ),
                           Text(
-                            100.obterReal(),
+                            double.parse(dados!.valorTotal!).obterReal(),
                             style: TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.w500,

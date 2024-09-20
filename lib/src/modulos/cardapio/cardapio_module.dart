@@ -28,6 +28,8 @@ class CardapioModule extends Module {
       child: (context) => PaginaCarrinho(
         idComanda: r.args.params['idComanda'],
         idMesa: r.args.params['idMesa'],
+        idCliente: r.args.params['idCliente'],
+        idComandaPedido: r.args.params['idComandaPedido'],
       ),
     );
   }

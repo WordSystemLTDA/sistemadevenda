@@ -1,12 +1,12 @@
-import 'package:app/src/modulos/cardapio/modelos/adicional_modelo.dart';
-import 'package:app/src/modulos/cardapio/modelos/carrinho_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardCarrinho extends StatefulWidget {
-  final CarrinhoModelo item;
+  final ModeloProduto item;
   final String idComanda;
   final String idMesa;
   final dynamic value;
@@ -63,14 +63,17 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
   Widget build(BuildContext context) {
     var item = widget.item;
 
-    var soma = item.listaAdicionais.fold(
-      AdicionalModelo(id: '', nome: '', valorAdicional: 0, quantidade: 0),
+    var soma = item.adicionais.fold(
+      Modelowordadicionaisproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', quantidade: 1, estaSelecionado: false, excluir: false),
       (previousValue, element) {
-        return AdicionalModelo(
+        return Modelowordadicionaisproduto(
           id: '',
           nome: '',
-          valorAdicional: (previousValue.valorAdicional + (element.valorAdicional * element.quantidade)),
-          quantidade: 0,
+          valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toStringAsFixed(2),
+          quantidade: 1,
+          estaSelecionado: false,
+          excluir: false,
+          foto: '',
         );
       },
     );
@@ -103,7 +106,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                             children: [
                               Flexible(
                                 child: Text(
-                                  '${widget.item.quantidade.toStringAsFixed(0)}x ${widget.item.nome} ',
+                                  '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
                                   // item.nome,
                                   maxLines: 1,
                                   style: const TextStyle(
@@ -115,7 +118,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                               ),
                               const SizedBox(width: 30),
                               Text(
-                                ((widget.item.valor + soma.valorAdicional) * widget.item.quantidade).obterReal(),
+                                ((double.parse(widget.item.valorVenda) + double.parse(soma.valor)) * widget.item.quantidade!.toInt()).obterReal(),
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w500,
@@ -126,7 +129,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                             ],
                           ),
                         ),
-                        Text(item.tamanhoSelecionado != '' && item.tamanhoSelecionado != '0' ? item.tamanhoSelecionado : ''),
+                        Text(item.tamanho != '' && item.tamanho != '0' ? item.tamanho : ''),
                         Expanded(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -144,9 +147,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: widget.item.quantidade <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
+                                    icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
                                     onPressed: () {
-                                      if (widget.item.quantidade <= 1) {
+                                      if (widget.item.quantidade! <= 1) {
                                         showDialog(
                                           context: context,
                                           builder: (context) => Dialog(
@@ -211,7 +214,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                   SizedBox(
                                     width: 30,
                                     child: Text(
-                                      widget.item.quantidade.toStringAsFixed(0),
+                                      widget.item.quantidade!.toStringAsFixed(0),
                                       textAlign: TextAlign.center,
                                       style: const TextStyle(fontSize: 16),
                                     ),
@@ -262,17 +265,17 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(height: 1),
-                if (item.tamanhoSelecionado != '' && item.tamanhoSelecionado != '0') ...[
+                if (item.tamanho != '' && item.tamanho != '0') ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
                     child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10, bottom: 0),
-                    child: Text(item.tamanhoSelecionado),
+                    child: Text(item.tamanho),
                   )
                 ],
-                if (item.listaAcompanhamentos.isNotEmpty) ...[
+                if (item.acompanhamentos.isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
                     child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -281,9 +284,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: item.listaAcompanhamentos.length,
+                    itemCount: item.acompanhamentos.length,
                     itemBuilder: (context, index) {
-                      final adicional = item.listaAcompanhamentos[index];
+                      final adicional = item.acompanhamentos[index];
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -300,7 +303,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     },
                   ),
                 ],
-                if (item.listaAdicionais.isNotEmpty) ...[
+                if (item.adicionais.isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
                     child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -309,9 +312,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: item.listaAdicionais.length,
+                    itemCount: item.adicionais.length,
                     itemBuilder: (context, index) {
-                      final adicional = item.listaAdicionais[index];
+                      final adicional = item.adicionais[index];
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -320,7 +323,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                             style: const TextStyle(fontSize: 15),
                           ),
                           Text(
-                            (adicional.valorAdicional * adicional.quantidade).obterReal(),
+                            (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],
@@ -329,7 +332,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                   ),
                 ],
                 Padding(
-                  padding: EdgeInsets.only(left: 10, top: item.listaAdicionais.isEmpty ? 10 : 0),
+                  padding: EdgeInsets.only(left: 10, top: item.adicionais.isEmpty ? 10 : 0),
                   child: const Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 Padding(
@@ -341,18 +344,18 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                         children: [
                           const Text('Produto'),
                           Text(
-                            "${item.quantidade > 1 ? '${item.quantidade}x de' : ''} ${item.valor.obterReal()}",
+                            "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${double.parse(item.valorVenda).obterReal()}",
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],
                       ),
-                      if (soma.valorAdicional > 0) ...[
+                      if (double.parse(soma.valor) > 0) ...[
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Adicionais'),
                             Text(
-                              "${item.quantidade > 1 && soma.valorAdicional > 0 ? '${item.quantidade}x de' : ''} ${soma.valorAdicional.obterReal()}",
+                              "${item.quantidade! > 1 && double.parse(soma.valor) > 0 ? '${item.quantidade}x de' : ''} ${double.parse(soma.valor).obterReal()}",
                               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                             ),
                           ],
@@ -363,7 +366,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                         children: [
                           const Text('Total'),
                           Text(
-                            ((item.valor + soma.valorAdicional) * item.quantidade).obterReal(),
+                            ((double.parse(item.valorVenda) + double.parse(soma.valor)) * item.quantidade!).obterReal(),
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],

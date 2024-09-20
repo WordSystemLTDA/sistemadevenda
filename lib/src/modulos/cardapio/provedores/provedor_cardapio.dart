@@ -1,5 +1,5 @@
 import 'package:app/src/modulos/cardapio/modelos/categoria_model.dart';
-import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +11,7 @@ class ProvedorCardapio extends ChangeNotifier {
   ProvedorCardapio(this._categoriaService, this._produtoService);
 
   List<CategoriaModel> categorias = [];
-  List<ProdutoModel> produtos = [];
+  List<ModeloProduto> produtos = [];
 
   void listarCategorias() async {
     final res = await _categoriaService.listar();
@@ -27,7 +27,7 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ProdutoModel>> listarProdutosPorNome(String pesquisa) async {
+  Future<List<ModeloProduto>> listarProdutosPorNome(String pesquisa) async {
     return await _produtoService.listarPorNome(pesquisa);
   }
 }

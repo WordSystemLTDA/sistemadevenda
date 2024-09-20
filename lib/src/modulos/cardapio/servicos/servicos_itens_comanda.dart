@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
@@ -42,6 +43,7 @@ class ServicosItensComanda {
   }
 
   Future<bool> inserir(
+    ModeloProduto produto,
     tipo,
     idMesa,
     idComanda,
@@ -56,29 +58,31 @@ class ServicosItensComanda {
     TamanhosModelo? tamanhoSelecionado,
   ) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('carrinho');
     var carrinhoString = prefs.getString('carrinho');
     var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
-    final idUsuario = usuarioProvedor.usuario!.id;
-    final empresa = usuarioProvedor.usuario!.empresa;
+    // final idUsuario = usuarioProvedor.usuario!.id;
+    // final empresa = usuarioProvedor.usuario!.empresa;
 
     var salvarCarrinho = [
-      {
-        'nome': nomeProduto,
-        'tipo': tipo,
-        'idMesa': idMesa,
-        'idComanda': idComanda,
-        'valor': valor,
-        'observacaoMesa': observacaoMesa,
-        'idProduto': idProduto,
-        'quantidade': quantidade,
-        'observacao': observacao,
-        'listaAdicionais': [...listaAdicionais.map((e) => e.toMap())],
-        'listaAcompanhamentos': [...listaAcompanhamentos.map((e) => e.toMap())],
-        'tamanhoSelecionado': tamanhoSelecionado != null ? tamanhoSelecionado.id : 0,
-        'idUsuario': idUsuario,
-        'empresa': empresa,
-      },
+      // {
+      //   'nome': nomeProduto,
+      //   'tipo': tipo,
+      //   'idMesa': idMesa,
+      //   'idComanda': idComanda,
+      //   'valor': valor,
+      //   'observacaoMesa': observacaoMesa,
+      //   'idProduto': idProduto,
+      //   'quantidade': quantidade,
+      //   'observacao': observacao,
+      //   'listaAdicionais': [...listaAdicionais.map((e) => e.toMap())],
+      //   'listaAcompanhamentos': [...listaAcompanhamentos.map((e) => e.toMap())],
+      //   'tamanhoSelecionado': tamanhoSelecionado != null ? tamanhoSelecionado.id : 0,
+      //   'idUsuario': idUsuario,
+      //   'empresa': empresa,
+      // },
+      produto,
       ...carrinho,
     ];
 

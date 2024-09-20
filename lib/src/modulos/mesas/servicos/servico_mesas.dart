@@ -43,8 +43,8 @@ class ServicoMesas {
             })
           ],
         };
-        // return List<ProdutoModel>.from(response.data.map((elemento) {
-        //   return ProdutoModel.fromMap(elemento);
+        // return List<ModeloProduto>.from(response.data.map((elemento) {
+        //   return ModeloProduto.fromMap(elemento);
         // }));
       } else {
         return {

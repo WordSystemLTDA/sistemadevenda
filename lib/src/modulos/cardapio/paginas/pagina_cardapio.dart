@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/busca_mesas.dart';
@@ -7,11 +8,54 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+enum TipoCardapio {
+  comanda,
+  mesa,
+  delivery,
+  balcao;
+
+  String get nome {
+    switch (this) {
+      case TipoCardapio.comanda:
+        return 'Comanda';
+      case TipoCardapio.mesa:
+        return 'Mesa';
+      case TipoCardapio.delivery:
+        return 'Delivery';
+      case TipoCardapio.balcao:
+        return 'Balcão';
+    }
+  }
+
+  String get nomeSimplificado {
+    switch (this) {
+      case TipoCardapio.comanda:
+        return 'comandas';
+      case TipoCardapio.mesa:
+        return 'mesas';
+      case TipoCardapio.delivery:
+        return 'delivery';
+      case TipoCardapio.balcao:
+        return 'balcao';
+    }
+  }
+}
+
 class PaginaCardapio extends StatefulWidget {
   final String? idComanda;
   final String tipo;
-  final String idMesa;
-  const PaginaCardapio({super.key, this.idComanda, required this.tipo, required this.idMesa});
+  final String? idMesa;
+  final String? idCliente;
+  final String? idComandaPedido;
+
+  const PaginaCardapio({
+    super.key,
+    this.idComanda,
+    required this.tipo,
+    this.idMesa,
+    this.idCliente,
+    this.idComandaPedido,
+  });
 
   @override
   State<PaginaCardapio> createState() => _PaginaCardapioState();
@@ -35,7 +79,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   }
 
   void listarComandasPedidos() async {
-    await carrinhoProvedor.listarComandasPedidos(widget.idComanda!, widget.idMesa);
+    await carrinhoProvedor.listarComandasPedidos(widget.idComanda!, widget.idMesa!);
   }
 
   void listarCategorias() async {
@@ -69,7 +113,12 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) {
-                      return PaginaCarrinho(idComanda: widget.idComanda!, idMesa: widget.idMesa);
+                      return PaginaCarrinho(
+                        idComanda: widget.idComanda!,
+                        idMesa: widget.idMesa!,
+                        idCliente: widget.idCliente!,
+                        idComandaPedido: widget.idComandaPedido!,
+                      );
                     },
                   ));
                 },
@@ -99,9 +148,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                   BuscaMesas(
                     idComanda: widget.idComanda!,
                     tipo: widget.tipo,
-                    idMesa: widget.idMesa,
-                    // categoria: listaCategorias[indexTabBar] ?? '',
-                    // categoria: '1',
+                    idMesa: widget.idMesa!,
                   ),
                   const SizedBox(height: 5),
                   Align(
@@ -135,7 +182,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
 
                   return TabCustom(
                     category: e.id,
-                    idMesa: widget.idMesa,
+                    idMesa: widget.idMesa!,
                     idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                     tipo: widget.tipo,
                   );

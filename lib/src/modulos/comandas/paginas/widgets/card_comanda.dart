@@ -77,7 +77,10 @@ class _CardComandaState extends State<CardComanda> {
             } else {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => PaginaDetalhesPedido(idComanda: widget.itemComanda.id),
+                  builder: (context) => PaginaDetalhesPedido(
+                    idComandaPedido: widget.itemComanda.idComandaPedido,
+                    idComanda: widget.itemComanda.id,
+                  ),
                 ),
               );
             }
@@ -111,7 +114,7 @@ class _CardComandaState extends State<CardComanda> {
                   children: [
                     const SizedBox(width: 15),
                     Text(
-                      widget.itemComanda.nomeCliente.isNotEmpty ? widget.itemComanda.nomeCliente : 'Diversos',
+                      widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Diversos',
                       style: TextStyle(
                         fontSize: 14,
                         color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
@@ -127,7 +130,7 @@ class _CardComandaState extends State<CardComanda> {
                       children: [
                         const SizedBox(width: 15),
                         Text(
-                          widget.itemComanda.nomeMesa.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa.split(' ')[1]}' : '',
+                          widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}' : '',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,

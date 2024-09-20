@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class ListaProdutosModelo {
   final String categoria;
-  final List<ProdutoModel> listaProdutos;
+  final List<ModeloProduto> listaProdutos;
 
   ListaProdutosModelo({
     required this.categoria,
@@ -21,9 +21,9 @@ class ListaProdutosModelo {
   factory ListaProdutosModelo.fromMap(Map<String, dynamic> map) {
     return ListaProdutosModelo(
       categoria: map['categoria'] as String,
-      listaProdutos: List<ProdutoModel>.from(
-        (map['listaProdutos'] as List<ProdutoModel>).map<ProdutoModel>(
-          (x) => ProdutoModel.fromMap(x as Map<String, dynamic>),
+      listaProdutos: List<ModeloProduto>.from(
+        (map['listaProdutos'] as List<ModeloProduto>).map<ModeloProduto>(
+          (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
         ),
       ),
     );

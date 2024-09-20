@@ -1,25 +1,29 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
-import 'package:app/src/modulos/cardapio/modelos/produto_model.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
 
 class ServicoProduto {
   final DioCliente dio;
-  ServicoProduto(this.dio);
+  final UsuarioProvedor usuarioProvedor;
+  ServicoProduto(this.dio, this.usuarioProvedor);
   // final sharedPrefs = SharedPrefsConfig();
 
   // var usuarioProvider = usuarioProvider.getUsuario();
   // late final empresa = usuarioProvider['empresa'];
   // late final idUsuario = usuarioProvider['id'];
 
-  Future<List<ProdutoModel>> listarPorCategoria(String category) async {
-    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$category');
+  Future<List<ModeloProduto>> listarPorCategoria(String categoria) async {
+    var empresa = usuarioProvedor.usuario!.empresa;
+
+    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        return List<ProdutoModel>.from(response.data.map((elemento) {
-          return ProdutoModel.fromMap(elemento);
+        return List<ModeloProduto>.from(response.data.map((elemento) {
+          return ModeloProduto.fromMap(elemento);
         }));
       } else {
         return [];
@@ -29,13 +33,13 @@ class ServicoProduto {
     }
   }
 
-  Future<List<ProdutoModel>> listarPorNome(String pesquisa) async {
+  Future<List<ModeloProduto>> listarPorNome(String pesquisa) async {
     final response = await dio.cliente.get('produtos/listar.php?pesquisa=$pesquisa');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        return List<ProdutoModel>.from(response.data.map((elemento) {
-          return ProdutoModel.fromMap(elemento);
+        return List<ModeloProduto>.from(response.data.map((elemento) {
+          return ModeloProduto.fromMap(elemento);
         }));
       } else {
         return [];

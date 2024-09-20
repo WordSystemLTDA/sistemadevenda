@@ -3,6 +3,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/comandas_state.dart';
@@ -31,6 +32,7 @@ class AppModule extends Module {
     i.add<ProvedorProduto>(ProvedorProduto.new);
     i.add<ComandasState>(ComandasState.new);
     i.add<ServicoComandas>(ServicoComandas.new);
+    i.add<ServicoCardapio>(ServicoCardapio.new);
 
     // Cardapio
     i.addSingleton(ProvedorCarrinho.new);

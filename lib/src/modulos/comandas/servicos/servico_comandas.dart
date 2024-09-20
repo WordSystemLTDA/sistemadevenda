@@ -1,6 +1,5 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
-import 'package:app/src/modulos/comandas/modelos/comanda_model.dart';
 import 'package:app/src/modulos/comandas/modelos/comandas_model.dart';
 
 class ServicoComandas {
@@ -10,52 +9,17 @@ class ServicoComandas {
   ServicoComandas(this.dio, this.usuarioProvedor);
 
   Future<List<ComandasModel>> listar(String pesquisa) async {
-    // try {
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get('comandas/listar.php?pesquisa=$pesquisa&empresa=$empresa').timeout(const Duration(seconds: 60));
 
     if (response.data.isNotEmpty) {
-      // return List<ComandasModel>.from(response.data.map((e) => ComandasModel.fromMap(e)));
-      return [
-        ...response.data.map(
-          (e) => ComandasModel(
-            titulo: e['titulo'],
-            comandas: [
-              ...e['comandas'].map(
-                (el) => ComandaModel(
-                  id: el['id'],
-                  idComandaPedido: el['idComandaPedido'] ?? '',
-                  nome: el['nome'],
-                  ativo: el['ativo'],
-                  nomeCliente: el['nomeCliente'] ?? '',
-                  nomeMesa: el['nomeMesa'] ?? '',
-                  dataAbertura: el['dataAbertura'] ?? '',
-                  horaAbertura: el['horaAbertura'] ?? '',
-                  comandaOcupada: el['comandaOcupada'],
-                ),
-              ),
-            ],
-          ),
-        )
-      ];
+      return List<ComandasModel>.from(response.data.map((elemento) {
+        return ComandasModel.fromMap(elemento);
+      }));
     }
 
     return [];
-    // } on DioException catch (exception) {
-    //   if (exception.type == DioExceptionType.connectionTimeout) {
-    //     throw Exception("Requisição Expirou");
-    //   } else if (exception.type == DioExceptionType.connectionError) {
-    //     throw Exception("Verifique sua conexão");
-    //   }
-
-    //   throw Exception(exception.message);
-    // } catch (exception, stacktrace) {
-    //   log("error", error: exception, stackTrace: stacktrace);
-    //   throw Exception("Verifique sua conexão");
-    // }
-
-    // throw Exception('Ocorreu um erro, tente novamente.');
   }
 
   Future<bool> editarAtivo(String id, String ativo) async {

@@ -1,8 +1,7 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/cardapio/modelos/adicional_modelo.dart';
-import 'package:app/src/modulos/cardapio/modelos/carrinho_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
@@ -24,35 +23,38 @@ class ProvedorCarrinho extends ChangeNotifier {
       var carrinhoString = prefs.getString('carrinho');
       List<dynamic> carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
-      List<CarrinhoModelo> listaItens = [];
+      List<ModeloProduto> listaItens = [];
       num quantidadeTotal = 0;
       double precoTotal = 0;
 
       for (int index = 0; index < carrinho.length; index++) {
         final item = carrinho[index];
 
-        listaItens.add(CarrinhoModelo(
-          id: item['id'] ?? '',
-          nome: item['nome'] ?? '',
-          foto: item['foto'] ?? '',
-          valor: double.parse(item['valor'] ?? '0'),
-          quantidade: num.parse(item['quantidade'].toString()),
-          estaExpandido: false,
-          listaAcompanhamentos: List<AcompanhamentosModelo>.from(item['listaAcompanhamentos'].map((e) {
-            return AcompanhamentosModelo.fromMap(e);
-          })),
-          tamanhoSelecionado: item['tamanhoSelecionado'].toString(),
-          listaAdicionais: [
-            ...item['listaAdicionais'].map(
-              (e) => AdicionalModelo(
-                id: e['id'],
-                quantidade: num.parse(e['quantidade'].toString()),
-                valorAdicional: double.parse(e['valorAdicional'] ?? '0'),
-                nome: e['nome'],
-              ),
-            ),
-          ],
-        ));
+        listaItens.add(item);
+
+        // listaItens.add(CarrinhoModelo(
+        //   id: item['id'] ?? '',
+        //   nome: item['nome'] ?? '',
+        //   foto: item['foto'] ?? '',
+        //   valor: double.parse(item['valor'] ?? '0'),
+        //   quantidade: num.parse(item['quantidade'].toString()),
+        //   estaExpandido: false,
+        //   listaAcompanhamentos: List<AcompanhamentosModelo>.from(item['listaAcompanhamentos'].map((e) {
+        //     return AcompanhamentosModelo.fromMap(e);
+        //   })),
+        //   tamanhoSelecionado: item['tamanhoSelecionado'].toString(),
+        //   listaAdicionais: [
+        //     ...item['listaAdicionais'].map(
+        //       (e) => AdicionalModelo(
+        //         id: e['id'],
+        //         quantidade: num.parse(e['quantidade'].toString()),
+        //         valorAdicional: double.parse(e['valorAdicional'] ?? '0'),
+        //         nome: e['nome'],
+        //       ),
+        //     ),
+        //   ],
+        // ));
+
         quantidadeTotal += num.parse(item['quantidade'].toString());
         precoTotal += double.parse(item['valor'] ?? '0') * num.parse(item['quantidade'].toString());
         item['listaAdicionais'].map((e) {
@@ -67,35 +69,37 @@ class ProvedorCarrinho extends ChangeNotifier {
       );
       notifyListeners();
     } else {
-      List<CarrinhoModelo> listaItens = [];
+      List<ModeloProduto> listaItens = [];
       num quantidadeTotal = 0;
       double precoTotal = 0;
 
       for (int index = 0; index < res.length; index++) {
         final item = res[index];
 
-        listaItens.add(CarrinhoModelo(
-          id: item['id'] ?? '',
-          nome: item['nome'] ?? '',
-          foto: item['foto'] ?? '',
-          valor: double.parse(item['valor'] ?? '0'),
-          quantidade: num.parse(item['quantidade'].toString()),
-          estaExpandido: false,
-          listaAcompanhamentos: List<AcompanhamentosModelo>.from(item['listaAcompanhamentos'].map((e) {
-            return AcompanhamentosModelo.fromMap(e);
-          })),
-          tamanhoSelecionado: item['tamanhoSelecionado'].toString(),
-          listaAdicionais: [
-            ...item['listaAdicionais'].map(
-              (e) => AdicionalModelo(
-                id: e['id'],
-                quantidade: num.parse(e['quantidade'].toString()),
-                valorAdicional: double.parse(e['valorAdicional'] ?? '0'),
-                nome: e['nome'],
-              ),
-            ),
-          ],
-        ));
+        listaItens.add(item);
+
+        // listaItens.add(CarrinhoModelo(
+        //   id: item['id'] ?? '',
+        //   nome: item['nome'] ?? '',
+        //   foto: item['foto'] ?? '',
+        //   valor: double.parse(item['valor'] ?? '0'),
+        //   quantidade: num.parse(item['quantidade'].toString()),
+        //   estaExpandido: false,
+        //   listaAcompanhamentos: List<AcompanhamentosModelo>.from(item['listaAcompanhamentos'].map((e) {
+        //     return AcompanhamentosModelo.fromMap(e);
+        //   })),
+        //   tamanhoSelecionado: item['tamanhoSelecionado'].toString(),
+        //   listaAdicionais: [
+        //     ...item['listaAdicionais'].map(
+        //       (e) => AdicionalModelo(
+        //         id: e['id'],
+        //         quantidade: num.parse(e['quantidade'].toString()),
+        //         valorAdicional: double.parse(e['valorAdicional'] ?? '0'),
+        //         nome: e['nome'],
+        //       ),
+        //     ),
+        //   ],
+        // ));
         quantidadeTotal += num.parse(item['quantidade'].toString());
         precoTotal += double.parse(item['valor'] ?? '0') * num.parse(item['quantidade'].toString());
         item['listaAdicionais'].map((e) {
@@ -119,6 +123,7 @@ class ProvedorCarrinho extends ChangeNotifier {
   }
 
   Future<bool> inserir(
+    ModeloProduto produto,
     tipo,
     idMesa,
     idComanda,
@@ -133,6 +138,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     TamanhosModelo? tamanhoSelecionado,
   ) async {
     final res = await _service.inserir(
+      produto,
       tipo,
       idMesa,
       idComanda,
