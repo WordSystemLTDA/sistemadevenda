@@ -1,5 +1,5 @@
 import 'package:app/src/modulos/mesas/paginas/widgets/nova_mesa.dart';
-import 'package:app/src/modulos/mesas/provedores/mesas_state.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -11,7 +11,7 @@ class PaginaListaMesas extends StatefulWidget {
 }
 
 class PaginaListaMesasState extends State<PaginaListaMesas> {
-  final MesaState _state = Modular.get<MesaState>();
+  final ProvedorMesas _state = Modular.get<ProvedorMesas>();
   bool isLoading = false;
 
   final pesquisaController = TextEditingController();
@@ -55,12 +55,12 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
         },
         child: const Icon(Icons.add),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: listaMesaState,
-        builder: (context, value, child) {
+      body: ListenableBuilder(
+        listenable: _state,
+        builder: (context, child) {
           final listaMesas = [
-            ...value['mesasOcupadas']!,
-            ...value['mesasLivres']!,
+            ..._state.listaMesaState['mesasOcupadas']!,
+            ..._state.listaMesaState['mesasLivres']!,
           ];
 
           return InkWell(
@@ -90,7 +90,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    value.isEmpty
+                    _state.listaMesaState.isEmpty
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),

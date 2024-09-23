@@ -1,6 +1,5 @@
-import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/comandas/paginas/inserir_cliente.dart';
-import 'package:app/src/modulos/comandas/provedores/comandas_state.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -21,7 +20,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   String idMesa = '0';
   String idCliente = '0';
 
-  final ComandasState _state = Modular.get<ComandasState>();
+  final ProvedorComanda _state = Modular.get<ProvedorComanda>();
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +36,8 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
           await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
             if (context.mounted) {
               if (sucesso) {
-                EnviarPedido.enviarPedido('0', '0');
-                Navigator.of(context).pop();
+                // EnviarPedido.enviarPedido('0');
+                Navigator.pop(context);
                 // Navigator.of(context).pushNamed('/cardapio/Comanda/${widget.id}/0/');
 
                 // Navigator.of(context).push(MaterialPageRoute(

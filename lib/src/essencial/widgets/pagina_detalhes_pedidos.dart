@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
@@ -153,7 +154,13 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) {
+                          return PaginaAcompanharPedido(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa);
+                        },
+                      ));
+                    },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

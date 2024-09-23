@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/mesas/provedores/mesas_state.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -13,7 +13,7 @@ class NovaMesa extends StatefulWidget {
 }
 
 class _NovaMesaState extends State<NovaMesa> {
-  final MesaState _state = Modular.get<MesaState>();
+  final ProvedorMesas _state = Modular.get<ProvedorMesas>();
 
   final nomeController = TextEditingController();
 

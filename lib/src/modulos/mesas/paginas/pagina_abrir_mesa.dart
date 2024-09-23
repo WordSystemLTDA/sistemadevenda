@@ -1,5 +1,5 @@
 import 'package:app/src/modulos/comandas/paginas/inserir_cliente.dart';
-import 'package:app/src/modulos/mesas/provedores/mesas_state.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -18,7 +18,7 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
 
   String idCliente = '0';
 
-  final MesaState _state = Modular.get<MesaState>();
+  final ProvedorMesas _state = Modular.get<ProvedorMesas>();
 
   @override
   Widget build(BuildContext context) {

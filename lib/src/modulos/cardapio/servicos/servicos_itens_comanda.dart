@@ -4,9 +4,6 @@ import 'dart:io';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
-import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
-import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -53,12 +50,12 @@ class ServicosItensComanda {
     String nomeProduto,
     quantidade,
     observacao,
-    List<AdicionaisModelo> listaAdicionais,
-    List<AcompanhamentosModelo> listaAcompanhamentos,
-    TamanhosModelo? tamanhoSelecionado,
+    // List<AdicionaisModelo> listaAdicionais,
+    // List<AcompanhamentosModelo> listaAcompanhamentos,
+    // TamanhosModelo? tamanhoSelecionado,
   ) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('carrinho');
+    // await prefs.remove('carrinho');
     var carrinhoString = prefs.getString('carrinho');
     var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 

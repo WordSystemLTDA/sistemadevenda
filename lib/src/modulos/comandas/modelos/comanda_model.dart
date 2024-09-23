@@ -11,6 +11,7 @@ class ComandaModel {
   String? dataAbertura;
   String? horaAbertura;
   String? idComandaPedido;
+  String? valor;
 
   ComandaModel({
     required this.id,
@@ -22,6 +23,7 @@ class ComandaModel {
     this.dataAbertura,
     this.horaAbertura,
     this.idComandaPedido,
+    this.valor,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,6 +37,7 @@ class ComandaModel {
       'dataAbertura': dataAbertura,
       'horaAbertura': horaAbertura,
       'idComandaPedido': idComandaPedido,
+      'valor': valor,
     };
   }
 
@@ -49,6 +52,7 @@ class ComandaModel {
       dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
       horaAbertura: map['horaAbertura'] != null ? map['horaAbertura'] as String : null,
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
+      valor: map['valor'] != null ? map['valor'] as String : null,
     );
   }
 

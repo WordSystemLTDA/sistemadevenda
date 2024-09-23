@@ -10,6 +10,7 @@ class CardProduto extends StatefulWidget {
   final dynamic item;
   final String tipo;
   final String idComanda;
+  final String idComandaPedido;
   final String idMesa;
   const CardProduto({
     super.key,
@@ -18,6 +19,7 @@ class CardProduto extends StatefulWidget {
     required this.item,
     required this.tipo,
     required this.idComanda,
+    required this.idComandaPedido,
     required this.idMesa,
   });
 
@@ -39,7 +41,7 @@ class _CardProdutoState extends State<CardProduto> {
 
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
-              return PaginaProduto(idComanda: widget.idComanda, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
+              return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
             },
           ));
         },

@@ -2,15 +2,16 @@ import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:flutter/material.dart';
 
-final ValueNotifier<Map<String, List<MesaModelo>>> listaMesaState = ValueNotifier({'mesasOcupadas': [], 'mesasLivres': []});
-
-class MesaState {
+class ProvedorMesas extends ChangeNotifier {
   final ServicoMesas _servico;
-  MesaState(this._servico);
+  ProvedorMesas(this._servico);
+
+  Map<String, List<MesaModelo>> listaMesaState = {'mesasOcupadas': [], 'mesasLivres': []};
 
   Future<void> listarMesas(String pesquisa) async {
     final res = await _servico.listar(pesquisa);
-    listaMesaState.value = res;
+    listaMesaState = res;
+    notifyListeners();
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {

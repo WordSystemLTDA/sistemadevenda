@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class ServicoCardapio {
   final DioCliente dio;
@@ -27,23 +30,32 @@ class ServicoCardapio {
   Future<(bool, String)> inserirProdutosComanda(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
+    try {
+      var campos = {
+        'produtos': produtos,
+        "id_comanda_pedido": idComandaPedido,
+        "id_comanda": idComanda,
+        "id_mesa": idMesa,
+        'empresa': idEmpresa,
+        'id_usuario': idUsuario,
+        'id_cliente': idcliente,
+      };
 
-    var campos = {
-      'produtos': produtos,
-      "id_comanda_pedido": idComandaPedido,
-      "id_comanda": idComanda,
-      "id_mesa": idMesa,
-      'empresa': idEmpresa,
-      'id_usuario': idUsuario,
-      'id_cliente': idcliente,
-    };
+      var response = await dio.cliente.post('comandas/inserir_produtos.php', data: jsonEncode(campos));
 
-    var response = await dio.cliente.post('comandas/inserir_produtos.php', data: jsonEncode(campos));
+      var jsonData = response.data;
+      bool sucesso = jsonData['sucesso'];
+      String mensagem = jsonData['mensagem'];
 
-    var jsonData = response.data;
-    bool sucesso = jsonData['sucesso'];
-    String mensagem = jsonData['mensagem'];
+      return (sucesso, mensagem);
+    } on DioException catch (e) {
+      if (e.response == null) {
+        if (kDebugMode) {
+          log('ERRO API', error: e.error);
+        }
+      }
 
-    return (sucesso, mensagem);
+      return (false, 'Erro');
+    }
   }
 }

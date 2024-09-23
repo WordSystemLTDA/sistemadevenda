@@ -80,6 +80,14 @@ class _PaginaInicioState extends State<PaginaInicio> {
                     },
                   ),
                   // CardHome(
+                  //   nome: 'TESTE',
+                  //   icone: const Icon(Icons.textsms, size: 40),
+                  //   onPressed: () {
+                  //     // Navigator.of(context).pushNamed('/cardapio/balcao/0');
+                  //     // EnviarPedido.enviarPedido('0', []);
+                  //   },
+                  // ),
+                  // CardHome(
                   //   nome: 'Vendas',
                   //   icone: const Icon(Icons.sell, size: 40),
                   //   onPressed: () {

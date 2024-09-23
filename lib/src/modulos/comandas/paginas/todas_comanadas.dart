@@ -1,5 +1,5 @@
 import 'package:app/src/modulos/comandas/paginas/nova_comanda.dart';
-import 'package:app/src/modulos/comandas/provedores/comandas_state.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -11,7 +11,7 @@ class TodasComandas extends StatefulWidget {
 }
 
 class _TodasComandasState extends State<TodasComandas> {
-  final ComandasState _state = Modular.get<ComandasState>();
+  final ProvedorComanda _state = Modular.get<ProvedorComanda>();
   bool isLoading = false;
 
   final pesquisaController = TextEditingController();
@@ -55,12 +55,12 @@ class _TodasComandasState extends State<TodasComandas> {
         },
         child: const Icon(Icons.add),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: comandasState,
-        builder: (context, value, child) {
+      body: ListenableBuilder(
+        listenable: _state,
+        builder: (context, child) {
           final listaComandas = [
-            ...value[0].comandas,
-            ...value[1].comandas,
+            ..._state.comandas[0].comandas!,
+            ..._state.comandas[1].comandas!,
           ];
 
           return InkWell(
@@ -90,7 +90,7 @@ class _TodasComandasState extends State<TodasComandas> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    value.isEmpty
+                    _state.comandas.isEmpty
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),
@@ -104,6 +104,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                 if (listaComandas.length == index) {
                                   return const SizedBox(height: 100, child: Center(child: Text('Fim da Lista de Comandas')));
                                 }
+
                                 final item = listaComandas[index];
 
                                 return SizedBox(

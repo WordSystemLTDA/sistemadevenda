@@ -1,23 +1,96 @@
-import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
-import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
-import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
-import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
-import 'package:brasil_fields/brasil_fields.dart';
+// ignore_for_file: unnecessary_getters_setters
+
+import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_itens_retirada_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorProduto extends ChangeNotifier {
-  final ServicoProduto _servico;
-  ProvedorProduto(this._servico);
+  List<Modelowordadicionaisproduto> listaAdicionais = [];
+  List<Modelowordtamanhosproduto> listaTamanhos = [];
 
-  List<AdicionaisModelo> listaAdicionais = [];
-  List<TamanhosModelo> listaTamanhos = [];
-  List<AcompanhamentosModelo> listaAcompanhamentos = [];
+  List<Modelowordacompanhamentosproduto> _listaAcompanhamentos = [];
+  List<Modelowordacompanhamentosproduto> get listaAcompanhamentos => _listaAcompanhamentos;
+  set listaAcompanhamentos(List<Modelowordacompanhamentosproduto> value) {
+    _listaAcompanhamentos = value;
+    notifyListeners();
+  }
 
-  TamanhosModelo? tamanhoSelecionado;
+  List<Modeloworditensretiradaproduto> listaItensRetirada = [];
+
   int quantidade = 1;
+  double _valorVenda = 0;
+  double get valorVenda => _valorVenda;
+  set valorVenda(double value) {
+    _valorVenda = value;
+  }
 
   bool expandido1 = true;
   bool expandido2 = true;
+
+  void resetarTudo() {
+    listaAcompanhamentos = [];
+    listaAdicionais = [];
+    listaItensRetirada = [];
+    listaTamanhos = [];
+    quantidade = 1;
+    notifyListeners();
+  }
+
+  void calcularValorVenda() {
+    var somaAdicionais = double.tryParse(listaAdicionais
+            .fold(
+              Modelowordadicionaisproduto(
+                id: '',
+                nome: '',
+                valor: '0',
+                foto: '',
+                excluir: false,
+                quantidade: 1,
+                estaSelecionado: true,
+              ),
+              (previousValue, element) => Modelowordadicionaisproduto(
+                id: '',
+                nome: '',
+                valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
+                excluir: false,
+                foto: '',
+                quantidade: 1,
+                estaSelecionado: true,
+              ),
+            )
+            .valor) ??
+        0;
+
+    var somaAcompanhamentos = double.tryParse(listaAcompanhamentos
+            .fold(
+              Modelowordacompanhamentosproduto(
+                id: '',
+                nome: '',
+                valor: '0',
+                foto: '',
+                excluir: false,
+                estaSelecionado: true,
+              ),
+              (previousValue, element) => Modelowordacompanhamentosproduto(
+                id: '',
+                nome: '',
+                valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
+                excluir: false,
+                foto: '',
+                estaSelecionado: true,
+              ),
+            )
+            .valor) ??
+        0;
+
+    var valorTamanho = listaTamanhos.isEmpty ? 0 : double.tryParse(listaTamanhos.first.valor) ?? 0;
+
+    var valorFinal = (listaTamanhos.isNotEmpty ? valorTamanho : valorVenda) + somaAdicionais + somaAcompanhamentos;
+
+    valorVenda = double.parse(valorFinal.toStringAsFixed(2));
+  }
 
   void mudarExpandido1(bool valor) {
     expandido1 = valor;
@@ -29,77 +102,47 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  void listarDados(String id) async {
-    final res = await _servico.listarAdicionais(id);
-    final res1 = await _servico.listarTamanhos(id);
-    final res2 = await _servico.listarAcompanhamentos(id);
-    listaAdicionais = res;
-    listaTamanhos = res1;
-    listaAcompanhamentos = res2;
+  void mudarTamanhoSelecionado(Modelowordtamanhosproduto novoDado) {
+    listaTamanhos = [novoDado];
+    calcularValorVenda();
+
     notifyListeners();
   }
 
-  void mudarTamanhoSelecionado(TamanhosModelo? novoTamanho) {
-    tamanhoSelecionado = novoTamanho;
-    notifyListeners();
-  }
-
-  String retornarValorProduto(String preco) {
-    if (listaTamanhos.isNotEmpty) {
-      if (tamanhoSelecionado != null) {
-        return tamanhoSelecionado!.valor;
-      } else {
-        return '0';
-      }
+  void selecionarAdicional(Modelowordadicionaisproduto novoDado) {
+    if (listaAdicionais.where((element) => element.id == novoDado.id).isNotEmpty) {
+      listaAdicionais.removeWhere((element) => element.id == novoDado.id);
     } else {
-      return preco;
+      listaAdicionais.add(novoDado);
     }
+
+    calcularValorVenda();
+
+    notifyListeners();
   }
 
-  double retornarTotalPedido(String preco) {
-    var valorProduto = retornarValorProduto(preco);
+  void selecionarAcompanhamentos(Modelowordacompanhamentosproduto novoDado) {
+    if (listaAcompanhamentos.where((element) => element.id == novoDado.id).isNotEmpty) {
+      listaAcompanhamentos.removeWhere((element) => element.id == novoDado.id);
+    } else {
+      listaAcompanhamentos.add(novoDado);
+    }
 
-    var somaValoresAdicionais = listaAdicionais.where((element) => element.estaSelecionado == true).fold(
-      AdicionaisModelo(id: 'id', nome: 'nome', valor: '0', foto: 'foto', quantidade: 1, estaSelecionado: false),
-      (previousValue, element) {
-        return AdicionaisModelo(
-          id: 'id',
-          nome: 'nome',
-          valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
-          foto: 'foto',
-          quantidade: 1,
-          estaSelecionado: false,
-        );
-      },
-    );
+    calcularValorVenda();
 
-    var somaValoresAcompanhamentos = listaAcompanhamentos.where((element) => element.estaSelecionado == true).fold(
-      AcompanhamentosModelo(id: 'id', nome: 'nome', valor: '0', foto: 'foto', estaSelecionado: false),
-      (previousValue, element) {
-        return AcompanhamentosModelo(
-          id: 'id',
-          nome: 'nome',
-          valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
-          foto: 'foto',
-          estaSelecionado: false,
-        );
-      },
-    );
-
-    var valorSomado = (double.parse(valorProduto) + double.parse(somaValoresAdicionais.valor) + double.parse(somaValoresAcompanhamentos.valor)) * quantidade;
-    return valorSomado;
+    notifyListeners();
   }
 
-  String retornarPrecoProdutoOriginal(String valorVenda) {
-    if (listaTamanhos.isEmpty) {
-      return double.parse(valorVenda).obterReal();
+  void selecionarItensRetirada(Modeloworditensretiradaproduto novoDado) {
+    if (listaItensRetirada.where((element) => element.id == novoDado.id).isNotEmpty) {
+      listaItensRetirada.removeWhere((element) => element.id == novoDado.id);
+    } else {
+      listaItensRetirada.add(novoDado);
     }
 
-    if (tamanhoSelecionado != null) {
-      return double.parse(tamanhoSelecionado!.valor).obterReal();
-    }
+    calcularValorVenda();
 
-    return '${double.parse(listaTamanhos[0].valor).obterReal()} à ${double.parse(listaTamanhos[listaTamanhos.length - 1].valor).obterReal()}';
+    notifyListeners();
   }
 
   void aoDiminuirQuantidade() {

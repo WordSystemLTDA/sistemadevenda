@@ -1,15 +1,19 @@
+import 'package:app/src/modulos/comandas/modelos/comandas_model.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:flutter/material.dart';
 
-final ValueNotifier comandasState = ValueNotifier([]);
+// final ValueNotifier comandasState = ValueNotifier([]);
 
-class ComandasState {
+class ProvedorComanda extends ChangeNotifier {
   final ServicoComandas _servico;
-  ComandasState(this._servico);
+  ProvedorComanda(this._servico);
+
+  List<ComandasModel> comandas = [];
 
   Future<void> listarComandas(String pesquisa) async {
     final res = await _servico.listar(pesquisa);
-    comandasState.value = res;
+    comandas = res;
+    notifyListeners();
   }
 
   Future<List<dynamic>> listarMesas(String pesquisa) async {
@@ -22,6 +26,7 @@ class ComandasState {
 
   Future<dynamic> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
     final res = await _servico.inserirComandaOcupada(id, idMesa, idCliente, obs);
+
     if (res) {
       listarComandas('');
     }

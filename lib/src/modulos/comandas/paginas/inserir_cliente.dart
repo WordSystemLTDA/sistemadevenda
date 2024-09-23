@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/comandas/provedores/comandas_state.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +17,7 @@ class _InserirClienteState extends State<InserirCliente> {
   final emailController = TextEditingController();
   final obsController = TextEditingController();
 
-  final ComandasState _state = Modular.get<ComandasState>();
+  final ProvedorComanda _state = Modular.get<ProvedorComanda>();
 
   @override
   Widget build(BuildContext context) {

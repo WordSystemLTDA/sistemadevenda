@@ -1,22 +1,29 @@
+import 'dart:async';
+
+import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class CardCarrinho extends StatefulWidget {
+class CardProdutoAcompanhar extends StatefulWidget {
   final ModeloProduto item;
+  final Modeloworddadoscardapio? dados;
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
   final dynamic value;
   final Function(bool increase) setarQuantidade;
 
-  const CardCarrinho({
+  const CardProdutoAcompanhar({
     super.key,
     required this.item,
+    required this.dados,
     required this.idComanda,
     required this.idComandaPedido,
     required this.idMesa,
@@ -25,16 +32,20 @@ class CardCarrinho extends StatefulWidget {
   });
 
   @override
-  State<CardCarrinho> createState() => _CardCarrinhoState();
+  State<CardProdutoAcompanhar> createState() => _CardProdutoAcompanharState();
 }
 
-class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMixin {
+class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   late final AnimationController _controller;
   late final Animation<double> _animation;
   late final Tween<double> _sizeTween;
   bool _isExpanded = false;
+
+  Timer? _tickerTempoLancado;
+  // antiga animação card produto
+  StreamController<String> tempoLancadoController = StreamController<String>();
 
   @override
   void initState() {
@@ -47,7 +58,18 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
       curve: Curves.fastOutSlowIn,
     );
     _sizeTween = Tween(begin: 0, end: 1);
+    _updateTimer();
+    _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
     super.initState();
+  }
+
+  void _updateTimer() {
+    if (widget.item.dataLancado != null) {
+      final duration = DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
+      final newDuration = ConfigSistema.formatarHora(duration);
+
+      tempoLancadoController.add(newDuration);
+    }
   }
 
   void _expandOnChanged() {
@@ -59,6 +81,10 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
 
   @override
   void dispose() {
+    if (_tickerTempoLancado != null) {
+      _tickerTempoLancado!.cancel();
+      tempoLancadoController.close();
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -99,67 +125,79 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(5),
       ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 115,
+            height: 130,
             child: InkWell(
               onTap: () {
                 _expandOnChanged();
               },
               child: Padding(
-                padding: const EdgeInsets.all(10.0),
+                padding: const EdgeInsets.all(7.0),
                 child: Stack(
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
-                                  // item.nome,
-                                  maxLines: 1,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 30),
-                              Text(
-                                ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w500,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
+                                // item.nome,
                                 maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 30),
+                            Text(
+                              ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              maxLines: 1,
+                            ),
+                          ],
                         ),
-                        Text(item.tamanho != '' && item.tamanho != '0' ? item.tamanho : ''),
-                        Expanded(
+                        Text("Código: ${item.codigo}"),
+                        StreamBuilder<String>(
+                          stream: tempoLancadoController.stream,
+                          initialData: 'Carregando',
+                          builder: (context, snapshot) {
+                            return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
+                          },
+                        ),
+                        if (item.tamanho != '' && item.tamanho != '0') Text(item.tamanho),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 0.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 5),
-                                child: GestureDetector(
-                                  onTap: () {},
-                                  child: const Text(
-                                    'Editar',
-                                    style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w500),
-                                  ),
-                                ),
+                              IconButton(
+                                onPressed: () {
+                                  if (widget.dados != null) {
+                                    EnviarPedido.enviarPedido(
+                                      widget.dados!.nome!,
+                                      widget.dados!.numeroPedido!,
+                                      widget.dados!.nomeCliente!,
+                                      widget.dados!.nomeEmpresa!,
+                                      [item],
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.print_rounded),
                               ),
                               Row(
                                 children: [

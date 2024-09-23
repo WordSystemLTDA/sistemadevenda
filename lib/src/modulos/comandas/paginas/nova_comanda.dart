@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/comandas/provedores/comandas_state.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -13,7 +13,7 @@ class NovaComanda extends StatefulWidget {
 }
 
 class _NovaComandaState extends State<NovaComanda> {
-  final ComandasState _state = Modular.get<ComandasState>();
+  final ProvedorComanda _state = Modular.get<ProvedorComanda>();
 
   final nomeController = TextEditingController();
 

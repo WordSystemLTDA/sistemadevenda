@@ -7,8 +7,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 class BuscaMesas extends StatefulWidget {
   final String tipo;
   final String idComanda;
+  final String idComandaPedido;
   final String idMesa;
-  const BuscaMesas({super.key, required this.tipo, required this.idComanda, required this.idMesa});
+  const BuscaMesas({super.key, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
 
   @override
   State<BuscaMesas> createState() => _BuscaMesasState();
@@ -56,6 +57,7 @@ class _BuscaMesasState extends State<BuscaMesas> {
               searchController: controller,
               item: e,
               tipo: widget.tipo,
+              idComandaPedido: widget.idComandaPedido,
               idComanda: widget.idComanda,
               idMesa: widget.idMesa,
             ),

@@ -32,7 +32,31 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    carrinhoProvedor.listarComandasPedidos(widget.idComanda, widget.idMesa);
+    carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+  }
+
+  void removerTodosItensCarrinho() async {
+    List<String> listaIdItemComanda = [];
+    for (int index = 0; index < carrinhoProvedor.itensCarrinho.listaComandosPedidos.length; index++) {
+      listaIdItemComanda.add(carrinhoProvedor.itensCarrinho.listaComandosPedidos[index].id);
+    }
+
+    await carrinhoProvedor.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda).then((sucesso) {
+      if (mounted) {
+        carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+        Navigator.pop(context);
+      }
+
+      if (sucesso) return;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Ocorreu um erro'),
+          showCloseIcon: true,
+        ));
+      }
+    });
   }
 
   @override
@@ -75,27 +99,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                                 const SizedBox(width: 10),
                                 TextButton(
                                   onPressed: () async {
-                                    List<String> listaIdItemComanda = [];
-                                    for (int index = 0; index < carrinhoProvedor.itensCarrinho.listaComandosPedidos.length; index++) {
-                                      listaIdItemComanda.add(carrinhoProvedor.itensCarrinho.listaComandosPedidos[index].id);
-                                    }
-
-                                    await carrinhoProvedor.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda).then((sucesso) {
-                                      if (context.mounted) {
-                                        carrinhoProvedor.listarComandasPedidos(widget.idComanda, widget.idMesa);
-                                        Navigator.pop(context);
-                                      }
-
-                                      if (sucesso) return;
-
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                          content: Text('Ocorreu um erro'),
-                                          showCloseIcon: true,
-                                        ));
-                                      }
-                                    });
+                                    removerTodosItensCarrinho();
                                   },
                                   child: const Text('excluir'),
                                 ),
@@ -122,25 +126,32 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  await servicoCardapio.inserirProdutosComanda(
-                    [],
+                  await servicoCardapio
+                      .inserirProdutosComanda(
+                    carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                     widget.idMesa,
                     widget.idComandaPedido,
                     widget.idComanda,
                     widget.idCliente,
-                  ).then((resposta) {
+                  )
+                      .then((resposta) {
                     var (sucesso, mensagem) = resposta;
 
                     if (sucesso) {
-                      EnviarPedido.enviarPedido('0', '0');
+                      removerTodosItensCarrinho();
+                      EnviarPedido.enviarPedido(
+                        "Comanda ${widget.idComanda}",
+                        '1',
+                        'Nome Cliente',
+                        'Nome Empresa',
+                        carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                      );
 
                       if (context.mounted) {
                         if (widget.idComanda != '0') {
                           Navigator.of(context).pop();
                           Navigator.of(context).pop();
-                          Navigator.of(context).pop();
                         } else if (widget.idMesa != '0') {
-                          Navigator.of(context).pop();
                           Navigator.of(context).pop();
                           Navigator.of(context).pop();
                         }
@@ -161,7 +172,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                   });
                 },
                 label: isLoading
-                    ? SizedBox(width: width - 70, child: const CircularProgressIndicator())
+                    ? SizedBox(
+                        width: width - 70,
+                        height: 50,
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ))
                     : SizedBox(
                         width: width - 70,
                         child: Row(
@@ -188,12 +204,15 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                   return CardCarrinho(
                     item: item,
+                    idComandaPedido: widget.idComandaPedido,
                     idComanda: widget.idComanda,
                     idMesa: widget.idMesa,
                     value: carrinhoProvedor.itensCarrinho,
                     setarQuantidade: (increase) {
                       if (increase) {
-                        setState(() => item.quantidade++);
+                        setState(() {
+                          item.quantidade = item.quantidade! + 1;
+                        });
 
                         double precoTotal = 0;
                         carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
@@ -204,7 +223,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
                       } else {
-                        setState(() => --item.quantidade);
+                        setState(() {
+                          item.quantidade = item.quantidade! - 1;
+                        });
 
                         double precoTotal = 0;
                         carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {

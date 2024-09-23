@@ -1,7 +1,7 @@
 import 'package:app/src/modulos/mesas/paginas/pagina_abrir_mesa.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
-import 'package:app/src/modulos/mesas/provedores/mesas_state.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -13,7 +13,7 @@ class PaginaMesas extends StatefulWidget {
 }
 
 class _PaginaMesasState extends State<PaginaMesas> {
-  final MesaState _state = Modular.get<MesaState>();
+  final ProvedorMesas _state = Modular.get<ProvedorMesas>();
   bool isLoading = false;
 
   void listar() async {
@@ -31,9 +31,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: listaMesaState,
-      builder: (context, value, child) => Scaffold(
+    return ListenableBuilder(
+      listenable: _state,
+      builder: (context, child) => Scaffold(
         appBar: AppBar(
           title: const Text('Mesas'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -78,7 +78,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
           child: ListView(
             children: [
               isLoading ? const LinearProgressIndicator() : const SizedBox(height: 4),
-              if (value.isNotEmpty) ...[
+              if (_state.listaMesaState.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
                   child: Column(
@@ -91,21 +91,18 @@ class _PaginaMesasState extends State<PaginaMesas> {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                          // mainAxisExtent: 75,
-                          // mainAxisSpacing: 2,
-                          // crossAxisSpacing: 2,
                           mainAxisExtent: 100,
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
                         ),
-                        itemCount: value['mesasOcupadas']!.length,
+                        itemCount: _state.listaMesaState['mesasOcupadas']!.length,
                         itemBuilder: (context, index) {
-                          final item = value['mesasOcupadas']![index];
+                          final item = _state.listaMesaState['mesasOcupadas']![index];
 
                           return CardMesaOcupada(item: item);
                         },
                       ),
-                      if (value['mesasOcupadas']!.isEmpty) ...[
+                      if (_state.listaMesaState['mesasOcupadas']!.isEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.only(bottom: 20),
                           child: Text('Nenhuma mesa ocupada.'),
@@ -123,9 +120,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
                           mainAxisSpacing: 2,
                           crossAxisSpacing: 2,
                         ),
-                        itemCount: value['mesasLivres']!.length,
+                        itemCount: _state.listaMesaState['mesasLivres']!.length,
                         itemBuilder: (context, index) {
-                          final item = value['mesasLivres']![index];
+                          final item = _state.listaMesaState['mesasLivres']![index];
 
                           return Card(
                             margin: const EdgeInsets.all(3),
@@ -155,7 +152,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
                           );
                         },
                       ),
-                      if (value['mesasLivres']!.isEmpty) ...[
+                      if (_state.listaMesaState['mesasLivres']!.isEmpty) ...[
                         const Padding(
                           padding: EdgeInsets.only(bottom: 20),
                           child: Text('Nenhuma mesa livre.'),

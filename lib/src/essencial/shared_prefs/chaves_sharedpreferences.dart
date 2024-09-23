@@ -17,6 +17,13 @@ class ConfigSharedPreferences {
 
   Future<dynamic> getConexao() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    // await prefs.setString(
+    //   'conexao',
+    //   jsonEncode({
+    //     'tipoConexao': 'localhost',
+    //     'servidor': '192.168.2.106',
+    //   }),
+    // );
     var conexao = prefs.getString('conexao');
     if (conexao != null) return jsonDecode(conexao);
     return conexao;

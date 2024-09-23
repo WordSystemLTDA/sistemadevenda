@@ -1,7 +1,11 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PaginaConfiguracao extends StatefulWidget {
@@ -48,16 +52,23 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
       }),
     );
 
+    await prefs.reload();
+
+    DioCliente().configurar();
+
     setState(() => isLoading = !isLoading);
     if (mounted) {
-      Navigator.pop(context);
+      var usuario = await UsuarioServico.pegarUsuario(context);
+      if (mounted) {
+        context.read<UsuarioProvedor>().setUsuario(usuario);
+        Navigator.pop(context);
+      }
     }
   }
 
   @override
   void initState() {
     super.initState();
-
     tipoConexaoController.text = 'localhost';
     buscarConexao();
   }

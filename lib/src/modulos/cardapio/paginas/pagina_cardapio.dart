@@ -79,7 +79,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   }
 
   void listarComandasPedidos() async {
-    await carrinhoProvedor.listarComandasPedidos(widget.idComanda!, widget.idMesa!);
+    await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido!);
   }
 
   void listarCategorias() async {
@@ -147,6 +147,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                 children: [
                   BuscaMesas(
                     idComanda: widget.idComanda!,
+                    idComandaPedido: widget.idComandaPedido!,
                     tipo: widget.tipo,
                     idMesa: widget.idMesa!,
                   ),
@@ -183,6 +184,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                   return TabCustom(
                     category: e.id,
                     idMesa: widget.idMesa!,
+                    idComandaPedido: widget.idComandaPedido!,
                     idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                     tipo: widget.tipo,
                   );

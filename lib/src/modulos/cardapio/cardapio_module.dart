@@ -20,6 +20,7 @@ class CardapioModule extends Module {
         produto: r.args.data,
         tipo: r.args.params['tipo'],
         idComanda: r.args.params['idComanda'],
+        idComandaPedido: r.args.params['idComandaPedido'],
         idMesa: r.args.params['idMesa'],
       ),
     );
