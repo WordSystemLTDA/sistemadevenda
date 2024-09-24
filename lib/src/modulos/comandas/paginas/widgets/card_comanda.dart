@@ -123,7 +123,7 @@ class _CardComandaState extends State<CardComanda> {
                     SizedBox(
                       width: 170,
                       child: Text(
-                        widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Diversos',
+                        widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

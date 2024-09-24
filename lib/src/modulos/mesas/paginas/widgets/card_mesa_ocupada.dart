@@ -90,7 +90,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                   const SizedBox(width: 15),
                   Flexible(
                     child: Text(
-                      widget.item.nomeCliente.isNotEmpty ? widget.item.nomeCliente : 'Diversos',
+                      widget.item.nomeCliente.isNotEmpty ? widget.item.nomeCliente : 'Sem Cliente',
                       style: const TextStyle(fontSize: 14, color: Colors.black),
                     ),
                   ),
