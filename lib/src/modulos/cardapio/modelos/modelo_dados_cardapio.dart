@@ -34,6 +34,8 @@ class Modeloworddadoscardapio {
   String? idMesa;
   String? idDelivery;
   String? idBalcao;
+  String? observacoes;
+  String? nomeMesa;
 
   Modeloworddadoscardapio({
     this.id,
@@ -65,6 +67,8 @@ class Modeloworddadoscardapio {
     this.idMesa,
     this.idDelivery,
     this.idBalcao,
+    this.observacoes,
+    this.nomeMesa,
   });
 
   Map<String, dynamic> toMap() {
@@ -98,6 +102,8 @@ class Modeloworddadoscardapio {
       'idMesa': idMesa,
       'idDelivery': idDelivery,
       'idBalcao': idBalcao,
+      'observacoes': observacoes,
+      'nomeMesa': nomeMesa,
     };
   }
 
@@ -138,6 +144,8 @@ class Modeloworddadoscardapio {
       idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
       idDelivery: map['idDelivery'] != null ? map['idDelivery'] as String : null,
       idBalcao: map['idBalcao'] != null ? map['idBalcao'] as String : null,
+      observacoes: map['observacoes'] != null ? map['observacoes'] as String : null,
+      nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
     );
   }
 

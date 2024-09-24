@@ -150,9 +150,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   height: 60,
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
+                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                     ),
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(
@@ -191,7 +189,11 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       if (widget.idComanda != null) {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => PaginaComandaDesocupada(id: widget.idComanda!, nome: 'Comanda'),
+                            builder: (context) => PaginaComandaDesocupada(
+                              id: widget.idComanda!,
+                              idComandaPedido: widget.idComandaPedido!,
+                              nome: dados!.nome!,
+                            ),
                           ),
                         );
                       }

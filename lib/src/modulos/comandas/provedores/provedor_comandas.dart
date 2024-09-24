@@ -17,7 +17,9 @@ class ProvedorComanda extends ChangeNotifier {
   }
 
   Future<List<dynamic>> listarMesas(String pesquisa) async {
-    return await _servico.listarMesa(pesquisa);
+    var resultado = await _servico.listarMesa(pesquisa);
+
+    return resultado;
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {
@@ -26,6 +28,15 @@ class ProvedorComanda extends ChangeNotifier {
 
   Future<dynamic> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
     final res = await _servico.inserirComandaOcupada(id, idMesa, idCliente, obs);
+
+    if (res) {
+      listarComandas('');
+    }
+    return res;
+  }
+
+  Future<dynamic> editarComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
+    final res = await _servico.editarComandaOcupada(id, idMesa, idCliente, obs);
 
     if (res) {
       listarComandas('');

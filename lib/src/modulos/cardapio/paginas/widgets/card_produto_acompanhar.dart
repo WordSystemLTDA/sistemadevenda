@@ -320,14 +320,23 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(height: 1),
-                if (item.tamanho != '' && item.tamanho != '0') ...[
+                if (item.tamanhos.isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
                     child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10, bottom: 0),
-                    child: Text(item.tamanho),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(item.tamanhos.first.nome),
+                        Text(
+                          double.parse(item.tamanhos.first.valor).obterReal(),
+                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                        ),
+                      ],
+                    ),
                   )
                 ],
                 if (item.acompanhamentos.isNotEmpty) ...[
@@ -381,6 +390,28 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+                if (item.itensRetiradas.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  ListView.builder(
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: item.itensRetiradas.length,
+                    itemBuilder: (context, index) {
+                      final itemRetirada = item.itensRetiradas[index];
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(itemRetirada.nome, style: const TextStyle(fontSize: 15)),
                         ],
                       );
                     },

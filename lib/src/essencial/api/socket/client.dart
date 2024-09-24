@@ -34,11 +34,13 @@ class Client extends ChangeNotifier {
   }
 
   write(String message) {
+    if (socket == null) return;
     //Connect standard in to the socket
     socket!.write(message);
   }
 
   disconnect() {
+    if (socket == null) return;
     // write('Desconectado');
     socket!.destroy();
     connected = false;

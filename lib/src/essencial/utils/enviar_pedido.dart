@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -11,14 +12,14 @@ class EnviarPedido {
     if (cliente.connected == false) {
       await cliente.connect('192.168.2.115', 9980).then((value) {
         if (value) {
-          print('conectou');
+          log('conectou');
         } else {
-          print('não conectou');
+          log('não conectou');
         }
       });
     }
 
-    print('mandou mensagem');
+    log('mandou mensagem');
     cliente.write(jsonEncode({
       'nomeTitulo': nomeTitulo,
       'numeroPedido': numeroPedido,
