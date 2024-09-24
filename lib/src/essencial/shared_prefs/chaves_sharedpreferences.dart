@@ -21,7 +21,7 @@ class ConfigSharedPreferences {
     //   'conexao',
     //   jsonEncode({
     //     'tipoConexao': 'localhost',
-    //     'servidor': '192.168.2.106',
+    //     'servidor': '192.168.2.117',
     //   }),
     // );
     var conexao = prefs.getString('conexao');

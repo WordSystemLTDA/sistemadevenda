@@ -1,13 +1,18 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class CardProduto extends StatefulWidget {
   final bool estaPesquisando;
   final SearchController? searchController;
-  final dynamic item;
+  final ModeloProduto item;
   final String tipo;
   final String idComanda;
   final String idComandaPedido;
@@ -28,6 +33,9 @@ class CardProduto extends StatefulWidget {
 }
 
 class _CardProdutoState extends State<CardProduto> {
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -35,13 +43,135 @@ class _CardProdutoState extends State<CardProduto> {
       child: InkWell(
         key: widget.key,
         onTap: () async {
+          final idComanda = widget.idComanda;
+          final idMesa = widget.idMesa;
+
+          var comanda = idComanda.isEmpty ? 0 : idComanda;
+          var mesa = idMesa.isEmpty ? 0 : idMesa;
+
+          if (widget.item.tamanhos.isNotEmpty ||
+              widget.item.acompanhamentos.isNotEmpty ||
+              widget.item.adicionais.isNotEmpty ||
+              widget.item.itensRetiradas.isNotEmpty) {
+            if (widget.estaPesquisando) {
+              widget.searchController!.closeView(widget.item.nome);
+            }
+
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) {
+                return PaginaProduto(
+                    idComanda: widget.idComanda,
+                    idComandaPedido: widget.idComandaPedido,
+                    idMesa: widget.idMesa,
+                    tipo: widget.tipo,
+                    produto: widget.item);
+              },
+            ));
+
+            return;
+          }
+
+          String valor = widget.item.valorVenda;
+
+          if (double.parse(valor) == 0) {
+            bool bloquear = true;
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              showDragHandle: false,
+              builder: (context) {
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  child: ModalAdicionarValor(
+                    aoSalvar: (novoValor) {
+                      valor = novoValor;
+                      bloquear = false;
+                    },
+                  ),
+                );
+              },
+            );
+            if (bloquear) return;
+          }
+
+          if (!context.mounted) return;
+
+          await carrinhoProvedor
+              .inserir(
+            ModeloProduto(
+              id: widget.item.id,
+              nome: widget.item.nome,
+              codigo: widget.item.codigo,
+              estoque: widget.item.estoque,
+              tamanho: widget.item.tamanho,
+              foto: widget.item.foto,
+              ativo: widget.item.ativo,
+              descricao: widget.item.descricao,
+              valorVenda: valor,
+              categoria: widget.item.categoria,
+              nomeCategoria: widget.item.nomeCategoria,
+              habilTipo: widget.item.habilTipo,
+              adicionais: widget.item.adicionais,
+              acompanhamentos: widget.item.acompanhamentos,
+              tamanhos: widget.item.tamanhos,
+              itensRetiradas: widget.item.itensRetiradas,
+              ativarCustoDeProducao: widget.item.ativarCustoDeProducao,
+              ativarEdQtd: widget.item.ativarEdQtd,
+              ativoLoja: widget.item.ativoLoja,
+              dataLancado: widget.item.dataLancado,
+              destinoDeImpressao: widget.item.destinoDeImpressao,
+              habilItensRetirada: widget.item.habilItensRetirada,
+              novo: widget.item.novo,
+              observacao: widget.item.observacao,
+              opcoesPacotes: widget.item.opcoesPacotes,
+              quantidadePessoa: widget.item.quantidadePessoa,
+              valorRestoDivisao: widget.item.valorRestoDivisao,
+              valorTotalVendas: widget.item.valorTotalVendas,
+              tamanhoLista: widget.item.tamanhoLista,
+              quantidade: 1,
+            ),
+            widget.tipo,
+            mesa,
+            comanda,
+            widget.idComandaPedido,
+            widget.item.valorVenda,
+            '',
+            widget.item.id,
+            widget.item.nome,
+            widget.item.quantidade,
+            '',
+          )
+              .then((sucesso) {
+            if (sucesso) {
+              _provedorProduto.resetarTudo();
+              return;
+            }
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Ocorreu um erro'),
+                showCloseIcon: true,
+              ));
+            }
+          }).whenComplete(() {});
+        },
+        onLongPress: () {
           if (widget.estaPesquisando) {
             widget.searchController!.closeView(widget.item.nome);
           }
 
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
-              return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
+              return PaginaProduto(
+                  idComanda: widget.idComanda,
+                  idComandaPedido: widget.idComandaPedido,
+                  idMesa: widget.idMesa,
+                  tipo: widget.tipo,
+                  produto: widget.item);
             },
           ));
         },
@@ -78,6 +208,8 @@ class _CardProdutoState extends State<CardProduto> {
                       width: MediaQuery.of(context).size.width / 1.6,
                       child: Text(
                         "${widget.item.nome} ${widget.item.tamanho}",
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 17,
                         ),
@@ -91,9 +223,9 @@ class _CardProdutoState extends State<CardProduto> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 5),
                         child: Text(
-                          widget.item.descricao.isEmpty ? 'Sem descrição' : widget.item.descricao,
+                          // widget.item.descricao.isEmpty ? 'Sem descrição' : widget.item.descricao,
+                          'Código: ${widget.item.codigo}',
                           overflow: TextOverflow.fade,
-                          // softWrap: false,
                           maxLines: 2,
                           style: const TextStyle(
                             color: Color.fromARGB(255, 111, 111, 111),
@@ -109,7 +241,7 @@ class _CardProdutoState extends State<CardProduto> {
                       alignment: Alignment.bottomRight,
                       child: Text(
                         double.parse(widget.item.valorVenda).obterReal(),
-                        style: const TextStyle(color: Colors.green, fontSize: 17),
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
                       ),
                     ),
                   )

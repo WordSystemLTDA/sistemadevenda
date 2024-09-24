@@ -86,25 +86,23 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                             style: TextStyle(fontSize: 20),
                           ),
                           const SizedBox(height: 15),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                  child: const Text('Cancelar'),
-                                ),
-                                const SizedBox(width: 10),
-                                TextButton(
-                                  onPressed: () async {
-                                    removerTodosItensCarrinho();
-                                  },
-                                  child: const Text('excluir'),
-                                ),
-                              ],
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('Cancelar'),
+                              ),
+                              const SizedBox(width: 10),
+                              TextButton(
+                                onPressed: () async {
+                                  removerTodosItensCarrinho();
+                                },
+                                child: const Text('excluir'),
+                              ),
+                            ],
                           ),
                         ],
                       ),

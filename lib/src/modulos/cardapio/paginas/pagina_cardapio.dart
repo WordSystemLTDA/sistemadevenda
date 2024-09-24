@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/busca_mesas.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -109,33 +110,56 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
           floatingActionButton: AnimatedBuilder(
             animation: carrinhoProvedor,
             builder: (context, _) {
-              return FloatingActionButton(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) {
-                      return PaginaCarrinho(
-                        idComanda: widget.idComanda!,
-                        idMesa: widget.idMesa!,
-                        idCliente: widget.idCliente!,
-                        idComandaPedido: widget.idComandaPedido!,
-                      );
-                    },
-                  ));
-                },
-                shape: const CircleBorder(),
-                child: Badge(
-                  largeSize: 25,
-                  textStyle: const TextStyle(fontSize: 16),
-                  padding: carrinhoProvedor.itensCarrinho.quantidadeTotal < 10 ? const EdgeInsets.symmetric(vertical: 0, horizontal: 9) : const EdgeInsets.all(5),
-                  offset: const Offset(20, -20),
-                  label: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0)),
-                  isLabelVisible: true,
-                  child: const Icon(
-                    Icons.shopping_cart,
-                    size: 30,
-                  ),
+              return badges.Badge(
+                badgeContent: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
+                position: badges.BadgePosition.topEnd(end: 0),
+                child: FloatingActionButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) {
+                        return PaginaCarrinho(
+                          idComanda: widget.idComanda!,
+                          idMesa: widget.idMesa!,
+                          idCliente: widget.idCliente!,
+                          idComandaPedido: widget.idComandaPedido!,
+                        );
+                      },
+                    ));
+                  },
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.shopping_cart),
                 ),
               );
+
+              // return FloatingActionButton(
+              //   onPressed: () {
+              //     Navigator.of(context).push(MaterialPageRoute(
+              //       builder: (context) {
+              //         return PaginaCarrinho(
+              //           idComanda: widget.idComanda!,
+              //           idMesa: widget.idMesa!,
+              //           idCliente: widget.idCliente!,
+              //           idComandaPedido: widget.idComandaPedido!,
+              //         );
+              //       },
+              //     ));
+              //   },
+              //   shape: const CircleBorder(),
+              //   child: Badge(
+              //     largeSize: 25,
+              //     textStyle: const TextStyle(fontSize: 16),
+              //     padding: carrinhoProvedor.itensCarrinho.quantidadeTotal < 10
+              //         ? const EdgeInsets.symmetric(vertical: 0, horizontal: 9)
+              //         : const EdgeInsets.all(5),
+              //     offset: const Offset(20, -20),
+              //     label: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0)),
+              //     isLabelVisible: true,
+              //     child: const Icon(
+              //       Icons.shopping_cart,
+              //       size: 30,
+              //     ),
+              //   ),
+              // );
             },
           ),
           appBar: AppBar(

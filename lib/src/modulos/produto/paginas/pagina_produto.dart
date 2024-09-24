@@ -17,7 +17,8 @@ class PaginaProduto extends StatefulWidget {
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
-  const PaginaProduto({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
+  const PaginaProduto(
+      {super.key, required this.produto, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
 
   @override
   State<PaginaProduto> createState() => _PaginaProdutoState();
@@ -49,6 +50,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var idProduto = produto!.id;
     var observacaoMesa = '';
     var observacao = obsController.text;
+
+    // print(_provedorProduto.listaTamanhos);
+    // return;
 
     if (widget.produto.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();

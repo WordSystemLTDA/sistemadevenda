@@ -78,7 +78,8 @@ class _CardComandaState extends State<CardComanda> {
             if (!widget.itemComanda.comandaOcupada) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => PaginaComandaDesocupada(id: widget.itemComanda.id, idComandaPedido: widget.itemComanda.idComandaPedido, nome: widget.itemComanda.nome),
+                  builder: (context) => PaginaComandaDesocupada(
+                      id: widget.itemComanda.id, idComandaPedido: widget.itemComanda.idComandaPedido, nome: widget.itemComanda.nome),
                 ),
               );
             } else {
@@ -121,9 +122,11 @@ class _CardComandaState extends State<CardComanda> {
                   children: [
                     const SizedBox(width: 15),
                     SizedBox(
-                      width: 170,
+                      width: 150,
                       child: Text(
-                        widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
+                        widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty
+                            ? widget.itemComanda.nomeCliente!
+                            : 'Sem Cliente',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -159,7 +162,9 @@ class _CardComandaState extends State<CardComanda> {
                         children: [
                           const SizedBox(width: 15),
                           Text(
-                            widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}' : '',
+                            widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty
+                                ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}'
+                                : '',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,

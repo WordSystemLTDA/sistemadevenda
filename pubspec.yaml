@@ -42,6 +42,7 @@ dependencies:
   intl: ^0.19.0
   brasil_fields: ^1.14.3
   web_socket_channel: ^2.4.4
+  badges: ^3.1.2
 
 dev_dependencies:
   flutter_test:

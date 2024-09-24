@@ -164,7 +164,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                               Row(
                                 children: [
                                   IconButton(
-                                    icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
+                                    icon: widget.item.quantidade! <= 1
+                                        ? const Icon(Icons.delete_outline_outlined)
+                                        : const Icon(Icons.remove_circle_outline_outlined),
                                     onPressed: () {
                                       if (widget.item.quantidade! <= 1) {
                                         showDialog(
@@ -259,7 +261,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
                           transitionBuilder: (child, anim) => RotationTransition(
-                            turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                            turns: child.key == const ValueKey('icon1')
+                                ? Tween<double>(begin: 0.75, end: 1).animate(anim)
+                                : Tween<double>(begin: 1, end: 1).animate(anim),
                             child: ScaleTransition(scale: anim, child: child),
                           ),
                           child: _isExpanded
