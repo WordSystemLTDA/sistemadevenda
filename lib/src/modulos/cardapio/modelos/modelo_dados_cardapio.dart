@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 // ignore_for_file: public_member_api_docs, sort_constructors_first
@@ -29,7 +30,7 @@ class Modeloworddadoscardapio {
   String? cnpjEmpresa;
   String? enderecoEmpresa;
   String? nomeEmpresa;
-  List<dynamic>? nomelancamento;
+  List<ModeloNomeLancamento>? nomelancamento;
   String? idComanda;
   String? idMesa;
   String? idDelivery;
@@ -97,7 +98,7 @@ class Modeloworddadoscardapio {
       'cnpjEmpresa': cnpjEmpresa,
       'enderecoEmpresa': enderecoEmpresa,
       'nomeEmpresa': nomeEmpresa,
-      'nomelancamento': nomelancamento,
+      'nomelancamento': nomelancamento?.map((x) => x.toMap()).toList(),
       'idComanda': idComanda,
       'idMesa': idMesa,
       'idDelivery': idDelivery,
@@ -139,7 +140,13 @@ class Modeloworddadoscardapio {
       cnpjEmpresa: map['cnpjEmpresa'] != null ? map['cnpjEmpresa'] as String : null,
       enderecoEmpresa: map['enderecoEmpresa'] != null ? map['enderecoEmpresa'] as String : null,
       nomeEmpresa: map['nomeEmpresa'] != null ? map['nomeEmpresa'] as String : null,
-      nomelancamento: map['nomelancamento'] != null ? List<dynamic>.from((map['nomelancamento'] as List<dynamic>)) : null,
+      nomelancamento: map['nomelancamento'] != null
+          ? List<ModeloNomeLancamento>.from(
+              (map['nomelancamento'] as List<dynamic>).map<ModeloNomeLancamento?>(
+                (x) => ModeloNomeLancamento.fromMap(x as Map<String, dynamic>),
+              ),
+            )
+          : null,
       idComanda: map['idComanda'] != null ? map['idComanda'] as String : null,
       idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
       idDelivery: map['idDelivery'] != null ? map['idDelivery'] as String : null,

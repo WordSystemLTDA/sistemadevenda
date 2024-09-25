@@ -189,11 +189,12 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                 onPressed: () {
                                   if (widget.dados != null) {
                                     EnviarPedido.enviarPedido(
-                                      widget.dados!.nome!,
-                                      widget.dados!.numeroPedido!,
-                                      widget.dados!.nomeCliente!,
-                                      widget.dados!.nomeEmpresa!,
-                                      [item],
+                                      tipo: '1',
+                                      nomeTitulo: widget.dados!.nome!,
+                                      numeroPedido: widget.dados!.numeroPedido!,
+                                      nomeCliente: widget.dados!.nomeCliente!,
+                                      nomeEmpresa: widget.dados!.nomeEmpresa!,
+                                      produtosNovos: [item],
                                     );
                                   }
                                 },

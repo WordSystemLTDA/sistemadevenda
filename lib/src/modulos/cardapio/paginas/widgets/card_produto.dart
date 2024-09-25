@@ -49,22 +49,14 @@ class _CardProdutoState extends State<CardProduto> {
           var comanda = idComanda.isEmpty ? 0 : idComanda;
           var mesa = idMesa.isEmpty ? 0 : idMesa;
 
-          if (widget.item.tamanhos.isNotEmpty ||
-              widget.item.acompanhamentos.isNotEmpty ||
-              widget.item.adicionais.isNotEmpty ||
-              widget.item.itensRetiradas.isNotEmpty) {
+          if (widget.item.tamanhos.isNotEmpty || widget.item.acompanhamentos.isNotEmpty || widget.item.adicionais.isNotEmpty || widget.item.itensRetiradas.isNotEmpty) {
             if (widget.estaPesquisando) {
               widget.searchController!.closeView(widget.item.nome);
             }
 
             Navigator.of(context).push(MaterialPageRoute(
               builder: (context) {
-                return PaginaProduto(
-                    idComanda: widget.idComanda,
-                    idComandaPedido: widget.idComandaPedido,
-                    idMesa: widget.idMesa,
-                    tipo: widget.tipo,
-                    produto: widget.item);
+                return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
               },
             ));
 
@@ -118,6 +110,7 @@ class _CardProdutoState extends State<CardProduto> {
               acompanhamentos: widget.item.acompanhamentos,
               tamanhos: widget.item.tamanhos,
               itensRetiradas: widget.item.itensRetiradas,
+              ingredientes: widget.item.ingredientes,
               ativarCustoDeProducao: widget.item.ativarCustoDeProducao,
               ativarEdQtd: widget.item.ativarEdQtd,
               ativoLoja: widget.item.ativoLoja,
@@ -166,12 +159,7 @@ class _CardProdutoState extends State<CardProduto> {
 
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
-              return PaginaProduto(
-                  idComanda: widget.idComanda,
-                  idComandaPedido: widget.idComandaPedido,
-                  idMesa: widget.idMesa,
-                  tipo: widget.tipo,
-                  produto: widget.item);
+              return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
             },
           ));
         },

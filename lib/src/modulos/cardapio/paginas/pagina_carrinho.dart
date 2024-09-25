@@ -138,11 +138,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                     if (sucesso) {
                       removerTodosItensCarrinho();
                       EnviarPedido.enviarPedido(
-                        "Comanda ${widget.idComanda}",
-                        '1',
-                        'Nome Cliente',
-                        'Nome Empresa',
-                        carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                        tipo: '1',
+                        nomeTitulo: "Comanda ${widget.idComanda}",
+                        numeroPedido: '1',
+                        nomeCliente: 'Nome Cliente',
+                        nomeEmpresa: 'Nome Empresa',
+                        produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                       );
 
                       if (context.mounted) {

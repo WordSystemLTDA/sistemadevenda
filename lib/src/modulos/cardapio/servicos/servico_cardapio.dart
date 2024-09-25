@@ -58,4 +58,33 @@ class ServicoCardapio {
       return (false, 'Erro');
     }
   }
+
+  Future<({bool sucesso, String mensagem})> fecharAbrirComanda(String idComandaPedido, String status) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+    try {
+      var campos = {
+        "id_comanda_pedido": idComandaPedido,
+        'empresa': idEmpresa,
+        'id_usuario': idUsuario,
+        'status': status,
+      };
+
+      var response = await dio.cliente.post('comandas/fechar_abrir_comanda.php', data: jsonEncode(campos));
+
+      var jsonData = response.data;
+      bool sucesso = jsonData['sucesso'];
+      String mensagem = jsonData['mensagem'];
+
+      return (sucesso: sucesso, mensagem: mensagem);
+    } on DioException catch (e) {
+      if (e.response == null) {
+        if (kDebugMode) {
+          log('ERRO API', error: e.error);
+        }
+      }
+
+      return (sucesso: false, mensagem: 'Erro');
+    }
+  }
 }

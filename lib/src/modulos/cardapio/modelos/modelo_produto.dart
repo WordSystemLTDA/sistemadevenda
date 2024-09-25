@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_ingredientes_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_itens_retirada_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
@@ -25,7 +26,7 @@ class ModeloProduto {
   String? dataLancado;
   String? ativarEdQtd;
   String? ativarCustoDeProducao;
-  // bool excluir;
+
   bool? novo;
   ModeloDestinoImpressao? destinoDeImpressao;
   String habilTipo;
@@ -35,12 +36,12 @@ class ModeloProduto {
   List<Modelowordacompanhamentosproduto> acompanhamentos;
   List<Modelowordtamanhosproduto> tamanhos;
   List<Modeloworditensretiradaproduto> itensRetiradas;
+  List<Modelowordingredientesproduto> ingredientes;
   double? quantidade;
   int? quantidadePessoa;
   int? tamanhoLista;
   String? valorTotalVendas;
   String? observacao;
-
   String? valorRestoDivisao;
   List<ModeloOpcoesPacotes>? opcoesPacotes;
 
@@ -68,6 +69,7 @@ class ModeloProduto {
     required this.acompanhamentos,
     required this.tamanhos,
     required this.itensRetiradas,
+    required this.ingredientes,
     this.quantidade,
     this.quantidadePessoa = 1,
     this.tamanhoLista,
@@ -101,6 +103,7 @@ class ModeloProduto {
       'acompanhamentos': acompanhamentos.map((x) => x.toMap()).toList(),
       'tamanhos': tamanhos.map((x) => x.toMap()).toList(),
       'itensRetiradas': itensRetiradas.map((x) => x.toMap()).toList(),
+      'ingredientes': ingredientes.map((x) => x.toMap()).toList(),
       'quantidade': quantidade,
       'quantidadePessoa': quantidadePessoa,
       'tamanhoLista': tamanhoLista,
@@ -153,6 +156,11 @@ class ModeloProduto {
           (x) => Modeloworditensretiradaproduto.fromMap(x as Map<String, dynamic>),
         ),
       ),
+      ingredientes: List<Modelowordingredientesproduto>.from(
+        (map['ingredientes'] as List<dynamic>).map<Modelowordingredientesproduto>(
+          (x) => Modelowordingredientesproduto.fromMap(x as Map<String, dynamic>),
+        ),
+      ),
       quantidade: map['quantidade'] != null
           ? (map['quantidade'] is int || map['quantidade'] is double)
               ? (double.tryParse(map['quantidade'].toString()) ?? 0)
@@ -201,6 +209,7 @@ class ModeloProduto {
         listEquals(other.acompanhamentos, acompanhamentos) &&
         listEquals(other.tamanhos, tamanhos) &&
         listEquals(other.itensRetiradas, itensRetiradas) &&
+        listEquals(other.ingredientes, ingredientes) &&
         other.quantidade == quantidade &&
         other.quantidadePessoa == quantidadePessoa &&
         other.tamanhoLista == tamanhoLista &&
@@ -231,6 +240,7 @@ class ModeloProduto {
         acompanhamentos.hashCode ^
         tamanhos.hashCode ^
         itensRetiradas.hashCode ^
+        ingredientes.hashCode ^
         quantidade.hashCode ^
         quantidadePessoa.hashCode ^
         tamanhoLista.hashCode ^
