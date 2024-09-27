@@ -17,8 +17,7 @@ class PaginaProduto extends StatefulWidget {
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
-  const PaginaProduto(
-      {super.key, required this.produto, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
+  const PaginaProduto({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
 
   @override
   State<PaginaProduto> createState() => _PaginaProdutoState();
