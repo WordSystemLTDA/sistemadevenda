@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -27,8 +28,11 @@ class EnviarPedido {
   }) async {
     var cliente = Modular.get<Client>();
 
+    final ConfigSharedPreferences config = ConfigSharedPreferences();
+    var conexao = await config.getConexao();
+
     if (cliente.connected == false) {
-      await cliente.connect('192.168.2.115', 9980).then((value) {
+      await cliente.connect(conexao!.servidor, 9980).then((value) {
         if (value) {
           log('conectou');
         } else {

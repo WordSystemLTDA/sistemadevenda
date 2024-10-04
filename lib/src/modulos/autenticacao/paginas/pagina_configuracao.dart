@@ -28,8 +28,8 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     if (conexao == null) return;
 
-    tipoConexaoController.text = conexao['tipoConexao'];
-    servidorController.text = conexao['servidor'];
+    tipoConexaoController.text = conexao.tipoConexao;
+    servidorController.text = conexao.servidor;
   }
 
   void verificar() async {
@@ -105,18 +105,18 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                 ),
               ),
               const SizedBox(height: 10),
-              if (tipoConexaoController.text == 'localhost') ...[
-                TextField(
-                  controller: servidorController,
-                  onSubmitted: (a) => verificar(),
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.all(12),
-                    labelText: 'Endereço de IP',
-                    hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                    border: OutlineInputBorder(),
-                  ),
+              // if (tipoConexaoController.text == 'localhost') ...[
+              TextField(
+                controller: servidorController,
+                onSubmitted: (a) => verificar(),
+                decoration: const InputDecoration(
+                  contentPadding: EdgeInsets.all(12),
+                  labelText: 'IP do Servidor Local',
+                  hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                  border: OutlineInputBorder(),
                 ),
-              ],
+              ),
+              // ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,

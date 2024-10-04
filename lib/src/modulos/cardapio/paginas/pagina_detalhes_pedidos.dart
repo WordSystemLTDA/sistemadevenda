@@ -331,8 +331,6 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                                                   numeroPedido: dados!.numeroPedido!,
                                                                 );
 
-                                                                print(dados!.valorTotal);
-
                                                                 await listarComandasPedidos();
                                                               }
                                                             });

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/shared_prefs/modelo_conexao.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfigSharedPreferences {
@@ -15,7 +16,7 @@ class ConfigSharedPreferences {
   static const produtosteladevolucao = 'produtosteladevolucao';
   static const produtosTelanfeentrada = 'produtosTelanfeentrada';
 
-  Future<dynamic> getConexao() async {
+  Future<ModeloConexao?> getConexao() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     // await prefs.setString(
     //   'conexao',
@@ -24,8 +25,10 @@ class ConfigSharedPreferences {
     //     'servidor': '192.168.2.117',
     //   }),
     // );
+
     var conexao = prefs.getString('conexao');
-    if (conexao != null) return jsonDecode(conexao);
-    return conexao;
+    if (conexao == null) return null;
+
+    return ModeloConexao.fromMap(jsonDecode(conexao));
   }
 }
