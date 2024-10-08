@@ -12,7 +12,11 @@ class Apis {
     //   'servidor': 'http://${conexao.servidor}/sistema/apis_restaurantes/api_restaurantes_venda/',
     // };
 
-    return ModeloConexao(tipoConexao: conexao!.tipoConexao, servidor: 'http://${conexao.servidor}/sistema/apis_restaurantes/api_restaurantes_venda/');
+    // if (conexao!.tipoConexao == 'online') {
+    return ModeloConexao(tipoConexao: conexao!.tipoConexao, servidor: 'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/');
+    // }
+
+    // return ModeloConexao(tipoConexao: conexao.tipoConexao, servidor: 'http://${conexao.servidor}/sistema/apis_restaurantes/api_restaurantes_venda/');
   }
 
   // static const baseUrl = 'http://192.168.2.129/api_restaurantes/';

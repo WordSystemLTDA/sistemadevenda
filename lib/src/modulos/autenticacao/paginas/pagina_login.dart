@@ -93,71 +93,83 @@ class _PaginaLoginState extends State<PaginaLogin> {
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: Center(
-          child: verificando
-              ? const CircularProgressIndicator()
-              : Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextField(
-                          controller: usuarioController,
-                          onSubmitted: (a) => entrar(),
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.all(13),
-                            labelText: "Usuário",
-                            hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                            border: OutlineInputBorder(),
-                          ),
+        child: verificando
+            ? const CircularProgressIndicator()
+            : Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 100),
+                      Image.asset(
+                        'assets/logo_funco_transparente.png',
+                        width: 200,
+                        height: 150,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox(
+                            width: 200,
+                            height: 150,
+                            child: Center(child: Icon(Icons.error)),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 25),
+                      TextField(
+                        controller: usuarioController,
+                        onSubmitted: (a) => entrar(),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.all(13),
+                          labelText: "Usuário",
+                          hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                          border: OutlineInputBorder(),
                         ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: senhaController,
-                          obscureText: true,
-                          onSubmitted: (a) => entrar(),
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.all(13),
-                            labelText: "Senha",
-                            hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                            border: OutlineInputBorder(),
-                          ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: senhaController,
+                        obscureText: true,
+                        onSubmitted: (a) => entrar(),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.all(13),
+                          labelText: "Senha",
+                          hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                          border: OutlineInputBorder(),
                         ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton(
-                            style: ButtonStyle(
-                              // backgroundColor: MaterialStatePropertyAll(Colors.green),
-                              backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
-                              side: const WidgetStatePropertyAll(BorderSide.none),
-                              shape: const WidgetStatePropertyAll(
-                                RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.all(Radius.circular(5)),
-                                ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          style: ButtonStyle(
+                            // backgroundColor: MaterialStatePropertyAll(Colors.green),
+                            backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
+                            side: const WidgetStatePropertyAll(BorderSide.none),
+                            shape: const WidgetStatePropertyAll(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(5)),
                               ),
-                              // foregroundColor: const MaterialStatePropertyAll(Colors.white),
-                              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                             ),
-                            onPressed: entrar,
-                            child: isLoading ? const CircularProgressIndicator() : const Text('Entrar'),
+                            // foregroundColor: const MaterialStatePropertyAll(Colors.white),
+                            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                           ),
+                          onPressed: entrar,
+                          child: isLoading ? const CircularProgressIndicator() : const Text('Entrar'),
                         ),
-                        const SizedBox(height: 5),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const PaginaConfiguracao()));
-                          },
-                          child: const Text('Configurações'),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 5),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const PaginaConfiguracao()));
+                        },
+                        child: const Text('Configurações'),
+                      ),
+                    ],
                   ),
                 ),
-        ),
+              ),
       ),
     );
   }

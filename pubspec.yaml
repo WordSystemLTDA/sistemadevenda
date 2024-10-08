@@ -43,6 +43,7 @@ dependencies:
   brasil_fields: ^1.14.3
   web_socket_channel: ^2.4.4
   badges: ^3.1.2
+  flutter_launcher_icons: ^0.14.1
 
 dev_dependencies:
   flutter_test:
@@ -58,6 +59,12 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icone.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+
 # The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
@@ -70,6 +77,7 @@ flutter:
     - assets/placeholder.png
     - assets/Sem_foto_transparente.png
     - assets/Sem_foto_transparente_2.png
+    - assets/logo_funco_transparente.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

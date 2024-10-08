@@ -1,4 +1,6 @@
 import 'package:app/src/essencial/utils/enviar_pedido.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
@@ -28,11 +30,19 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   bool isLoading = false;
+  Modeloworddadoscardapio? dados;
 
   @override
   void initState() {
     super.initState();
-    carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+    listar();
+  }
+
+  void listar() async {
+    await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+    await servicoCardapio.listarPorId(widget.idComandaPedido, TipoCardapio.comanda).then((value) {
+      dados = value;
+    });
   }
 
   void removerTodosItensCarrinho() async {
@@ -140,9 +150,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                       EnviarPedido.enviarPedido(
                         tipo: '1',
                         nomeTitulo: "Comanda ${widget.idComanda}",
-                        numeroPedido: '1',
-                        nomeCliente: 'Nome Cliente',
-                        nomeEmpresa: 'Nome Empresa',
+                        numeroPedido: dados!.numeroPedido!,
+                        nomeCliente: dados!.nomeCliente!,
+                        nomeEmpresa: dados!.nomeEmpresa!,
                         produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                       );
 
