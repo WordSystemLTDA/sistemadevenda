@@ -1,3 +1,5 @@
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
@@ -24,6 +26,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   final _obsconstroller = TextEditingController();
 
   bool carregando = true;
+  bool salvando = false;
 
   Modeloworddadoscardapio? dados;
 
@@ -31,10 +34,13 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   String idCliente = '0';
 
   final ProvedorComanda _state = Modular.get<ProvedorComanda>();
+  final ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ModeloConfigBigchef? configBigchef;
 
   @override
   void initState() {
     super.initState();
+    listarDados();
     if (widget.idComandaPedido != null) {
       listarComandasPedidos();
     } else {
@@ -42,7 +48,15 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     }
   }
 
-  void listarComandasPedidos() async {
+  void listarDados() async {
+    await servicoConfigBigchef.listar().then((value) {
+      setState(() {
+        configBigchef = value;
+      });
+    });
+  }
+
+  Future<void> listarComandasPedidos() async {
     await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda).then((value) {
       setState(() {
         dados = value;
@@ -69,6 +83,12 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
         visible: carregando == false,
         child: FloatingActionButton.extended(
           onPressed: () async {
+            if (salvando) return;
+
+            setState(() {
+              salvando = true;
+            });
+
             if (widget.idComandaPedido != null) {
               await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
                 if (context.mounted) {
@@ -87,28 +107,55 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                 }
               });
             } else {
-              await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
+              await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
                 if (context.mounted) {
-                  if (sucesso) {
+                  if (resposta.sucesso) {
                     Navigator.pop(context);
+                    if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
+                      if (context.mounted) {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) {
+                            return PaginaCardapio(
+                              tipo: 'Comanda',
+                              idComanda: widget.id,
+                              idMesa: '0',
+                              idCliente: idCliente,
+                              idComandaPedido: resposta.idcomandapedido,
+                            );
+                          },
+                        ));
+                      }
+                    } else {
+                      Navigator.pop(context);
+                    }
                   }
 
-                  if (!sucesso) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Ocorreu um erro'),
-                      showCloseIcon: true,
-                    ));
+                  if (!resposta.sucesso) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Ocorreu um erro'),
+                        showCloseIcon: true,
+                      ));
+                    }
                   }
                 }
               });
             }
+
+            setState(() {
+              salvando = false;
+            });
           },
           label: Row(
             children: [
-              Text(widget.idComandaPedido != null ? 'Editar Comanda' : 'Abrir Comanda'),
-              const SizedBox(width: 10),
-              const Icon(Icons.check),
+              if (salvando) ...[
+                const Center(child: CircularProgressIndicator()),
+              ] else ...[
+                Text(widget.idComandaPedido != null ? 'Editar Comanda' : 'Abrir Comanda'),
+                const SizedBox(width: 10),
+                const Icon(Icons.check),
+              ],
             ],
           ),
         ),

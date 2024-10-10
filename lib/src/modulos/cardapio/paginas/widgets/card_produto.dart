@@ -106,6 +106,7 @@ class _CardProdutoState extends State<CardProduto> {
               categoria: widget.item.categoria,
               nomeCategoria: widget.item.nomeCategoria,
               habilTipo: widget.item.habilTipo,
+              kits: widget.item.kits,
               adicionais: widget.item.adicionais,
               acompanhamentos: widget.item.acompanhamentos,
               tamanhos: widget.item.tamanhos,

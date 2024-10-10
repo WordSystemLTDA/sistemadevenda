@@ -13,7 +13,7 @@ class Apis {
     // };
 
     // if (conexao!.tipoConexao == 'online') {
-    return ModeloConexao(tipoConexao: conexao!.tipoConexao, servidor: 'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/');
+    return ModeloConexao(tipoConexao: 'online', servidor: 'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/', porta: '');
     // }
 
     // return ModeloConexao(tipoConexao: conexao.tipoConexao, servidor: 'http://${conexao.servidor}/sistema/apis_restaurantes/api_restaurantes_venda/');

@@ -32,7 +32,7 @@ class EnviarPedido {
     var conexao = await config.getConexao();
 
     if (cliente.connected == false) {
-      await cliente.connect(conexao!.servidor, 9980).then((value) {
+      await cliente.connect(conexao!.servidor, int.parse(conexao.porta)).then((value) {
         if (value) {
           log('conectou');
         } else {
@@ -45,6 +45,10 @@ class EnviarPedido {
 
     // pedido
     if (tipo == '1') {
+      for (var element in produtosNovos) {
+        element.kits = [];
+      }
+
       cliente.write(jsonEncode({
         'tipo': tipo,
         'nomeTitulo': nomeTitulo,
@@ -56,6 +60,10 @@ class EnviarPedido {
 
       // conta
     } else if (tipo == '2') {
+      for (var element in produtos) {
+        element.kits = [];
+      }
+
       cliente.write(jsonEncode({
         'tipo': tipo,
         'produtos': produtos,

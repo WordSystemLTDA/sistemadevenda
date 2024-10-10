@@ -32,6 +32,7 @@ class ModeloProduto {
   String habilTipo;
   String? habilItensRetirada;
   String? ativoLoja;
+  List<ModeloProduto> kits;
   List<Modelowordadicionaisproduto> adicionais;
   List<Modelowordacompanhamentosproduto> acompanhamentos;
   List<Modelowordtamanhosproduto> tamanhos;
@@ -65,6 +66,7 @@ class ModeloProduto {
     required this.habilTipo,
     this.habilItensRetirada,
     this.ativoLoja,
+    required this.kits,
     required this.adicionais,
     required this.acompanhamentos,
     required this.tamanhos,
@@ -99,6 +101,7 @@ class ModeloProduto {
       'destinoDeImpressao': destinoDeImpressao?.toMap(),
       'habilTipo': habilTipo,
       'ativoLoja': ativoLoja,
+      'kits': kits.map((x) => x.toMap()).toList(),
       'adicionais': adicionais.map((x) => x.toMap()).toList(),
       'acompanhamentos': acompanhamentos.map((x) => x.toMap()).toList(),
       'tamanhos': tamanhos.map((x) => x.toMap()).toList(),
@@ -136,6 +139,11 @@ class ModeloProduto {
       habilTipo: map['habilTipo'] as String,
       habilItensRetirada: map['habilItensRetirada'] != null ? map['habilItensRetirada'] as String : null,
       ativoLoja: map['ativoLoja'] != null ? map['ativoLoja'] as String : null,
+      kits: List<ModeloProduto>.from(
+        (map['kits'] as List<dynamic>).map<ModeloProduto>(
+          (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+        ),
+      ),
       adicionais: List<Modelowordadicionaisproduto>.from(
         (map['adicionais'] as List<dynamic>).map<Modelowordadicionaisproduto>(
           (x) => Modelowordadicionaisproduto.fromMap(x as Map<String, dynamic>),

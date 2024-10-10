@@ -4,13 +4,19 @@ import 'dart:convert';
 class ModeloConexao {
   final String tipoConexao;
   final String servidor;
+  final String porta;
 
-  ModeloConexao({required this.tipoConexao, required this.servidor});
+  ModeloConexao({
+    required this.tipoConexao,
+    required this.servidor,
+    required this.porta,
+  });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'tipoConexao': tipoConexao,
       'servidor': servidor,
+      'porta': porta,
     };
   }
 
@@ -18,6 +24,7 @@ class ModeloConexao {
     return ModeloConexao(
       tipoConexao: map['tipoConexao'] as String,
       servidor: map['servidor'] as String,
+      porta: map['porta'] as String,
     );
   }
 

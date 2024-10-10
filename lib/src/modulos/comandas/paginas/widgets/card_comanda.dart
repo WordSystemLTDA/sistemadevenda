@@ -147,7 +147,7 @@ class _CardComandaState extends State<CardComanda> {
                           return Text(snapshot.data!, style: const TextStyle(fontSize: 12));
                         },
                       ),
-                      Text(double.parse(widget.itemComanda.valor ?? '0').obterReal(), style: const TextStyle(color: Colors.white))
+                      Text(double.parse(widget.itemComanda.valor ?? '0').obterReal(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))
                     ],
                   ),
                 ),

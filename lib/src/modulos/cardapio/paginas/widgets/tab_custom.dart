@@ -50,7 +50,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
             valueListenable: carregando,
             builder: (context, valueCarregando, _) {
               return valueCarregando == true
-                  ? const Align(alignment: Alignment(0, -0.9), child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator())
                   : provedorCardapio.produtos.isEmpty && valueCarregando == false
                       ? ListView(
                           children: const [SizedBox(height: 100, child: Center(child: Text('Não há Itens')))],

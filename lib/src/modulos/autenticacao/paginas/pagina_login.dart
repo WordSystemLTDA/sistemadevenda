@@ -94,7 +94,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
         highlightColor: Colors.transparent,
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: verificando
-            ? const CircularProgressIndicator()
+            ? const Center(child: CircularProgressIndicator())
             : Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: SingleChildScrollView(

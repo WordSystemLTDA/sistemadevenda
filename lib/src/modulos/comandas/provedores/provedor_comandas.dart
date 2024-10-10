@@ -26,12 +26,13 @@ class ProvedorComanda extends ChangeNotifier {
     return await _servico.listarClientes(pesquisa);
   }
 
-  Future<dynamic> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
+  Future<({bool sucesso, String? idcomandapedido})> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
     final res = await _servico.inserirComandaOcupada(id, idMesa, idCliente, obs);
 
-    if (res) {
+    if (res.sucesso) {
       listarComandas('');
     }
+
     return res;
   }
 

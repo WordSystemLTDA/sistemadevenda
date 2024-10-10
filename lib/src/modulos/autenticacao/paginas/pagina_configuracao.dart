@@ -18,6 +18,7 @@ class PaginaConfiguracao extends StatefulWidget {
 class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   final tipoConexaoController = TextEditingController();
   final servidorController = TextEditingController();
+  final portaController = TextEditingController();
 
   final ConfigSharedPreferences _config = ConfigSharedPreferences();
 
@@ -30,10 +31,11 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     tipoConexaoController.text = conexao.tipoConexao;
     servidorController.text = conexao.servidor;
+    portaController.text = conexao.porta;
   }
 
   void verificar() async {
-    if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty) {
+    if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty || portaController.text.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Campos precisam ser preenchidos'),
@@ -49,6 +51,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
       jsonEncode({
         'tipoConexao': tipoConexaoController.text,
         'servidor': servidorController.text,
+        'porta': portaController.text,
       }),
     );
 
@@ -106,15 +109,35 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
               ),
               const SizedBox(height: 10),
               // if (tipoConexaoController.text == 'localhost') ...[
-              TextField(
-                controller: servidorController,
-                onSubmitted: (a) => verificar(),
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.all(12),
-                  labelText: 'IP do Servidor Local',
-                  hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                  border: OutlineInputBorder(),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: servidorController,
+                      onSubmitted: (a) => verificar(),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.all(12),
+                        labelText: 'IP do Servidor Local',
+                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 150,
+                    child: TextField(
+                      controller: portaController,
+                      onSubmitted: (a) => verificar(),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.all(12),
+                        labelText: '9980',
+                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               // ],
               const SizedBox(height: 20),
