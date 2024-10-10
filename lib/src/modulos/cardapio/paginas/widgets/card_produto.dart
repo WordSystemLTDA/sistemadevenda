@@ -49,14 +49,14 @@ class _CardProdutoState extends State<CardProduto> {
           var comanda = idComanda.isEmpty ? 0 : idComanda;
           var mesa = idMesa.isEmpty ? 0 : idMesa;
 
-          if (widget.item.tamanhos.isNotEmpty || widget.item.acompanhamentos.isNotEmpty || widget.item.adicionais.isNotEmpty || widget.item.itensRetiradas.isNotEmpty) {
+          if (widget.item.habilTipo == 'Pacote' || widget.item.habilTipo == 'kit') {
             if (widget.estaPesquisando) {
               widget.searchController!.closeView(widget.item.nome);
             }
 
             Navigator.of(context).push(MaterialPageRoute(
               builder: (context) {
-                return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
+                return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item.id);
               },
             ));
 
@@ -160,7 +160,7 @@ class _CardProdutoState extends State<CardProduto> {
 
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
-              return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item);
+              return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item.id);
             },
           ));
         },

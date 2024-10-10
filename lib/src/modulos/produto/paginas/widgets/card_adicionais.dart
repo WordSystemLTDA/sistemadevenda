@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,7 +10,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class CardAdicionais extends StatefulWidget {
   final ModeloDadosOpcoesPacotes item;
-  const CardAdicionais({super.key, required this.item});
+  final bool kit;
+  final ModeloProduto? dadosKit;
+  const CardAdicionais({super.key, required this.item, required this.kit, this.dadosKit});
 
   @override
   State<CardAdicionais> createState() => _CardAdicionaisState();
@@ -17,6 +20,20 @@ class CardAdicionais extends StatefulWidget {
 
 class _CardAdicionaisState extends State<CardAdicionais> {
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+
+  List<Modelowordadicionaisproduto> retornarListaAdicionais() {
+    if (widget.kit) {
+      var produto = _provedorProduto.listaKits.where((element) => element.id == widget.dadosKit!.id).firstOrNull;
+
+      if (produto == null) {
+        return [];
+      } else {
+        return produto.adicionais;
+      }
+    }
+
+    return _provedorProduto.listaAdicionais;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +46,7 @@ class _CardAdicionaisState extends State<CardAdicionais> {
             Card(
               margin: EdgeInsets.zero,
               child: InkWell(
-                onTap: () => _provedorProduto.selecionarAdicional(item),
+                onTap: () => _provedorProduto.selecionarAdicional(item, widget.kit, widget.dadosKit),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -67,31 +84,31 @@ class _CardAdicionaisState extends State<CardAdicionais> {
                         ),
                       ],
                     ),
-                    if (_provedorProduto.listaAdicionais.isNotEmpty && _provedorProduto.listaAdicionais.where((element) => element.id == item.id).isNotEmpty) ...[
+                    if (retornarListaAdicionais().isNotEmpty && retornarListaAdicionais().where((element) => element.id == item.id).isNotEmpty) ...[
                       Row(
                         children: [
                           IconButton(
                             onPressed: () {
-                              if (_provedorProduto.listaAdicionais.firstWhere((element) => element.id == item.id).quantidade > 1) {
+                              if (retornarListaAdicionais().firstWhere((element) => element.id == item.id).quantidade > 1) {
                                 setState(() {
-                                  _provedorProduto.listaAdicionais.firstWhere((element) => element.id == item.id).quantidade--;
+                                  retornarListaAdicionais().firstWhere((element) => element.id == item.id).quantidade--;
                                 });
                               }
                             },
                             icon: Icon(
                               Icons.remove_circle_outline,
                               size: 30,
-                              color: _provedorProduto.listaAdicionais.firstWhere((element) => element.id == item.id).quantidade == 1 ? Colors.grey : Colors.red,
+                              color: retornarListaAdicionais().firstWhere((element) => element.id == item.id).quantidade == 1 ? Colors.grey : Colors.red,
                             ),
                           ),
                           Text(
-                            _provedorProduto.listaAdicionais.firstWhere((element) => element.id == item.id).quantidade.toString(),
+                            retornarListaAdicionais().firstWhere((element) => element.id == item.id).quantidade.toString(),
                             style: const TextStyle(fontSize: 20),
                           ),
                           IconButton(
                             onPressed: () {
                               setState(() {
-                                _provedorProduto.listaAdicionais.firstWhere((element) => element.id == item.id).quantidade++;
+                                retornarListaAdicionais().firstWhere((element) => element.id == item.id).quantidade++;
                               });
                             },
                             icon: const Icon(
@@ -107,7 +124,7 @@ class _CardAdicionaisState extends State<CardAdicionais> {
                 ),
               ),
             ),
-            if (item.estaSelecionado) ...[
+            if (retornarListaAdicionais().isNotEmpty && retornarListaAdicionais().where((element) => element.id == item.id).isNotEmpty) ...[
               const Positioned(
                 top: -10,
                 left: -10,

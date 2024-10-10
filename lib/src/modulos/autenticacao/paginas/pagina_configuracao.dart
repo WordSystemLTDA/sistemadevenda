@@ -156,7 +156,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                     textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                   ),
                   onPressed: verificar,
-                  child: isLoading ? const CircularProgressIndicator() : const Text('Verificar'),
+                  child: isLoading ? const CircularProgressIndicator() : const Text('Salvar'),
                 ),
               ),
             ],

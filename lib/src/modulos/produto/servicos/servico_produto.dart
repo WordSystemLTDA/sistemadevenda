@@ -49,6 +49,15 @@ class ServicoProduto {
     }
   }
 
+  Future<ModeloProduto?> listarPorId(String id) async {
+    var empresa = usuarioProvedor.usuario!.empresa;
+    final response = await dio.cliente.get('/produtos/listar_por_id.php?id=$id&empresa=$empresa');
+
+    if (response.data == null) return null;
+
+    return ModeloProduto.fromMap(response.data);
+  }
+
   Future<List<AdicionaisModelo>> listarAdicionais(String id) async {
     final url = '/produtos/listar_adicionais.php?produto=$id';
 

@@ -6,6 +6,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -339,6 +340,23 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       ],
                     ),
                   )
+                ],
+                if (item.kits.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text('Combo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  ListView.builder(
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: item.kits.length,
+                    itemBuilder: (context, index) {
+                      final kit = item.kits[index];
+
+                      return CardPedidoKit(item: kit, somarValores: false);
+                    },
+                  ),
                 ],
                 if (item.acompanhamentos.isNotEmpty) ...[
                   const Padding(

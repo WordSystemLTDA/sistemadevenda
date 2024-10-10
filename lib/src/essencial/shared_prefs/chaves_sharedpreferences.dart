@@ -18,16 +18,24 @@ class ConfigSharedPreferences {
 
   Future<ModeloConexao?> getConexao() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    // await prefs.setString(
-    //   'conexao',
-    //   jsonEncode({
-    //     'tipoConexao': 'localhost',
-    //     'servidor': '192.168.2.117',
-    //   }),
-    // );
 
     var conexao = prefs.getString('conexao');
-    if (conexao == null) return null;
+    if (conexao == null) {
+      await prefs.setString(
+        'conexao',
+        jsonEncode({
+          'tipoConexao': 'online',
+          'servidor': '192.168.2.115',
+          'porta': '9980',
+        }),
+      );
+
+      return ModeloConexao.fromMap({
+        'tipoConexao': 'online',
+        'servidor': '192.168.2.115',
+        'porta': '9980',
+      });
+    }
 
     return ModeloConexao.fromMap(jsonDecode(conexao));
   }

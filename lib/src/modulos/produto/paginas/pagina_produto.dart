@@ -4,15 +4,17 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_acompanhamentos.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_adicionais.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_itens_retiradas.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_tamanhos.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaProduto extends StatefulWidget {
-  final ModeloProduto produto;
+  final String produto;
   final String tipo;
   final String idComanda;
   final String idComandaPedido;
@@ -27,16 +29,58 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
 
-  ModeloProduto? produto;
-  bool isLoading = false;
+  ModeloProduto? itemProduto;
+  bool carregando = false;
   TextEditingController obsController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    produto = widget.produto;
-    _provedorProduto.listaAcompanhamentos = widget.produto.acompanhamentos;
-    _provedorProduto.valorVenda = double.parse(widget.produto.valorVenda);
+
+    listar();
+  }
+
+  void listar() async {
+    if (carregando == false) {
+      setState(() {
+        carregando = true;
+      });
+    }
+
+    var inicioServico = Modular.get<ServicoProduto>();
+    await inicioServico.listarPorId(widget.produto).then((value) {
+      itemProduto = value;
+      if (value != null) {
+        for (var element in value.kits) {
+          element.adicionais = [];
+          element.tamanhos = [];
+          element.acompanhamentos = element.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
+
+          element.itensRetiradas = [];
+        }
+
+        _provedorProduto.listaKits = value.kits;
+        _provedorProduto.listaAcompanhamentos = value.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
+        _provedorProduto.valorVenda = double.parse(value.valorVenda);
+        _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
+
+        for (var element in value.kits) {
+          element.acompanhamentos = element.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
+
+          if (element.acompanhamentos.where((element) => element.estaSelecionado == true).toList().isNotEmpty) {
+            _provedorProduto.calcularValorVenda(true, element);
+          }
+        }
+
+        if (value.kits.isEmpty) {
+          _provedorProduto.calcularValorVenda(false, null);
+        }
+      }
+    }).whenComplete(() {
+      setState(() {
+        carregando = false;
+      });
+    });
   }
 
   void inserirNoCarrinho() async {
@@ -45,15 +89,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
     var comanda = idComanda.isEmpty ? 0 : idComanda;
     var mesa = idMesa.isEmpty ? 0 : idMesa;
-    var valor = produto!.valorVenda;
-    var idProduto = produto!.id;
+    var valor = itemProduto!.valorVenda;
+    var idProduto = itemProduto!.id;
     var observacaoMesa = '';
     var observacao = obsController.text;
 
     // print(_provedorProduto.listaTamanhos);
     // return;
 
-    if (widget.produto.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty) {
+    if (itemProduto!.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         behavior: SnackBarBehavior.floating,
@@ -64,18 +108,19 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       return;
     }
 
-    setState(() => isLoading = !isLoading);
+    setState(() => carregando = !carregando);
 
-    widget.produto.quantidade = _provedorProduto.quantidade.toDouble();
-    widget.produto.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
-    widget.produto.tamanhos = _provedorProduto.listaTamanhos;
-    widget.produto.adicionais = _provedorProduto.listaAdicionais;
-    widget.produto.acompanhamentos = _provedorProduto.listaAcompanhamentos;
-    widget.produto.itensRetiradas = _provedorProduto.listaItensRetirada;
+    itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
+    itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
+    itemProduto!.tamanhos = _provedorProduto.listaTamanhos;
+    itemProduto!.adicionais = _provedorProduto.listaAdicionais;
+    itemProduto!.acompanhamentos = _provedorProduto.listaAcompanhamentos;
+    itemProduto!.itensRetiradas = _provedorProduto.listaItensRetirada;
+    itemProduto!.kits = _provedorProduto.listaKits;
 
     await carrinhoProvedor
         .inserir(
-      produto!,
+      itemProduto!,
       widget.tipo,
       mesa,
       comanda,
@@ -83,8 +128,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       valor,
       observacaoMesa,
       idProduto,
-      produto!.nome,
-      produto!.quantidade,
+      itemProduto!.nome,
+      itemProduto!.quantidade,
       observacao,
     )
         .then((sucesso) {
@@ -102,13 +147,23 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         ));
       }
     }).whenComplete(() {
-      setState(() => isLoading = !isLoading);
+      setState(() => carregando = !carregando);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final produto = widget.produto;
+    if (itemProduto == null) {
+      if (carregando == false) {
+        return const Scaffold(
+          body: Center(child: Text('Produto não existe')),
+        );
+      }
+
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return GestureDetector(
       onTap: () {
@@ -123,7 +178,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         builder: (context, valueProdutoProvedor) {
           return Scaffold(
             appBar: AppBar(
-              title: Text("${produto.nome} ${produto.tamanho}"),
+              title: Text("${itemProduto!.nome} ${itemProduto!.tamanho}"),
               backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             ),
             // backgroundColor: Colors.white,
@@ -132,7 +187,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               onPressed: () {
                 inserirNoCarrinho();
               },
-              label: isLoading
+              label: carregando
                   ? const CircularProgressIndicator()
                   : Row(
                       children: [
@@ -154,7 +209,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        produto.foto.isEmpty
+                        itemProduto!.foto.isEmpty
                             ? Image.asset(Assets.boxAsset, width: 120, height: 120)
                             : ClipRRect(
                                 borderRadius: BorderRadius.circular(8.0),
@@ -169,7 +224,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                     child: Center(child: CircularProgressIndicator()),
                                   ),
                                   errorWidget: (context, url, error) => const Icon(Icons.error),
-                                  imageUrl: produto.foto,
+                                  imageUrl: itemProduto!.foto,
                                 ),
                               ),
                         Column(
@@ -201,8 +256,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
-                              (widget.produto.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty)
-                                  ? "${double.parse(widget.produto.tamanhos.first.valor).obterReal()} à ${double.parse(widget.produto.tamanhos.last.valor).obterReal()}"
+                              (itemProduto!.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty)
+                                  ? "${double.parse(itemProduto!.tamanhos.first.valor).obterReal()} à ${double.parse(itemProduto!.tamanhos.last.valor).obterReal()}"
                                   : (_provedorProduto.valorVenda).obterReal(),
                               style: const TextStyle(color: Colors.green, fontSize: 18),
                             ),
@@ -242,19 +297,19 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  if (produto.descricao.isNotEmpty) ...[
+                  if (itemProduto!.descricao.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Text(
-                        produto.descricao,
+                        itemProduto!.descricao,
                         overflow: TextOverflow.fade,
                         maxLines: 6,
                         style: const TextStyle(color: Color.fromARGB(255, 161, 161, 161)),
                       ),
                     ),
                   ],
-                  if (produto.opcoesPacotes!.isNotEmpty) ...[
-                    ...produto.opcoesPacotes!.map((opcoesPacote) {
+                  if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
+                    ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
                       return Container(
                         padding: const EdgeInsets.only(left: 20, right: 20),
                         decoration: BoxDecoration(
@@ -285,7 +340,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                         Padding(
                                           padding: const EdgeInsets.only(left: 10),
                                           child: Text(
-                                            '${opcoesPacote.titulo} (${opcoesPacote.dados.length})',
+                                            '${opcoesPacote.titulo} (${opcoesPacote.id == 5 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length})',
                                             style: const TextStyle(fontSize: 16),
                                           ),
                                         ),
@@ -295,19 +350,24 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                   ListView.builder(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: opcoesPacote.dados.length,
+                                    itemCount: opcoesPacote.id == 5 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length,
                                     padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                     itemBuilder: (context, index) {
-                                      var item = opcoesPacote.dados[index];
-
                                       if (opcoesPacote.id == 1) {
-                                        return CardTamanhos(item: item);
+                                        var item = opcoesPacote.dados![index];
+                                        return CardTamanhos(item: item, kit: false);
                                       } else if (opcoesPacote.id == 2) {
-                                        return CardAcompanhamentos(item: item);
+                                        var item = opcoesPacote.dados![index];
+                                        return CardAcompanhamentos(item: item, kit: false);
                                       } else if (opcoesPacote.id == 3) {
-                                        return CardAdicionais(item: item);
+                                        var item = opcoesPacote.dados![index];
+                                        return CardAdicionais(item: item, kit: false);
+                                      } else if (opcoesPacote.id == 4) {
+                                        var item = opcoesPacote.dados![index];
+                                        return CardItensRetiradas(item: item, kit: false);
                                       } else {
-                                        return CardItensRetiradas(item: item);
+                                        var item = opcoesPacote.produtos![index];
+                                        return CardKit(item: item);
                                       }
                                     },
                                   ),
