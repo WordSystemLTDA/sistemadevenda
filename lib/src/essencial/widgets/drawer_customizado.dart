@@ -133,6 +133,7 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
             leading: const Icon(Icons.manage_accounts_outlined),
             title: const Text('Configurações'),
             onTap: () {
+              Navigator.pop(context);
               Navigator.of(context).push(MaterialPageRoute(
                 builder: (context) {
                   return const PaginaConfiguracao();

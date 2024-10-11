@@ -1,6 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
-import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
+import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 
 class ServicoMesas {
   final DioCliente dio;
@@ -8,56 +8,18 @@ class ServicoMesas {
 
   ServicoMesas(this.dio, this.usuarioProvedor);
 
-  Future<Map<String, List<MesaModelo>>> listar(String pesquisa) async {
+  Future<List<MesasModel>> listar(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get('mesas/listar.php?pesquisa=$pesquisa&empresa=$empresa');
 
-    if (response.statusCode == 200) {
-      if (response.data.isNotEmpty) {
-        return {
-          'mesasOcupadas': [
-            ...response.data['mesasOcupadas'].map((e) {
-              return MesaModelo(
-                id: e['id'],
-                nome: e['nome'],
-                nomeCliente: e['nomeCliente'],
-                dataAbertura: e['data_abertura'],
-                horaAbertura: e['hora_abertura'],
-                ativo: e['ativo'],
-                mesaOcupada: e['mesaOcupada'],
-              );
-            })
-          ],
-          'mesasLivres': [
-            ...response.data['mesasLivres'].map((e) {
-              return MesaModelo(
-                id: e['id'],
-                nome: e['nome'],
-                nomeCliente: '',
-                dataAbertura: '',
-                horaAbertura: '',
-                ativo: e['ativo'],
-                mesaOcupada: e['mesaOcupada'],
-              );
-            })
-          ],
-        };
-        // return List<ModeloProduto>.from(response.data.map((elemento) {
-        //   return ModeloProduto.fromMap(elemento);
-        // }));
-      } else {
-        return {
-          'mesasOcupadas': [],
-          'mesasLivres': [],
-        };
-      }
-    } else {
-      return {
-        'mesasOcupadas': [],
-        'mesasLivres': [],
-      };
+    if (response.data.isNotEmpty) {
+      return List<MesasModel>.from(response.data.map((elemento) {
+        return MesasModel.fromMap(elemento);
+      }));
     }
+
+    return [];
   }
 
   Future<bool> editarAtivo(String id, String ativo) async {

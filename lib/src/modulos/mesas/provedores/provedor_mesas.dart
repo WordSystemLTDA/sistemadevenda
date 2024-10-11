@@ -1,4 +1,4 @@
-import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
+import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:flutter/material.dart';
 
@@ -6,11 +6,11 @@ class ProvedorMesas extends ChangeNotifier {
   final ServicoMesas _servico;
   ProvedorMesas(this._servico);
 
-  Map<String, List<MesaModelo>> listaMesaState = {'mesasOcupadas': [], 'mesasLivres': []};
+  List<MesasModel> mesas = [];
 
   Future<void> listarMesas(String pesquisa) async {
     final res = await _servico.listar(pesquisa);
-    listaMesaState = res;
+    mesas = res;
     notifyListeners();
   }
 

@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_acompanhamentos.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_adicionais.dart';
@@ -15,7 +16,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaProduto extends StatefulWidget {
   final String produto;
-  final String tipo;
+  final TipoCardapio tipo;
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
@@ -121,7 +122,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     await carrinhoProvedor
         .inserir(
       itemProduto!,
-      widget.tipo,
+      widget.tipo.nome,
       mesa,
       comanda,
       widget.idComandaPedido,

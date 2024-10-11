@@ -1,27 +1,33 @@
 import 'dart:convert';
 
-// ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 
 class MesasModel {
-  List<dynamic>? mesasOcupadas;
-  List<dynamic>? mesasLivres;
+  String titulo;
+  List<MesaModelo>? mesas;
 
   MesasModel({
-    required this.mesasOcupadas,
-    required this.mesasLivres,
+    required this.titulo,
+    required this.mesas,
   });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'mesasOcupadas': mesasOcupadas,
-      'mesasLivres': mesasLivres,
+      'titulo': titulo,
+      'mesas': mesas!.map((x) => x.toMap()).toList(),
     };
   }
 
   factory MesasModel.fromMap(Map<String, dynamic> map) {
     return MesasModel(
-      mesasOcupadas: map['mesasOcupadas'] != null ? List<dynamic>.from((map['mesasOcupadas'] as List<dynamic>)) : null,
-      mesasLivres: map['mesasLivres'] != null ? List<dynamic>.from((map['mesasLivres'] as List<dynamic>)) : null,
+      titulo: map['titulo'] as String,
+      mesas: map['mesas'] != null
+          ? List<MesaModelo>.from(
+              (map['mesas'] as List<dynamic>).map<MesaModelo?>(
+                (x) => MesaModelo.fromMap(x as Map<String, dynamic>),
+              ),
+            )
+          : null,
     );
   }
 

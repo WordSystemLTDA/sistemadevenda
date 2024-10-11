@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/comandas/modelos/comanda_model.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
@@ -87,6 +88,7 @@ class _CardComandaState extends State<CardComanda> {
                   builder: (context) => PaginaDetalhesPedido(
                     idComandaPedido: widget.itemComanda.idComandaPedido,
                     idComanda: widget.itemComanda.id,
+                    tipo: TipoCardapio.comanda,
                   ),
                 ),
               );

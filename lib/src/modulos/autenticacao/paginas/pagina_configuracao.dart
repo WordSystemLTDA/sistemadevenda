@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -59,6 +60,10 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     DioCliente().configurar();
 
+    if (tipoConexaoController.text == 'localhost') {
+      await conectarAoServidor(servidorController.text, portaController.text);
+    }
+
     setState(() => isLoading = !isLoading);
     if (mounted) {
       var usuario = await UsuarioServico.pegarUsuario(context);
@@ -67,6 +72,24 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
         Navigator.pop(context);
       }
     }
+  }
+
+  Future<void> conectarAoServidor(String ip, String porta) async {
+    var cliente = Modular.get<Client>();
+
+    await cliente.connect(ip, int.parse(porta)).then((sucesso) {
+      if (sucesso == false) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Não foi possível conectar ao servidor $ip:$porta, mude a conexão e a porta e tente novamente'),
+            backgroundColor: Colors.red,
+            showCloseIcon: true,
+            duration: const Duration(hours: 1),
+          ));
+        }
+      }
+    });
   }
 
   @override

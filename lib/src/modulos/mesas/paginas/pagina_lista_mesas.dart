@@ -59,8 +59,8 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
         listenable: _state,
         builder: (context, child) {
           final listaMesas = [
-            ..._state.listaMesaState['mesasOcupadas']!,
-            ..._state.listaMesaState['mesasLivres']!,
+            ..._state.mesas[0].mesas!,
+            ..._state.mesas[1].mesas!,
           ];
 
           return InkWell(
@@ -90,7 +90,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _state.listaMesaState.isEmpty
+                    _state.mesas.isEmpty
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),

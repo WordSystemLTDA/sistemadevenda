@@ -1,4 +1,6 @@
+import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
@@ -16,6 +18,31 @@ class PaginaInicio extends StatefulWidget {
 
 class _PaginaInicioState extends State<PaginaInicio> {
   @override
+  void initState() {
+    super.initState();
+    conectarAoServidor();
+  }
+
+  void conectarAoServidor() async {
+    var cliente = Modular.get<Client>();
+    final ConfigSharedPreferences config = ConfigSharedPreferences();
+    var conexao = await config.getConexao();
+
+    await cliente.connect(conexao!.servidor, int.parse(conexao.porta)).then((sucesso) {
+      if (sucesso == false) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Não foi possível conectar ao servidor ${conexao.servidor}:${conexao.porta}, mude a conexão e a porta e tente novamente'),
+            backgroundColor: Colors.red,
+            showCloseIcon: true,
+            duration: const Duration(hours: 1),
+          ));
+        }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
 
@@ -23,85 +50,71 @@ class _PaginaInicioState extends State<PaginaInicio> {
     final double itemWidth = size.width / 2;
 
     return ListenableBuilder(
-        listenable: context.read<UsuarioProvedor>(),
-        builder: (context, snapshot) {
-          return Scaffold(
-            drawer: const DrawerCustomizado(),
-            appBar: AppBar(
-              title: const Text('Início'),
-              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            ),
-            body: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                shrinkWrap: true,
-                childAspectRatio: (itemWidth / itemHeight),
-                children: [
-                  CardHome(
-                    nome: 'Mesas',
-                    icone: const Icon(Icons.table_bar_outlined, size: 40),
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return const PaginaMesas();
+      listenable: context.read<UsuarioProvedor>(),
+      builder: (context, snapshot) {
+        return Scaffold(
+          drawer: const DrawerCustomizado(),
+          appBar: AppBar(
+            title: const Text('Início'),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    shrinkWrap: true,
+                    childAspectRatio: (itemWidth / itemHeight),
+                    children: [
+                      CardHome(
+                        nome: 'Mesas',
+                        icone: const Icon(Icons.table_bar_outlined, size: 40),
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) {
+                              return const PaginaMesas();
+                            },
+                          ));
                         },
-                      ));
-                    },
-                  ),
-                  CardHome(
-                    nome: 'Comandas',
-                    icone: const Icon(Icons.fact_check_outlined, size: 40),
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return const PaginaComandas();
+                      ),
+                      CardHome(
+                        nome: 'Comandas',
+                        icone: const Icon(Icons.fact_check_outlined, size: 40),
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) {
+                              return const PaginaComandas();
+                            },
+                          ));
                         },
-                      ));
-                    },
-                  ),
-                  CardHome(
-                    nome: 'Balcão',
-                    icone: const Icon(Icons.shopping_cart_outlined, size: 40),
-                    onPressed: () {
-                      // Navigator.of(context).pushNamed('/cardapio/balcao/0');
-
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return const PaginaCardapio(
-                            tipo: 'balcao',
-                            idMesa: '0',
-                            idComanda: '0',
-                          );
+                      ),
+                      CardHome(
+                        nome: 'Balcão',
+                        icone: const Icon(Icons.shopping_cart_outlined, size: 40),
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) {
+                              return const PaginaCardapio(
+                                tipo: TipoCardapio.balcao,
+                                idMesa: '0',
+                                idComanda: '0',
+                              );
+                            },
+                          ));
                         },
-                      ));
-                    },
+                      ),
+                    ],
                   ),
-                  // CardHome(
-                  //   nome: 'TESTE',
-                  //   icone: const Icon(Icons.textsms, size: 40),
-                  //   onPressed: () {
-                  //     // Navigator.of(context).pushNamed('/cardapio/balcao/0');
-                  //     // EnviarPedido.enviarPedido('0', []);
-                  //   },
-                  // ),
-                  // CardHome(
-                  //   nome: 'Vendas',
-                  //   icone: const Icon(Icons.sell, size: 40),
-                  //   onPressed: () {
-                  //     Navigator.of(context).push(MaterialPageRoute(
-                  //       builder: (context) {
-                  //         return const PaginaListarVendas();
-                  //       },
-                  //     ));
-                  //   },
-                  // ),
-                ],
+                ),
               ),
-            ),
-          );
-        });
+            ],
+          ),
+        );
+      },
+    );
   }
 }

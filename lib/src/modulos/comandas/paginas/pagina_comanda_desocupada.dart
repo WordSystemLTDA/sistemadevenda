@@ -116,7 +116,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                         Navigator.push(context, MaterialPageRoute(
                           builder: (context) {
                             return PaginaCardapio(
-                              tipo: 'Comanda',
+                              tipo: TipoCardapio.comanda,
                               idComanda: widget.id,
                               idMesa: '0',
                               idCliente: idCliente,

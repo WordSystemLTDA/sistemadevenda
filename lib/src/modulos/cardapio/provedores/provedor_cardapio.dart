@@ -27,7 +27,7 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ModeloProduto>> listarProdutosPorNome(String pesquisa) async {
-    return await _produtoService.listarPorNome(pesquisa);
+  Future<List<ModeloProduto>> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
+    return await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
   }
 }

@@ -41,8 +41,6 @@ class EnviarPedido {
       });
     }
 
-    log('mandou mensagem');
-
     // pedido
     if (tipo == '1') {
       for (var element in produtosNovos) {
@@ -80,17 +78,6 @@ class EnviarPedido {
       }));
     }
 
-    cliente.disconnect();
-
-    // final channel = WebSocketChannel.connect(
-    //   Uri.parse('ws://192.168.2.115:9980/'),
-    // );
-
-    // await channel.ready.then((_) {
-    //   channel.sink.add('Atualizou');
-    //   channel.sink.close();
-    // }).onError((error, stackTrace) {
-    //   print('Erro ao conectar ao PHP');
-    // });
+    // cliente.disconnect();
   }
 }

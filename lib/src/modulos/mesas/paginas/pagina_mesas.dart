@@ -1,4 +1,3 @@
-import 'package:app/src/modulos/mesas/paginas/pagina_abrir_mesa.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
@@ -75,94 +74,52 @@ class _PaginaMesasState extends State<PaginaMesas> {
         ),
         body: RefreshIndicator(
           onRefresh: () async => listar(),
-          child: ListView(
+          child: Stack(
             children: [
               isLoading ? const LinearProgressIndicator() : const SizedBox(height: 4),
-              if (_state.listaMesaState.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Mesas ocupadas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 3),
-                      GridView.builder(
+              Padding(
+                padding: const EdgeInsets.only(right: 5, left: 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ListView.builder(
                         shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                          mainAxisExtent: 100,
-                          mainAxisSpacing: 2,
-                          crossAxisSpacing: 2,
-                        ),
-                        itemCount: _state.listaMesaState['mesasOcupadas']!.length,
+                        itemCount: _state.mesas.length,
                         itemBuilder: (context, index) {
-                          final item = _state.listaMesaState['mesasOcupadas']![index];
+                          final item = _state.mesas[index];
 
-                          return CardMesaOcupada(item: item);
-                        },
-                      ),
-                      if (_state.listaMesaState['mesasOcupadas']!.isEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 20),
-                          child: Text('Nenhuma mesa ocupada.'),
-                        ),
-                      ],
-                      const SizedBox(height: 5),
-                      const Text('Mesas livres', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 5),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                          mainAxisExtent: 100,
-                          mainAxisSpacing: 2,
-                          crossAxisSpacing: 2,
-                        ),
-                        itemCount: _state.listaMesaState['mesasLivres']!.length,
-                        itemBuilder: (context, index) {
-                          final item = _state.listaMesaState['mesasLivres']![index];
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 10),
+                              Text('${item.titulo}:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              GridView.builder(
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
+                                  mainAxisExtent: 100,
+                                  mainAxisSpacing: 2,
+                                  crossAxisSpacing: 2,
+                                ),
+                                scrollDirection: Axis.vertical,
+                                itemCount: item.mesas!.length,
+                                padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                itemBuilder: (_, index) {
+                                  var itemMesa = item.mesas![index];
 
-                          return Card(
-                            margin: const EdgeInsets.all(3),
-                            child: InkWell(
-                              onTap: () {
-                                // Navigator.of(context).pushNamed("/mesas/abrirMesa/${item.id}/${item.nome}/");
-                                Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (context) {
-                                    return PaginaAbrirMesa(
-                                      id: item.id,
-                                      nome: item.nome,
-                                    );
-                                  },
-                                ));
-                              },
-                              borderRadius: const BorderRadius.all(Radius.circular(8)),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const SizedBox(width: 15),
-                                  const Icon(Icons.table_bar_outlined),
-                                  const SizedBox(width: 10),
-                                  Text(item.nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                ],
+                                  return CardMesaOcupada(item: itemMesa);
+                                },
                               ),
-                            ),
+                            ],
                           );
                         },
                       ),
-                      if (_state.listaMesaState['mesasLivres']!.isEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 20),
-                          child: Text('Nenhuma mesa livre.'),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),

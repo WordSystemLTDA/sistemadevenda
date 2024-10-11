@@ -13,12 +13,14 @@ class PaginaDetalhesPedido extends StatefulWidget {
   final String? idComanda;
   final String? idComandaPedido;
   final String? idMesa;
+  final TipoCardapio tipo;
 
   const PaginaDetalhesPedido({
     super.key,
     this.idComanda,
     this.idComandaPedido,
     this.idMesa,
+    required this.tipo,
   });
 
   @override
@@ -57,11 +59,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
 
   @override
   Widget build(BuildContext context) {
-    var nomeTipo = widget.idComandaPedido != null
-        ? 'Comanda'
-        : widget.idMesa != null
-            ? 'Mesa'
-            : '';
+    var nomeTipo = widget.tipo.nome;
 
     if (dados == null) {
       return Scaffold(
@@ -140,7 +138,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (context) {
                                 return PaginaCardapio(
-                                  tipo: 'Comanda',
+                                  tipo: TipoCardapio.comanda,
                                   idComanda: dados!.idComanda,
                                   idMesa: '0',
                                   idCliente: dados!.idCliente!,
@@ -151,7 +149,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                           } else if (widget.idMesa != null) {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (context) {
-                                return PaginaCardapio(tipo: 'Mesa', idComanda: '0', idMesa: widget.idMesa!);
+                                return PaginaCardapio(tipo: TipoCardapio.mesa, idComanda: '0', idMesa: widget.idMesa!);
                               },
                             ));
                           }

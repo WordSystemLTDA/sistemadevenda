@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
@@ -13,7 +14,7 @@ class CardProduto extends StatefulWidget {
   final bool estaPesquisando;
   final SearchController? searchController;
   final ModeloProduto item;
-  final String tipo;
+  final TipoCardapio tipo;
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
@@ -127,7 +128,7 @@ class _CardProdutoState extends State<CardProduto> {
               tamanhoLista: widget.item.tamanhoLista,
               quantidade: 1,
             ),
-            widget.tipo,
+            widget.tipo.nome,
             mesa,
             comanda,
             widget.idComandaPedido,

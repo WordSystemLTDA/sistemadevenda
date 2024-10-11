@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/busca_mesas.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/buscar_produtos.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -44,7 +44,7 @@ enum TipoCardapio {
 
 class PaginaCardapio extends StatefulWidget {
   final String? idComanda;
-  final String tipo;
+  final TipoCardapio tipo;
   final String? idMesa;
   final String? idCliente;
   final String? idComandaPedido;
@@ -104,7 +104,11 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
           vsync: this,
         );
 
-        _tabController.addListener(() => indexTabBar = _tabController.index);
+        _tabController.addListener(() {
+          setState(() {
+            indexTabBar = _tabController.index;
+          });
+        });
 
         return Scaffold(
           floatingActionButton: AnimatedBuilder(
@@ -130,36 +134,6 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                   child: const Icon(Icons.shopping_cart),
                 ),
               );
-
-              // return FloatingActionButton(
-              //   onPressed: () {
-              //     Navigator.of(context).push(MaterialPageRoute(
-              //       builder: (context) {
-              //         return PaginaCarrinho(
-              //           idComanda: widget.idComanda!,
-              //           idMesa: widget.idMesa!,
-              //           idCliente: widget.idCliente!,
-              //           idComandaPedido: widget.idComandaPedido!,
-              //         );
-              //       },
-              //     ));
-              //   },
-              //   shape: const CircleBorder(),
-              //   child: Badge(
-              //     largeSize: 25,
-              //     textStyle: const TextStyle(fontSize: 16),
-              //     padding: carrinhoProvedor.itensCarrinho.quantidadeTotal < 10
-              //         ? const EdgeInsets.symmetric(vertical: 0, horizontal: 9)
-              //         : const EdgeInsets.all(5),
-              //     offset: const Offset(20, -20),
-              //     label: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0)),
-              //     isLabelVisible: true,
-              //     child: const Icon(
-              //       Icons.shopping_cart,
-              //       size: 30,
-              //     ),
-              //   ),
-              // );
             },
           ),
           appBar: AppBar(
@@ -169,11 +143,13 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
               preferredSize: const Size.fromHeight(50.0),
               child: Column(
                 children: [
-                  BuscaMesas(
+                  BuscarProdutos(
                     idComanda: widget.idComanda!,
                     idComandaPedido: widget.idComandaPedido!,
                     tipo: widget.tipo,
                     idMesa: widget.idMesa!,
+                    categoria: provedorCardapio.categorias.isEmpty ? '0' : provedorCardapio.categorias[indexTabBar].id,
+                    idcliente: '0',
                   ),
                   const SizedBox(height: 5),
                   Align(

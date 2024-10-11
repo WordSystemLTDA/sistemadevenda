@@ -33,8 +33,10 @@ class ServicoProduto {
     }
   }
 
-  Future<List<ModeloProduto>> listarPorNome(String pesquisa) async {
-    final response = await dio.cliente.get('produtos/listar.php?pesquisa=$pesquisa');
+  Future<List<ModeloProduto>> listarPorNome(String pesquisa, String categoria, String idcliente) async {
+    var empresa = usuarioProvedor.usuario!.empresa;
+    var idusuario = usuarioProvedor.usuario!.id;
+    final response = await dio.cliente.get('produtos/listar.php?pesquisa=$pesquisa&empresa=$empresa&categoria=$categoria&id_usuario=$idusuario&id_cliente=$idcliente');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {

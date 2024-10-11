@@ -1,21 +1,34 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 // import 'package:app/src/modulos/cardapio/interactor/cubit/produtos_cubit.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class BuscaMesas extends StatefulWidget {
-  final String tipo;
+class BuscarProdutos extends StatefulWidget {
+  final TipoCardapio tipo;
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
-  const BuscaMesas({super.key, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
+  final String categoria;
+  final String idcliente;
+
+  const BuscarProdutos({
+    super.key,
+    required this.tipo,
+    required this.idComanda,
+    required this.idComandaPedido,
+    required this.idMesa,
+    required this.categoria,
+    required this.idcliente,
+  });
 
   @override
-  State<BuscaMesas> createState() => _BuscaMesasState();
+  State<BuscarProdutos> createState() => _BuscarProdutosState();
 }
 
-class _BuscaMesasState extends State<BuscaMesas> {
+class _BuscarProdutosState extends State<BuscarProdutos> {
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final _searchController = SearchController();
 
@@ -49,7 +62,8 @@ class _BuscaMesasState extends State<BuscaMesas> {
       },
       suggestionsBuilder: (BuildContext context, SearchController controller) async {
         final keyword = controller.value.text;
-        final res = await provedorCardapio.listarProdutosPorNome(keyword);
+        final res = await provedorCardapio.listarProdutosPorNome(keyword, widget.categoria, widget.idcliente);
+
         return [
           ...res.map(
             (e) => CardProduto(

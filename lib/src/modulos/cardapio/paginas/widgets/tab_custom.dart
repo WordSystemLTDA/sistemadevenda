@@ -1,3 +1,4 @@
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +9,7 @@ class TabCustom extends StatefulWidget {
   final String? idComanda;
   final String? idComandaPedido;
   final String idMesa;
-  final String tipo;
+  final TipoCardapio tipo;
   const TabCustom({super.key, required this.category, this.idComanda, this.idComandaPedido, required this.idMesa, required this.tipo});
 
   @override
