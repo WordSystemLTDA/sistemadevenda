@@ -88,6 +88,15 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
             duration: const Duration(hours: 1),
           ));
         }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Sucesso ao conectar ao servidor $ip:$porta'),
+            backgroundColor: Colors.green,
+            showCloseIcon: true,
+          ));
+        }
       }
     });
   }
@@ -178,7 +187,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                     ),
                     textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                   ),
-                  onPressed: verificar,
+                  onPressed: () => verificar(),
                   child: isLoading ? const CircularProgressIndicator() : const Text('Salvar'),
                 ),
               ),

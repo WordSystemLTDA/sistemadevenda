@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_cortesias_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_desconto_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_ingredientes_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_itens_retirada_produto.dart';
@@ -32,6 +34,7 @@ class ModeloProduto {
   String habilTipo;
   String? habilItensRetirada;
   String? ativoLoja;
+  List<Modelowordcortesiasproduto> cortesias;
   List<ModeloProduto> kits;
   List<Modelowordadicionaisproduto> adicionais;
   List<Modelowordacompanhamentosproduto> acompanhamentos;
@@ -45,6 +48,7 @@ class ModeloProduto {
   String? observacao;
   String? valorRestoDivisao;
   List<ModeloOpcoesPacotes>? opcoesPacotes;
+  ModeloDescontoProduto? descontoProduto;
 
   ModeloProduto({
     required this.id,
@@ -66,6 +70,7 @@ class ModeloProduto {
     required this.habilTipo,
     this.habilItensRetirada,
     this.ativoLoja,
+    required this.cortesias,
     required this.kits,
     required this.adicionais,
     required this.acompanhamentos,
@@ -79,6 +84,7 @@ class ModeloProduto {
     this.observacao,
     this.valorRestoDivisao,
     this.opcoesPacotes,
+    this.descontoProduto,
   });
 
   Map<String, dynamic> toMap() {
@@ -101,6 +107,7 @@ class ModeloProduto {
       'destinoDeImpressao': destinoDeImpressao?.toMap(),
       'habilTipo': habilTipo,
       'ativoLoja': ativoLoja,
+      'cortesias': cortesias.map((x) => x.toMap()).toList(),
       'kits': kits.map((x) => x.toMap()).toList(),
       'adicionais': adicionais.map((x) => x.toMap()).toList(),
       'acompanhamentos': acompanhamentos.map((x) => x.toMap()).toList(),
@@ -115,6 +122,7 @@ class ModeloProduto {
       'habilItensRetirada': habilItensRetirada,
       'valorRestoDivisao': valorRestoDivisao,
       'opcoesPacotes': opcoesPacotes?.map((x) => x.toMap()).toList(),
+      'descontoProduto': descontoProduto,
     };
   }
 
@@ -139,6 +147,11 @@ class ModeloProduto {
       habilTipo: map['habilTipo'] as String,
       habilItensRetirada: map['habilItensRetirada'] != null ? map['habilItensRetirada'] as String : null,
       ativoLoja: map['ativoLoja'] != null ? map['ativoLoja'] as String : null,
+      cortesias: List<Modelowordcortesiasproduto>.from(
+        (map['cortesias'] as List<dynamic>).map<Modelowordcortesiasproduto>(
+          (x) => Modelowordcortesiasproduto.fromMap(x as Map<String, dynamic>),
+        ),
+      ),
       kits: List<ModeloProduto>.from(
         (map['kits'] as List<dynamic>).map<ModeloProduto>(
           (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
@@ -186,6 +199,7 @@ class ModeloProduto {
               ),
             )
           : null,
+      descontoProduto: map['descontoProduto'] != null ? ModeloDescontoProduto.fromMap(map['descontoProduto'] as Map<String, dynamic>) : null,
     );
   }
 

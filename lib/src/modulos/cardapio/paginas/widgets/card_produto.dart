@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -107,6 +109,7 @@ class _CardProdutoState extends State<CardProduto> {
               categoria: widget.item.categoria,
               nomeCategoria: widget.item.nomeCategoria,
               habilTipo: widget.item.habilTipo,
+              cortesias: widget.item.cortesias,
               kits: widget.item.kits,
               adicionais: widget.item.adicionais,
               acompanhamentos: widget.item.acompanhamentos,
@@ -166,77 +169,133 @@ class _CardProdutoState extends State<CardProduto> {
           ));
         },
         borderRadius: BorderRadius.circular(5),
-        child: Row(
+        child: Stack(
           children: [
-            widget.item.foto.isEmpty
-                ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
-                    child: CachedNetworkImage(
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.contain,
-                      fadeOutDuration: const Duration(milliseconds: 100),
-                      placeholder: (context, url) => const SizedBox(
-                        height: 50.0,
-                        width: 50.0,
-                        child: Center(child: CircularProgressIndicator()),
+            if (widget.item.descontoProduto != null) ...[
+              Positioned(
+                top: 17,
+                left: -37,
+                child: SizedBox(
+                  width: 120,
+                  child: Transform.rotate(
+                    angle: -math.pi / 4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.5),
+                            spreadRadius: 0,
+                            blurRadius: 7,
+                            offset: const Offset(0, 3), // changes position of shadow
+                          ),
+                        ],
                       ),
-                      errorWidget: (context, url, error) => const Icon(Icons.error),
-                      imageUrl: widget.item.foto,
+                      child: const Text('Promoção', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
                     ),
                   ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: SizedBox(
-                      width: MediaQuery.of(context).size.width / 1.6,
-                      child: Text(
-                        "${widget.item.nome} ${widget.item.tamanho}",
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
+                ),
+              ),
+            ],
+            if (widget.item.opcoesPacotes != null && widget.item.opcoesPacotes!.where((element) => element.id == 6).isNotEmpty) ...[
+              Positioned(
+                top: 17,
+                left: -37,
+                child: SizedBox(
+                  width: 120,
+                  child: Transform.rotate(
+                    angle: -math.pi / 4,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.5),
+                            spreadRadius: 0,
+                            blurRadius: 7,
+                            offset: const Offset(0, 3), // changes position of shadow
+                          ),
+                        ],
+                      ),
+                      child: const Text('Cortesia', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            Row(
+              children: [
+                widget.item.foto.isEmpty
+                    ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: CachedNetworkImage(
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.contain,
+                          fadeOutDuration: const Duration(milliseconds: 100),
+                          placeholder: (context, url) => const SizedBox(
+                            height: 50.0,
+                            width: 50.0,
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                          errorWidget: (context, url, error) => const Icon(Icons.error),
+                          imageUrl: widget.item.foto,
                         ),
                       ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: MediaQuery.of(context).size.width / 1.6,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Text(
-                          // widget.item.descricao.isEmpty ? 'Sem descrição' : widget.item.descricao,
-                          'Código: ${widget.item.codigo}',
-                          overflow: TextOverflow.fade,
-                          maxLines: 2,
-                          style: const TextStyle(
-                            color: Color.fromARGB(255, 111, 111, 111),
-                            fontSize: 12,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width / 1.6,
+                          child: Text(
+                            "${widget.item.nome} ${widget.item.tamanho}",
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 1.6,
-                    child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: Text(
-                        double.parse(widget.item.valorVenda).obterReal(),
-                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width / 1.6,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: Text(
+                              // widget.item.descricao.isEmpty ? 'Sem descrição' : widget.item.descricao,
+                              'Código: ${widget.item.codigo}',
+                              overflow: TextOverflow.fade,
+                              maxLines: 2,
+                              style: const TextStyle(
+                                color: Color.fromARGB(255, 111, 111, 111),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                ],
-              ),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width / 1.6,
+                        child: Align(
+                          alignment: Alignment.bottomRight,
+                          child: Text(
+                            double.parse(widget.item.valorVenda).obterReal(),
+                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
