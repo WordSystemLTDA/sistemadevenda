@@ -19,7 +19,9 @@ class ConfigSharedPreferences {
   Future<ModeloConexao?> getConexao() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
+    // prefs.remove('conexao');
     var conexao = prefs.getString('conexao');
+
     if (conexao == null) {
       await prefs.setString(
         'conexao',

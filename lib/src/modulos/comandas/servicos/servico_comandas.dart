@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/comandas/modelos/comanda_model.dart';
 import 'package:app/src/modulos/comandas/modelos/comandas_model.dart';
 
 class ServicoComandas {
@@ -16,6 +17,20 @@ class ServicoComandas {
     if (response.data.isNotEmpty) {
       return List<ComandasModel>.from(response.data.map((elemento) {
         return ComandasModel.fromMap(elemento);
+      }));
+    }
+
+    return [];
+  }
+
+  Future<List<ComandaModel>> listarLista(String pesquisa) async {
+    final empresa = usuarioProvedor.usuario!.empresa;
+
+    final response = await dio.cliente.get('comandas/listar_lista.php?pesquisa=$pesquisa&empresa=$empresa').timeout(const Duration(seconds: 60));
+
+    if (response.data.isNotEmpty) {
+      return List<ComandaModel>.from(response.data.map((elemento) {
+        return ComandaModel.fromMap(elemento);
       }));
     }
 

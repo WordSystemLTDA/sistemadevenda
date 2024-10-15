@@ -57,7 +57,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   }
 
   Future<void> listarComandasPedidos() async {
-    await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda).then((value) {
+    await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda, 'Não').then((value) {
       setState(() {
         dados = value;
         _clienteSearchController.text = value.nomeCliente!;

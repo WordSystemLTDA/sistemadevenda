@@ -48,7 +48,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
       carregando = true;
     });
 
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda).then((value) {
+    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Não').then((value) {
       dados = value;
     });
 

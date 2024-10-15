@@ -1,5 +1,6 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_cortesias_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -88,6 +89,20 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
         return Modelowordacompanhamentosproduto(
           id: '',
           nome: '',
+          valor: (double.parse(previousValue.valor) + (double.parse(element.valor))).toStringAsFixed(2),
+          estaSelecionado: false,
+          excluir: false,
+          foto: '',
+        );
+      },
+    );
+    var somaCortesias = item.cortesias.fold(
+      Modelowordcortesiasproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', estaSelecionado: false, excluir: false, quantimaximaselecao: ''),
+      (previousValue, element) {
+        return Modelowordcortesiasproduto(
+          id: '',
+          nome: '',
+          quantimaximaselecao: '',
           valor: (double.parse(previousValue.valor) + (double.parse(element.valor))).toStringAsFixed(2),
           estaSelecionado: false,
           excluir: false,
@@ -283,6 +298,34 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(height: 1),
+                if (item.cortesias.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10, top: 10),
+                    child: Text('Cortesias', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  ListView.builder(
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: item.cortesias.length,
+                    itemBuilder: (context, index) {
+                      final cortesia = item.cortesias[index];
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            cortesia.nome,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          Text(
+                            double.parse(cortesia.valor) == 0 ? 'Grátis' : double.parse(cortesia.valor).obterReal(),
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
                 if (item.tamanhos.isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.only(left: 10, top: 10),
@@ -308,7 +351,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     child: Text('Combo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: item.kits.length,
@@ -325,21 +368,21 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: item.acompanhamentos.length,
                     itemBuilder: (context, index) {
-                      final adicional = item.acompanhamentos[index];
+                      final acompanhamento = item.acompanhamentos[index];
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            adicional.nome,
+                            acompanhamento.nome,
                             style: const TextStyle(fontSize: 15),
                           ),
                           Text(
-                            double.parse(adicional.valor) == 0 ? 'Grátis' : double.parse(adicional.valor).obterReal(),
+                            double.parse(acompanhamento.valor) == 0 ? 'Grátis' : double.parse(acompanhamento.valor).obterReal(),
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],
@@ -353,7 +396,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: item.adicionais.length,
@@ -381,7 +424,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: item.itensRetiradas.length,
@@ -397,9 +440,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                     },
                   ),
                 ],
-                Padding(
-                  padding: EdgeInsets.only(left: 10, top: item.adicionais.isEmpty ? 10 : 0),
-                  child: const Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Padding(
+                  padding: EdgeInsets.only(left: 10, top: 10),
+                  child: Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
@@ -410,11 +453,23 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                         children: [
                           const Text('Produto'),
                           Text(
-                            "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - double.parse(soma.valor) - double.parse(somaAcompanhamentos.valor)).obterReal()}",
+                            "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - double.parse(soma.valor) - double.parse(somaAcompanhamentos.valor) - double.parse(somaCortesias.valor)).obterReal()}",
                             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
                           ),
                         ],
                       ),
+                      if (item.cortesias.isNotEmpty) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Cortesias'),
+                            Text(
+                              double.parse(somaCortesias.valor).obterReal(),
+                              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ],
                       if (item.adicionais.isNotEmpty) ...[
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

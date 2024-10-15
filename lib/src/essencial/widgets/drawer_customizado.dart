@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
-import 'package:app/src/modulos/comandas/paginas/todas_comanadas.dart';
+import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';

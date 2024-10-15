@@ -122,7 +122,7 @@ class ModeloProduto {
       'habilItensRetirada': habilItensRetirada,
       'valorRestoDivisao': valorRestoDivisao,
       'opcoesPacotes': opcoesPacotes?.map((x) => x.toMap()).toList(),
-      'descontoProduto': descontoProduto,
+      'descontoProduto': descontoProduto?.toMap(),
     };
   }
 

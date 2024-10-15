@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 
 class ServicoMesas {
@@ -16,6 +17,20 @@ class ServicoMesas {
     if (response.data.isNotEmpty) {
       return List<MesasModel>.from(response.data.map((elemento) {
         return MesasModel.fromMap(elemento);
+      }));
+    }
+
+    return [];
+  }
+
+  Future<List<MesaModelo>> listarLista(String pesquisa) async {
+    final empresa = usuarioProvedor.usuario!.empresa;
+
+    final response = await dio.cliente.get('mesas/listar_lista.php?pesquisa=$pesquisa&empresa=$empresa');
+
+    if (response.data.isNotEmpty) {
+      return List<MesaModelo>.from(response.data.map((elemento) {
+        return MesaModelo.fromMap(elemento);
       }));
     }
 
@@ -52,25 +67,27 @@ class ServicoMesas {
     };
   }
 
-  Future<bool> cadastrarMesa(String nome) async {
+  Future<bool> cadastrarMesa(String nome, String codigo) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
     const url = 'mesas/cadastrar_mesa.php';
 
     final response = await dio.cliente.post(url, data: {
       'nome': nome,
+      'codigo': codigo,
       'empresa': empresa,
     });
 
     return response.data['sucesso'];
   }
 
-  Future<bool> editarMesa(String id, String nome) async {
+  Future<bool> editarMesa(String id, String nome, String codigo) async {
     const url = 'mesas/editar_mesa.php';
 
     final response = await dio.cliente.post(url, data: {
       'id': id,
       'nome': nome,
+      'codigo': codigo,
     });
 
     return response.data['sucesso'];

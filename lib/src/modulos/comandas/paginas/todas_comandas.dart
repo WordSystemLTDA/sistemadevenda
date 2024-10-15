@@ -18,7 +18,7 @@ class _TodasComandasState extends State<TodasComandas> {
 
   void listarComandas() async {
     setState(() => isLoading = !isLoading);
-    await _state.listarComandas('');
+    await _state.listarComandasLista('');
     setState(() => isLoading = !isLoading);
   }
 
@@ -29,12 +29,12 @@ class _TodasComandasState extends State<TodasComandas> {
     listarComandas();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  // @override
+  // void dispose() {
+  //   super.dispose();
 
-    _state.listarComandas('');
-  }
+  //   _state.listarComandas('');
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,10 @@ class _TodasComandasState extends State<TodasComandas> {
             context: context,
             isScrollControlled: true,
             showDragHandle: true,
-            builder: (context) => const NovaComanda(editar: false),
+            builder: (context) => NovaComanda(
+              editar: false,
+              aoSalvar: () {},
+            ),
           );
         },
         child: const Icon(Icons.add),
@@ -58,20 +61,13 @@ class _TodasComandasState extends State<TodasComandas> {
       body: ListenableBuilder(
         listenable: _state,
         builder: (context, child) {
-          final listaComandas = [
-            ..._state.comandas[0].comandas!,
-            ..._state.comandas[1].comandas!,
-          ];
+          final listaComandas = _state.comandasLista;
 
-          return InkWell(
-            focusColor: Colors.transparent,
-            splashColor: Colors.transparent,
-            splashFactory: NoSplash.splashFactory,
-            highlightColor: Colors.transparent,
+          return GestureDetector(
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
             child: RefreshIndicator(
               onRefresh: () async {
-                _state.listarComandas('');
+                _state.listarComandasLista('');
                 pesquisaController.text = '';
               },
               child: Padding(
@@ -81,7 +77,7 @@ class _TodasComandasState extends State<TodasComandas> {
                     TextField(
                       controller: pesquisaController,
                       onChanged: (value) {
-                        _state.listarComandas(value);
+                        _state.listarComandasLista(value);
                       },
                       decoration: const InputDecoration(
                         hintText: 'Pesquisa',
@@ -90,7 +86,7 @@ class _TodasComandasState extends State<TodasComandas> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _state.comandas.isEmpty
+                    _state.comandasLista.isEmpty
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),
@@ -168,6 +164,8 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                 showCloseIcon: true,
                                                               ),
                                                             );
+                                                          } else {
+                                                            item.ativo = item.ativo == 'Sim' ? 'Não' : 'Sim';
                                                           }
                                                         });
                                                       },
@@ -200,7 +198,14 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           context: context,
                                                           isScrollControlled: true,
                                                           showDragHandle: true,
-                                                          builder: (context) => NovaComanda(editar: true, nome: item.nome, id: item.id),
+                                                          builder: (context) => NovaComanda(
+                                                            editar: true,
+                                                            nome: item.nome,
+                                                            id: item.id,
+                                                            aoSalvar: () {
+                                                              listarComandas();
+                                                            },
+                                                          ),
                                                         );
                                                       },
                                                       child: const Text('Editar Comanda'),
@@ -245,6 +250,8 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                                   showCloseIcon: true,
                                                                                 ),
                                                                               );
+                                                                            } else {
+                                                                              listarComandas();
                                                                             }
                                                                           });
                                                                         },

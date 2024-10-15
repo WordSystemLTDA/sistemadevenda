@@ -7,6 +7,7 @@ class ModeloDadosOpcoesPacotes {
   final String? valor;
   final String? foto;
   bool? estaSelecionado;
+  String? quantimaximaselecao;
   bool? excluir;
   int? quantidade;
 
@@ -16,6 +17,7 @@ class ModeloDadosOpcoesPacotes {
     this.valor,
     this.foto,
     this.estaSelecionado,
+    this.quantimaximaselecao,
     this.excluir,
     this.quantidade,
   });
@@ -27,6 +29,7 @@ class ModeloDadosOpcoesPacotes {
       'valor': valor,
       'foto': foto,
       'estaSelecionado': estaSelecionado,
+      'quantimaximaselecao': quantimaximaselecao,
       'excluir': excluir,
       'quantidade': quantidade,
     };
@@ -39,6 +42,7 @@ class ModeloDadosOpcoesPacotes {
       valor: map['valor'] != null ? map['valor'] as String : null,
       foto: map['foto'] != null ? map['foto'] as String : null,
       estaSelecionado: map['estaSelecionado'] != null ? map['estaSelecionado'] as bool : null,
+      quantimaximaselecao: map['quantimaximaselecao'] != null ? map['quantimaximaselecao'] as String : null,
       excluir: map['excluir'] != null ? map['excluir'] as bool : null,
       quantidade: map['quantidade'] != null ? map['quantidade'] as int : null,
     );

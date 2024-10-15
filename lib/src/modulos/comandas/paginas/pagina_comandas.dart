@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:app/src/modulos/comandas/paginas/todas_comanadas.dart';
+import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';

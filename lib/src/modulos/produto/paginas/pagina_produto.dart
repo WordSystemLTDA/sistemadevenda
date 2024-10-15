@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_acompanhamentos.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_adicionais.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_cortesias.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_itens_retiradas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_tamanhos.dart';
@@ -55,15 +56,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         for (var element in value.kits) {
           element.adicionais = [];
           element.tamanhos = [];
-          element.acompanhamentos = element.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
-
+          element.acompanhamentos = [];
           element.itensRetiradas = [];
+          element.cortesias = [];
         }
 
         _provedorProduto.listaKits = value.kits;
-        _provedorProduto.listaAcompanhamentos = value.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
+        _provedorProduto.listaAcompanhamentos = value.acompanhamentos;
         _provedorProduto.valorVenda = double.parse(value.valorVenda);
         _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
+        _provedorProduto.listaCortesias = value.cortesias.where((element) => element.estaSelecionado == true).toList();
 
         for (var element in value.kits) {
           element.acompanhamentos = element.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
@@ -118,6 +120,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     itemProduto!.acompanhamentos = _provedorProduto.listaAcompanhamentos;
     itemProduto!.itensRetiradas = _provedorProduto.listaItensRetirada;
     itemProduto!.kits = _provedorProduto.listaKits;
+    itemProduto!.cortesias = _provedorProduto.listaCortesias;
+    itemProduto!.observacao = obsController.text;
 
     await carrinhoProvedor
         .inserir(
@@ -366,10 +370,14 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                       } else if (opcoesPacote.id == 4) {
                                         var item = opcoesPacote.dados![index];
                                         return CardItensRetiradas(item: item, kit: false);
-                                      } else {
+                                      } else if (opcoesPacote.id == 5) {
                                         var item = opcoesPacote.produtos![index];
                                         return CardKit(item: item);
+                                      } else if (opcoesPacote.id == 6) {
+                                        var item = opcoesPacote.dados![index];
+                                        return CardCortesias(item: item, kit: false);
                                       }
+                                      return null;
                                     },
                                   ),
                                 ],

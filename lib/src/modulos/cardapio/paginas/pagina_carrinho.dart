@@ -31,6 +31,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
+  bool carregando = true;
 
   @override
   void initState() {
@@ -40,8 +41,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
   void listar() async {
     await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
-    await servicoCardapio.listarPorId(widget.idComandaPedido, TipoCardapio.comanda).then((value) {
+    await servicoCardapio.listarPorId(widget.idComandaPedido, TipoCardapio.comanda, "Não").then((value) {
       dados = value;
+    });
+
+    setState(() {
+      carregando = false;
     });
   }
 
@@ -125,7 +130,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty
+        floatingActionButton: (carregando || carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty)
             ? null
             : FloatingActionButton.extended(
                 shape: const RoundedRectangleBorder(
@@ -199,56 +204,58 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         ),
                       ),
               ),
-        body: carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty
-            ? ListView(
-                children: const [
-                  SizedBox(height: 100, child: Center(child: Text('Não há itens na Comanda'))),
-                ],
-              )
-            : ListView.builder(
-                itemCount: carrinhoProvedor.itensCarrinho.listaComandosPedidos.length,
-                padding: const EdgeInsets.only(bottom: 150, left: 10, right: 10, top: 10),
-                itemBuilder: (context, index) {
-                  final item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[index];
+        body: carregando
+            ? const Center(child: CircularProgressIndicator())
+            : carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 100, child: Center(child: Text('Não há itens na Comanda'))),
+                    ],
+                  )
+                : ListView.builder(
+                    itemCount: carrinhoProvedor.itensCarrinho.listaComandosPedidos.length,
+                    padding: const EdgeInsets.only(bottom: 150, left: 10, right: 10, top: 10),
+                    itemBuilder: (context, index) {
+                      final item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[index];
 
-                  return CardCarrinho(
-                    item: item,
-                    idComandaPedido: widget.idComandaPedido,
-                    idComanda: widget.idComanda,
-                    idMesa: widget.idMesa,
-                    value: carrinhoProvedor.itensCarrinho,
-                    setarQuantidade: (increase) {
-                      if (increase) {
-                        setState(() {
-                          item.quantidade = item.quantidade! + 1;
-                        });
+                      return CardCarrinho(
+                        item: item,
+                        idComandaPedido: widget.idComandaPedido,
+                        idComanda: widget.idComanda,
+                        idMesa: widget.idMesa,
+                        value: carrinhoProvedor.itensCarrinho,
+                        setarQuantidade: (increase) {
+                          if (increase) {
+                            setState(() {
+                              item.quantidade = item.quantidade! + 1;
+                            });
 
-                        double precoTotal = 0;
-                        carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                          precoTotal += double.parse(e.valorVenda) * e.quantidade!;
+                            double precoTotal = 0;
+                            carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
+                              precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                          e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                        }).toList();
+                              e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                            }).toList();
 
-                        setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
-                      } else {
-                        setState(() {
-                          item.quantidade = item.quantidade! - 1;
-                        });
+                            setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
+                          } else {
+                            setState(() {
+                              item.quantidade = item.quantidade! - 1;
+                            });
 
-                        double precoTotal = 0;
-                        carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                          precoTotal += double.parse(e.valorVenda) * e.quantidade!;
+                            double precoTotal = 0;
+                            carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
+                              precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                          e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                        }).toList();
+                              e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                            }).toList();
 
-                        setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
-                      }
+                            setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
+                          }
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
       ),
     );
   }

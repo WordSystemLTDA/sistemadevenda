@@ -18,7 +18,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
 
   void listar() async {
     setState(() => isLoading = !isLoading);
-    await _state.listarMesas('');
+    await _state.listarMesasLista('');
     setState(() => isLoading = !isLoading);
   }
 
@@ -31,9 +31,8 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
 
   @override
   void dispose() {
+    pesquisaController.dispose();
     super.dispose();
-
-    _state.listarMesas('');
   }
 
   @override
@@ -50,7 +49,10 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
             context: context,
             isScrollControlled: true,
             showDragHandle: true,
-            builder: (context) => const NovaMesa(editar: false),
+            builder: (context) => NovaMesa(
+              editar: false,
+              aoSalvar: () {},
+            ),
           );
         },
         child: const Icon(Icons.add),
@@ -58,20 +60,13 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
       body: ListenableBuilder(
         listenable: _state,
         builder: (context, child) {
-          final listaMesas = [
-            ..._state.mesas[0].mesas!,
-            ..._state.mesas[1].mesas!,
-          ];
+          final listaMesas = _state.mesasLista;
 
-          return InkWell(
-            focusColor: Colors.transparent,
-            splashColor: Colors.transparent,
-            splashFactory: NoSplash.splashFactory,
-            highlightColor: Colors.transparent,
+          return GestureDetector(
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
             child: RefreshIndicator(
               onRefresh: () async {
-                _state.listarMesas('');
+                _state.listarMesasLista('');
                 pesquisaController.text = '';
               },
               child: Padding(
@@ -81,7 +76,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                     TextField(
                       controller: pesquisaController,
                       onChanged: (value) {
-                        _state.listarMesas(value);
+                        _state.listarMesasLista(value);
                       },
                       decoration: const InputDecoration(
                         hintText: 'Pesquisa',
@@ -90,7 +85,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _state.mesas.isEmpty
+                    _state.mesasLista.isEmpty
                         ? Expanded(
                             child: ListView(children: const [
                             SizedBox(height: 50),
@@ -107,7 +102,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                 final item = listaMesas[index];
 
                                 return SizedBox(
-                                  height: 80,
+                                  height: 100,
                                   child: Card(
                                     child: InkWell(
                                       onTap: () {},
@@ -144,6 +139,12 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                         const Text('Nome: '),
                                                         Text(item.nome),
                                                       ],
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        const Text('Código: ', style: TextStyle(fontSize: 12)),
+                                                        Text(item.codigo.isEmpty ? 'Sem Código' : item.codigo, style: const TextStyle(fontSize: 12)),
+                                                      ],
                                                     )
                                                   ],
                                                 ),
@@ -167,6 +168,8 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                                 showCloseIcon: true,
                                                               ),
                                                             );
+                                                          } else {
+                                                            item.ativo = item.ativo == 'Sim' ? 'Não' : 'Sim';
                                                           }
                                                         });
                                                       },
@@ -199,7 +202,15 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                           context: context,
                                                           isScrollControlled: true,
                                                           showDragHandle: true,
-                                                          builder: (context) => NovaMesa(editar: true, nome: item.nome, id: item.id),
+                                                          builder: (context) => NovaMesa(
+                                                            editar: true,
+                                                            nome: item.nome,
+                                                            codigo: item.codigo,
+                                                            id: item.id,
+                                                            aoSalvar: () {
+                                                              listar();
+                                                            },
+                                                          ),
                                                         );
                                                       },
                                                       child: const Text('Editar Mesa'),
@@ -244,6 +255,8 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                                                   showCloseIcon: true,
                                                                                 ),
                                                                               );
+                                                                            } else {
+                                                                              listar();
                                                                             }
                                                                           });
                                                                         },

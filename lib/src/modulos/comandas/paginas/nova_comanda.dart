@@ -6,7 +6,8 @@ class NovaComanda extends StatefulWidget {
   final bool editar;
   final String? nome;
   final String? id;
-  const NovaComanda({super.key, this.nome, this.id, required this.editar});
+  final Function() aoSalvar;
+  const NovaComanda({super.key, this.nome, this.id, required this.editar, required this.aoSalvar});
 
   @override
   State<NovaComanda> createState() => _NovaComandaState();
@@ -68,6 +69,9 @@ class _NovaComandaState extends State<NovaComanda> {
 
                   if (widget.editar) {
                     await _state.editarComanda(widget.id!, nomeController.text).then((sucesso) {
+                      if (sucesso) {
+                        widget.aoSalvar();
+                      }
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -79,6 +83,10 @@ class _NovaComandaState extends State<NovaComanda> {
                     });
                   } else {
                     await _state.cadastrarComanda(nomeController.text).then((sucesso) {
+                      if (sucesso) {
+                        widget.aoSalvar();
+                      }
+
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();

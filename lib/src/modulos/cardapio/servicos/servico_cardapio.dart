@@ -15,10 +15,10 @@ class ServicoCardapio {
 
   ServicoCardapio(this.dio, this.usuarioProvedor);
 
-  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo) async {
+  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&empresa=$empresa&tipo=${tipo.nome}');
+    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&empresa=$empresa&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
     if (response.statusCode == 200) {
       return Modeloworddadoscardapio.fromMap(response.data);

@@ -3,9 +3,10 @@ import 'dart:convert';
 
 class MesaModelo {
   final String id;
+  final String codigo;
   final String nome;
   final bool mesaOcupada;
-  final String ativo;
+  String ativo;
   String? nomeCliente;
   String? dataAbertura;
   String? horaAbertura;
@@ -14,6 +15,7 @@ class MesaModelo {
 
   MesaModelo({
     required this.id,
+    required this.codigo,
     required this.nome,
     required this.mesaOcupada,
     required this.ativo,
@@ -27,6 +29,7 @@ class MesaModelo {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
+      'codigo': codigo,
       'nome': nome,
       'mesaOcupada': mesaOcupada,
       'ativo': ativo,
@@ -41,6 +44,7 @@ class MesaModelo {
   factory MesaModelo.fromMap(Map<String, dynamic> map) {
     return MesaModelo(
       id: map['id'] as String,
+      codigo: map['codigo'] as String,
       nome: map['nome'] as String,
       mesaOcupada: map['mesaOcupada'] as bool,
       ativo: map['ativo'] as String,

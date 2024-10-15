@@ -2,6 +2,7 @@
 
 import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_cortesias_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_itens_retirada_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
@@ -10,6 +11,13 @@ import 'package:flutter/material.dart';
 class ProvedorProduto extends ChangeNotifier {
   List<Modelowordadicionaisproduto> listaAdicionais = [];
   List<Modelowordtamanhosproduto> listaTamanhos = [];
+
+  List<Modelowordcortesiasproduto> _listaCortesias = [];
+  List<Modelowordcortesiasproduto> get listaCortesias => _listaCortesias;
+  set listaCortesias(List<Modelowordcortesiasproduto> value) {
+    _listaCortesias = value;
+    notifyListeners();
+  }
 
   List<ModeloProduto> _listaKits = [];
   List<ModeloProduto> get listaKits => _listaKits;
@@ -113,7 +121,51 @@ class ProvedorProduto extends ChangeNotifier {
     return listaTamanhos;
   }
 
+  List<Modelowordcortesiasproduto> retornarListaCortesias(bool kit, ModeloProduto? dadosKit) {
+    if (kit) {
+      if (listaKits.isEmpty) {
+        return [];
+      } else {
+        List<Modelowordcortesiasproduto> cortesiasKIT = [];
+
+        for (var element in listaKits) {
+          for (var element2 in element.cortesias) {
+            cortesiasKIT.add(element2);
+          }
+        }
+
+        return cortesiasKIT;
+      }
+    }
+
+    return listaCortesias;
+  }
+
   void calcularValorVenda(bool kit, ModeloProduto? dadosKit) {
+    var somaCortesias = double.tryParse(retornarListaCortesias(kit, dadosKit)
+            .fold(
+              Modelowordcortesiasproduto(
+                id: '',
+                nome: '',
+                valor: '0',
+                foto: '',
+                excluir: false,
+                quantimaximaselecao: '1',
+                estaSelecionado: true,
+              ),
+              (previousValue, element) => Modelowordcortesiasproduto(
+                id: '',
+                nome: '',
+                quantimaximaselecao: '1',
+                valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
+                excluir: false,
+                foto: '',
+                estaSelecionado: true,
+              ),
+            )
+            .valor) ??
+        0;
+
     var somaAdicionais = double.tryParse(retornarListaAdicionais(kit, dadosKit)
             .fold(
               Modelowordadicionaisproduto(
@@ -161,13 +213,37 @@ class ProvedorProduto extends ChangeNotifier {
         0;
 
     var valorTamanho = retornarListaTamanhos(kit, dadosKit).isEmpty ? 0 : double.tryParse(retornarListaTamanhos(kit, dadosKit).first.valor) ?? 0;
-    var valorFinal = (retornarListaTamanhos(kit, dadosKit).isNotEmpty ? valorTamanho : valorVendaOriginal) + somaAdicionais + somaAcompanhamentos;
+    var valorFinal = (retornarListaTamanhos(kit, dadosKit).isNotEmpty ? valorTamanho : valorVendaOriginal) + somaAdicionais + somaAcompanhamentos + somaCortesias;
 
     if (kit) {
       var valorVendaOriginal2 = double.parse(dadosKit!.valorVenda);
 
       var produtoKIT = listaKits.where((element) => element.id == dadosKit.id).firstOrNull;
       if (produtoKIT != null) {
+        var somaCortesias2 = double.tryParse(produtoKIT.cortesias
+                .fold(
+                  Modelowordcortesiasproduto(
+                    id: '',
+                    nome: '',
+                    valor: '0',
+                    foto: '',
+                    excluir: false,
+                    quantimaximaselecao: '1',
+                    estaSelecionado: true,
+                  ),
+                  (previousValue, element) => Modelowordcortesiasproduto(
+                    id: '',
+                    nome: '',
+                    valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
+                    excluir: false,
+                    foto: '',
+                    quantimaximaselecao: '1',
+                    estaSelecionado: true,
+                  ),
+                )
+                .valor) ??
+            0;
+
         var somaAdicionais2 = double.tryParse(produtoKIT.adicionais
                 .fold(
                   Modelowordadicionaisproduto(
@@ -215,7 +291,7 @@ class ProvedorProduto extends ChangeNotifier {
             0;
 
         var valorTamanho2 = produtoKIT.tamanhos.isEmpty ? 0 : double.tryParse(produtoKIT.tamanhos.first.valor) ?? 0;
-        var valorFinal2 = (produtoKIT.tamanhos.isNotEmpty ? valorTamanho2 : valorVendaOriginal2) + somaAdicionais2 + somaAcompanhamentos2;
+        var valorFinal2 = (produtoKIT.tamanhos.isNotEmpty ? valorTamanho2 : valorVendaOriginal2) + somaAdicionais2 + somaAcompanhamentos2 + somaCortesias2;
 
         produtoKIT.valorVenda = valorFinal2.toStringAsFixed(2);
       }
@@ -260,6 +336,65 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool selecionarCortesia(Modelowordcortesiasproduto novoDado, bool kit, ModeloProduto? dadosKit) {
+    if (kit) {
+      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
+      if (listaDeKits == null) {
+        dadosKit!.adicionais = [];
+        dadosKit.itensRetiradas = [];
+        dadosKit.acompanhamentos = [];
+        dadosKit.tamanhos = [];
+        dadosKit.cortesias = [];
+        dadosKit.cortesias.add(novoDado);
+        listaKits.add(dadosKit);
+      } else {
+        if (listaDeKits.cortesias.where((element) => element.id == novoDado.id).isNotEmpty) {
+          listaDeKits.cortesias.removeWhere((element) => element.id == novoDado.id);
+        } else {
+          if ((num.tryParse(novoDado.quantimaximaselecao) ?? 1) == 1) {
+            if (listaDeKits.cortesias.length == (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
+              listaDeKits.cortesias = [];
+              listaDeKits.cortesias.add(novoDado);
+            } else {
+              return false;
+            }
+          } else if (listaDeKits.cortesias.length < (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
+            listaDeKits.cortesias.add(novoDado);
+          } else {
+            return false;
+          }
+        }
+      }
+
+      calcularValorVenda(kit, dadosKit);
+      notifyListeners();
+      return true;
+    }
+
+    if (listaCortesias.where((element) => element.id == novoDado.id).isNotEmpty) {
+      listaCortesias.removeWhere((element) => element.id == novoDado.id);
+    } else {
+      if ((num.tryParse(novoDado.quantimaximaselecao) ?? 1) == 1) {
+        if (listaCortesias.length == (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
+          listaCortesias = [];
+          listaCortesias.add(novoDado);
+        } else {
+          listaCortesias.add(novoDado);
+        }
+      } else {
+        if (listaCortesias.length < (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
+          listaCortesias.add(novoDado);
+        } else {
+          return false;
+        }
+      }
+    }
+
+    calcularValorVenda(kit, dadosKit);
+    notifyListeners();
+    return true;
+  }
+
   void selecionarAdicional(Modelowordadicionaisproduto novoDado, bool kit, ModeloProduto? dadosKit) {
     if (kit) {
       var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
@@ -268,7 +403,9 @@ class ProvedorProduto extends ChangeNotifier {
         dadosKit.itensRetiradas = [];
         dadosKit.acompanhamentos = [];
         dadosKit.tamanhos = [];
+        dadosKit.cortesias = [];
         dadosKit.adicionais.add(novoDado);
+
         listaKits.add(dadosKit);
       } else {
         if (listaDeKits.adicionais.where((element) => element.id == novoDado.id).isNotEmpty) {
@@ -301,6 +438,7 @@ class ProvedorProduto extends ChangeNotifier {
         dadosKit.itensRetiradas = [];
         dadosKit.acompanhamentos = [];
         dadosKit.tamanhos = [];
+        dadosKit.cortesias = [];
         dadosKit.acompanhamentos.add(novoDado);
         listaKits.add(dadosKit);
       } else {
@@ -334,6 +472,7 @@ class ProvedorProduto extends ChangeNotifier {
         dadosKit.itensRetiradas = [];
         dadosKit.acompanhamentos = [];
         dadosKit.tamanhos = [];
+        dadosKit.cortesias = [];
         dadosKit.itensRetiradas.add(novoDado);
         listaKits.add(dadosKit);
       } else {

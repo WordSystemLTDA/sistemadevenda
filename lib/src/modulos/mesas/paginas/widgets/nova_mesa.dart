@@ -6,7 +6,9 @@ class NovaMesa extends StatefulWidget {
   final bool editar;
   final String? nome;
   final String? id;
-  const NovaMesa({super.key, this.nome, this.id, required this.editar});
+  final String? codigo;
+  final Function() aoSalvar;
+  const NovaMesa({super.key, this.nome, this.id, this.codigo, required this.editar, required this.aoSalvar});
 
   @override
   State<NovaMesa> createState() => _NovaMesaState();
@@ -16,6 +18,7 @@ class _NovaMesaState extends State<NovaMesa> {
   final ProvedorMesas _state = Modular.get<ProvedorMesas>();
 
   final nomeController = TextEditingController();
+  final codigoController = TextEditingController();
 
   @override
   void initState() {
@@ -23,16 +26,20 @@ class _NovaMesaState extends State<NovaMesa> {
 
     if (widget.editar) {
       nomeController.text = widget.nome!;
+      codigoController.text = widget.codigo!;
     }
   }
 
   @override
+  void dispose() {
+    nomeController.dispose();
+    codigoController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      focusColor: Colors.transparent,
-      splashColor: Colors.transparent,
-      splashFactory: NoSplash.splashFactory,
-      highlightColor: Colors.transparent,
+    return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Padding(
         padding: EdgeInsets.only(left: 15, right: 15, bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -46,6 +53,15 @@ class _NovaMesaState extends State<NovaMesa> {
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.all(13),
                 label: Text('Digite o Nome'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: codigoController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.all(13),
+                label: Text('Digite o Código'),
               ),
             ),
             const SizedBox(height: 20),
@@ -67,7 +83,11 @@ class _NovaMesaState extends State<NovaMesa> {
                   if (nomeController.text.isEmpty) return;
 
                   if (widget.editar) {
-                    await _state.editarMesa(widget.id!, nomeController.text).then((sucesso) {
+                    await _state.editarMesa(widget.id!, nomeController.text, codigoController.text).then((sucesso) {
+                      if (sucesso) {
+                        widget.aoSalvar();
+                      }
+
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -78,7 +98,11 @@ class _NovaMesaState extends State<NovaMesa> {
                       }
                     });
                   } else {
-                    await _state.cadastrarMesa(nomeController.text).then((sucesso) {
+                    await _state.cadastrarMesa(nomeController.text, codigoController.text).then((sucesso) {
+                      if (sucesso) {
+                        widget.aoSalvar();
+                      }
+
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).hideCurrentSnackBar();

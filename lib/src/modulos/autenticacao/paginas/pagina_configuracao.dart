@@ -30,9 +30,11 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     if (conexao == null) return;
 
-    tipoConexaoController.text = conexao.tipoConexao;
-    servidorController.text = conexao.servidor;
-    portaController.text = conexao.porta;
+    setState(() {
+      tipoConexaoController.text = conexao.tipoConexao;
+      servidorController.text = conexao.servidor;
+      portaController.text = conexao.porta;
+    });
   }
 
   void verificar() async {
@@ -104,7 +106,6 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   @override
   void initState() {
     super.initState();
-    tipoConexaoController.text = 'localhost';
     buscarConexao();
   }
 
@@ -129,7 +130,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                 width: MediaQuery.of(context).size.width - 20,
                 onSelected: (value) => setState(() => tipoConexaoController.text = value ?? ''),
                 label: const Text('Conexão'),
-                initialSelection: 'localhost',
+                initialSelection: tipoConexaoController.text,
                 dropdownMenuEntries: const [
                   DropdownMenuEntry(value: 'localhost', label: 'Local'),
                   DropdownMenuEntry(value: 'online', label: 'Online'),
