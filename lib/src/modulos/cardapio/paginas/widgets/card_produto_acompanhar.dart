@@ -202,21 +202,25 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              IconButton(
-                                onPressed: () {
-                                  if (widget.dados != null) {
-                                    EnviarPedido.enviarPedido(
-                                      tipo: '1',
-                                      nomeTitulo: widget.dados!.nome!,
-                                      numeroPedido: widget.dados!.numeroPedido!,
-                                      nomeCliente: widget.dados!.nomeCliente!,
-                                      nomeEmpresa: widget.dados!.nomeEmpresa!,
-                                      produtosNovos: [item],
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.print_rounded),
-                              ),
+                              if (item.destinoDeImpressao != null && item.destinoDeImpressao!.nome.isNotEmpty) ...[
+                                IconButton(
+                                  onPressed: () {
+                                    if (widget.dados != null) {
+                                      EnviarPedido.enviarPedido(
+                                        tipo: '1',
+                                        nomeTitulo: widget.dados!.nome!,
+                                        numeroPedido: widget.dados!.numeroPedido!,
+                                        nomeCliente: widget.dados!.nomeCliente!,
+                                        nomeEmpresa: widget.dados!.nomeEmpresa!,
+                                        produtosNovos: [item],
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.print_rounded),
+                                ),
+                              ] else ...[
+                                const SizedBox(),
+                              ],
                               Row(
                                 children: [
                                   IconButton(
