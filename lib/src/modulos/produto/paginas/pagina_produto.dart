@@ -1,13 +1,9 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_acompanhamentos.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_adicionais.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_cortesias.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_itens_retiradas.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_tamanhos.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -53,31 +49,26 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     await inicioServico.listarPorId(widget.produto).then((value) {
       itemProduto = value;
       if (value != null) {
-        for (var element in value.kits) {
-          element.adicionais = [];
-          element.tamanhos = [];
-          element.acompanhamentos = [];
-          element.itensRetiradas = [];
-          element.cortesias = [];
-        }
+        _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
+          // se for acompanhamentos retorna todos
+          if (e.id == 5) {
+            return e;
+          }
 
-        _provedorProduto.listaKits = value.kits;
-        _provedorProduto.listaAcompanhamentos = value.acompanhamentos;
+          // se for cortesia
+          if (e.id == 1) {
+            e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
+            return e;
+          }
+
+          e.dados = [];
+
+          return e;
+        }).toList();
+
         _provedorProduto.valorVenda = double.parse(value.valorVenda);
         _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
-        _provedorProduto.listaCortesias = value.cortesias.where((element) => element.estaSelecionado == true).toList();
-
-        for (var element in value.kits) {
-          element.acompanhamentos = element.acompanhamentos.where((element) => element.estaSelecionado == true).toList();
-
-          if (element.acompanhamentos.where((element) => element.estaSelecionado == true).toList().isNotEmpty) {
-            _provedorProduto.calcularValorVenda(true, element);
-          }
-        }
-
-        if (value.kits.isEmpty) {
-          _provedorProduto.calcularValorVenda(false, null);
-        }
+        _provedorProduto.calcularValorVenda();
       }
     }).whenComplete(() {
       setState(() {
@@ -97,10 +88,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var observacaoMesa = '';
     var observacao = obsController.text;
 
-    // print(_provedorProduto.listaTamanhos);
-    // return;
-
-    if (itemProduto!.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty) {
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4]).isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         behavior: SnackBarBehavior.floating,
@@ -115,13 +103,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
     itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
-    itemProduto!.tamanhos = _provedorProduto.listaTamanhos;
-    itemProduto!.adicionais = _provedorProduto.listaAdicionais;
-    itemProduto!.acompanhamentos = _provedorProduto.listaAcompanhamentos;
-    itemProduto!.itensRetiradas = _provedorProduto.listaItensRetirada;
-    itemProduto!.kits = _provedorProduto.listaKits;
-    itemProduto!.cortesias = _provedorProduto.listaCortesias;
     itemProduto!.observacao = obsController.text;
+    itemProduto!.opcoesPacotesListaFinal = _provedorProduto.opcoesPacotesListaFinal;
 
     await carrinhoProvedor
         .inserir(
@@ -261,8 +244,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
-                              (itemProduto!.tamanhos.isNotEmpty && _provedorProduto.listaTamanhos.isEmpty)
-                                  ? "${double.parse(itemProduto!.tamanhos.first.valor).obterReal()} à ${double.parse(itemProduto!.tamanhos.last.valor).obterReal()}"
+                              (_provedorProduto.retornarDadosPorID([4]).isEmpty &&
+                                      _provedorProduto.retornarDadosPorID([4]).firstOrNull == null &&
+                                      itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null)
+                                  ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                   : (_provedorProduto.valorVenda).obterReal(),
                               style: const TextStyle(color: Colors.green, fontSize: 18),
                             ),
@@ -345,7 +330,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                         Padding(
                                           padding: const EdgeInsets.only(left: 10),
                                           child: Text(
-                                            '${opcoesPacote.titulo} (${opcoesPacote.id == 5 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length})',
+                                            '${opcoesPacote.titulo} (${opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length})',
                                             style: const TextStyle(fontSize: 16),
                                           ),
                                         ),
@@ -355,29 +340,34 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                   ListView.builder(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: opcoesPacote.id == 5 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length,
+                                    itemCount: opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length,
                                     padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                     itemBuilder: (context, index) {
-                                      if (opcoesPacote.id == 1) {
-                                        var item = opcoesPacote.dados![index];
-                                        return CardTamanhos(item: item, kit: false);
-                                      } else if (opcoesPacote.id == 2) {
-                                        var item = opcoesPacote.dados![index];
-                                        return CardAcompanhamentos(item: item, kit: false);
-                                      } else if (opcoesPacote.id == 3) {
-                                        var item = opcoesPacote.dados![index];
-                                        return CardAdicionais(item: item, kit: false);
-                                      } else if (opcoesPacote.id == 4) {
-                                        var item = opcoesPacote.dados![index];
-                                        return CardItensRetiradas(item: item, kit: false);
-                                      } else if (opcoesPacote.id == 5) {
-                                        var item = opcoesPacote.produtos![index];
-                                        return CardKit(item: item);
-                                      } else if (opcoesPacote.id == 6) {
-                                        var item = opcoesPacote.dados![index];
-                                        return CardCortesias(item: item, kit: false);
-                                      }
-                                      return null;
+                                      var item = opcoesPacote.dados![index];
+                                      // if (opcoesPacote.id == 1) {
+                                      //   var item = opcoesPacote.dados![index];
+                                      //   return CardTamanhos(item: item, kit: false);
+                                      // } else if (opcoesPacote.id == 2) {
+                                      //   var item = opcoesPacote.dados![index];
+                                      //   return CardAcompanhamentos(item: item, kit: false);
+                                      // } else if (opcoesPacote.id == 3) {
+                                      //   var item = opcoesPacote.dados![index];
+                                      //   return CardAdicionais(item: item, kit: false);
+                                      // } else if (opcoesPacote.id == 4) {
+                                      //   var item = opcoesPacote.dados![index];
+                                      //   return CardItensRetiradas(item: item, kit: false);
+                                      // } else if (opcoesPacote.id == 5) {
+                                      //   var item = opcoesPacote.produtos![index];
+                                      //   return CardKit(item: item);
+                                      // } else if (opcoesPacote.id == 6) {
+                                      //   var item = opcoesPacote.dados![index];
+                                      //   return CardCortesias(item: item, kit: false);
+                                      // }
+
+                                      return CardOpcoesPacotes(
+                                        opcoesPacote: opcoesPacote,
+                                        item: item,
+                                      );
                                     },
                                   ),
                                 ],

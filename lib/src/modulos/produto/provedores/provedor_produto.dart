@@ -1,39 +1,16 @@
 // ignore_for_file: unnecessary_getters_setters
 
-import 'package:app/src/modulos/cardapio/modelos/modelo_acompanhamentos_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_cortesias_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_itens_retirada_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorProduto extends ChangeNotifier {
-  List<Modelowordadicionaisproduto> listaAdicionais = [];
-  List<Modelowordtamanhosproduto> listaTamanhos = [];
-
-  List<Modelowordcortesiasproduto> _listaCortesias = [];
-  List<Modelowordcortesiasproduto> get listaCortesias => _listaCortesias;
-  set listaCortesias(List<Modelowordcortesiasproduto> value) {
-    _listaCortesias = value;
+  List<ModeloOpcoesPacotes> _opcoesPacotesListaFinal = [];
+  List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal => _opcoesPacotesListaFinal;
+  set opcoesPacotesListaFinal(List<ModeloOpcoesPacotes> value) {
+    _opcoesPacotesListaFinal = value;
     notifyListeners();
   }
-
-  List<ModeloProduto> _listaKits = [];
-  List<ModeloProduto> get listaKits => _listaKits;
-  set listaKits(List<ModeloProduto> value) {
-    _listaKits = value;
-    notifyListeners();
-  }
-
-  List<Modelowordacompanhamentosproduto> _listaAcompanhamentos = [];
-  List<Modelowordacompanhamentosproduto> get listaAcompanhamentos => _listaAcompanhamentos;
-  set listaAcompanhamentos(List<Modelowordacompanhamentosproduto> value) {
-    _listaAcompanhamentos = value;
-    notifyListeners();
-  }
-
-  List<Modeloworditensretiradaproduto> listaItensRetirada = [];
 
   int quantidade = 1;
 
@@ -53,249 +30,30 @@ class ProvedorProduto extends ChangeNotifier {
   bool expandido2 = true;
 
   void resetarTudo() {
-    listaAcompanhamentos = [];
-    listaAdicionais = [];
-    listaItensRetirada = [];
-    listaTamanhos = [];
+    opcoesPacotesListaFinal = [];
     quantidade = 1;
     notifyListeners();
   }
 
-  List<Modelowordadicionaisproduto> retornarListaAdicionais(bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      if (listaKits.isEmpty) {
-        return [];
-      } else {
-        List<Modelowordadicionaisproduto> adicionaisKIT = [];
+  void calcularValorVenda() {
+    double soma = 0;
 
-        for (var element in listaKits) {
-          for (var element2 in element.adicionais) {
-            adicionaisKIT.add(element2);
+    if (opcoesPacotesListaFinal.isNotEmpty) {
+      for (var element in opcoesPacotesListaFinal) {
+        if (element.id != 4) {
+          for (var element2 in element.dados!) {
+            if (element2.quantidade != null) {
+              soma += double.parse(element2.valor ?? '0') * (element2.quantidade ?? 0);
+            } else {
+              soma += double.parse(element2.valor ?? '0');
+            }
           }
         }
-
-        return adicionaisKIT;
       }
     }
 
-    return listaAdicionais;
-  }
-
-  List<Modelowordacompanhamentosproduto> retornarListaAcompanhamentos(bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      if (listaKits.isEmpty) {
-        return [];
-      } else {
-        List<Modelowordacompanhamentosproduto> acompanhamentosKIT = [];
-
-        for (var element in listaKits) {
-          for (var element2 in element.acompanhamentos) {
-            acompanhamentosKIT.add(element2);
-          }
-        }
-
-        return acompanhamentosKIT;
-      }
-    }
-
-    return listaAcompanhamentos;
-  }
-
-  List<Modelowordtamanhosproduto> retornarListaTamanhos(bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      if (listaKits.isEmpty) {
-        return [];
-      } else {
-        List<Modelowordtamanhosproduto> tamanhosKIT = [];
-
-        for (var element in listaKits) {
-          for (var element2 in element.tamanhos) {
-            tamanhosKIT.add(element2);
-          }
-        }
-
-        return tamanhosKIT;
-      }
-    }
-
-    return listaTamanhos;
-  }
-
-  List<Modelowordcortesiasproduto> retornarListaCortesias(bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      if (listaKits.isEmpty) {
-        return [];
-      } else {
-        List<Modelowordcortesiasproduto> cortesiasKIT = [];
-
-        for (var element in listaKits) {
-          for (var element2 in element.cortesias) {
-            cortesiasKIT.add(element2);
-          }
-        }
-
-        return cortesiasKIT;
-      }
-    }
-
-    return listaCortesias;
-  }
-
-  void calcularValorVenda(bool kit, ModeloProduto? dadosKit) {
-    var somaCortesias = double.tryParse(retornarListaCortesias(kit, dadosKit)
-            .fold(
-              Modelowordcortesiasproduto(
-                id: '',
-                nome: '',
-                valor: '0',
-                foto: '',
-                excluir: false,
-                quantimaximaselecao: '1',
-                estaSelecionado: true,
-              ),
-              (previousValue, element) => Modelowordcortesiasproduto(
-                id: '',
-                nome: '',
-                quantimaximaselecao: '1',
-                valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
-                excluir: false,
-                foto: '',
-                estaSelecionado: true,
-              ),
-            )
-            .valor) ??
-        0;
-
-    var somaAdicionais = double.tryParse(retornarListaAdicionais(kit, dadosKit)
-            .fold(
-              Modelowordadicionaisproduto(
-                id: '',
-                nome: '',
-                valor: '0',
-                foto: '',
-                excluir: false,
-                quantidade: 1,
-                estaSelecionado: true,
-              ),
-              (previousValue, element) => Modelowordadicionaisproduto(
-                id: '',
-                nome: '',
-                valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
-                excluir: false,
-                foto: '',
-                quantidade: 1,
-                estaSelecionado: true,
-              ),
-            )
-            .valor) ??
-        0;
-
-    var somaAcompanhamentos = double.tryParse(retornarListaAcompanhamentos(kit, dadosKit)
-            .fold(
-              Modelowordacompanhamentosproduto(
-                id: '',
-                nome: '',
-                valor: '0',
-                foto: '',
-                excluir: false,
-                estaSelecionado: true,
-              ),
-              (previousValue, element) => Modelowordacompanhamentosproduto(
-                id: '',
-                nome: '',
-                valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
-                excluir: false,
-                foto: '',
-                estaSelecionado: true,
-              ),
-            )
-            .valor) ??
-        0;
-
-    var valorTamanho = retornarListaTamanhos(kit, dadosKit).isEmpty ? 0 : double.tryParse(retornarListaTamanhos(kit, dadosKit).first.valor) ?? 0;
-    var valorFinal = (retornarListaTamanhos(kit, dadosKit).isNotEmpty ? valorTamanho : valorVendaOriginal) + somaAdicionais + somaAcompanhamentos + somaCortesias;
-
-    if (kit) {
-      var valorVendaOriginal2 = double.parse(dadosKit!.valorVenda);
-
-      var produtoKIT = listaKits.where((element) => element.id == dadosKit.id).firstOrNull;
-      if (produtoKIT != null) {
-        var somaCortesias2 = double.tryParse(produtoKIT.cortesias
-                .fold(
-                  Modelowordcortesiasproduto(
-                    id: '',
-                    nome: '',
-                    valor: '0',
-                    foto: '',
-                    excluir: false,
-                    quantimaximaselecao: '1',
-                    estaSelecionado: true,
-                  ),
-                  (previousValue, element) => Modelowordcortesiasproduto(
-                    id: '',
-                    nome: '',
-                    valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
-                    excluir: false,
-                    foto: '',
-                    quantimaximaselecao: '1',
-                    estaSelecionado: true,
-                  ),
-                )
-                .valor) ??
-            0;
-
-        var somaAdicionais2 = double.tryParse(produtoKIT.adicionais
-                .fold(
-                  Modelowordadicionaisproduto(
-                    id: '',
-                    nome: '',
-                    valor: '0',
-                    foto: '',
-                    excluir: false,
-                    quantidade: 1,
-                    estaSelecionado: true,
-                  ),
-                  (previousValue, element) => Modelowordadicionaisproduto(
-                    id: '',
-                    nome: '',
-                    valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
-                    excluir: false,
-                    foto: '',
-                    quantidade: 1,
-                    estaSelecionado: true,
-                  ),
-                )
-                .valor) ??
-            0;
-
-        var somaAcompanhamentos2 = double.tryParse(produtoKIT.acompanhamentos
-                .fold(
-                  Modelowordacompanhamentosproduto(
-                    id: '',
-                    nome: '',
-                    valor: '0',
-                    foto: '',
-                    excluir: false,
-                    estaSelecionado: true,
-                  ),
-                  (previousValue, element) => Modelowordacompanhamentosproduto(
-                    id: '',
-                    nome: '',
-                    valor: (double.parse(previousValue.valor) + double.parse(element.valor)).toString(),
-                    excluir: false,
-                    foto: '',
-                    estaSelecionado: true,
-                  ),
-                )
-                .valor) ??
-            0;
-
-        var valorTamanho2 = produtoKIT.tamanhos.isEmpty ? 0 : double.tryParse(produtoKIT.tamanhos.first.valor) ?? 0;
-        var valorFinal2 = (produtoKIT.tamanhos.isNotEmpty ? valorTamanho2 : valorVendaOriginal2) + somaAdicionais2 + somaAcompanhamentos2 + somaCortesias2;
-
-        produtoKIT.valorVenda = valorFinal2.toStringAsFixed(2);
-      }
-    }
+    var valorTamanho = retornarDadosPorID([4]).firstOrNull == null ? 0 : double.tryParse(retornarDadosPorID([4]).firstOrNull?.valor ?? '0') ?? 0;
+    var valorFinal = (retornarDadosPorID([4]).firstOrNull != null ? valorTamanho : valorVendaOriginal) + soma;
 
     valorVenda = double.parse(valorFinal.toStringAsFixed(2));
     notifyListeners();
@@ -311,191 +69,69 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  void mudarTamanhoSelecionado(Modelowordtamanhosproduto novoDado, bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
-      if (listaDeKits == null) {
-        dadosKit!.adicionais = [];
-        dadosKit.itensRetiradas = [];
-        dadosKit.acompanhamentos = [];
-        dadosKit.tamanhos = [];
-        dadosKit.tamanhos = [novoDado];
-        listaKits.add(dadosKit);
-      } else {
-        listaDeKits.tamanhos = [novoDado];
-      }
-
-      calcularValorVenda(kit, dadosKit);
-      notifyListeners();
-      return;
-    }
-
-    listaTamanhos = [novoDado];
-
-    calcularValorVenda(kit, dadosKit);
-    notifyListeners();
+  List<ModeloDadosOpcoesPacotes> retornarDadosPorID(List<int> ids) {
+    return opcoesPacotesListaFinal.where((element) => ids.every((element2) => element2 == element.id)).firstOrNull?.dados ?? [];
   }
 
-  bool selecionarCortesia(Modelowordcortesiasproduto novoDado, bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
-      if (listaDeKits == null) {
-        dadosKit!.adicionais = [];
-        dadosKit.itensRetiradas = [];
-        dadosKit.acompanhamentos = [];
-        dadosKit.tamanhos = [];
-        dadosKit.cortesias = [];
-        dadosKit.cortesias.add(novoDado);
-        listaKits.add(dadosKit);
+  void selecionarItem(ModeloDadosOpcoesPacotes item, ModeloOpcoesPacotes opcoesPacote) {
+    // CORTESIA
+    if (opcoesPacote.tipo == 6) {
+      if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
+        retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
       } else {
-        if (listaDeKits.cortesias.where((element) => element.id == novoDado.id).isNotEmpty) {
-          listaDeKits.cortesias.removeWhere((element) => element.id == novoDado.id);
-        } else {
-          if ((num.tryParse(novoDado.quantimaximaselecao) ?? 1) == 1) {
-            if (listaDeKits.cortesias.length == (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
-              listaDeKits.cortesias = [];
-              listaDeKits.cortesias.add(novoDado);
-            } else {
-              return false;
-            }
-          } else if (listaDeKits.cortesias.length < (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
-            listaDeKits.cortesias.add(novoDado);
+        if (num.parse(item.quantimaximaselecao ?? '1') == 1) {
+          if (retornarDadosPorID([opcoesPacote.id]).length == num.parse(item.quantimaximaselecao ?? '1')) {
+            opcoesPacotesListaFinal.where((element) => element.tipo == 6).firstOrNull?.dados = [];
+            retornarDadosPorID([opcoesPacote.id]).add(item);
           } else {
-            return false;
+            retornarDadosPorID([opcoesPacote.id]).add(item);
+          }
+        } else {
+          if (retornarDadosPorID([opcoesPacote.id]).length < num.parse(item.quantimaximaselecao ?? '1')) {
+            retornarDadosPorID([opcoesPacote.id]).add(item);
+          } else {
+            // ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            //   content: Text('Máximo de produtos cortesia já escolhidos.'),
+            //   backgroundColor: Colors.red,
+            // ));
           }
         }
       }
 
-      calcularValorVenda(kit, dadosKit);
-      notifyListeners();
-      return true;
-    }
+      calcularValorVenda();
 
-    if (listaCortesias.where((element) => element.id == novoDado.id).isNotEmpty) {
-      listaCortesias.removeWhere((element) => element.id == novoDado.id);
-    } else {
-      if ((num.tryParse(novoDado.quantimaximaselecao) ?? 1) == 1) {
-        if (listaCortesias.length == (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
-          listaCortesias = [];
-          listaCortesias.add(novoDado);
-        } else {
-          listaCortesias.add(novoDado);
-        }
-      } else {
-        if (listaCortesias.length < (num.tryParse(novoDado.quantimaximaselecao) ?? 1)) {
-          listaCortesias.add(novoDado);
-        } else {
-          return false;
-        }
-      }
-    }
-
-    calcularValorVenda(kit, dadosKit);
-    notifyListeners();
-    return true;
-  }
-
-  void selecionarAdicional(Modelowordadicionaisproduto novoDado, bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
-      if (listaDeKits == null) {
-        dadosKit!.adicionais = [];
-        dadosKit.itensRetiradas = [];
-        dadosKit.acompanhamentos = [];
-        dadosKit.tamanhos = [];
-        dadosKit.cortesias = [];
-        dadosKit.adicionais.add(novoDado);
-
-        listaKits.add(dadosKit);
-      } else {
-        if (listaDeKits.adicionais.where((element) => element.id == novoDado.id).isNotEmpty) {
-          listaDeKits.adicionais.removeWhere((element) => element.id == novoDado.id);
-        } else {
-          listaDeKits.adicionais.add(novoDado);
-        }
-      }
-
-      calcularValorVenda(kit, dadosKit);
-      notifyListeners();
       return;
     }
 
-    if (listaAdicionais.where((element) => element.id == novoDado.id).isNotEmpty) {
-      listaAdicionais.removeWhere((element) => element.id == novoDado.id);
-    } else {
-      listaAdicionais.add(novoDado);
-    }
+    // TAMANHO
+    if (opcoesPacote.tipo == 1) {
+      opcoesPacotesListaFinal.where((element) => element.id == opcoesPacote.id).firstOrNull?.dados = [item];
 
-    calcularValorVenda(kit, dadosKit);
-    notifyListeners();
-  }
+      calcularValorVenda();
 
-  void selecionarAcompanhamentos(Modelowordacompanhamentosproduto novoDado, bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
-      if (listaDeKits == null) {
-        dadosKit!.adicionais = [];
-        dadosKit.itensRetiradas = [];
-        dadosKit.acompanhamentos = [];
-        dadosKit.tamanhos = [];
-        dadosKit.cortesias = [];
-        dadosKit.acompanhamentos.add(novoDado);
-        listaKits.add(dadosKit);
-      } else {
-        if (listaDeKits.acompanhamentos.where((element) => element.id == novoDado.id).isNotEmpty) {
-          listaDeKits.acompanhamentos.removeWhere((element) => element.id == novoDado.id);
-        } else {
-          listaDeKits.acompanhamentos.add(novoDado);
-        }
-      }
-
-      calcularValorVenda(kit, dadosKit);
-      notifyListeners();
       return;
     }
 
-    if (listaAcompanhamentos.where((element) => element.id == novoDado.id).isNotEmpty) {
-      listaAcompanhamentos.removeWhere((element) => element.id == novoDado.id);
+    // SABOR BORDA
+    // if (int.parse(provedor.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) {
+    //   if (retornarDadosPorID([opcoesPacote.id]).length == provedor.limiteSaborBordaSelecionado) {
+    //     if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
+    //       retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
+    //     }
+
+    //     calcularValorVenda();
+    //     return;
+    //   }
+    // }
+
+    if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
+      retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
     } else {
-      listaAcompanhamentos.add(novoDado);
+      retornarDadosPorID([opcoesPacote.id]).add(item);
     }
 
-    calcularValorVenda(kit, dadosKit);
-    notifyListeners();
-  }
-
-  void selecionarItensRetirada(Modeloworditensretiradaproduto novoDado, bool kit, ModeloProduto? dadosKit) {
-    if (kit) {
-      var listaDeKits = listaKits.where((element) => element.id == dadosKit!.id).firstOrNull;
-      if (listaDeKits == null) {
-        dadosKit!.adicionais = [];
-        dadosKit.itensRetiradas = [];
-        dadosKit.acompanhamentos = [];
-        dadosKit.tamanhos = [];
-        dadosKit.cortesias = [];
-        dadosKit.itensRetiradas.add(novoDado);
-        listaKits.add(dadosKit);
-      } else {
-        if (listaDeKits.itensRetiradas.where((element) => element.id == novoDado.id).isNotEmpty) {
-          listaDeKits.itensRetiradas.removeWhere((element) => element.id == novoDado.id);
-        } else {
-          listaDeKits.itensRetiradas.add(novoDado);
-        }
-      }
-
-      calcularValorVenda(kit, dadosKit);
-      notifyListeners();
-      return;
-    }
-
-    if (listaItensRetirada.where((element) => element.id == novoDado.id).isNotEmpty) {
-      listaItensRetirada.removeWhere((element) => element.id == novoDado.id);
-    } else {
-      listaItensRetirada.add(novoDado);
-    }
-
-    calcularValorVenda(kit, dadosKit);
-    notifyListeners();
+    calcularValorVenda();
   }
 
   void aoDiminuirQuantidade() {

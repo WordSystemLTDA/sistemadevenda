@@ -6,17 +6,19 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class ModeloOpcoesPacotes {
   final int id;
-  final String tipo;
   final String titulo;
   final bool obrigatorio;
-  final List<ModeloDadosOpcoesPacotes>? dados;
-  final List<ModeloProduto>? produtos;
+  final int? tipo;
+  List<ModeloDadosOpcoesPacotes>? dados;
+  List<ModeloOpcoesPacotes>? opcoesPacote;
+  List<ModeloProduto>? produtos;
 
   ModeloOpcoesPacotes({
     required this.id,
-    required this.tipo,
     required this.titulo,
     required this.obrigatorio,
+    this.tipo,
+    this.opcoesPacote,
     required this.dados,
     this.produtos,
   });
@@ -24,9 +26,10 @@ class ModeloOpcoesPacotes {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
-      'tipo': tipo,
       'titulo': titulo,
       'obrigatorio': obrigatorio,
+      'tipo': tipo,
+      'opcoesPacote': opcoesPacote?.map((x) => x.toMap()).toList(),
       'dados': dados?.map((x) => x.toMap()).toList(),
       'produtos': produtos?.map((x) => x.toMap()).toList(),
     };
@@ -35,13 +38,20 @@ class ModeloOpcoesPacotes {
   factory ModeloOpcoesPacotes.fromMap(Map<String, dynamic> map) {
     return ModeloOpcoesPacotes(
       id: map['id'] as int,
-      tipo: map['tipo'] as String,
       titulo: map['titulo'] as String,
       obrigatorio: map['obrigatorio'] as bool,
+      tipo: map['tipo'] != null ? map['tipo'] as int : null,
       dados: map['dados'] != null
           ? List<ModeloDadosOpcoesPacotes>.from(
               (map['dados'] as List<dynamic>).map<ModeloDadosOpcoesPacotes?>(
                 (x) => ModeloDadosOpcoesPacotes.fromMap(x as Map<String, dynamic>),
+              ),
+            )
+          : null,
+      opcoesPacote: map['opcoesPacote'] != null
+          ? List<ModeloOpcoesPacotes>.from(
+              (map['opcoesPacote'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
+                (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,

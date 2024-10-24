@@ -234,7 +234,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                             carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
                               precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                              e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                              // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
                             }).toList();
 
                             setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
@@ -247,7 +247,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                             carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
                               precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                              e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                              // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
                             }).toList();
 
                             setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);

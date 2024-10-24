@@ -43,9 +43,9 @@ class EnviarPedido {
 
     // pedido
     if (tipo == '1') {
-      for (var element in produtosNovos) {
-        element.kits = [];
-      }
+      // for (var element in produtosNovos) {
+      // element.kits = [];
+      // }
 
       cliente.write(jsonEncode({
         'tipo': tipo,
@@ -58,9 +58,9 @@ class EnviarPedido {
 
       // conta
     } else if (tipo == '2') {
-      for (var element in produtos) {
-        element.kits = [];
-      }
+      // for (var element in produtos) {
+      // element.kits = [];
+      // }
 
       cliente.write(jsonEncode({
         'tipo': tipo,

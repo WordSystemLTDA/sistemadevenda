@@ -1,4 +1,3 @@
-import 'package:app/src/modulos/cardapio/modelos/modelo_adicionais_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -64,20 +63,20 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
   Widget build(BuildContext context) {
     var item = widget.item;
 
-    var soma = item.adicionais.fold(
-      Modelowordadicionaisproduto(id: '', nome: '', valor: '0', quantidade: 0, foto: '', estaSelecionado: false, excluir: false),
-      (previousValue, element) {
-        return Modelowordadicionaisproduto(
-          id: '',
-          nome: '',
-          valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
-          quantidade: 0,
-          foto: '',
-          estaSelecionado: false,
-          excluir: false,
-        );
-      },
-    );
+    // var soma = item.adicionais.fold(
+    //   Modelowordadicionaisproduto(id: '', nome: '', valor: '0', quantidade: 0, foto: '', estaSelecionado: false, excluir: false),
+    //   (previousValue, element) {
+    //     return Modelowordadicionaisproduto(
+    //       id: '',
+    //       nome: '',
+    //       valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toString(),
+    //       quantidade: 0,
+    //       foto: '',
+    //       estaSelecionado: false,
+    //       excluir: false,
+    //     );
+    //   },
+    // );
 
     return Card(
       shape: RoundedRectangleBorder(
@@ -118,7 +117,8 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                               ),
                               const SizedBox(width: 30),
                               Text(
-                                ((double.parse(item.valorVenda) + (widget.somarValores ? double.parse(soma.valor) : 0)) * item.quantidade!).obterReal(),
+                                // ((double.parse(item.valorVenda) + (widget.somarValores ? double.parse(soma.valor) : 0)) * item.quantidade!).obterReal(),
+                                (double.parse(item.valorVenda) * item.quantidade!).obterReal(),
                                 maxLines: 1,
                                 style: TextStyle(
                                   fontSize: 14,
@@ -129,7 +129,7 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                             ],
                           ),
                         ),
-                        Text(item.tamanhos.isNotEmpty ? item.tamanhos.first.nome : ''),
+                        // Text(item.tamanhos.isNotEmpty ? item.tamanhos.first.nome : ''),
                       ],
                     ),
                     Positioned(
@@ -156,143 +156,143 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
           ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
-            child: Column(
+            child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(height: 1),
-                if (item.tamanhos.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10, top: 10),
-                    child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10),
-                    child: Text(item.tamanhos.first.nome),
-                  )
-                ],
-                if (item.acompanhamentos.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10, top: 10),
-                    child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: item.acompanhamentos.length,
-                    itemBuilder: (context, index) {
-                      final adicional = item.acompanhamentos[index];
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            adicional.nome,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                          Text(
-                            double.parse(adicional.valor) == 0 ? 'Grátis' : double.parse(adicional.valor).obterReal(),
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-                if (item.adicionais.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10, top: 10),
-                    child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: item.adicionais.length,
-                    itemBuilder: (context, index) {
-                      final adicional = item.adicionais[index];
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${adicional.quantidade}x ${adicional.nome}',
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                          Text(
-                            (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-                if (item.itensRetiradas.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10, top: 10),
-                    child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  ListView.builder(
-                    padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: item.itensRetiradas.length,
-                    itemBuilder: (context, index) {
-                      final itemRetirada = item.itensRetiradas[index];
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            itemRetirada.nome,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-                const Padding(
-                  padding: EdgeInsets.only(left: 10, top: 10),
-                  child: Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Produto'),
-                          Text(
-                            "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - (widget.somarValores ? 0 : double.parse(soma.valor))).obterReal()}",
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                      if (double.parse(soma.valor) > 0) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Adicionais'),
-                            Text(
-                              "${item.quantidade! > 1 && double.parse(soma.valor) > 0 ? '${item.quantidade}x de' : ''} ${double.parse(soma.valor).obterReal()}",
-                              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                            ),
-                          ],
-                        ),
-                      ],
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total'),
-                          Text(
-                            ((double.parse(item.valorVenda) + (widget.somarValores ? double.parse(soma.valor) : 0)) * item.quantidade!).obterReal(),
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                Divider(height: 1),
+                // if (item.tamanhos.isNotEmpty) ...[
+                //   const Padding(
+                //     padding: EdgeInsets.only(left: 10, top: 10),
+                //     child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //   ),
+                //   Padding(
+                //     padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10),
+                //     child: Text(item.tamanhos.first.nome),
+                //   )
+                // ],
+                // if (item.acompanhamentos.isNotEmpty) ...[
+                //   const Padding(
+                //     padding: EdgeInsets.only(left: 10, top: 10),
+                //     child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //   ),
+                //   ListView.builder(
+                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
+                //     shrinkWrap: true,
+                //     physics: const NeverScrollableScrollPhysics(),
+                //     itemCount: item.acompanhamentos.length,
+                //     itemBuilder: (context, index) {
+                //       final adicional = item.acompanhamentos[index];
+                //       return Row(
+                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //         children: [
+                //           Text(
+                //             adicional.nome,
+                //             style: const TextStyle(fontSize: 15),
+                //           ),
+                //           Text(
+                //             double.parse(adicional.valor) == 0 ? 'Grátis' : double.parse(adicional.valor).obterReal(),
+                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //           ),
+                //         ],
+                //       );
+                //     },
+                //   ),
+                // ],
+                // if (item.adicionais.isNotEmpty) ...[
+                //   const Padding(
+                //     padding: EdgeInsets.only(left: 10, top: 10),
+                //     child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //   ),
+                //   ListView.builder(
+                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
+                //     shrinkWrap: true,
+                //     physics: const NeverScrollableScrollPhysics(),
+                //     itemCount: item.adicionais.length,
+                //     itemBuilder: (context, index) {
+                //       final adicional = item.adicionais[index];
+                //       return Row(
+                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //         children: [
+                //           Text(
+                //             '${adicional.quantidade}x ${adicional.nome}',
+                //             style: const TextStyle(fontSize: 15),
+                //           ),
+                //           Text(
+                //             (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
+                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //           ),
+                //         ],
+                //       );
+                //     },
+                //   ),
+                // ],
+                // if (item.itensRetiradas.isNotEmpty) ...[
+                //   const Padding(
+                //     padding: EdgeInsets.only(left: 10, top: 10),
+                //     child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //   ),
+                //   ListView.builder(
+                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
+                //     shrinkWrap: true,
+                //     physics: const NeverScrollableScrollPhysics(),
+                //     itemCount: item.itensRetiradas.length,
+                //     itemBuilder: (context, index) {
+                //       final itemRetirada = item.itensRetiradas[index];
+                //       return Row(
+                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //         children: [
+                //           Text(
+                //             itemRetirada.nome,
+                //             style: const TextStyle(fontSize: 15),
+                //           ),
+                //         ],
+                //       );
+                //     },
+                //   ),
+                // ],
+                // const Padding(
+                //   padding: EdgeInsets.only(left: 10, top: 10),
+                //   child: Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                // ),
+                // Padding(
+                //   padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
+                //   child: Column(
+                //     children: [
+                //       Row(
+                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //         children: [
+                //           const Text('Produto'),
+                //           Text(
+                //             "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - (widget.somarValores ? 0 : double.parse(soma.valor))).obterReal()}",
+                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //           ),
+                //         ],
+                //       ),
+                //       if (double.parse(soma.valor) > 0) ...[
+                //         Row(
+                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //           children: [
+                //             const Text('Adicionais'),
+                //             Text(
+                //               "${item.quantidade! > 1 && double.parse(soma.valor) > 0 ? '${item.quantidade}x de' : ''} ${double.parse(soma.valor).obterReal()}",
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //             ),
+                //           ],
+                //         ),
+                //       ],
+                //       Row(
+                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //         children: [
+                //           const Text('Total'),
+                //           Text(
+                //             ((double.parse(item.valorVenda) + (widget.somarValores ? double.parse(soma.valor) : 0)) * item.quantidade!).obterReal(),
+                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //           ),
+                //         ],
+                //       ),
+                //     ],
+                //   ),
+                // ),
               ],
             ),
           ),
