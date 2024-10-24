@@ -45,7 +45,7 @@ class AppModule extends Module {
 
     // Cardapio
     i.add<ServicoCardapio>(ServicoCardapio.new);
-    i.add<ProvedorCardapio>(ProvedorCardapio.new);
+    i.addSingleton<ProvedorCardapio>(ProvedorCardapio.new);
 
     // Vendas
     i.addSingleton(ProvedoresListarVendas.new);

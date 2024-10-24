@@ -51,6 +51,7 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
                 prefixIcon: IconButton(
                   onPressed: () {
                     Navigator.pop(context);
+                    provedorCardapio.resetarTudo();
                   },
                   icon: const Icon(Icons.arrow_back_outlined),
                 ),

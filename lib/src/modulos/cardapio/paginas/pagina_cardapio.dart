@@ -184,6 +184,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                   return TabCustom(
                     category: e.id,
                     idMesa: widget.idMesa!,
+                    categoria: e,
                     idComandaPedido: widget.idComandaPedido!,
                     idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
                     tipo: widget.tipo,

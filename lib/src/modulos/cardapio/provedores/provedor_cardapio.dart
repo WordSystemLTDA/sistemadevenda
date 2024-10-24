@@ -1,5 +1,6 @@
-import 'package:app/src/modulos/cardapio/modelos/categoria_model.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +11,41 @@ class ProvedorCardapio extends ChangeNotifier {
 
   ProvedorCardapio(this._categoriaService, this._produtoService);
 
-  List<CategoriaModel> categorias = [];
-  List<ModeloProduto> produtos = [];
+  ModeloTamanhosPizza? _tamanhosPizza;
+  ModeloTamanhosPizza? get tamanhosPizza => _tamanhosPizza;
+  set tamanhosPizza(ModeloTamanhosPizza? value) {
+    _tamanhosPizza = value;
+    notifyListeners();
+  }
+
+  List<ModeloProduto> _saboresPizzaSelecionados = [];
+  List<ModeloProduto> get saboresPizzaSelecionados => _saboresPizzaSelecionados;
+  set saboresPizzaSelecionados(List<ModeloProduto> value) {
+    _saboresPizzaSelecionados = value;
+    notifyListeners();
+  }
+
+  List<ModeloCategoria> _categorias = [];
+  List<ModeloCategoria> get categorias => _categorias;
+  set categorias(List<ModeloCategoria> value) {
+    _categorias = value;
+    notifyListeners();
+  }
+
+  List<ModeloProduto> _produtos = [];
+  List<ModeloProduto> get produtos => _produtos;
+  set produtos(List<ModeloProduto> value) {
+    _produtos = value;
+    notifyListeners();
+  }
+
+  void resetarTudo() {
+    saboresPizzaSelecionados = [];
+    tamanhosPizza = null;
+    categorias = [];
+    produtos = [];
+    notifyListeners();
+  }
 
   void listarCategorias() async {
     final res = await _categoriaService.listar();
