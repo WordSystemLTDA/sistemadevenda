@@ -6,6 +6,8 @@ class ModeloConfigBigchef {
   final String abrirmesadireto;
   final String agrupamentodeitenscomanda;
   final String agrupamentodeitensmesa;
+  final String agrupamentodeitensbalcao;
+  final String agrupamentodeitensdelivery;
   final String obrigarjustifcancelarpedido;
   final String mostrarnomeempresapreparo;
   final String mostrarnomeclientepreparo;
@@ -13,12 +15,18 @@ class ModeloConfigBigchef {
   final String tamanhofontepreparolargura;
   final String formacobrancaentregadelivery;
   final String valordaentrega;
+  final String agrupamentodeitenscomprovconsumo;
+  final String agrupamentodeitenscomproventregador;
+  final String valordiferenca;
+  final String saborlimitedeborda;
 
   ModeloConfigBigchef({
     required this.abrircomandadireto,
     required this.abrirmesadireto,
     required this.agrupamentodeitenscomanda,
     required this.agrupamentodeitensmesa,
+    required this.agrupamentodeitensbalcao,
+    required this.agrupamentodeitensdelivery,
     required this.obrigarjustifcancelarpedido,
     required this.mostrarnomeempresapreparo,
     required this.mostrarnomeclientepreparo,
@@ -26,6 +34,10 @@ class ModeloConfigBigchef {
     required this.tamanhofontepreparolargura,
     required this.formacobrancaentregadelivery,
     required this.valordaentrega,
+    required this.agrupamentodeitenscomprovconsumo,
+    required this.agrupamentodeitenscomproventregador,
+    required this.valordiferenca,
+    required this.saborlimitedeborda,
   });
 
   Map<String, dynamic> toMap() {
@@ -34,6 +46,8 @@ class ModeloConfigBigchef {
       'abrirmesadireto': abrirmesadireto,
       'agrupamentodeitenscomanda': agrupamentodeitenscomanda,
       'agrupamentodeitensmesa': agrupamentodeitensmesa,
+      'agrupamentodeitensbalcao': agrupamentodeitensbalcao,
+      'agrupamentodeitensdelivery': agrupamentodeitensdelivery,
       'obrigarjustifcancelarpedido': obrigarjustifcancelarpedido,
       'mostrarnomeempresapreparo': mostrarnomeempresapreparo,
       'mostrarnomeclientepreparo': mostrarnomeclientepreparo,
@@ -41,6 +55,10 @@ class ModeloConfigBigchef {
       'tamanhofontepreparolargura': tamanhofontepreparolargura,
       'formacobrancaentregadelivery': formacobrancaentregadelivery,
       'valordaentrega': valordaentrega,
+      'agrupamentodeitenscomprovconsumo': agrupamentodeitenscomprovconsumo,
+      'agrupamentodeitenscomproventregador': agrupamentodeitenscomproventregador,
+      'valordiferenca': valordiferenca,
+      'saborlimitedeborda': saborlimitedeborda,
     };
   }
 
@@ -50,6 +68,8 @@ class ModeloConfigBigchef {
       abrirmesadireto: map['abrirmesadireto'] as String,
       agrupamentodeitenscomanda: map['agrupamentodeitenscomanda'] as String,
       agrupamentodeitensmesa: map['agrupamentodeitensmesa'] as String,
+      agrupamentodeitensbalcao: map['agrupamentodeitensbalcao'] as String,
+      agrupamentodeitensdelivery: map['agrupamentodeitensdelivery'] as String,
       obrigarjustifcancelarpedido: map['obrigarjustifcancelarpedido'] as String,
       mostrarnomeempresapreparo: map['mostrarnomeempresapreparo'] as String,
       mostrarnomeclientepreparo: map['mostrarnomeclientepreparo'] as String,
@@ -57,6 +77,10 @@ class ModeloConfigBigchef {
       tamanhofontepreparolargura: map['tamanhofontepreparolargura'] as String,
       formacobrancaentregadelivery: map['formacobrancaentregadelivery'] as String,
       valordaentrega: map['valordaentrega'] as String,
+      agrupamentodeitenscomprovconsumo: map['agrupamentodeitenscomprovconsumo'] as String,
+      agrupamentodeitenscomproventregador: map['agrupamentodeitenscomproventregador'] as String,
+      valordiferenca: map['valordiferenca'] as String,
+      saborlimitedeborda: map['saborlimitedeborda'] as String,
     );
   }
 

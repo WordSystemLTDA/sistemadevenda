@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
-import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +21,7 @@ class CardProduto extends StatefulWidget {
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
+  final ModeloCategoria? categoria;
 
   const CardProduto({
     super.key,
@@ -31,6 +32,7 @@ class CardProduto extends StatefulWidget {
     required this.idComanda,
     required this.idComandaPedido,
     required this.idMesa,
+    required this.categoria,
   });
 
   @override
@@ -39,15 +41,20 @@ class CardProduto extends StatefulWidget {
 
 class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+  // final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
 
   @override
   Widget build(BuildContext context) {
+    var item = widget.item;
+
+    if (provedorCardapio.tamanhosPizza != null && item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) {
+      item.valorVenda = item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor;
+    }
+
     return ListenableBuilder(
       listenable: provedorCardapio,
       builder: (context, snapshot) {
-        print(provedorCardapio.tamanhosPizza);
         return LayoutBuilder(builder: (context, constraints) {
           return Card(
             clipBehavior: Clip.hardEdge,
@@ -61,34 +68,34 @@ class _CardProdutoState extends State<CardProduto> {
                 var mesa = idMesa.isEmpty ? 0 : idMesa;
 
                 if (provedorCardapio.tamanhosPizza != null) {
-                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == widget.item.id).isNotEmpty) {
-                    provedorCardapio.saboresPizzaSelecionados.removeWhere((element) => element.id == widget.item.id);
-                    var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados.where((element) => element.id != widget.item.id)];
+                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == item.id).isNotEmpty) {
+                    provedorCardapio.saboresPizzaSelecionados.removeWhere((element) => element.id == item.id);
+                    var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados.where((element) => element.id != item.id)];
                     provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
                   } else {
                     if (provedorCardapio.saboresPizzaSelecionados.length < int.parse(provedorCardapio.tamanhosPizza!.saboreslimite)) {
-                      var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados, widget.item];
+                      var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados, item];
                       provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
                     }
                   }
 
                   return;
                 }
-                if (widget.item.habilTipo == 'Pacote' || widget.item.habilTipo == 'kit') {
+                if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
                   if (widget.estaPesquisando) {
-                    widget.searchController!.closeView(widget.item.nome);
+                    widget.searchController!.closeView(item.nome);
                   }
 
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) {
-                      return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item.id);
+                      return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: item);
                     },
                   ));
 
                   return;
                 }
 
-                String valor = widget.item.valorVenda;
+                String valor = item.valorVenda;
 
                 if (double.parse(valor) == 0) {
                   bool bloquear = true;
@@ -119,54 +126,54 @@ class _CardProdutoState extends State<CardProduto> {
                 await carrinhoProvedor
                     .inserir(
                   ModeloProduto(
-                    id: widget.item.id,
-                    nome: widget.item.nome,
-                    codigo: widget.item.codigo,
-                    estoque: widget.item.estoque,
-                    tamanho: widget.item.tamanho,
-                    foto: widget.item.foto,
-                    ativo: widget.item.ativo,
-                    descricao: widget.item.descricao,
+                    id: item.id,
+                    nome: item.nome,
+                    codigo: item.codigo,
+                    estoque: item.estoque,
+                    tamanho: item.tamanho,
+                    foto: item.foto,
+                    ativo: item.ativo,
+                    descricao: item.descricao,
                     valorVenda: valor,
-                    categoria: widget.item.categoria,
-                    nomeCategoria: widget.item.nomeCategoria,
-                    habilTipo: widget.item.habilTipo,
-                    // cortesias: widget.item.cortesias,
-                    // kits: widget.item.kits,
-                    // adicionais: widget.item.adicionais,
-                    // acompanhamentos: widget.item.acompanhamentos,
-                    // tamanhos: widget.item.tamanhos,
-                    // itensRetiradas: widget.item.itensRetiradas,
-                    ingredientes: widget.item.ingredientes,
-                    ativarCustoDeProducao: widget.item.ativarCustoDeProducao,
-                    ativarEdQtd: widget.item.ativarEdQtd,
-                    ativoLoja: widget.item.ativoLoja,
-                    dataLancado: widget.item.dataLancado,
-                    destinoDeImpressao: widget.item.destinoDeImpressao,
-                    habilItensRetirada: widget.item.habilItensRetirada,
-                    novo: widget.item.novo,
-                    observacao: widget.item.observacao,
-                    opcoesPacotes: widget.item.opcoesPacotes,
-                    quantidadePessoa: widget.item.quantidadePessoa,
-                    valorRestoDivisao: widget.item.valorRestoDivisao,
-                    valorTotalVendas: widget.item.valorTotalVendas,
-                    tamanhoLista: widget.item.tamanhoLista,
+                    categoria: item.categoria,
+                    nomeCategoria: item.nomeCategoria,
+                    habilTipo: item.habilTipo,
+                    // cortesias: item.cortesias,
+                    // kits: item.kits,
+                    // adicionais: item.adicionais,
+                    // acompanhamentos: item.acompanhamentos,
+                    // tamanhos: item.tamanhos,
+                    // itensRetiradas: item.itensRetiradas,
+                    ingredientes: item.ingredientes,
+                    ativarCustoDeProducao: item.ativarCustoDeProducao,
+                    ativarEdQtd: item.ativarEdQtd,
+                    ativoLoja: item.ativoLoja,
+                    dataLancado: item.dataLancado,
+                    destinoDeImpressao: item.destinoDeImpressao,
+                    habilItensRetirada: item.habilItensRetirada,
+                    novo: item.novo,
+                    observacao: item.observacao,
+                    opcoesPacotes: item.opcoesPacotes,
+                    quantidadePessoa: item.quantidadePessoa,
+                    valorRestoDivisao: item.valorRestoDivisao,
+                    valorTotalVendas: item.valorTotalVendas,
+                    tamanhoLista: item.tamanhoLista,
                     quantidade: 1,
                   ),
                   widget.tipo.nome,
                   mesa,
                   comanda,
                   widget.idComandaPedido,
-                  widget.item.valorVenda,
+                  item.valorVenda,
                   '',
-                  widget.item.id,
-                  widget.item.nome,
-                  widget.item.quantidade,
+                  item.id,
+                  item.nome,
+                  item.quantidade,
                   '',
                 )
                     .then((sucesso) {
                   if (sucesso) {
-                    _provedorProduto.resetarTudo();
+                    provedorCardapio.resetarTudo();
                     return;
                   }
 
@@ -181,19 +188,25 @@ class _CardProdutoState extends State<CardProduto> {
               },
               onLongPress: () {
                 if (widget.estaPesquisando) {
-                  widget.searchController!.closeView(widget.item.nome);
+                  widget.searchController!.closeView(item.nome);
                 }
 
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) {
-                    return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: widget.item.id);
+                    return PaginaProduto(
+                      idComanda: widget.idComanda,
+                      idComandaPedido: widget.idComandaPedido,
+                      idMesa: widget.idMesa,
+                      tipo: widget.tipo,
+                      produto: item,
+                    );
                   },
                 ));
               },
               borderRadius: BorderRadius.circular(5),
               child: Stack(
                 children: [
-                  if (widget.item.descontoProduto != null) ...[
+                  if (item.descontoProduto != null) ...[
                     Positioned(
                       top: 17,
                       left: -37,
@@ -219,7 +232,7 @@ class _CardProdutoState extends State<CardProduto> {
                       ),
                     ),
                   ],
-                  if (widget.item.opcoesPacotes != null && widget.item.opcoesPacotes!.where((element) => element.id == 6).isNotEmpty) ...[
+                  if (item.opcoesPacotes != null && item.opcoesPacotes!.where((element) => element.id == 6).isNotEmpty) ...[
                     Positioned(
                       top: 17,
                       left: -37,
@@ -247,7 +260,7 @@ class _CardProdutoState extends State<CardProduto> {
                   ],
                   Row(
                     children: [
-                      widget.item.foto.isEmpty
+                      item.foto.isEmpty
                           ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8.0),
@@ -262,7 +275,7 @@ class _CardProdutoState extends State<CardProduto> {
                                   child: Center(child: CircularProgressIndicator()),
                                 ),
                                 errorWidget: (context, url, error) => const Icon(Icons.error),
-                                imageUrl: widget.item.foto,
+                                imageUrl: item.foto,
                               ),
                             ),
                       Padding(
@@ -276,7 +289,7 @@ class _CardProdutoState extends State<CardProduto> {
                               child: SizedBox(
                                 width: MediaQuery.of(context).size.width / 1.6,
                                 child: Text(
-                                  "${widget.item.nome} ${widget.item.tamanho}",
+                                  "${item.nome} ${item.tamanho}",
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -292,8 +305,8 @@ class _CardProdutoState extends State<CardProduto> {
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 5),
                                   child: Text(
-                                    // widget.item.descricao.isEmpty ? 'Sem descrição' : widget.item.descricao,
-                                    'Código: ${widget.item.codigo}',
+                                    // item.descricao.isEmpty ? 'Sem descrição' : item.descricao,
+                                    'Código: ${item.codigo}',
                                     overflow: TextOverflow.fade,
                                     maxLines: 2,
                                     style: const TextStyle(
@@ -304,13 +317,37 @@ class _CardProdutoState extends State<CardProduto> {
                                 ),
                               ),
                             ),
-                            if (widget.item.descontoProduto == null) ...[
+                            if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
+                              if (provedorCardapio.tamanhosPizza == null) ...[
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width / 1.5,
+                                  child: Align(
+                                    alignment: Alignment.bottomRight,
+                                    child: Text(
+                                      "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                    ),
+                                  ),
+                                ),
+                              ] else if (item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) ...[
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width / 1.5,
+                                  child: Align(
+                                    alignment: Alignment.bottomRight,
+                                    child: Text(
+                                      double.parse(item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor).obterReal(),
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ] else if (item.descontoProduto == null) ...[
                               SizedBox(
                                 width: MediaQuery.of(context).size.width / 1.5,
                                 child: Align(
                                   alignment: Alignment.bottomRight,
                                   child: Text(
-                                    double.parse(widget.item.valorVenda).obterReal(),
+                                    double.parse(item.valorVenda).obterReal(),
                                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
                                   ),
                                 ),
@@ -326,7 +363,7 @@ class _CardProdutoState extends State<CardProduto> {
                                       SizedBox(
                                         height: 12,
                                         child: Text(
-                                          (double.parse(widget.item.valorVenda) + double.parse(widget.item.descontoProduto!.valorretirado)).obterReal(),
+                                          (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
                                           style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
                                         ),
                                       ),
@@ -337,7 +374,7 @@ class _CardProdutoState extends State<CardProduto> {
                                       SizedBox(
                                         height: 21,
                                         child: Text(
-                                          double.parse(widget.item.valorVenda).obterReal(),
+                                          double.parse(item.valorVenda).obterReal(),
                                           style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
                                         ),
                                       ),
@@ -355,7 +392,7 @@ class _CardProdutoState extends State<CardProduto> {
                                             child: Padding(
                                               padding: const EdgeInsets.symmetric(horizontal: 5),
                                               child: Text(
-                                                '-${widget.item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(widget.item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(widget.item.descontoProduto!.valordedesconto).obterReal()}',
+                                                '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
                                                 // '-10%',
                                                 style: const TextStyle(fontSize: 7, color: Colors.white),
                                               ),
@@ -373,6 +410,22 @@ class _CardProdutoState extends State<CardProduto> {
                       ),
                     ],
                   ),
+                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == item.id).isNotEmpty) ...[
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(2.0),
+                          child: Icon(Icons.check, color: Color.fromRGBO(255, 255, 255, 1)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

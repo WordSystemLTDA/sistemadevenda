@@ -1,10 +1,19 @@
 // ignore_for_file: unnecessary_getters_setters
 
+import 'dart:math' as math;
+
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorProduto extends ChangeNotifier {
+  final ProvedorCardapio provedorCardapio;
+  final UsuarioProvedor usuarioProvedor;
+
+  ProvedorProduto(this.provedorCardapio, this.usuarioProvedor);
+
   List<ModeloOpcoesPacotes> _opcoesPacotesListaFinal = [];
   List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal => _opcoesPacotesListaFinal;
   set opcoesPacotesListaFinal(List<ModeloOpcoesPacotes> value) {
@@ -41,11 +50,15 @@ class ProvedorProduto extends ChangeNotifier {
     if (opcoesPacotesListaFinal.isNotEmpty) {
       for (var element in opcoesPacotesListaFinal) {
         if (element.id != 4) {
-          for (var element2 in element.dados!) {
-            if (element2.quantidade != null) {
-              soma += double.parse(element2.valor ?? '0') * (element2.quantidade ?? 0);
-            } else {
-              soma += double.parse(element2.valor ?? '0');
+          if (element.id == 6) {
+            soma += calcularPrecoBorda();
+          } else {
+            for (var element2 in element.dados!) {
+              if (element2.quantidade != null) {
+                soma += double.parse(element2.valor ?? '0') * (element2.quantidade ?? 0);
+              } else {
+                soma += double.parse(element2.valor ?? '0');
+              }
             }
           }
         }
@@ -114,16 +127,16 @@ class ProvedorProduto extends ChangeNotifier {
     }
 
     // SABOR BORDA
-    // if (int.parse(provedor.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) {
-    //   if (retornarDadosPorID([opcoesPacote.id]).length == provedor.limiteSaborBordaSelecionado) {
-    //     if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
-    //       retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
-    //     }
+    if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) {
+      if (retornarDadosPorID([opcoesPacote.id]).length == provedorCardapio.limiteSaborBordaSelecionado) {
+        if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
+          retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
+        }
 
-    //     calcularValorVenda();
-    //     return;
-    //   }
-    // }
+        calcularValorVenda();
+        return;
+      }
+    }
 
     if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
       retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
@@ -144,5 +157,26 @@ class ProvedorProduto extends ChangeNotifier {
   void aoAumentarQuantidade() {
     quantidade++;
     notifyListeners();
+  }
+
+  double calcularPrecoBorda() {
+    var modelovalortamanhopizza = usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
+
+    if (modelovalortamanhopizza == 'media') {
+      var somaDosProdutosSelecionados = double.parse((opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados ?? []).fold(
+        '0',
+        (previousValue, element) {
+          return (double.parse(previousValue) + double.parse(element.valor ?? '0')).toStringAsFixed(2);
+        },
+      ));
+
+      var media = somaDosProdutosSelecionados / int.parse(provedorCardapio.configBigchef?.saborlimitedeborda ?? '0');
+
+      return media;
+    } else if (modelovalortamanhopizza == 'maior') {
+      return (opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados ?? []).map((e) => double.parse(e.valor ?? '0')).reduce(math.max);
+    }
+
+    return 0;
   }
 }

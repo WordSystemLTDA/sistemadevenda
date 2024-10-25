@@ -5,6 +5,7 @@ import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
@@ -46,6 +47,7 @@ class AppModule extends Module {
     // Cardapio
     i.add<ServicoCardapio>(ServicoCardapio.new);
     i.addSingleton<ProvedorCardapio>(ProvedorCardapio.new);
+    i.add<ProvedorProdutos>(ProvedorProdutos.new);
 
     // Vendas
     i.addSingleton(ProvedoresListarVendas.new);

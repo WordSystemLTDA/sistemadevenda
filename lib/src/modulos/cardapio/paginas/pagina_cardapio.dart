@@ -5,7 +5,9 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/buscar_produtos.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:badges/badges.dart' as badges;
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -75,16 +77,13 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   void initState() {
     super.initState();
 
-    listarCategorias();
-    listarComandasPedidos();
+    listarDados();
   }
 
-  void listarComandasPedidos() async {
+  void listarDados() async {
+    await provedorCardapio.listarCategorias();
     await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido!);
-  }
-
-  void listarCategorias() async {
-    provedorCardapio.listarCategorias();
+    await provedorCardapio.listarConfigBigChef();
   }
 
   @override
@@ -105,37 +104,14 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
         );
 
         _tabController.addListener(() {
+          provedorCardapio.tamanhosPizza = null;
+          provedorCardapio.saboresPizzaSelecionados = [];
           setState(() {
             indexTabBar = _tabController.index;
           });
         });
 
         return Scaffold(
-          floatingActionButton: AnimatedBuilder(
-            animation: carrinhoProvedor,
-            builder: (context, _) {
-              return badges.Badge(
-                badgeContent: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
-                position: badges.BadgePosition.topEnd(end: 0),
-                child: FloatingActionButton(
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) {
-                        return PaginaCarrinho(
-                          idComanda: widget.idComanda!,
-                          idMesa: widget.idMesa!,
-                          idCliente: widget.idCliente!,
-                          idComandaPedido: widget.idComandaPedido!,
-                        );
-                      },
-                    ));
-                  },
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.shopping_cart),
-                ),
-              );
-            },
-          ),
           appBar: AppBar(
             automaticallyImplyLeading: false,
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -148,7 +124,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                     idComandaPedido: widget.idComandaPedido!,
                     tipo: widget.tipo,
                     idMesa: widget.idMesa!,
-                    categoria: provedorCardapio.categorias.isEmpty ? '0' : provedorCardapio.categorias[indexTabBar].id,
+                    categoria: provedorCardapio.categorias.isEmpty ? null : provedorCardapio.categorias[indexTabBar],
                     idcliente: '0',
                   ),
                   const SizedBox(height: 5),
@@ -171,6 +147,74 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                 ],
               ),
             ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: AnimatedBuilder(
+            animation: carrinhoProvedor,
+            builder: (context, _) {
+              return Stack(
+                children: [
+                  if (provedorCardapio.tamanhosPizza != null && provedorCardapio.saboresPizzaSelecionados.isNotEmpty) ...[
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SizedBox(
+                        width: 170,
+                        child: FloatingActionButton.extended(
+                          heroTag: 'botao1',
+                          onPressed: () async {
+                            if (!context.mounted) return;
+
+                            var item = provedorCardapio.saboresPizzaSelecionados[0];
+
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) {
+                                return PaginaSaborBordas(
+                                  idComanda: widget.idComanda!,
+                                  idComandaPedido: widget.idComandaPedido!,
+                                  idMesa: widget.idMesa!,
+                                  tipo: widget.tipo,
+                                  produto: item,
+                                  valorVenda: provedorCardapio.calcularPrecoPizza(),
+                                );
+                              },
+                            ));
+                          },
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          label: Text('Avançar ${provedorCardapio.calcularPrecoPizza().obterReal()}'),
+                        ),
+                      ),
+                    ),
+                  ],
+                  Positioned(
+                    right: 25,
+                    bottom: 0,
+                    child: badges.Badge(
+                      badgeContent: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
+                      position: badges.BadgePosition.topEnd(end: 0),
+                      child: FloatingActionButton(
+                        heroTag: 'botao2',
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) {
+                              return PaginaCarrinho(
+                                idComanda: widget.idComanda!,
+                                idMesa: widget.idMesa!,
+                                idCliente: widget.idCliente!,
+                                idComandaPedido: widget.idComandaPedido!,
+                              );
+                            },
+                          ));
+                        },
+                        shape: const CircleBorder(),
+                        child: const Icon(Icons.shopping_cart),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           body: DefaultTabController(
             length: provedorCardapio.categorias.length,

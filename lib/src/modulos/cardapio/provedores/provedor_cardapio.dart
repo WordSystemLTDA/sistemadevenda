@@ -1,15 +1,20 @@
+import 'dart:math' as math;
+
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
-import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class ProvedorCardapio extends ChangeNotifier {
   final ServicosCategoria _categoriaService;
-  final ServicoProduto _produtoService;
+  final UsuarioProvedor usuarioProvedor;
 
-  ProvedorCardapio(this._categoriaService, this._produtoService);
+  ProvedorCardapio(this._categoriaService, this.usuarioProvedor);
 
   ModeloTamanhosPizza? _tamanhosPizza;
   ModeloTamanhosPizza? get tamanhosPizza => _tamanhosPizza;
@@ -32,10 +37,17 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ModeloProduto> _produtos = [];
-  List<ModeloProduto> get produtos => _produtos;
-  set produtos(List<ModeloProduto> value) {
-    _produtos = value;
+  ModeloConfigBigchef? _configBigchef;
+  ModeloConfigBigchef? get configBigchef => _configBigchef;
+  set configBigchef(ModeloConfigBigchef? value) {
+    _configBigchef = value;
+    notifyListeners();
+  }
+
+  int _limiteSaborBordaSelecionado = 1;
+  int get limiteSaborBordaSelecionado => _limiteSaborBordaSelecionado;
+  set limiteSaborBordaSelecionado(int value) {
+    _limiteSaborBordaSelecionado = value;
     notifyListeners();
   }
 
@@ -43,25 +55,39 @@ class ProvedorCardapio extends ChangeNotifier {
     saboresPizzaSelecionados = [];
     tamanhosPizza = null;
     categorias = [];
-    produtos = [];
+
     notifyListeners();
   }
 
-  void listarCategorias() async {
+  Future<void> listarCategorias() async {
     final res = await _categoriaService.listar();
     categorias = res;
     notifyListeners();
   }
 
-  Future<void> listarProdutosPorCategoria(String category) async {
-    final res = await _produtoService.listarPorCategoria(category);
-    if (res.isEmpty) return;
-
-    produtos = res;
+  Future<void> listarConfigBigChef() async {
+    configBigchef = await Modular.get<ServicoConfigBigchef>().listar();
     notifyListeners();
   }
 
-  Future<List<ModeloProduto>> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
-    return await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
+  double calcularPrecoPizza() {
+    var modelovalortamanhopizza = usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
+
+    if (modelovalortamanhopizza == 'media') {
+      var somaDosProdutosSelecionados = double.parse(saboresPizzaSelecionados.fold(
+        '0',
+        (previousValue, element) {
+          return (double.parse(previousValue) + double.parse(element.valorVenda)).toStringAsFixed(2);
+        },
+      ));
+
+      var media = somaDosProdutosSelecionados / saboresPizzaSelecionados.length;
+
+      return media;
+    } else if (modelovalortamanhopizza == 'maior') {
+      return saboresPizzaSelecionados.map((e) => double.parse(e.valorVenda)).reduce(math.max);
+    }
+
+    return 0;
   }
 }

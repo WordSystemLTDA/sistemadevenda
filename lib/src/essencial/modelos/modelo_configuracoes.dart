@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 class Modelowordconfiguracoes {
@@ -26,6 +27,13 @@ class Modelowordconfiguracoes {
   final String? diasDaSemanaDisponiveis;
   final String? horaInicioTrabalho;
   final String? horaFimTrabalho;
+  final String? nomeFichaCliente;
+  final String? nomeFichaAtendimento;
+  final String? nomeMenuAceite;
+  final String? nomeDoResponsavelAgenda;
+  final String? nomePlanoDeTratamento;
+  final String? ativarAgendTarefa;
+  final String? modelovalortamanhopizza;
 
   Modelowordconfiguracoes({
     required this.empresa,
@@ -53,6 +61,13 @@ class Modelowordconfiguracoes {
     this.diasDaSemanaDisponiveis,
     this.horaInicioTrabalho,
     this.horaFimTrabalho,
+    this.nomeFichaCliente,
+    this.nomeFichaAtendimento,
+    this.nomeMenuAceite,
+    this.nomeDoResponsavelAgenda,
+    this.nomePlanoDeTratamento,
+    this.ativarAgendTarefa,
+    this.modelovalortamanhopizza,
   });
 
   Map<String, dynamic> toMap() {
@@ -82,6 +97,13 @@ class Modelowordconfiguracoes {
       'diasDaSemanaDisponiveis': diasDaSemanaDisponiveis,
       'horaInicioTrabalho': horaInicioTrabalho,
       'horaFimTrabalho': horaFimTrabalho,
+      'nomeFichaCliente': nomeFichaCliente,
+      'nomeFichaAtendimento': nomeFichaAtendimento,
+      'nomeMenuAceite': nomeMenuAceite,
+      'nomeDoResponsavelAgenda': nomeDoResponsavelAgenda,
+      'nomePlanoDeTratamento': nomePlanoDeTratamento,
+      'ativarAgendTarefa': ativarAgendTarefa,
+      'modelovalortamanhopizza': modelovalortamanhopizza,
     };
   }
 
@@ -112,6 +134,13 @@ class Modelowordconfiguracoes {
       diasDaSemanaDisponiveis: map['diasDaSemanaDisponiveis'] != null ? map['diasDaSemanaDisponiveis'] as String : null,
       horaInicioTrabalho: map['horaInicioTrabalho'] != null ? map['horaInicioTrabalho'] as String : null,
       horaFimTrabalho: map['horaFimTrabalho'] != null ? map['horaFimTrabalho'] as String : null,
+      nomeFichaCliente: map['nomeFichaCliente'] != null ? map['nomeFichaCliente'] as String : null,
+      nomeFichaAtendimento: map['nomeFichaAtendimento'] != null ? map['nomeFichaAtendimento'] as String : null,
+      nomeMenuAceite: map['nomeMenuAceite'] != null ? map['nomeMenuAceite'] as String : null,
+      nomeDoResponsavelAgenda: map['nomeDoResponsavelAgenda'] != null ? map['nomeDoResponsavelAgenda'] as String : null,
+      nomePlanoDeTratamento: map['nomePlanoDeTratamento'] != null ? map['nomePlanoDeTratamento'] as String : null,
+      ativarAgendTarefa: map['ativarAgendTarefa'] != null ? map['ativarAgendTarefa'] as String : null,
+      modelovalortamanhopizza: map['modelovalortamanhopizza'] != null ? map['modelovalortamanhopizza'] as String : null,
     );
   }
 

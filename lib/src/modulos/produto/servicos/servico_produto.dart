@@ -51,9 +51,9 @@ class ServicoProduto {
     }
   }
 
-  Future<ModeloProduto?> listarPorId(String id) async {
+  Future<ModeloProduto?> listarPorId(String id, String idtamanhospizza) async {
     var empresa = usuarioProvedor.usuario!.empresa;
-    final response = await dio.cliente.get('/produtos/listar_por_id.php?id=$id&empresa=$empresa');
+    final response = await dio.cliente.get('/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_tamanhos_pizza=$idtamanhospizza');
 
     if (response.data == null) return null;
 

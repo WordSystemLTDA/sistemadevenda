@@ -1,4 +1,3 @@
-import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
@@ -56,12 +55,10 @@ class _PaginaLoginState extends State<PaginaLogin> {
   void verificarLogin() async {
     var usuario = await UsuarioServico.pegarUsuario(context);
 
-    Future.delayed(const Duration(seconds: 2)).then((value) {
-      if (usuario != null) {
-        if (mounted) {
-          context.read<UsuarioProvedor>().setUsuario(usuario);
-        }
+    if (usuario != null) {
+      final sucesso = await _service.entrar(usuario.email, usuario.senha);
 
+      if (sucesso) {
         if (mounted) {
           Navigator.of(context).push(MaterialPageRoute(
             builder: (context) {
@@ -69,11 +66,11 @@ class _PaginaLoginState extends State<PaginaLogin> {
             },
           ));
         }
-      } else {
-        setState(() {
-          verificando = false;
-        });
       }
+    }
+
+    setState(() {
+      verificando = false;
     });
   }
 
@@ -87,13 +84,9 @@ class _PaginaLoginState extends State<PaginaLogin> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: InkWell(
-        focusColor: Colors.transparent,
-        splashColor: Colors.transparent,
-        splashFactory: NoSplash.splashFactory,
-        highlightColor: Colors.transparent,
+      body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: verificando
+        child: verificando == true
             ? const Center(child: CircularProgressIndicator())
             : Padding(
                 padding: const EdgeInsets.all(20.0),

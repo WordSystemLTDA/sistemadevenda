@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_desconto_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_ingredientes_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
 import 'package:flutter/foundation.dart';
 
 class ModeloProduto {
@@ -35,6 +36,7 @@ class ModeloProduto {
   // List<Modelowordacompanhamentosproduto> acompanhamentos;
   // List<Modelowordtamanhosproduto> tamanhos;
   // List<Modeloworditensretiradaproduto> itensRetiradas;
+  List<Modelowordtamanhosproduto>? tamanhosPizza;
   List<Modelowordingredientesproduto> ingredientes;
   double? quantidade;
   int? quantidadePessoa;
@@ -72,6 +74,7 @@ class ModeloProduto {
     // required this.acompanhamentos,
     // required this.tamanhos,
     // required this.itensRetiradas,
+    this.tamanhosPizza,
     required this.ingredientes,
     this.quantidade,
     this.quantidadePessoa = 1,
@@ -110,6 +113,7 @@ class ModeloProduto {
       // 'acompanhamentos': acompanhamentos.map((x) => x.toMap()).toList(),
       // 'tamanhos': tamanhos.map((x) => x.toMap()).toList(),
       // 'itensRetiradas': itensRetiradas.map((x) => x.toMap()).toList(),
+      'tamanhosPizza': tamanhosPizza?.map((x) => x.toMap()).toList(),
       'ingredientes': ingredientes.map((x) => x.toMap()).toList(),
       'quantidade': quantidade,
       'quantidadePessoa': quantidadePessoa,
@@ -201,6 +205,13 @@ class ModeloProduto {
           ? List<ModeloOpcoesPacotes>.from(
               (map['opcoesPacotesListaFinal'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
                 (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
+              ),
+            )
+          : null,
+      tamanhosPizza: map['tamanhosPizza'] != null
+          ? List<Modelowordtamanhosproduto>.from(
+              (map['tamanhosPizza'] as List<dynamic>).map<Modelowordtamanhosproduto?>(
+                (x) => Modelowordtamanhosproduto.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,

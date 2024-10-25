@@ -1,8 +1,9 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 // import 'package:app/src/modulos/cardapio/interactor/cubit/produtos_cubit.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -11,7 +12,7 @@ class BuscarProdutos extends StatefulWidget {
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
-  final String categoria;
+  final ModeloCategoria? categoria;
   final String idcliente;
 
   const BuscarProdutos({
@@ -29,7 +30,7 @@ class BuscarProdutos extends StatefulWidget {
 }
 
 class _BuscarProdutosState extends State<BuscarProdutos> {
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
   final _searchController = SearchController();
 
   @override
@@ -51,7 +52,7 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
                 prefixIcon: IconButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    provedorCardapio.resetarTudo();
+                    provedor.resetarTudo();
                   },
                   icon: const Icon(Icons.arrow_back_outlined),
                 ),
@@ -62,8 +63,10 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
         );
       },
       suggestionsBuilder: (BuildContext context, SearchController controller) async {
+        if (widget.categoria == null) return [];
+
         final keyword = controller.value.text;
-        final res = await provedorCardapio.listarProdutosPorNome(keyword, widget.categoria, widget.idcliente);
+        final res = await provedor.listarProdutosPorNome(keyword, widget.categoria!.id, widget.idcliente);
 
         return [
           ...res.map(
@@ -72,6 +75,7 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
               searchController: controller,
               item: e,
               tipo: widget.tipo,
+              categoria: widget.categoria,
               idComandaPedido: widget.idComandaPedido,
               idComanda: widget.idComanda,
               idMesa: widget.idMesa,

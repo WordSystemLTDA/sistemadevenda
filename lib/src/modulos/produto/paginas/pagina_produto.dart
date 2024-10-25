@@ -2,6 +2,7 @@ import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -12,12 +13,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaProduto extends StatefulWidget {
-  final String produto;
+  final ModeloProduto produto;
   final TipoCardapio tipo;
   final String idComanda;
   final String idComandaPedido;
   final String idMesa;
-  const PaginaProduto({super.key, required this.produto, required this.tipo, required this.idComanda, required this.idComandaPedido, required this.idMesa});
+  final double? valorVenda;
+
+  const PaginaProduto({
+    super.key,
+    required this.produto,
+    required this.tipo,
+    required this.idComanda,
+    required this.idComandaPedido,
+    required this.idMesa,
+    this.valorVenda,
+  });
 
   @override
   State<PaginaProduto> createState() => _PaginaProdutoState();
@@ -26,6 +37,7 @@ class PaginaProduto extends StatefulWidget {
 class _PaginaProdutoState extends State<PaginaProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
 
   ModeloProduto? itemProduto;
   bool carregando = false;
@@ -46,29 +58,31 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     var inicioServico = Modular.get<ServicoProduto>();
-    await inicioServico.listarPorId(widget.produto).then((value) {
+    await inicioServico.listarPorId(widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0').then((value) {
       itemProduto = value;
       if (value != null) {
-        _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
-          // se for acompanhamentos retorna todos
-          if (e.id == 5) {
+        if (widget.valorVenda == null) {
+          _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
+            // se for acompanhamentos retorna todos
+            if (e.id == 5) {
+              return e;
+            }
+
+            // se for cortesia
+            if (e.id == 1) {
+              e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
+              return e;
+            }
+
+            e.dados = [];
+
             return e;
-          }
+          }).toList();
 
-          // se for cortesia
-          if (e.id == 1) {
-            e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
-            return e;
-          }
-
-          e.dados = [];
-
-          return e;
-        }).toList();
-
-        _provedorProduto.valorVenda = double.parse(value.valorVenda);
-        _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
-        _provedorProduto.calcularValorVenda();
+          _provedorProduto.valorVenda = double.parse(value.valorVenda);
+          _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
+          _provedorProduto.calcularValorVenda();
+        }
       }
     }).whenComplete(() {
       setState(() {
@@ -124,6 +138,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       if (sucesso) {
         _provedorProduto.resetarTudo();
         if (mounted) Navigator.pop(context);
+        if (widget.valorVenda != null) {
+          if (mounted) Navigator.pop(context);
+        }
         return;
       }
 
@@ -300,6 +317,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                   ],
                   if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
                     ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
+                      if (opcoesPacote.id == 6) {
+                        return const SizedBox();
+                      }
+
                       return Container(
                         padding: const EdgeInsets.only(left: 20, right: 20),
                         decoration: BoxDecoration(
@@ -344,25 +365,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                     padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                     itemBuilder: (context, index) {
                                       var item = opcoesPacote.dados![index];
-                                      // if (opcoesPacote.id == 1) {
-                                      //   var item = opcoesPacote.dados![index];
-                                      //   return CardTamanhos(item: item, kit: false);
-                                      // } else if (opcoesPacote.id == 2) {
-                                      //   var item = opcoesPacote.dados![index];
-                                      //   return CardAcompanhamentos(item: item, kit: false);
-                                      // } else if (opcoesPacote.id == 3) {
-                                      //   var item = opcoesPacote.dados![index];
-                                      //   return CardAdicionais(item: item, kit: false);
-                                      // } else if (opcoesPacote.id == 4) {
-                                      //   var item = opcoesPacote.dados![index];
-                                      //   return CardItensRetiradas(item: item, kit: false);
-                                      // } else if (opcoesPacote.id == 5) {
-                                      //   var item = opcoesPacote.produtos![index];
-                                      //   return CardKit(item: item);
-                                      // } else if (opcoesPacote.id == 6) {
-                                      //   var item = opcoesPacote.dados![index];
-                                      //   return CardCortesias(item: item, kit: false);
-                                      // }
 
                                       return CardOpcoesPacotes(
                                         opcoesPacote: opcoesPacote,
