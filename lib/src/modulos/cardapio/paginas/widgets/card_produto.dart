@@ -81,6 +81,16 @@ class _CardProdutoState extends State<CardProduto> {
 
                   return;
                 }
+
+                if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty && provedorCardapio.tamanhosPizza == null) {
+                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Selecione um Tamanho'),
+                    backgroundColor: Colors.red,
+                  ));
+                  return;
+                }
+
                 if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
                   if (widget.estaPesquisando) {
                     widget.searchController!.closeView(item.nome);
@@ -173,7 +183,7 @@ class _CardProdutoState extends State<CardProduto> {
                 )
                     .then((sucesso) {
                   if (sucesso) {
-                    provedorCardapio.resetarTudo();
+                    // provedorCardapio.resetarTudo();
                     return;
                   }
 
@@ -232,7 +242,7 @@ class _CardProdutoState extends State<CardProduto> {
                       ),
                     ),
                   ],
-                  if (item.opcoesPacotes != null && item.opcoesPacotes!.where((element) => element.id == 6).isNotEmpty) ...[
+                  if (item.opcoesPacotes != null && item.opcoesPacotes!.where((element) => element.id == 1).isNotEmpty) ...[
                     Positioned(
                       top: 17,
                       left: -37,

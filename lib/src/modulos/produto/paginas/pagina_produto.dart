@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -68,6 +69,27 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               return e;
             }
 
+            if (e.id == 2) {
+              // for (var element in e.produtos!) {
+              //   for (var element2 in element.opcoesPacotes!) {
+              //     element2.dados = [];
+              //   }
+              // }
+
+              // var a = e.produtos!.map((e1) {
+              //   e1.opcoesPacotes?.map((e2) {
+              //     e2.dados = [];
+              //     return e2;
+              //   }).toList();
+
+              //   return e1;
+              // }).toList();
+
+              // e.produtos = a;
+
+              return e;
+            }
+
             // se for cortesia
             if (e.id == 1) {
               e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
@@ -81,7 +103,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
           _provedorProduto.valorVenda = double.parse(value.valorVenda);
           _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
-          _provedorProduto.calcularValorVenda();
+          _provedorProduto.calcularValorVenda(false);
         }
       }
     }).whenComplete(() {
@@ -102,7 +124,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var observacaoMesa = '';
     var observacao = obsController.text;
 
-    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4]).isEmpty) {
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4], false).isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         behavior: SnackBarBehavior.floating,
@@ -261,8 +283,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
-                              (_provedorProduto.retornarDadosPorID([4]).isEmpty &&
-                                      _provedorProduto.retornarDadosPorID([4]).firstOrNull == null &&
+                              (_provedorProduto.retornarDadosPorID([4], false).isEmpty &&
+                                      _provedorProduto.retornarDadosPorID([4], false).firstOrNull == null &&
                                       itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null)
                                   ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                   : (_provedorProduto.valorVenda).obterReal(),
@@ -364,11 +386,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                     itemCount: opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length,
                                     padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                     itemBuilder: (context, index) {
-                                      var item = opcoesPacote.dados![index];
+                                      if (opcoesPacote.id == 2) {
+                                        var item = opcoesPacote.produtos![index];
+                                        return CardKit(item: item);
+                                      }
 
+                                      var item = opcoesPacote.dados![index];
                                       return CardOpcoesPacotes(
                                         opcoesPacote: opcoesPacote,
                                         item: item,
+                                        kit: false,
                                       );
                                     },
                                   ),

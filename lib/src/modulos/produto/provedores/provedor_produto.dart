@@ -44,7 +44,7 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  void calcularValorVenda() {
+  void calcularValorVenda(bool kit) {
     double soma = 0;
 
     if (opcoesPacotesListaFinal.isNotEmpty) {
@@ -65,8 +65,8 @@ class ProvedorProduto extends ChangeNotifier {
       }
     }
 
-    var valorTamanho = retornarDadosPorID([4]).firstOrNull == null ? 0 : double.tryParse(retornarDadosPorID([4]).firstOrNull?.valor ?? '0') ?? 0;
-    var valorFinal = (retornarDadosPorID([4]).firstOrNull != null ? valorTamanho : valorVendaOriginal) + soma;
+    var valorTamanho = retornarDadosPorID([4], kit).firstOrNull == null ? 0 : double.tryParse(retornarDadosPorID([4], kit).firstOrNull?.valor ?? '0') ?? 0;
+    var valorFinal = (retornarDadosPorID([4], kit).firstOrNull != null ? valorTamanho : valorVendaOriginal) + soma;
 
     valorVenda = double.parse(valorFinal.toStringAsFixed(2));
     notifyListeners();
@@ -82,26 +82,41 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ModeloDadosOpcoesPacotes> retornarDadosPorID(List<int> ids) {
+  List<ModeloDadosOpcoesPacotes> retornarDadosPorID(List<int> ids, bool kit) {
+    if (kit) {
+      var listaOpcoesPacote = opcoesPacotesListaFinal.where((element) => element.id == 2).firstOrNull;
+      List<ModeloDadosOpcoesPacotes> dadosF = [];
+
+      if (listaOpcoesPacote != null) {
+        for (var element in listaOpcoesPacote.produtos!) {
+          dadosF = element.opcoesPacotes?.where((element) => ids.every((element2) => element2 == element.id)).firstOrNull?.dados ?? [];
+        }
+      }
+
+      return dadosF;
+    }
+
     return opcoesPacotesListaFinal.where((element) => ids.every((element2) => element2 == element.id)).firstOrNull?.dados ?? [];
   }
 
-  void selecionarItem(ModeloDadosOpcoesPacotes item, ModeloOpcoesPacotes opcoesPacote) {
+  void selecionarItem(ModeloDadosOpcoesPacotes item, ModeloOpcoesPacotes opcoesPacote, bool kit) {
+    var dadosID = retornarDadosPorID([opcoesPacote.id], kit);
+
     // CORTESIA
     if (opcoesPacote.tipo == 6) {
-      if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
-        retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
+      if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
+        dadosID.removeWhere((element) => element.id == item.id);
       } else {
         if (num.parse(item.quantimaximaselecao ?? '1') == 1) {
-          if (retornarDadosPorID([opcoesPacote.id]).length == num.parse(item.quantimaximaselecao ?? '1')) {
+          if (dadosID.length == num.parse(item.quantimaximaselecao ?? '1')) {
             opcoesPacotesListaFinal.where((element) => element.tipo == 6).firstOrNull?.dados = [];
-            retornarDadosPorID([opcoesPacote.id]).add(item);
+            dadosID.add(item);
           } else {
-            retornarDadosPorID([opcoesPacote.id]).add(item);
+            dadosID.add(item);
           }
         } else {
-          if (retornarDadosPorID([opcoesPacote.id]).length < num.parse(item.quantimaximaselecao ?? '1')) {
-            retornarDadosPorID([opcoesPacote.id]).add(item);
+          if (dadosID.length < num.parse(item.quantimaximaselecao ?? '1')) {
+            dadosID.add(item);
           } else {
             // ScaffoldMessenger.of(context).removeCurrentSnackBar();
             // ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -112,7 +127,7 @@ class ProvedorProduto extends ChangeNotifier {
         }
       }
 
-      calcularValorVenda();
+      calcularValorVenda(kit);
 
       return;
     }
@@ -121,30 +136,30 @@ class ProvedorProduto extends ChangeNotifier {
     if (opcoesPacote.tipo == 1) {
       opcoesPacotesListaFinal.where((element) => element.id == opcoesPacote.id).firstOrNull?.dados = [item];
 
-      calcularValorVenda();
+      calcularValorVenda(kit);
 
       return;
     }
 
     // SABOR BORDA
     if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) {
-      if (retornarDadosPorID([opcoesPacote.id]).length == provedorCardapio.limiteSaborBordaSelecionado) {
-        if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
-          retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
+      if (dadosID.length == provedorCardapio.limiteSaborBordaSelecionado) {
+        if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
+          dadosID.removeWhere((element) => element.id == item.id);
         }
 
-        calcularValorVenda();
+        calcularValorVenda(kit);
         return;
       }
     }
 
-    if (retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) {
-      retornarDadosPorID([opcoesPacote.id]).removeWhere((element) => element.id == item.id);
+    if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
+      dadosID.removeWhere((element) => element.id == item.id);
     } else {
-      retornarDadosPorID([opcoesPacote.id]).add(item);
+      dadosID.add(item);
     }
 
-    calcularValorVenda();
+    calcularValorVenda(kit);
   }
 
   void aoDiminuirQuantidade() {
@@ -170,7 +185,7 @@ class ProvedorProduto extends ChangeNotifier {
         },
       ));
 
-      var media = somaDosProdutosSelecionados / int.parse(provedorCardapio.configBigchef?.saborlimitedeborda ?? '0');
+      var media = somaDosProdutosSelecionados / provedorCardapio.limiteSaborBordaSelecionado;
 
       return media;
     } else if (modelovalortamanhopizza == 'maior') {

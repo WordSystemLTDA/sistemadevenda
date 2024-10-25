@@ -9,10 +9,14 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardOpcoesPacotes extends StatefulWidget {
   final ModeloOpcoesPacotes opcoesPacote;
   final ModeloDadosOpcoesPacotes item;
-  // final bool kit;
-  // final ModeloProduto? dadosKit;
-  // const CardOpcoesPacotes({super.key, required this.item, required this.kit, this.dadosKit});
-  const CardOpcoesPacotes({super.key, required this.opcoesPacote, required this.item});
+  final bool kit;
+
+  const CardOpcoesPacotes({
+    super.key,
+    required this.kit,
+    required this.opcoesPacote,
+    required this.item,
+  });
 
   @override
   State<CardOpcoesPacotes> createState() => _CardOpcoesPacotesState();
@@ -34,7 +38,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
             margin: EdgeInsets.zero,
             child: InkWell(
-              onTap: () => _provedorProduto.selecionarItem(item, opcoesPacote),
+              onTap: () => _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -60,18 +64,18 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                       ],
                       if (opcoesPacote.id == 8 || opcoesPacote.id == 5 || opcoesPacote.id == 6) ...[
                         Checkbox(
-                          value: _provedorProduto.retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty,
+                          value: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).where((element) => element.id == item.id).isNotEmpty,
                           onChanged: (bool? value) {
-                            _provedorProduto.selecionarItem(item, opcoesPacote);
+                            _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit);
                           },
                         ),
                       ],
                       if (opcoesPacote.id == 1 || opcoesPacote.id == 4) ...[
                         Radio<bool>(
                           value: true,
-                          groupValue: _provedorProduto.retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty,
+                          groupValue: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).where((element) => element.id == item.id).isNotEmpty,
                           onChanged: (bool? value) {
-                            _provedorProduto.selecionarItem(item, opcoesPacote);
+                            _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit);
 
                             // if (sucesso == false) {
                             //   ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -107,33 +111,35 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                       ),
                     ],
                   ),
-                  if (opcoesPacote.id == 7 && _provedorProduto.retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) ...[
+                  if (opcoesPacote.id == 7 && _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).where((element) => element.id == item.id).isNotEmpty) ...[
                     Row(
                       children: [
                         IconButton(
                           onPressed: () {
-                            if (_provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade! > 1) {
+                            if (_provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade! > 1) {
                               setState(() {
-                                _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade =
-                                    _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade! - 1;
+                                _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade =
+                                    _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade! - 1;
                               });
                             }
                           },
                           icon: Icon(
                             Icons.remove_circle_outline,
                             size: 30,
-                            color: _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade == 1 ? Colors.grey : Colors.red,
+                            color: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade == 1
+                                ? Colors.grey
+                                : Colors.red,
                           ),
                         ),
                         Text(
-                          _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade.toString(),
+                          _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade.toString(),
                           style: const TextStyle(fontSize: 20),
                         ),
                         IconButton(
                           onPressed: () {
                             setState(() {
-                              _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade =
-                                  _provedorProduto.retornarDadosPorID([opcoesPacote.id]).firstWhere((element) => element.id == item.id).quantidade! + 1;
+                              _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade =
+                                  _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).firstWhere((element) => element.id == item.id).quantidade! + 1;
                             });
                           },
                           icon: const Icon(
@@ -151,7 +157,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
           ),
           if (opcoesPacote.id == 7 &&
               _provedorProduto.opcoesPacotesListaFinal.isNotEmpty &&
-              _provedorProduto.retornarDadosPorID([opcoesPacote.id]).where((element) => element.id == item.id).isNotEmpty) ...[
+              _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit).where((element) => element.id == item.id).isNotEmpty) ...[
             const Positioned(
               top: -10,
               left: -10,

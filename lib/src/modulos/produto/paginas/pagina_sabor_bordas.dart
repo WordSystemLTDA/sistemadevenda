@@ -80,7 +80,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
         _provedorProduto.valorVenda = widget.valorVenda ?? 0;
         _provedorProduto.valorVendaOriginal = widget.valorVenda ?? 0;
-        _provedorProduto.calcularValorVenda();
+        _provedorProduto.calcularValorVenda(false);
       }
     }).whenComplete(() {
       setState(() {
@@ -186,6 +186,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
                                   return CardOpcoesPacotes(
                                     opcoesPacote: opcoesPacote,
+                                    kit: false,
                                     item: item,
                                   );
                                 },
