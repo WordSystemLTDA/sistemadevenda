@@ -198,12 +198,13 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
                                   itemCount: opcoesPacote.id != 2 ? opcoesPacote.dados!.length : (opcoesPacote.produtos?.length ?? 0),
                                   padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                   itemBuilder: (context, index) {
-                                    var item = opcoesPacote.dados![index];
+                                    var itemOpcoes = opcoesPacote.dados![index];
 
                                     return CardOpcoesPacotes(
                                       opcoesPacote: opcoesPacote,
                                       kit: true,
-                                      item: item,
+                                      item: itemOpcoes,
+                                      idProduto: item.id,
                                     );
                                   },
                                 ),

@@ -1,4 +1,5 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -290,219 +291,69 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
           ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Divider(height: 1),
-                // if (item.cortesias.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Cortesias', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   ListView.builder(
-                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                //     shrinkWrap: true,
-                //     physics: const NeverScrollableScrollPhysics(),
-                //     itemCount: item.cortesias.length,
-                //     itemBuilder: (context, index) {
-                //       final cortesia = item.cortesias[index];
-                //       return Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           Text(
-                //             cortesia.nome,
-                //             style: const TextStyle(fontSize: 15),
-                //           ),
-                //           Text(
-                //             double.parse(cortesia.valor) == 0 ? 'Grátis' : double.parse(cortesia.valor).obterReal(),
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //           ),
-                //         ],
-                //       );
-                //     },
-                //   ),
-                // ],
-                // if (item.tamanhos.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   Padding(
-                //     padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10, bottom: 0),
-                //     child: Row(
-                //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //       children: [
-                //         Text(item.tamanhos.first.nome),
-                //         Text(
-                //           double.parse(item.tamanhos.first.valor).obterReal(),
-                //           style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //         ),
-                //       ],
-                //     ),
-                //   )
-                // ],
-                // if (item.kits.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Combo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   ListView.builder(
-                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                //     shrinkWrap: true,
-                //     physics: const NeverScrollableScrollPhysics(),
-                //     itemCount: item.kits.length,
-                //     itemBuilder: (context, index) {
-                //       final kit = item.kits[index];
+                const Divider(height: 1),
+                ...(item.opcoesPacotesListaFinal ?? []).map((e) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (e.dados != null && e.dados!.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 10),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        ListView.builder(
+                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: e.dados!.length,
+                          itemBuilder: (context, index) {
+                            final dado = e.dados![index];
 
-                //       return CardPedidoKit(item: kit, somarValores: false);
-                //     },
-                //   ),
-                // ],
-                // if (item.acompanhamentos.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   ListView.builder(
-                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                //     shrinkWrap: true,
-                //     physics: const NeverScrollableScrollPhysics(),
-                //     itemCount: item.acompanhamentos.length,
-                //     itemBuilder: (context, index) {
-                //       final acompanhamento = item.acompanhamentos[index];
-                //       return Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           Text(
-                //             acompanhamento.nome,
-                //             style: const TextStyle(fontSize: 15),
-                //           ),
-                //           Text(
-                //             double.parse(acompanhamento.valor) == 0 ? 'Grátis' : double.parse(acompanhamento.valor).obterReal(),
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //           ),
-                //         ],
-                //       );
-                //     },
-                //   ),
-                // ],
-                // if (item.adicionais.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   ListView.builder(
-                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                //     shrinkWrap: true,
-                //     physics: const NeverScrollableScrollPhysics(),
-                //     itemCount: item.adicionais.length,
-                //     itemBuilder: (context, index) {
-                //       final adicional = item.adicionais[index];
-                //       return Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           Text(
-                //             '${adicional.quantidade}x ${adicional.nome}',
-                //             style: const TextStyle(fontSize: 15),
-                //           ),
-                //           Text(
-                //             (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //           ),
-                //         ],
-                //       );
-                //     },
-                //   ),
-                // ],
-                // if (item.itensRetiradas.isNotEmpty) ...[
-                //   const Padding(
-                //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                //   ),
-                //   ListView.builder(
-                //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
-                //     shrinkWrap: true,
-                //     physics: const NeverScrollableScrollPhysics(),
-                //     itemCount: item.itensRetiradas.length,
-                //     itemBuilder: (context, index) {
-                //       final itemRetirada = item.itensRetiradas[index];
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (dado.quantimaximaselecao != null) ...[
+                                  Text(
+                                    '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : ''}${dado.nome}',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ] else ...[
+                                  Text(
+                                    '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ],
+                                Text(
+                                  (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ] else if (e.produtos != null && e.produtos!.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 10),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        ListView.builder(
+                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: e.produtos!.length,
+                          itemBuilder: (context, index) {
+                            final produto = e.produtos![index];
 
-                //       return Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           Text(itemRetirada.nome, style: const TextStyle(fontSize: 15)),
-                //         ],
-                //       );
-                //     },
-                //   ),
-                // ],
-                // const Padding(
-                //   padding: EdgeInsets.only(left: 10, top: 10),
-                //   child: Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                // ),
-                // Padding(
-                //   padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
-                //   child: Column(
-                //     children: [
-                //       Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           const Text('Produto'),
-                //           Text(
-                //             "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - double.parse(soma.valor) - double.parse(somaAcompanhamentos.valor) - double.parse(somaCortesias.valor)).obterReal()}",
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //           ),
-                //         ],
-                //       ),
-                //       if (item.cortesias.isNotEmpty) ...[
-                //         Row(
-                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //           children: [
-                //             const Text('Cortesias'),
-                //             Text(
-                //               double.parse(somaCortesias.valor).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //             ),
-                //           ],
-                //         ),
-                //       ],
-                //       if (item.adicionais.isNotEmpty) ...[
-                //         Row(
-                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //           children: [
-                //             const Text('Adicionais'),
-                //             Text(
-                //               "${item.quantidade! > 1 && double.parse(soma.valor) > 0 ? '${item.quantidade}x de' : ''} ${double.parse(soma.valor).obterReal()}",
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //             ),
-                //           ],
-                //         ),
-                //       ],
-                //       if (item.acompanhamentos.isNotEmpty) ...[
-                //         Row(
-                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //           children: [
-                //             const Text('Acompanhamentos'),
-                //             Text(
-                //               double.parse(somaAcompanhamentos.valor).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //             ),
-                //           ],
-                //         ),
-                //       ],
-                //       Row(
-                //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                //         children: [
-                //           const Text('Total'),
-                //           Text(
-                //             ((double.parse(item.valorVenda)) * item.quantidade!).obterReal(),
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
-                //           ),
-                //         ],
-                //       ),
-                //     ],
-                //   ),
-                // ),
+                            return CardPedidoKit(item: produto, somarValores: false);
+                          },
+                        ),
+                      ],
+                    ],
+                  );
+                }),
               ],
             ),
           ),

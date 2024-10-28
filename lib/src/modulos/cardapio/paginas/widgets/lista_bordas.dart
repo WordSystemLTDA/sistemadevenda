@@ -118,7 +118,7 @@ class _ListaBordasState extends State<ListaBordas> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(provedor.tamanhosPizza!.nomedotamanho, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                      Text(provedor.tamanhosPizza?.nomedotamanho ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                                       Text(
                                         "${index + 1 > 1 ? 'até ' : ''}${index + 1} ${index + 1 > 1 ? 'sabores' : 'sabor'}",
                                         style: const TextStyle(fontSize: 10),

@@ -44,7 +44,7 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  int _limiteSaborBordaSelecionado = 1;
+  int _limiteSaborBordaSelecionado = -1;
   int get limiteSaborBordaSelecionado => _limiteSaborBordaSelecionado;
   set limiteSaborBordaSelecionado(int value) {
     _limiteSaborBordaSelecionado = value;

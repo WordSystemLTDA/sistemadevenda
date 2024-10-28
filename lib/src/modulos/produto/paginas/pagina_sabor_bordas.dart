@@ -80,7 +80,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
         _provedorProduto.valorVenda = widget.valorVenda ?? 0;
         _provedorProduto.valorVendaOriginal = widget.valorVenda ?? 0;
-        _provedorProduto.calcularValorVenda(false);
+        _provedorProduto.calcularValorVenda(false, '0');
       }
     }).whenComplete(() {
       setState(() {
@@ -120,7 +120,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
-        provedorCardapio.limiteSaborBordaSelecionado = 1;
+        provedorCardapio.limiteSaborBordaSelecionado = -1;
       },
       child: GestureDetector(
         onTap: () {
@@ -188,6 +188,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                     opcoesPacote: opcoesPacote,
                                     kit: false,
                                     item: item,
+                                    idProduto: '0',
                                   );
                                 },
                               ),

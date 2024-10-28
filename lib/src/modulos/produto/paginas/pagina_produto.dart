@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -64,29 +65,35 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       if (value != null) {
         if (widget.valorVenda == null) {
           _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
-            // se for acompanhamentos retorna todos
-            if (e.id == 5) {
+            // SE FOR KITS/COMBOS
+            if (e.id == 2) {
+              var a = e.produtos!.map((e1) {
+                e1.opcoesPacotes?.map((e2) {
+                  // se for acompanhamentos retorna todos
+                  if (e2.id == 5) {
+                    return e2;
+                  }
+
+                  // se for cortesia
+                  if (e2.id == 1) {
+                    e2.dados = e2.dados!.where((element) => element.estaSelecionado == true).toList();
+                    return e2;
+                  }
+
+                  e2.dados = [];
+                  return e2;
+                }).toList();
+
+                return e1;
+              }).toList();
+
+              e.produtos = a;
+
               return e;
             }
 
-            if (e.id == 2) {
-              // for (var element in e.produtos!) {
-              //   for (var element2 in element.opcoesPacotes!) {
-              //     element2.dados = [];
-              //   }
-              // }
-
-              // var a = e.produtos!.map((e1) {
-              //   e1.opcoesPacotes?.map((e2) {
-              //     e2.dados = [];
-              //     return e2;
-              //   }).toList();
-
-              //   return e1;
-              // }).toList();
-
-              // e.produtos = a;
-
+            // se for acompanhamentos retorna todos
+            if (e.id == 5) {
               return e;
             }
 
@@ -103,7 +110,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
           _provedorProduto.valorVenda = double.parse(value.valorVenda);
           _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);
-          _provedorProduto.calcularValorVenda(false);
+          _provedorProduto.calcularValorVenda(false, '0');
         }
       }
     }).whenComplete(() {
@@ -124,7 +131,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var observacaoMesa = '';
     var observacao = obsController.text;
 
-    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4], false).isEmpty) {
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         behavior: SnackBarBehavior.floating,
@@ -136,6 +143,44 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     setState(() => carregando = !carregando);
+
+    if (provedorCardapio.tamanhosPizza != null) {
+      _provedorProduto.opcoesPacotesListaFinal.insert(
+        0,
+        ModeloOpcoesPacotes(
+          id: 9,
+          titulo: 'Tamanho Pizza',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: provedorCardapio.tamanhosPizza!.id,
+              nome: provedorCardapio.tamanhosPizza!.nomedotamanho,
+              valor: provedorCardapio.calcularPrecoPizza().toStringAsFixed(2),
+            )
+          ],
+        ),
+      );
+
+      _provedorProduto.opcoesPacotesListaFinal.insert(
+        1,
+        ModeloOpcoesPacotes(
+            id: 10,
+            titulo: 'Sabores Pizza (${provedorCardapio.saboresPizzaSelecionados.length})',
+            obrigatorio: false,
+            dados: provedorCardapio.saboresPizzaSelecionados
+                .map((e) => ModeloDadosOpcoesPacotes(
+                      id: e.id,
+                      nome: e.nome,
+                      valor: ((double.tryParse(e.valorVenda) ?? 0) / provedorCardapio.saboresPizzaSelecionados.length).toStringAsFixed(2),
+                      quantimaximaselecao: '1/${provedorCardapio.saboresPizzaSelecionados.length}',
+                    ))
+                .toList()),
+      );
+
+      provedorCardapio.limiteSaborBordaSelecionado = -1;
+      provedorCardapio.tamanhosPizza = null;
+      provedorCardapio.saboresPizzaSelecionados = [];
+    }
 
     itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
@@ -283,8 +328,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
-                              (_provedorProduto.retornarDadosPorID([4], false).isEmpty &&
-                                      _provedorProduto.retornarDadosPorID([4], false).firstOrNull == null &&
+                              (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
+                                      _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
                                       itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null)
                                   ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                   : (_provedorProduto.valorVenda).obterReal(),
@@ -396,6 +441,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                         opcoesPacote: opcoesPacote,
                                         item: item,
                                         kit: false,
+                                        idProduto: '0',
                                       );
                                     },
                                   ),

@@ -1,10 +1,13 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DrawerCustomizado extends StatefulWidget {
@@ -15,8 +18,11 @@ class DrawerCustomizado extends StatefulWidget {
 }
 
 class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProviderStateMixin {
+  var cliente = Modular.get<Client>();
+
   String nome = '';
   String email = '';
+  String ipServidor = '';
 
   late final AnimationController _controller;
   late final Animation<double> _animation;
@@ -52,7 +58,6 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
     super.dispose();
 
     _controller.dispose();
-
     _isExpanded = false;
   }
 
@@ -60,9 +65,14 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     var usuario = prefs.getString('usuario');
 
+    final ConfigSharedPreferences config = ConfigSharedPreferences();
+    var conexao = await config.getConexao();
+
     setState(() {
       nome = jsonDecode(usuario!)['nome'];
       email = jsonDecode(usuario)['email'];
+
+      ipServidor = conexao != null ? '${conexao.servidor}:${conexao.porta}' : '';
     });
   }
 
@@ -94,6 +104,11 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
               ),
             ),
           ),
+          if (ipServidor.isNotEmpty)
+            ListTile(
+              leading: cliente.connected ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.error, color: Colors.red),
+              title: Text(ipServidor),
+            ),
           ListTile(
             leading: const Icon(Icons.text_snippet),
             title: const Text('Cadastrar'),
