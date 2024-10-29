@@ -17,8 +17,9 @@ class ServicoCardapio {
 
   Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens) async {
     final empresa = usuarioProvedor.usuario!.empresa;
+    final idUsuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&empresa=$empresa&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
+    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
     if (response.statusCode == 200) {
       return Modeloworddadoscardapio.fromMap(response.data);
@@ -30,6 +31,7 @@ class ServicoCardapio {
   Future<(bool, String)> inserirProdutosComanda(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
+
     try {
       var campos = {
         'produtos': produtos,

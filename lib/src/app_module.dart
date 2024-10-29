@@ -33,7 +33,7 @@ class AppModule extends Module {
 
     // Mesas
     i.add<ServicoMesas>(ServicoMesas.new);
-    i.add<ProvedorMesas>(ProvedorMesas.new);
+    i.addSingleton<ProvedorMesas>(ProvedorMesas.new);
 
     i.add<ServicosItensComanda>(ServicosItensComanda.new);
 

@@ -28,9 +28,14 @@ class _PaginaComandasState extends State<PaginaComandas> {
   void initState() {
     super.initState();
     listarComandas();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
-      listarComandas();
-    });
+
+    // _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+    // listarComandas();
+    // });
+
+    // var cliente = Modular.get<Client>();
+
+    // cliente.onData();
   }
 
   @override

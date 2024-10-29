@@ -4,6 +4,7 @@ import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -334,10 +335,69 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
           ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Divider(height: 1),
+                const Divider(height: 1),
+                ...(item.opcoesPacotesListaFinal ?? []).map((e) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (e.dados != null && e.dados!.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 10),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        ListView.builder(
+                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: e.dados!.length,
+                          itemBuilder: (context, index) {
+                            final dado = e.dados![index];
+
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (dado.quantimaximaselecao != null) ...[
+                                  Text(
+                                    '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : ''}${dado.nome}',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ] else ...[
+                                  Text(
+                                    '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ],
+                                Text(
+                                  (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ] else if (e.produtos != null && e.produtos!.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, top: 10),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        ListView.builder(
+                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: e.produtos!.length,
+                          itemBuilder: (context, index) {
+                            final produto = e.produtos![index];
+
+                            return CardPedidoKit(item: produto, somarValores: false);
+                          },
+                        ),
+                      ],
+                    ],
+                  );
+                }),
                 //   if (item.cortesias.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),

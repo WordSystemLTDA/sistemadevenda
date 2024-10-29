@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class Client extends ChangeNotifier {
   String hostname = '';
@@ -46,7 +49,19 @@ class Client extends ChangeNotifier {
     connected = false;
   }
 
-  void onData(Uint8List d) {}
+  void onData(Uint8List d) async {
+    var tipo = utf8.decode(d);
+    print(tipo);
+
+    if (tipo == 'Comanda') {
+      final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
+      await provedorComanda.listarComandas('');
+    } else if (tipo == 'Mesa') {
+      print('foi?');
+      final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+      await provedorMesas.listarMesas('');
+    }
+  }
 
   void onError(dynamic d) {}
 }
