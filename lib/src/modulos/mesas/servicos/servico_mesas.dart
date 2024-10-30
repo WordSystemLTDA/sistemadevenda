@@ -103,7 +103,7 @@ class ServicoMesas {
     return response.data;
   }
 
-  Future<bool> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
+  Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
     const url = 'mesas/inserir_mesa_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -120,6 +120,9 @@ class ServicoMesas {
       },
     ).timeout(const Duration(seconds: 60));
 
-    return response.data['sucesso'];
+    bool sucesso = response.data['sucesso'];
+    String idcomandapedido = response.data['idcomandapedido'];
+
+    return (sucesso: sucesso, idcomandapedido: idcomandapedido);
   }
 }

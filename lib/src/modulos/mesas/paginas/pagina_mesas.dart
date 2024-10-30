@@ -71,61 +71,61 @@ class _PaginaMesasState extends State<PaginaMesas> {
         ],
       ),
       body: ListenableBuilder(
-          listenable: _state,
-          builder: (context, snapshot) {
-            print('ueeeee');
-            return RefreshIndicator(
-              onRefresh: () async => listar(),
-              child: Stack(
-                children: [
-                  isLoading ? const LinearProgressIndicator() : const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 5, left: 5),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _state.mesas.length,
-                            itemBuilder: (context, index) {
-                              final item = _state.mesas[index];
+        listenable: _state,
+        builder: (context, snapshot) {
+          return RefreshIndicator(
+            onRefresh: () async => listar(),
+            child: Stack(
+              children: [
+                isLoading ? const LinearProgressIndicator() : const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.only(right: 5, left: 5),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _state.mesas.length,
+                          itemBuilder: (context, index) {
+                            final item = _state.mesas[index];
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 10),
-                                  Text('${item.titulo}:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                  GridView.builder(
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    shrinkWrap: true,
-                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                                      mainAxisExtent: 100,
-                                      mainAxisSpacing: 2,
-                                      crossAxisSpacing: 2,
-                                    ),
-                                    scrollDirection: Axis.vertical,
-                                    itemCount: item.mesas!.length,
-                                    padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                    itemBuilder: (_, index) {
-                                      var itemMesa = item.mesas![index];
-
-                                      return CardMesaOcupada(item: itemMesa);
-                                    },
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 10),
+                                Text('${item.titulo}:', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                GridView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  shrinkWrap: true,
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
+                                    mainAxisExtent: 100,
+                                    mainAxisSpacing: 2,
+                                    crossAxisSpacing: 2,
                                   ),
-                                ],
-                              );
-                            },
-                          ),
+                                  scrollDirection: Axis.vertical,
+                                  itemCount: item.mesas!.length,
+                                  padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                  itemBuilder: (_, index) {
+                                    var itemMesa = item.mesas![index];
+
+                                    return CardMesaOcupada(item: itemMesa);
+                                  },
+                                ),
+                              ],
+                            );
+                          },
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

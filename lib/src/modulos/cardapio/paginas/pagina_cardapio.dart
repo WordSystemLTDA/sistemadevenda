@@ -203,6 +203,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                                 idMesa: widget.idMesa!,
                                 idCliente: widget.idCliente!,
                                 idComandaPedido: widget.idComandaPedido!,
+                                tipo: widget.tipo,
                               );
                             },
                           ));

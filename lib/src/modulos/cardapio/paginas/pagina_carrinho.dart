@@ -1,9 +1,14 @@
+import 'dart:convert';
+
+import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -13,6 +18,7 @@ class PaginaCarrinho extends StatefulWidget {
   final String idComandaPedido;
   final String idMesa;
   final String idCliente;
+  final TipoCardapio tipo;
 
   const PaginaCarrinho({
     super.key,
@@ -20,6 +26,7 @@ class PaginaCarrinho extends StatefulWidget {
     required this.idComandaPedido,
     required this.idCliente,
     required this.idMesa,
+    required this.tipo,
   });
 
   @override
@@ -139,51 +146,116 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  await servicoCardapio
-                      .inserirProdutosComanda(
-                    carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                    widget.idMesa,
-                    widget.idComandaPedido,
-                    widget.idComanda,
-                    widget.idCliente,
-                  )
-                      .then((resposta) {
-                    var (sucesso, mensagem) = resposta;
+                  if (widget.tipo == TipoCardapio.mesa) {
+                    await servicoCardapio
+                        .inserirProdutosMesa(
+                      carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                      widget.idMesa,
+                      widget.idComandaPedido,
+                      widget.idCliente,
+                    )
+                        .then((resposta) {
+                      var (sucesso, mensagem) = resposta;
 
-                    if (sucesso) {
-                      removerTodosItensCarrinho();
-                      EnviarPedido.enviarPedido(
-                        tipo: '1',
-                        nomeTitulo: "Comanda ${widget.idComanda}",
-                        numeroPedido: dados!.numeroPedido!,
-                        nomeCliente: dados!.nomeCliente!,
-                        nomeEmpresa: dados!.nomeEmpresa!,
-                        produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                      );
+                      if (sucesso) {
+                        final Client client = Modular.get<Client>();
 
-                      if (context.mounted) {
-                        if (widget.idComanda != '0') {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pop();
-                        } else if (widget.idMesa != '0') {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pop();
+                        final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+
+                        provedorMesas.listarMesas('');
+                        client.write(jsonEncode({
+                          'tipo': 'Mesa',
+                        }));
+
+                        removerTodosItensCarrinho();
+                        EnviarPedido.enviarPedido(
+                          tipo: '1',
+                          nomeTitulo: "Mesa ${widget.idMesa}",
+                          numeroPedido: dados!.numeroPedido!,
+                          nomeCliente: dados!.nomeCliente!,
+                          nomeEmpresa: dados!.nomeEmpresa!,
+                          produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                        );
+
+                        if (context.mounted) {
+                          if (widget.idComanda != '0') {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                          } else if (widget.idMesa != '0') {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                          }
                         }
+
+                        return;
                       }
 
-                      return;
-                    }
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    }).whenComplete(() {
+                      setState(() => isLoading = !isLoading);
+                    });
+                  } else {
+                    await servicoCardapio
+                        .inserirProdutosComanda(
+                      carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                      widget.idMesa,
+                      widget.idComandaPedido,
+                      widget.idComanda,
+                      widget.idCliente,
+                    )
+                        .then((resposta) {
+                      var (sucesso, mensagem) = resposta;
 
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Ocorreu um erro'),
-                        showCloseIcon: true,
-                      ));
-                    }
-                  }).whenComplete(() {
-                    setState(() => isLoading = !isLoading);
-                  });
+                      if (sucesso) {
+                        final Client client = Modular.get<Client>();
+                        final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
+                        // final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+
+                        provedorComanda.listarComandas('');
+                        client.write(jsonEncode({
+                          'tipo': 'Comanda',
+                        }));
+
+                        removerTodosItensCarrinho();
+                        EnviarPedido.enviarPedido(
+                          tipo: '1',
+                          nomeTitulo: "Comanda ${widget.idComanda}",
+                          numeroPedido: dados!.numeroPedido!,
+                          nomeCliente: dados!.nomeCliente!,
+                          nomeEmpresa: dados!.nomeEmpresa!,
+                          produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                        );
+
+                        if (context.mounted) {
+                          if (widget.idComanda != '0') {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                          } else if (widget.idMesa != '0') {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop();
+                          }
+                        }
+
+                        return;
+                      }
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    }).whenComplete(() {
+                      setState(() => isLoading = !isLoading);
+                    });
+                  }
                 },
                 label: isLoading
                     ? SizedBox(

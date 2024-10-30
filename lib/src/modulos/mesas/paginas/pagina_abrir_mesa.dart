@@ -33,10 +33,15 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
         onPressed: () async {
           await _state.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text).then((sucesso) {
             if (context.mounted) {
-              Navigator.pop(context);
+              final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+              provedorMesas.listarMesas('');
+
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             }
 
-            if (context.mounted && !sucesso) {
+            if (context.mounted && !sucesso.sucesso) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Ocorreu um erro'),

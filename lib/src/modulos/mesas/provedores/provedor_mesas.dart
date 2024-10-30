@@ -26,9 +26,9 @@ class ProvedorMesas extends ChangeNotifier {
     return await _servico.listarClientes(pesquisa);
   }
 
-  Future<bool> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
+  Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
     final res = await _servico.inserirMesaOcupada(idMesa, idCliente, obs);
-    if (res) {
+    if (res.sucesso) {
       listarMesas('');
     }
     return res;

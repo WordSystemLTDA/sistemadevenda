@@ -79,7 +79,12 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
             if (!widget.item.mesaOcupada) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => PaginaComandaDesocupada(id: widget.item.id, idComandaPedido: widget.item.idComandaPedido, nome: widget.item.nome),
+                  builder: (context) => PaginaComandaDesocupada(
+                    id: widget.item.id,
+                    idComandaPedido: widget.item.idComandaPedido,
+                    nome: widget.item.nome,
+                    tipo: TipoCardapio.mesa,
+                  ),
                 ),
               );
             } else {
@@ -87,7 +92,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                 MaterialPageRoute(
                   builder: (context) => PaginaDetalhesPedido(
                     idComandaPedido: widget.item.idComandaPedido,
-                    idComanda: widget.item.id,
+                    idMesa: widget.item.id,
                     tipo: TipoCardapio.mesa,
                   ),
                 ),

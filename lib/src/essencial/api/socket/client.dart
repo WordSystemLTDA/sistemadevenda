@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,14 @@ class Client extends ChangeNotifier {
       hostnameNovo = hostname;
       port = portaNova;
 
+      var usuario = Modular.get<UsuarioProvedor>();
+      if (usuario.usuario != null) {
+        write(jsonEncode({
+          'tipo': 'Conectou',
+          'nomeConexao': usuario.usuario!.nome ?? 'Sem Nome',
+        }));
+      }
+
       notifyListeners();
       return true;
     } on Exception catch (exception) {
@@ -44,20 +53,22 @@ class Client extends ChangeNotifier {
 
   disconnect() {
     if (socket == null) return;
-    // write('Desconectado');
+    write(jsonEncode({
+      'tipo': 'Desconectou',
+      'nomeConexao': 'Sem Nome',
+    }));
+
     socket!.destroy();
     connected = false;
   }
 
   void onData(Uint8List d) async {
     var tipo = utf8.decode(d);
-    print(tipo);
 
     if (tipo == 'Comanda') {
       final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
       await provedorComanda.listarComandas('');
     } else if (tipo == 'Mesa') {
-      print('foi?');
       final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
       await provedorMesas.listarMesas('');
     }

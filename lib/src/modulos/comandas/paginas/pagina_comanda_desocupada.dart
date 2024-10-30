@@ -1,3 +1,7 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:convert';
+
+import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
@@ -5,6 +9,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/inserir_cliente.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -12,7 +17,15 @@ class PaginaComandaDesocupada extends StatefulWidget {
   final String id;
   final String? idComandaPedido;
   final String nome;
-  const PaginaComandaDesocupada({super.key, required this.id, this.idComandaPedido, required this.nome});
+  final TipoCardapio tipo;
+
+  const PaginaComandaDesocupada({
+    super.key,
+    required this.id,
+    this.idComandaPedido,
+    required this.nome,
+    required this.tipo,
+  });
 
   @override
   State<PaginaComandaDesocupada> createState() => _PaginaComandaDesocupadaState();
@@ -74,7 +87,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Comandas'),
+        title: Text(widget.tipo.nome),
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
@@ -89,27 +102,19 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
               salvando = true;
             });
 
-            if (widget.idComandaPedido != null) {
-              await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
-                if (context.mounted) {
-                  if (sucesso) {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  }
+            final Client client = Modular.get<Client>();
+            final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
 
-                  if (!sucesso) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Ocorreu um erro'),
-                      showCloseIcon: true,
-                    ));
-                  }
-                }
-              });
-            } else {
-              await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
+            if (widget.tipo == TipoCardapio.mesa) {
+              final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+              await provedorMesas.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text).then((resposta) async {
                 if (context.mounted) {
+                  provedorComanda.listarMesas('');
+
                   if (resposta.sucesso) {
+                    client.write(jsonEncode({
+                      'tipo': 'Mesa',
+                    }));
                     Navigator.pop(context);
                     if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
                       if (context.mounted) {
@@ -141,6 +146,68 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                   }
                 }
               });
+            } else {
+              if (widget.idComandaPedido != null) {
+                await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
+                  if (context.mounted) {
+                    if (sucesso) {
+                      client.write(jsonEncode({
+                        'tipo': 'Comanda',
+                      }));
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    }
+
+                    if (!sucesso) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Ocorreu um erro'),
+                        showCloseIcon: true,
+                      ));
+                    }
+                  }
+                });
+              } else {
+                await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
+                  if (context.mounted) {
+                    provedorComanda.listarComandas('');
+
+                    if (resposta.sucesso) {
+                      client.write(jsonEncode({
+                        'tipo': 'Comanda',
+                      }));
+                      Navigator.pop(context);
+                      if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
+                        if (context.mounted) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) {
+                              return PaginaCardapio(
+                                tipo: TipoCardapio.comanda,
+                                idComanda: widget.id,
+                                idMesa: '0',
+                                idCliente: idCliente,
+                                idComandaPedido: resposta.idcomandapedido,
+                              );
+                            },
+                          ));
+                        }
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    }
+
+                    if (!resposta.sucesso) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    }
+                  }
+                });
+              }
             }
 
             setState(() {
@@ -178,49 +245,51 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text('Mesa de Destino', style: TextStyle(fontSize: 18)),
-                SearchAnchor(
-                  builder: (BuildContext context, SearchController controller) {
-                    return TextField(
-                      controller: _mesaDestinoSearchController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        // contentPadding: EdgeInsets.all(12),
-                        border: UnderlineInputBorder(),
-                        isDense: true,
-                        hintText: 'Selecione a Mesa de Destino',
-                      ),
-                      onTap: () => controller.openView(),
-                    );
-                  },
-                  suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                    final keyword = controller.value.text;
-                    final res = await _state.listarMesas(keyword);
+                if (widget.tipo != TipoCardapio.mesa) ...[
+                  const Text('Mesa de Destino', style: TextStyle(fontSize: 18)),
+                  SearchAnchor(
+                    builder: (BuildContext context, SearchController controller) {
+                      return TextField(
+                        controller: _mesaDestinoSearchController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          // contentPadding: EdgeInsets.all(12),
+                          border: UnderlineInputBorder(),
+                          isDense: true,
+                          hintText: 'Selecione a Mesa de Destino',
+                        ),
+                        onTap: () => controller.openView(),
+                      );
+                    },
+                    suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                      final keyword = controller.value.text;
+                      final res = await _state.listarMesas(keyword);
 
-                    var semMesa = {'nome': 'Sem Mesa', 'id': '0'};
+                      var semMesa = {'nome': 'Sem Mesa', 'id': '0'};
 
-                    return [
-                      ...[semMesa, ...res].map((e) => Card(
-                            elevation: 3.0,
-                            margin: const EdgeInsets.all(5.0),
-                            child: InkWell(
-                              onTap: () {
-                                controller.closeView('');
-                                _mesaDestinoSearchController.text = e['nome'];
-                                idMesa = e['id'];
-                              },
-                              borderRadius: const BorderRadius.all(Radius.circular(8)),
-                              child: ListTile(
-                                leading: const Icon(Icons.table_bar_outlined),
-                                title: Text(e['nome']),
-                                subtitle: Text('ID: ${e['id']}'),
+                      return [
+                        ...[semMesa, ...res].map((e) => Card(
+                              elevation: 3.0,
+                              margin: const EdgeInsets.all(5.0),
+                              child: InkWell(
+                                onTap: () {
+                                  controller.closeView('');
+                                  _mesaDestinoSearchController.text = e['nome'];
+                                  idMesa = e['id'];
+                                },
+                                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                child: ListTile(
+                                  leading: const Icon(Icons.table_bar_outlined),
+                                  title: Text(e['nome']),
+                                  subtitle: Text('ID: ${e['id']}'),
+                                ),
                               ),
-                            ),
-                          )),
-                    ];
-                  },
-                ),
-                const SizedBox(height: 10),
+                            )),
+                      ];
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 const Text('Cliente', style: TextStyle(fontSize: 18)),
                 SearchAnchor(
                   builder: (BuildContext context, SearchController controller) {

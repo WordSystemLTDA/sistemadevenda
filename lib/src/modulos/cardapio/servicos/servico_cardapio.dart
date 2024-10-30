@@ -61,6 +61,38 @@ class ServicoCardapio {
     }
   }
 
+  Future<(bool, String)> inserirProdutosMesa(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idcliente) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+
+    try {
+      var campos = {
+        'produtos': produtos,
+        "id_comanda_pedido": idComandaPedido,
+        "id_mesa": idMesa,
+        'empresa': idEmpresa,
+        'id_usuario': idUsuario,
+        'id_cliente': idcliente,
+      };
+
+      var response = await dio.cliente.post('mesas/inserir_produtos.php', data: jsonEncode(campos));
+
+      var jsonData = response.data;
+      bool sucesso = jsonData['sucesso'];
+      String mensagem = jsonData['mensagem'];
+
+      return (sucesso, mensagem);
+    } on DioException catch (e) {
+      if (e.response == null) {
+        if (kDebugMode) {
+          log('ERRO API', error: e.error);
+        }
+      }
+
+      return (false, 'Erro');
+    }
+  }
+
   Future<({bool sucesso, String mensagem})> fecharAbrirComanda(String idComandaPedido, String status) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;

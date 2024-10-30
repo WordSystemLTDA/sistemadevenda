@@ -31,6 +31,7 @@ class CardapioModule extends Module {
         idMesa: r.args.params['idMesa'],
         idCliente: r.args.params['idCliente'],
         idComandaPedido: r.args.params['idComandaPedido'],
+        tipo: TipoCardapio.comanda,
       ),
     );
   }

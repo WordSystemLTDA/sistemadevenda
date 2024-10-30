@@ -15,6 +15,7 @@ class ProvedorComanda extends ChangeNotifier {
   Future<void> listarComandas(String pesquisa) async {
     final res = await _servico.listar(pesquisa);
     comandas = res;
+
     notifyListeners();
   }
 

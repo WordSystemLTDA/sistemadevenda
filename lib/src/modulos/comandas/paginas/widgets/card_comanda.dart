@@ -79,7 +79,12 @@ class _CardComandaState extends State<CardComanda> {
             if (!widget.itemComanda.comandaOcupada) {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => PaginaComandaDesocupada(id: widget.itemComanda.id, idComandaPedido: widget.itemComanda.idComandaPedido, nome: widget.itemComanda.nome),
+                  builder: (context) => PaginaComandaDesocupada(
+                    id: widget.itemComanda.id,
+                    idComandaPedido: widget.itemComanda.idComandaPedido,
+                    nome: widget.itemComanda.nome,
+                    tipo: TipoCardapio.comanda,
+                  ),
                 ),
               );
             } else {

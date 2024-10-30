@@ -134,7 +134,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             return;
                           }
 
-                          if (widget.idComandaPedido != null) {
+                          if (widget.tipo == TipoCardapio.comanda) {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (context) {
                                 return PaginaCardapio(
@@ -146,10 +146,16 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                 );
                               },
                             ));
-                          } else if (widget.idMesa != null) {
+                          } else if (widget.tipo == TipoCardapio.mesa) {
                             Navigator.push(context, MaterialPageRoute(
                               builder: (context) {
-                                return PaginaCardapio(tipo: TipoCardapio.mesa, idComanda: '0', idMesa: widget.idMesa!);
+                                return PaginaCardapio(
+                                  tipo: TipoCardapio.mesa,
+                                  idComanda: '0',
+                                  idMesa: widget.idMesa ?? '0',
+                                  idCliente: dados!.idCliente!,
+                                  idComandaPedido: widget.idComandaPedido,
+                                );
                               },
                             ));
                           }
@@ -216,6 +222,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                   id: widget.idComanda!,
                                   idComandaPedido: widget.idComandaPedido!,
                                   nome: dados!.nome!,
+                                  tipo: widget.tipo,
                                 ),
                               ),
                             );
