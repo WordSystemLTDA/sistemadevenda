@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-class SalvarListarVendasModelo {
+class SalvarVendasModelo {
   final String id;
   final String cliente;
   final String nomeCliente;
@@ -27,7 +27,7 @@ class SalvarListarVendasModelo {
   final String observacoesInterna;
   final String dadosAdicionais;
 
-  SalvarListarVendasModelo({
+  SalvarVendasModelo({
     required this.id,
     required this.cliente,
     required this.nomeCliente,
@@ -85,8 +85,8 @@ class SalvarListarVendasModelo {
     };
   }
 
-  factory SalvarListarVendasModelo.fromMap(Map<String, dynamic> map) {
-    return SalvarListarVendasModelo(
+  factory SalvarVendasModelo.fromMap(Map<String, dynamic> map) {
+    return SalvarVendasModelo(
       id: map['id'] as String,
       cliente: map['cliente'] as String,
       nomeCliente: map['nomeCliente'] as String,
@@ -117,5 +117,5 @@ class SalvarListarVendasModelo {
 
   String toJson() => json.encode(toMap());
 
-  factory SalvarListarVendasModelo.fromJson(String source) => SalvarListarVendasModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory SalvarVendasModelo.fromJson(String source) => SalvarVendasModelo.fromMap(json.decode(source) as Map<String, dynamic>);
 }

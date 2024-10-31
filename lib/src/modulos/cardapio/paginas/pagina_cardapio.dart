@@ -45,19 +45,21 @@ enum TipoCardapio {
 }
 
 class PaginaCardapio extends StatefulWidget {
-  final String? idComanda;
   final TipoCardapio tipo;
+  final String? id;
+  final String? idComanda;
   final String? idMesa;
   final String? idCliente;
-  final String? idComandaPedido;
+  final String? tipodeentrega;
 
   const PaginaCardapio({
     super.key,
-    this.idComanda,
     required this.tipo,
+    this.id,
+    this.idComanda,
     this.idMesa,
     this.idCliente,
-    this.idComandaPedido,
+    this.tipodeentrega,
   });
 
   @override
@@ -65,52 +67,72 @@ class PaginaCardapio extends StatefulWidget {
 }
 
 class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
-  late TabController _tabController;
-
+  TabController? _tabController;
   List<String> listaCategorias = [];
   int indexTabBar = 0;
 
   @override
   void initState() {
     super.initState();
-
+    setarCampos();
     listarDados();
-  }
-
-  void listarDados() async {
-    await provedorCardapio.listarCategorias();
-    await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido!);
-    await provedorCardapio.listarConfigBigChef();
   }
 
   @override
   void dispose() {
     super.dispose();
-    _tabController.dispose();
+    if (_tabController != null) {
+      _tabController!.dispose();
+    }
+  }
+
+  void listarDados() async {
+    await provedor.listarCategorias().then((value) {
+      _tabController = TabController(
+        initialIndex: indexTabBar,
+        length: value.length,
+        vsync: this,
+      );
+
+      _tabController!.addListener(() {
+        provedor.tamanhosPizza = null;
+        provedor.saboresPizzaSelecionados = [];
+        setState(() {
+          indexTabBar = _tabController!.index;
+        });
+      });
+    });
+
+    // await provedor
+    //         .listarDados(false, widget.argumentos.id, widget.argumentos.tipo, finalizar, widget.argumentos.tipodeentrega!, produtosNovos: widget.argumentos.produtosNovos)
+    //         .then((value) async {
+    //       if (widget.argumentos.finalizar == false) {
+    //         provedor.listarProdutos(provedor.categoriaSelecionada, finalizar: finalizar);
+    //       }
+    //       _updateTimer();
+    //     });
+
+    await carrinhoProvedor.listarComandasPedidos();
+    await provedor.listarConfigBigChef();
+  }
+
+  void setarCampos() {
+    provedor.tipo = widget.tipo;
+    provedor.idComanda = widget.idComanda ?? '0';
+    provedor.idMesa = widget.idMesa ?? '0';
+    provedor.idCliente = widget.idCliente ?? '0';
+    provedor.id = widget.id ?? '0';
+    provedor.tipodeentrega = widget.tipodeentrega ?? '0';
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: provedorCardapio,
+      animation: provedor,
       builder: (context, _) {
-        _tabController = TabController(
-          initialIndex: indexTabBar,
-          length: provedorCardapio.categorias.length,
-          vsync: this,
-        );
-
-        _tabController.addListener(() {
-          provedorCardapio.tamanhosPizza = null;
-          provedorCardapio.saboresPizzaSelecionados = [];
-          setState(() {
-            indexTabBar = _tabController.index;
-          });
-        });
-
         return Scaffold(
           appBar: AppBar(
             automaticallyImplyLeading: false,
@@ -120,28 +142,34 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
               child: Column(
                 children: [
                   BuscarProdutos(
-                    idComanda: widget.idComanda!,
-                    idComandaPedido: widget.idComandaPedido!,
-                    tipo: widget.tipo,
-                    idMesa: widget.idMesa!,
-                    categoria: provedorCardapio.categorias.isEmpty ? null : provedorCardapio.categorias[indexTabBar],
+                    categoria: provedor.categorias.isEmpty ? null : provedor.categorias[indexTabBar],
                     idcliente: '0',
                   ),
                   const SizedBox(height: 5),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TabBar(
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      controller: _tabController,
-                      tabAlignment: TabAlignment.start,
-                      isScrollable: true,
-                      tabs: [
-                        ...provedorCardapio.categorias.map((e) => Tab(
-                                child: Text(
-                              e.nomeCategoria.toUpperCase(),
-                              style: const TextStyle(fontSize: 16),
-                            )))
-                      ],
+                  Visibility(
+                    visible: _tabController != null,
+                    replacement: const SizedBox(
+                      height: 48,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: LinearProgressIndicator(),
+                      ),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        controller: _tabController,
+                        tabAlignment: TabAlignment.start,
+                        isScrollable: true,
+                        tabs: [
+                          ...provedor.categorias.map((e) => Tab(
+                                  child: Text(
+                                e.nomeCategoria.toUpperCase(),
+                                style: const TextStyle(fontSize: 16),
+                              )))
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -154,7 +182,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             builder: (context, _) {
               return Stack(
                 children: [
-                  if (provedorCardapio.tamanhosPizza != null && provedorCardapio.saboresPizzaSelecionados.isNotEmpty) ...[
+                  if (provedor.tamanhosPizza != null && provedor.saboresPizzaSelecionados.isNotEmpty) ...[
                     Align(
                       alignment: Alignment.bottomCenter,
                       child: SizedBox(
@@ -164,17 +192,13 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                           onPressed: () async {
                             if (!context.mounted) return;
 
-                            var item = provedorCardapio.saboresPizzaSelecionados[0];
+                            var item = provedor.saboresPizzaSelecionados[0];
 
                             Navigator.of(context).push(MaterialPageRoute(
                               builder: (context) {
                                 return PaginaSaborBordas(
-                                  idComanda: widget.idComanda!,
-                                  idComandaPedido: widget.idComandaPedido!,
-                                  idMesa: widget.idMesa!,
-                                  tipo: widget.tipo,
                                   produto: item,
-                                  valorVenda: provedorCardapio.calcularPrecoPizza(),
+                                  valorVenda: provedor.calcularPrecoPizza(),
                                 );
                               },
                             ));
@@ -182,7 +206,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          label: Text('Avançar ${provedorCardapio.calcularPrecoPizza().obterReal()}'),
+                          label: Text('Avançar ${provedor.calcularPrecoPizza().obterReal()}'),
                         ),
                       ),
                     ),
@@ -198,13 +222,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                         onPressed: () {
                           Navigator.of(context).push(MaterialPageRoute(
                             builder: (context) {
-                              return PaginaCarrinho(
-                                idComanda: widget.idComanda!,
-                                idMesa: widget.idMesa!,
-                                idCliente: widget.idCliente!,
-                                idComandaPedido: widget.idComandaPedido!,
-                                tipo: widget.tipo,
-                              );
+                              return const PaginaCarrinho();
                             },
                           ));
                         },
@@ -218,21 +236,17 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             },
           ),
           body: DefaultTabController(
-            length: provedorCardapio.categorias.length,
+            length: provedor.categorias.length,
             child: TabBarView(
               controller: _tabController,
               physics: const CustomTabBarViewScrollPhysics(),
               children: [
-                ...provedorCardapio.categorias.map((e) {
+                ...provedor.categorias.map((e) {
                   listaCategorias.add(e.id);
 
                   return TabCustom(
                     category: e.id,
-                    idMesa: widget.idMesa!,
                     categoria: e,
-                    idComandaPedido: widget.idComandaPedido!,
-                    idComanda: widget.idComanda == '0' ? '' : widget.idComanda,
-                    tipo: widget.tipo,
                   );
                 })
               ],

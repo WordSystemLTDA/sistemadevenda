@@ -8,7 +8,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardCarrinho extends StatefulWidget {
   final ModeloProduto item;
   final String idComanda;
-  final String idComandaPedido;
+
   final String idMesa;
   final dynamic value;
   final Function(bool increase) setarQuantidade;
@@ -17,7 +17,6 @@ class CardCarrinho extends StatefulWidget {
     super.key,
     required this.item,
     required this.idComanda,
-    required this.idComandaPedido,
     required this.idMesa,
     required this.value,
     required this.setarQuantidade,
@@ -65,48 +64,6 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
-
-    // var soma = item.adicionais.fold(
-    //   Modelowordadicionaisproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', quantidade: 1, estaSelecionado: false, excluir: false),
-    //   (previousValue, element) {
-    //     return Modelowordadicionaisproduto(
-    //       id: '',
-    //       nome: '',
-    //       valor: (double.parse(previousValue.valor) + (double.parse(element.valor) * element.quantidade)).toStringAsFixed(2),
-    //       quantidade: 1,
-    //       estaSelecionado: false,
-    //       excluir: false,
-    //       foto: '',
-    //     );
-    //   },
-    // );
-    // var somaAcompanhamentos = item.acompanhamentos.fold(
-    //   Modelowordacompanhamentosproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', estaSelecionado: false, excluir: false),
-    //   (previousValue, element) {
-    //     return Modelowordacompanhamentosproduto(
-    //       id: '',
-    //       nome: '',
-    //       valor: (double.parse(previousValue.valor) + (double.parse(element.valor))).toStringAsFixed(2),
-    //       estaSelecionado: false,
-    //       excluir: false,
-    //       foto: '',
-    //     );
-    //   },
-    // );
-    // var somaCortesias = item.cortesias.fold(
-    //   Modelowordcortesiasproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', estaSelecionado: false, excluir: false, quantimaximaselecao: ''),
-    //   (previousValue, element) {
-    //     return Modelowordcortesiasproduto(
-    //       id: '',
-    //       nome: '',
-    //       quantimaximaselecao: '',
-    //       valor: (double.parse(previousValue.valor) + (double.parse(element.valor))).toStringAsFixed(2),
-    //       estaSelecionado: false,
-    //       excluir: false,
-    //       foto: '',
-    //     );
-    //   },
-    // );
 
     return Card(
       shape: RoundedRectangleBorder(
@@ -205,13 +162,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                       const SizedBox(width: 10),
                                                       TextButton(
                                                         onPressed: () async {
-                                                          await carrinhoProvedor.removerComandasPedidos(
-                                                            widget.idComanda,
-                                                            widget.idMesa,
-                                                            [widget.item.id],
-                                                          ).then((sucesso) {
+                                                          await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
                                                             if (context.mounted) {
-                                                              carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+                                                              carrinhoProvedor.listarComandasPedidos();
                                                               Navigator.pop(context);
                                                             }
 

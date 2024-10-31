@@ -2,7 +2,7 @@ import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
 import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
@@ -98,11 +98,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         onPressed: () {
                           Navigator.of(context).push(MaterialPageRoute(
                             builder: (context) {
-                              return const PaginaCardapio(
-                                tipo: TipoCardapio.balcao,
-                                idMesa: '0',
-                                idComanda: '0',
-                              );
+                              return const PaginaBalcao();
                             },
                           ));
                         },

@@ -6,6 +6,7 @@ import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -15,6 +16,48 @@ class ProvedorCardapio extends ChangeNotifier {
   final UsuarioProvedor usuarioProvedor;
 
   ProvedorCardapio(this._categoriaService, this.usuarioProvedor);
+
+  TipoCardapio _tipo = TipoCardapio.comanda;
+  TipoCardapio get tipo => _tipo;
+  set tipo(TipoCardapio value) {
+    _tipo = value;
+    notifyListeners();
+  }
+
+  String _idComanda = '';
+  String get idComanda => _idComanda;
+  set idComanda(String value) {
+    _idComanda = value;
+    notifyListeners();
+  }
+
+  String _idMesa = '';
+  String get idMesa => _idMesa;
+  set idMesa(String value) {
+    _idMesa = value;
+    notifyListeners();
+  }
+
+  String _idCliente = '';
+  String get idCliente => _idCliente;
+  set idCliente(String value) {
+    _idCliente = value;
+    notifyListeners();
+  }
+
+  String _id = '';
+  String get id => _id;
+  set id(String value) {
+    _id = value;
+    notifyListeners();
+  }
+
+  String _tipodeentrega = '';
+  String get tipodeentrega => _tipodeentrega;
+  set tipodeentrega(String value) {
+    _tipodeentrega = value;
+    notifyListeners();
+  }
 
   ModeloTamanhosPizza? _tamanhosPizza;
   ModeloTamanhosPizza? get tamanhosPizza => _tamanhosPizza;
@@ -59,10 +102,11 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> listarCategorias() async {
+  Future<List<ModeloCategoria>> listarCategorias() async {
     final res = await _categoriaService.listar();
     categorias = res;
     notifyListeners();
+    return res;
   }
 
   Future<void> listarConfigBigChef() async {

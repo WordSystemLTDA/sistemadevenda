@@ -1,7 +1,7 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
-import 'package:app/src/modulos/listar_vendas/modelos/itens_insercao_listar_vendas_modelo.dart';
-import 'package:app/src/modulos/listar_vendas/modelos/listar_vendas_modelo.dart';
+import 'package:app/src/modulos/vendas/modelos/itens_insercao_listar_vendas_modelo.dart';
+import 'package:app/src/modulos/vendas/modelos/listar_vendas_modelo.dart';
 
 class ServicosListarVendas {
   final DioCliente dio;

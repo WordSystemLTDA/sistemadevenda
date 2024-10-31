@@ -142,7 +142,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                   idComanda: dados!.idComanda,
                                   idMesa: '0',
                                   idCliente: dados!.idCliente!,
-                                  idComandaPedido: widget.idComandaPedido,
+                                  id: widget.idComandaPedido,
                                 );
                               },
                             ));
@@ -154,7 +154,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                   idComanda: '0',
                                   idMesa: widget.idMesa ?? '0',
                                   idCliente: dados!.idCliente!,
-                                  idComandaPedido: widget.idComandaPedido,
+                                  id: widget.idComandaPedido,
                                 );
                               },
                             ));

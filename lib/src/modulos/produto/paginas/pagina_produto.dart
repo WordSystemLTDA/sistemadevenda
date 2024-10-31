@@ -2,7 +2,6 @@ import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
@@ -16,19 +15,11 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaProduto extends StatefulWidget {
   final ModeloProduto produto;
-  final TipoCardapio tipo;
-  final String idComanda;
-  final String idComandaPedido;
-  final String idMesa;
   final double? valorVenda;
 
   const PaginaProduto({
     super.key,
     required this.produto,
-    required this.tipo,
-    required this.idComanda,
-    required this.idComandaPedido,
-    required this.idMesa,
     this.valorVenda,
   });
 
@@ -121,8 +112,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 
   void inserirNoCarrinho() async {
-    final idComanda = widget.idComanda;
-    final idMesa = widget.idMesa;
+    final idComanda = provedorCardapio.idComanda;
+    final idMesa = provedorCardapio.idMesa;
 
     var comanda = idComanda.isEmpty ? 0 : idComanda;
     var mesa = idMesa.isEmpty ? 0 : idMesa;
@@ -190,10 +181,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     await carrinhoProvedor
         .inserir(
       itemProduto!,
-      widget.tipo.nome,
+      provedorCardapio.tipo.nome,
       mesa,
       comanda,
-      widget.idComandaPedido,
       valor,
       observacaoMesa,
       idProduto,

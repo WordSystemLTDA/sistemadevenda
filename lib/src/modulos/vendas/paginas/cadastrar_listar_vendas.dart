@@ -1,10 +1,10 @@
-import 'package:app/src/modulos/listar_vendas/modelos/salvar_listar_vendas_modelo.dart';
-import 'package:app/src/modulos/listar_vendas/paginas/widgets/dados_gerais_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/paginas/widgets/nota_referenciada_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/paginas/widgets/obs_interna_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/paginas/widgets/transportadora_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/provedores/provedores_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/modelos/salvar_vendas_modelo.dart';
+import 'package:app/src/modulos/vendas/paginas/widgets/dados_gerais_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/paginas/widgets/nota_referenciada_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/paginas/widgets/obs_interna_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/paginas/widgets/transportadora_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/provedores/provedores_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
@@ -64,7 +64,7 @@ class _CadastrarListarVendasState extends State<CadastrarListarVendas> with Tick
     final data = _dataLancamentoController.text.split('/');
 
     final res = await _provedor.inserir(
-      SalvarListarVendasModelo(
+      SalvarVendasModelo(
         id: '',
         cliente: _clienteController.text,
         nomeCliente: _nomeClienteController.text,

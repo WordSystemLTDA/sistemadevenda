@@ -5,28 +5,19 @@ import 'package:app/src/essencial/utils/enviar_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinho extends StatefulWidget {
-  final String idComanda;
-  final String idComandaPedido;
-  final String idMesa;
-  final String idCliente;
-  final TipoCardapio tipo;
-
   const PaginaCarrinho({
     super.key,
-    required this.idComanda,
-    required this.idComandaPedido,
-    required this.idCliente,
-    required this.idMesa,
-    required this.tipo,
   });
 
   @override
@@ -35,6 +26,7 @@ class PaginaCarrinho extends StatefulWidget {
 
 class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
@@ -47,8 +39,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   }
 
   void listar() async {
-    await carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
-    await servicoCardapio.listarPorId(widget.idComandaPedido, TipoCardapio.comanda, "Não").then((value) {
+    await carrinhoProvedor.listarComandasPedidos();
+    await servicoCardapio.listarPorId(provedorCardapio.id, TipoCardapio.comanda, "Não").then((value) {
       dados = value;
     });
 
@@ -63,9 +55,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
       listaIdItemComanda.add(carrinhoProvedor.itensCarrinho.listaComandosPedidos[index].id);
     }
 
-    await carrinhoProvedor.removerComandasPedidos(widget.idComanda, widget.idMesa, listaIdItemComanda).then((sucesso) {
+    await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
       if (mounted) {
-        carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+        carrinhoProvedor.listarComandasPedidos();
         Navigator.pop(context);
       }
 
@@ -146,13 +138,23 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  if (widget.tipo == TipoCardapio.mesa) {
+                  if (provedorCardapio.tipo == TipoCardapio.balcao) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PaginaFinalizarAcrescimo(
+                          idVenda: provedorCardapio.id,
+                          valor: carrinhoProvedor.itensCarrinho.precoTotal,
+                        ),
+                      ),
+                    );
+                  } else if (provedorCardapio.tipo == TipoCardapio.mesa) {
                     await servicoCardapio
                         .inserirProdutosMesa(
                       carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                      widget.idMesa,
-                      widget.idComandaPedido,
-                      widget.idCliente,
+                      provedorCardapio.idMesa,
+                      provedorCardapio.id,
+                      provedorCardapio.idCliente,
                     )
                         .then((resposta) {
                       var (sucesso, mensagem) = resposta;
@@ -170,7 +172,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         removerTodosItensCarrinho();
                         EnviarPedido.enviarPedido(
                           tipo: '1',
-                          nomeTitulo: "Mesa ${widget.idMesa}",
+                          nomeTitulo: "Mesa ${provedorCardapio.idMesa}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
@@ -178,10 +180,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         );
 
                         if (context.mounted) {
-                          if (widget.idComanda != '0') {
+                          if (provedorCardapio.idComanda != '0') {
                             Navigator.of(context).pop();
                             Navigator.of(context).pop();
-                          } else if (widget.idMesa != '0') {
+                          } else if (provedorCardapio.idMesa != '0') {
                             Navigator.of(context).pop();
                             Navigator.of(context).pop();
                           }
@@ -204,10 +206,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                     await servicoCardapio
                         .inserirProdutosComanda(
                       carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                      widget.idMesa,
-                      widget.idComandaPedido,
-                      widget.idComanda,
-                      widget.idCliente,
+                      provedorCardapio.idMesa,
+                      provedorCardapio.id,
+                      provedorCardapio.idComanda,
+                      provedorCardapio.idCliente,
                     )
                         .then((resposta) {
                       var (sucesso, mensagem) = resposta;
@@ -225,7 +227,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         removerTodosItensCarrinho();
                         EnviarPedido.enviarPedido(
                           tipo: '1',
-                          nomeTitulo: "Comanda ${widget.idComanda}",
+                          nomeTitulo: "Comanda ${provedorCardapio.idComanda}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
@@ -233,10 +235,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         );
 
                         if (context.mounted) {
-                          if (widget.idComanda != '0') {
+                          if (provedorCardapio.idComanda != '0') {
                             Navigator.of(context).pop();
                             Navigator.of(context).pop();
-                          } else if (widget.idMesa != '0') {
+                          } else if (provedorCardapio.idMesa != '0') {
                             Navigator.of(context).pop();
                             Navigator.of(context).pop();
                           }
@@ -292,9 +294,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                       return CardCarrinho(
                         item: item,
-                        idComandaPedido: widget.idComandaPedido,
-                        idComanda: widget.idComanda,
-                        idMesa: widget.idMesa,
+                        idComanda: provedorCardapio.idComanda,
+                        idMesa: provedorCardapio.idMesa,
                         value: carrinhoProvedor.itensCarrinho,
                         setarQuantidade: (increase) {
                           if (increase) {

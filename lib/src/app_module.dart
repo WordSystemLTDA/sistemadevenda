@@ -3,6 +3,8 @@ import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
+import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
@@ -11,12 +13,13 @@ import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
-import 'package:app/src/modulos/listar_vendas/provedores/provedores_listar_vendas.dart';
-import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
+import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
+import 'package:app/src/modulos/vendas/provedores/provedores_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class AppModule extends Module {
@@ -34,6 +37,13 @@ class AppModule extends Module {
     // Mesas
     i.add<ServicoMesas>(ServicoMesas.new);
     i.addSingleton<ProvedorMesas>(ProvedorMesas.new);
+
+    // Balcão
+    i.addSingleton<ProvedorBalcao>(ProvedorBalcao.new);
+    i.add<ServicoBalcao>(ServicoBalcao.new);
+
+    // FINALIZAR
+    i.add<ServicoFinalizarPagamento>(ServicoFinalizarPagamento.new);
 
     i.add<ServicosItensComanda>(ServicosItensComanda.new);
 

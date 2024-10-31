@@ -1,6 +1,5 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_bordas.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -14,19 +13,11 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaSaborBordas extends StatefulWidget {
   final ModeloProduto produto;
-  final TipoCardapio tipo;
-  final String idComanda;
-  final String idComandaPedido;
-  final String idMesa;
   final double? valorVenda;
 
   const PaginaSaborBordas({
     super.key,
     required this.produto,
-    required this.tipo,
-    required this.idComanda,
-    required this.idComandaPedido,
-    required this.idMesa,
     this.valorVenda,
   });
 
@@ -93,10 +84,6 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) {
         return PaginaProduto(
-          idComanda: widget.idComanda,
-          idComandaPedido: widget.idComandaPedido,
-          idMesa: widget.idMesa,
-          tipo: widget.tipo,
           produto: widget.produto,
           valorVenda: widget.valorVenda,
         );

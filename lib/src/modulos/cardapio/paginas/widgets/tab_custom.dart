@@ -1,5 +1,4 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
@@ -9,11 +8,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 class TabCustom extends StatefulWidget {
   final String category;
   final ModeloCategoria categoria;
-  final String? idComanda;
-  final String? idComandaPedido;
-  final String idMesa;
-  final TipoCardapio tipo;
-  const TabCustom({super.key, required this.category, required this.categoria, this.idComanda, this.idComandaPedido, required this.idMesa, required this.tipo});
+
+  const TabCustom({super.key, required this.category, required this.categoria});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
@@ -82,10 +78,6 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                               estaPesquisando: false,
                               item: item,
                               categoria: widget.categoria,
-                              tipo: widget.tipo,
-                              idComandaPedido: widget.idComandaPedido!,
-                              idComanda: widget.idComanda!,
-                              idMesa: widget.idMesa,
                             );
                           },
                         );

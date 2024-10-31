@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:app/src/modulos/listar_vendas/modelos/salvar_listar_vendas_modelo.dart';
-import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/modelos/salvar_vendas_modelo.dart';
+import 'package:app/src/modulos/vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final ValueNotifier<List<SalvarListarVendasModelo>> dados = ValueNotifier([]);
+final ValueNotifier<List<SalvarVendasModelo>> dados = ValueNotifier([]);
 
 class ProvedoresListarVendas extends ChangeNotifier {
   final ServicosListarVendas servico;
@@ -17,17 +17,17 @@ class ProvedoresListarVendas extends ChangeNotifier {
 
     final List<dynamic> res = jsonDecode(prefs.getString('listar_vendas') ?? '[]');
 
-    dados.value = List<SalvarListarVendasModelo>.from(res.map((elemento) {
-      return SalvarListarVendasModelo.fromMap(elemento);
+    dados.value = List<SalvarVendasModelo>.from(res.map((elemento) {
+      return SalvarVendasModelo.fromMap(elemento);
     }));
     notifyListeners();
   }
 
-  Future<bool> inserir(SalvarListarVendasModelo modelo) async {
+  Future<bool> inserir(SalvarVendasModelo modelo) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    final List<SalvarListarVendasModelo> dados = List<SalvarListarVendasModelo>.from(jsonDecode(prefs.getString('listar_vendas') ?? '[]').map((elemento) {
-      return SalvarListarVendasModelo.fromMap(elemento);
+    final List<SalvarVendasModelo> dados = List<SalvarVendasModelo>.from(jsonDecode(prefs.getString('listar_vendas') ?? '[]').map((elemento) {
+      return SalvarVendasModelo.fromMap(elemento);
     }));
 
     final res = await prefs.setString(

@@ -1,5 +1,5 @@
 import 'package:app/src/essencial/widgets/custom_text_field.dart';
-import 'package:app/src/modulos/listar_vendas/servicos/servicos_listar_vendas.dart';
+import 'package:app/src/modulos/vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';

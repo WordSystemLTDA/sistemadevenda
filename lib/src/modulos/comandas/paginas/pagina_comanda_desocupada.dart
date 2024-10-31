@@ -61,6 +61,14 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     }
   }
 
+  @override
+  void dispose() {
+    _mesaDestinoSearchController.dispose();
+    _clienteSearchController.dispose();
+    _obsconstroller.dispose();
+    super.dispose();
+  }
+
   void listarDados() async {
     await servicoConfigBigchef.listar().then((value) {
       setState(() {
@@ -125,7 +133,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                               idComanda: widget.id,
                               idMesa: '0',
                               idCliente: idCliente,
-                              idComandaPedido: resposta.idcomandapedido,
+                              id: resposta.idcomandapedido,
                             );
                           },
                         ));
@@ -186,7 +194,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                                 idComanda: widget.id,
                                 idMesa: '0',
                                 idCliente: idCliente,
-                                idComandaPedido: resposta.idcomandapedido,
+                                id: resposta.idcomandapedido,
                               );
                             },
                           ));

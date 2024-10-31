@@ -14,7 +14,7 @@ class ProvedorCarrinho extends ChangeNotifier {
 
   var itensCarrinho = ItensComandaModelo(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
 
-  Future<dynamic> listarComandasPedidos(String idComanda) async {
+  Future<dynamic> listarComandasPedidos() async {
     // final res = await _servicoCardapio.listarPorId(idComanda, TipoCardapio.comanda);
 
     // if (res.produtos != null && res.produtos!.isEmpty) {
@@ -65,7 +65,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     // }
   }
 
-  Future<bool> removerComandasPedidos(String idComanda, String idMesa, List<String> listaIdItemComanda) async {
+  Future<bool> removerComandasPedidos() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('carrinho', jsonEncode([]));
     return true;
@@ -76,16 +76,12 @@ class ProvedorCarrinho extends ChangeNotifier {
     tipo,
     idMesa,
     idComanda,
-    String idComandaPedido,
     valor,
     observacaoMesa,
     idProduto,
     String nomeProduto,
     quantidade,
     observacao,
-    // List<AdicionaisModelo> listaAdicionais,
-    // List<AcompanhamentosModelo> listaAcompanhamentos,
-    // TamanhosModelo? tamanhoSelecionado,
   ) async {
     final res = await _servico.inserir(
       produto,
@@ -98,13 +94,10 @@ class ProvedorCarrinho extends ChangeNotifier {
       nomeProduto,
       quantidade,
       observacao,
-      // listaAdicionais,
-      // listaAcompanhamentos,
-      // tamanhoSelecionado,
     );
 
     if (res) {
-      await listarComandasPedidos(idComandaPedido);
+      await listarComandasPedidos();
     }
 
     notifyListeners();
@@ -115,7 +108,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     final res = await _servico.lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
 
     if (res) {
-      await listarComandasPedidos(idComandaPedido);
+      await listarComandasPedidos();
     }
 
     notifyListeners();

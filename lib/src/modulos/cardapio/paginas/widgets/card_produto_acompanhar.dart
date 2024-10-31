@@ -249,13 +249,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                                       const SizedBox(width: 10),
                                                       TextButton(
                                                         onPressed: () async {
-                                                          await carrinhoProvedor.removerComandasPedidos(
-                                                            widget.idComanda,
-                                                            widget.idMesa,
-                                                            [widget.item.id],
-                                                          ).then((sucesso) {
+                                                          await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
                                                             if (context.mounted) {
-                                                              carrinhoProvedor.listarComandasPedidos(widget.idComandaPedido);
+                                                              carrinhoProvedor.listarComandasPedidos();
                                                               Navigator.pop(context);
                                                             }
 

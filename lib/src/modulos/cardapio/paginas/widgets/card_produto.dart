@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -17,10 +16,6 @@ class CardProduto extends StatefulWidget {
   final bool estaPesquisando;
   final SearchController? searchController;
   final ModeloProduto item;
-  final TipoCardapio tipo;
-  final String idComanda;
-  final String idComandaPedido;
-  final String idMesa;
   final ModeloCategoria? categoria;
 
   const CardProduto({
@@ -28,10 +23,6 @@ class CardProduto extends StatefulWidget {
     this.searchController,
     required this.estaPesquisando,
     required this.item,
-    required this.tipo,
-    required this.idComanda,
-    required this.idComandaPedido,
-    required this.idMesa,
     required this.categoria,
   });
 
@@ -61,8 +52,8 @@ class _CardProdutoState extends State<CardProduto> {
             child: InkWell(
               key: widget.key,
               onTap: () async {
-                final idComanda = widget.idComanda;
-                final idMesa = widget.idMesa;
+                final idComanda = provedorCardapio.idComanda;
+                final idMesa = provedorCardapio.idMesa;
 
                 var comanda = idComanda.isEmpty ? 0 : idComanda;
                 var mesa = idMesa.isEmpty ? 0 : idMesa;
@@ -98,7 +89,7 @@ class _CardProdutoState extends State<CardProduto> {
 
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) {
-                      return PaginaProduto(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa, tipo: widget.tipo, produto: item);
+                      return PaginaProduto(produto: item);
                     },
                   ));
 
@@ -148,12 +139,6 @@ class _CardProdutoState extends State<CardProduto> {
                     categoria: item.categoria,
                     nomeCategoria: item.nomeCategoria,
                     habilTipo: item.habilTipo,
-                    // cortesias: item.cortesias,
-                    // kits: item.kits,
-                    // adicionais: item.adicionais,
-                    // acompanhamentos: item.acompanhamentos,
-                    // tamanhos: item.tamanhos,
-                    // itensRetiradas: item.itensRetiradas,
                     ingredientes: item.ingredientes,
                     ativarCustoDeProducao: item.ativarCustoDeProducao,
                     ativarEdQtd: item.ativarEdQtd,
@@ -170,10 +155,9 @@ class _CardProdutoState extends State<CardProduto> {
                     tamanhoLista: item.tamanhoLista,
                     quantidade: 1,
                   ),
-                  widget.tipo.nome,
+                  provedorCardapio.tipo.nome,
                   mesa,
                   comanda,
-                  widget.idComandaPedido,
                   item.valorVenda,
                   '',
                   item.id,
@@ -203,13 +187,7 @@ class _CardProdutoState extends State<CardProduto> {
 
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) {
-                    return PaginaProduto(
-                      idComanda: widget.idComanda,
-                      idComandaPedido: widget.idComandaPedido,
-                      idMesa: widget.idMesa,
-                      tipo: widget.tipo,
-                      produto: item,
-                    );
+                    return PaginaProduto(produto: item);
                   },
                 ));
               },
