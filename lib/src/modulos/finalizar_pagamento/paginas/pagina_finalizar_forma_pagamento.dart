@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_parcelamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +12,6 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 
 class PaginaFinalizarFormaPagamento extends StatefulWidget {
-  final String idVenda;
   final double totalReceber;
   final double desconto;
   final String acrescimo;
@@ -21,7 +21,6 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
 
   const PaginaFinalizarFormaPagamento({
     super.key,
-    required this.idVenda,
     required this.totalReceber,
     required this.desconto,
     required this.acrescimo,
@@ -35,6 +34,8 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
 }
 
 class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPagamento> {
+  var provedor = Modular.get<ProvedorFinalizarPagamento>();
+
   final ValueNotifier<List<BancoPixModelo>> listaBancoPix = ValueNotifier([]);
   final ValueNotifier<bool> finalizando = ValueNotifier(false);
   final List<TextEditingController> listaBancosControllers = [];
@@ -45,7 +46,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
   String dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)));
 
-  int _selecionado = 1;
+  final int _selecionado = 1;
   double _totalRegistrado = 0;
   double _desconto = 0;
   bool _carregando = true;
@@ -111,82 +112,83 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(5)),
               ),
-              backgroundColor: _desconto >= 0 ? null : const Color.fromARGB(255, 237, 232, 246),
-              onPressed: _desconto < 0
-                  ? null
-                  : () async {
-                      if (widget.pagamentoselecionado == '2') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PaginaParcelamento(
-                              idVenda: widget.idVenda,
-                              valor: double.tryParse(_dinheiroController.text) ?? 0,
-                              valorFalta: (_desconto * -1).toStringAsFixed(2),
-                              valorTroco: _desconto.abs().toStringAsFixed(2),
-                              // dinheiro: _dinheiroController.text,
-                              // promissoria: _promissoriaController.text,
-                              // cartaoDebito: _cartaoDebitoController.text,
-                              // cartaoCredito: _cartaoCreditoController.text,
-                              acrescimo: widget.acrescimo,
-                              desconto: widget.desconto.toStringAsFixed(2),
-                              descontoPercentual: widget.descontoPercentual,
-                              totalPedido: widget.totalPedido,
-                              totalReceber: widget.totalReceber.toStringAsFixed(2),
-                            ),
-                          ),
-                        );
-                      } else {
-                        if (finalizandoValue == true) return;
+              // backgroundColor: _desconto >= 0 ? null : const Color.fromARGB(255, 237, 232, 246),
+              backgroundColor: const Color.fromARGB(255, 237, 232, 246),
+              onPressed: () async {
+                if (widget.pagamentoselecionado == '2') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PaginaParcelamento(
+                        idVenda: provedor.idVenda,
+                        valor: double.tryParse(_dinheiroController.text) ?? 0,
+                        valorFalta: (_desconto * -1).toStringAsFixed(2),
+                        valorTroco: _desconto.abs().toStringAsFixed(2),
+                        // dinheiro: _dinheiroController.text,
+                        // promissoria: _promissoriaController.text,
+                        // cartaoDebito: _cartaoDebitoController.text,
+                        // cartaoCredito: _cartaoCreditoController.text,
+                        acrescimo: widget.acrescimo,
+                        desconto: widget.desconto.toStringAsFixed(2),
+                        descontoPercentual: widget.descontoPercentual,
+                        totalPedido: widget.totalPedido,
+                        totalReceber: widget.totalReceber.toStringAsFixed(2),
+                      ),
+                    ),
+                  );
+                } else {
+                  if (finalizandoValue == true) return;
 
-                        finalizando.value = true;
-                        print(provedorCardapio.idCliente);
-                        var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
-                              provedorCardapio.id,
-                              provedorCardapio.idComanda,
-                              provedorCardapio.idMesa,
-                              provedorCardapio.idCliente,
-                              _dinheiroController.text, // valorLancamento,
-                              widget.totalReceber.toStringAsFixed(2), // valorOriginal,
-                              int.parse(widget.pagamentoselecionado),
-                              0, // quantidadePessoas,
-                              '0', // subTotal,
-                              dataOriginal, // dataLancamento,
-                              '0', // parcelas
-                              [], // parcelasLista
-                              provedorCardapio.tipo,
-                              _desconto.abs().toStringAsFixed(2), // valortroco,
-                              '0', // TODO: fazer delivery (valorentrega)
-                              '0', // valoresProduto,
-                              false, // novo,
-                              provedorCardapio.tipodeentrega,
-                              carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                              widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
-                            );
+                  finalizando.value = true;
 
-                        if (sucesso) {
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                            Navigator.pop(context);
+                  var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
+                        provedor.idVenda,
+                        provedorCardapio.idComanda,
+                        provedorCardapio.idMesa,
+                        provedorCardapio.idCliente,
+                        _dinheiroController.text, // valorLancamento,
+                        widget.totalReceber.toStringAsFixed(2), // valorOriginal,
+                        int.parse(widget.pagamentoselecionado),
+                        0, // quantidadePessoas,
+                        widget.totalReceber.toStringAsFixed(2), // subTotal,
+                        dataOriginal, // dataLancamento,
+                        '0', // parcelas
+                        [], // parcelasLista
+                        provedorCardapio.tipo,
+                        _desconto.abs().toStringAsFixed(2), // valortroco,
+                        '0', // TODO: fazer delivery (valorentrega)
+                        carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
+                        false, // novo,
+                        provedorCardapio.tipodeentrega,
+                        carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                        widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
+                      );
 
-                            if (widget.idVenda.isEmpty || widget.idVenda == '0') {
-                              Navigator.pop(context);
-                            }
-                          }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(mensagem),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                          ));
-                        }
-
-                        finalizando.value = false;
+                  if (sucesso) {
+                    if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
+                      carrinhoProvedor.removerComandasPedidos();
+                      if (context.mounted) {
+                        Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
                       }
-                    },
+                    } else {
+                      if (context.mounted) {
+                        provedor.idVenda = idvenda;
+                        provedor.valor = widget.totalReceber - double.parse(_dinheiroController.text);
+
+                        Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+                      }
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(mensagem),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                    ));
+                  }
+
+                  finalizando.value = false;
+                }
+              },
               label: SizedBox(
                 width: MediaQuery.of(context).size.width - 70,
                 child: Visibility(
@@ -287,155 +289,155 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                     padding: const EdgeInsets.only(right: 10, left: 10),
                     children: [
                       const SizedBox(height: 15),
-                      Column(
+                      const Column(
                         children: [
                           // InformacoesApp.getLogoEscuraApp(context, width: 200, height: 100),
                           // const SizedBox(height: 18),
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                width: 115,
-                                height: 120,
-                                decoration: const BoxDecoration(
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      offset: Offset(0, 3),
-                                      blurRadius: 7,
-                                      spreadRadius: 1,
-                                      color: Colors.black54,
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: _selecionado == 1
-                                      ? Theme.of(context).brightness == Brightness.light
-                                          ? Theme.of(context).colorScheme.primary
-                                          // ? const Color(0xFF4f0073)
-                                          : Theme.of(context).colorScheme.inversePrimary
-                                      : Theme.of(context).brightness == Brightness.light
-                                          ? Colors.white
-                                          : const Color(0xff1c1c1c),
-                                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                  child: InkWell(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                      setState(() => _selecionado = 1);
-                                    },
-                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Não Fiscal',
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _selecionado == 1 ? Colors.white : null),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Icon(Icons.add_shopping_cart, size: 40, color: _selecionado == 1 ? Colors.white : null),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 115,
-                                height: 120,
-                                decoration: const BoxDecoration(
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      offset: Offset(0, 3),
-                                      blurRadius: 7,
-                                      spreadRadius: 1,
-                                      color: Colors.black54,
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: _selecionado == 2
-                                      ? Theme.of(context).brightness == Brightness.light
-                                          ? Theme.of(context).colorScheme.primary
-                                          // ? const Color(0xFF4f0073)
-                                          : Theme.of(context).colorScheme.inversePrimary
-                                      : Theme.of(context).brightness == Brightness.light
-                                          ? Colors.white
-                                          : const Color(0xff1c1c1c),
-                                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                  child: InkWell(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                      setState(() => _selecionado = 2);
-                                    },
-                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Emitir NFe',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: _selecionado == 2 ? Colors.white : null,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Icon(Icons.shopping_cart_outlined, size: 40, color: _selecionado == 2 ? Colors.white : null),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                width: 115,
-                                height: 120,
-                                decoration: const BoxDecoration(
-                                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      offset: Offset(0, 3),
-                                      blurRadius: 7,
-                                      spreadRadius: 1,
-                                      color: Colors.black54,
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: _selecionado == 3
-                                      ? Theme.of(context).brightness == Brightness.light
-                                          ? Theme.of(context).colorScheme.primary
-                                          : Theme.of(context).colorScheme.inversePrimary
-                                      : Theme.of(context).brightness == Brightness.light
-                                          ? Colors.white
-                                          : const Color(0xff1c1c1c),
-                                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                  child: InkWell(
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                      setState(() => _selecionado = 3);
-                                    },
-                                    borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Emitir NFCe',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: _selecionado == 3 ? Colors.white : null,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Icon(Icons.shopping_cart_checkout_outlined, size: 40, color: _selecionado == 3 ? Colors.white : null),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: [
+                          //     Container(
+                          //       width: 115,
+                          //       height: 120,
+                          //       decoration: const BoxDecoration(
+                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             offset: Offset(0, 3),
+                          //             blurRadius: 7,
+                          //             spreadRadius: 1,
+                          //             color: Colors.black54,
+                          //           ),
+                          //         ],
+                          //       ),
+                          //       child: Material(
+                          //         color: _selecionado == 1
+                          //             ? Theme.of(context).brightness == Brightness.light
+                          //                 ? Theme.of(context).colorScheme.primary
+                          //                 // ? const Color(0xFF4f0073)
+                          //                 : Theme.of(context).colorScheme.inversePrimary
+                          //             : Theme.of(context).brightness == Brightness.light
+                          //                 ? Colors.white
+                          //                 : const Color(0xff1c1c1c),
+                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //         child: InkWell(
+                          //           onTap: () {
+                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          //             setState(() => _selecionado = 1);
+                          //           },
+                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //           child: Column(
+                          //             mainAxisAlignment: MainAxisAlignment.center,
+                          //             children: [
+                          //               Text(
+                          //                 'Não Fiscal',
+                          //                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _selecionado == 1 ? Colors.white : null),
+                          //               ),
+                          //               const SizedBox(height: 10),
+                          //               Icon(Icons.add_shopping_cart, size: 40, color: _selecionado == 1 ? Colors.white : null),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //     Container(
+                          //       width: 115,
+                          //       height: 120,
+                          //       decoration: const BoxDecoration(
+                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             offset: Offset(0, 3),
+                          //             blurRadius: 7,
+                          //             spreadRadius: 1,
+                          //             color: Colors.black54,
+                          //           ),
+                          //         ],
+                          //       ),
+                          //       child: Material(
+                          //         color: _selecionado == 2
+                          //             ? Theme.of(context).brightness == Brightness.light
+                          //                 ? Theme.of(context).colorScheme.primary
+                          //                 // ? const Color(0xFF4f0073)
+                          //                 : Theme.of(context).colorScheme.inversePrimary
+                          //             : Theme.of(context).brightness == Brightness.light
+                          //                 ? Colors.white
+                          //                 : const Color(0xff1c1c1c),
+                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //         child: InkWell(
+                          //           onTap: () {
+                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          //             setState(() => _selecionado = 2);
+                          //           },
+                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //           child: Column(
+                          //             mainAxisAlignment: MainAxisAlignment.center,
+                          //             children: [
+                          //               Text(
+                          //                 'Emitir NFe',
+                          //                 style: TextStyle(
+                          //                   fontSize: 16,
+                          //                   fontWeight: FontWeight.bold,
+                          //                   color: _selecionado == 2 ? Colors.white : null,
+                          //                 ),
+                          //               ),
+                          //               const SizedBox(height: 10),
+                          //               Icon(Icons.shopping_cart_outlined, size: 40, color: _selecionado == 2 ? Colors.white : null),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //     Container(
+                          //       width: 115,
+                          //       height: 120,
+                          //       decoration: const BoxDecoration(
+                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             offset: Offset(0, 3),
+                          //             blurRadius: 7,
+                          //             spreadRadius: 1,
+                          //             color: Colors.black54,
+                          //           ),
+                          //         ],
+                          //       ),
+                          //       child: Material(
+                          //         color: _selecionado == 3
+                          //             ? Theme.of(context).brightness == Brightness.light
+                          //                 ? Theme.of(context).colorScheme.primary
+                          //                 : Theme.of(context).colorScheme.inversePrimary
+                          //             : Theme.of(context).brightness == Brightness.light
+                          //                 ? Colors.white
+                          //                 : const Color(0xff1c1c1c),
+                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //         child: InkWell(
+                          //           onTap: () {
+                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          //             setState(() => _selecionado = 3);
+                          //           },
+                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                          //           child: Column(
+                          //             mainAxisAlignment: MainAxisAlignment.center,
+                          //             children: [
+                          //               Text(
+                          //                 'Emitir NFCe',
+                          //                 style: TextStyle(
+                          //                   fontSize: 16,
+                          //                   fontWeight: FontWeight.bold,
+                          //                   color: _selecionado == 3 ? Colors.white : null,
+                          //                 ),
+                          //               ),
+                          //               const SizedBox(height: 10),
+                          //               Icon(Icons.shopping_cart_checkout_outlined, size: 40, color: _selecionado == 3 ? Colors.white : null),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
                           // const Text('Desconto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                           // const SizedBox(height: 20),
                           // const Text('Você pode dar desconto em percentual\nou até mesmo em Valor.', style: TextStyle(fontSize: 15), textAlign: TextAlign.center),

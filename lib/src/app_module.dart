@@ -13,6 +13,7 @@ import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
@@ -43,6 +44,7 @@ class AppModule extends Module {
     i.add<ServicoBalcao>(ServicoBalcao.new);
 
     // FINALIZAR
+    i.addSingleton<ProvedorFinalizarPagamento>(ProvedorFinalizarPagamento.new);
     i.add<ServicoFinalizarPagamento>(ServicoFinalizarPagamento.new);
 
     i.add<ServicosItensComanda>(ServicosItensComanda.new);

@@ -75,6 +75,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         icone: const Icon(Icons.table_bar_outlined, size: 40),
                         onPressed: () {
                           Navigator.of(context).push(MaterialPageRoute(
+                            settings: const RouteSettings(name: 'PaginaMesas'),
                             builder: (context) {
                               return const PaginaMesas();
                             },
@@ -86,6 +87,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         icone: const Icon(Icons.fact_check_outlined, size: 40),
                         onPressed: () {
                           Navigator.of(context).push(MaterialPageRoute(
+                            settings: const RouteSettings(name: 'PaginaComandas'),
                             builder: (context) {
                               return const PaginaComandas();
                             },
@@ -97,6 +99,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         icone: const Icon(Icons.shopping_cart_outlined, size: 40),
                         onPressed: () {
                           Navigator.of(context).push(MaterialPageRoute(
+                            settings: const RouteSettings(name: 'PaginaBalcao'),
                             builder: (context) {
                               return const PaginaBalcao();
                             },

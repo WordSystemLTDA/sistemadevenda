@@ -10,6 +10,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -138,14 +139,17 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
+                  var provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
+
+                  provedorFinalizarPagamento.idVenda = provedorCardapio.id;
+                  provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
+
                   if (provedorCardapio.tipo == TipoCardapio.balcao) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PaginaFinalizarAcrescimo(
-                          idVenda: provedorCardapio.id,
-                          valor: carrinhoProvedor.itensCarrinho.precoTotal,
-                        ),
+                        settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
+                        builder: (context) => const PaginaFinalizarAcrescimo(),
                       ),
                     );
                   } else if (provedorCardapio.tipo == TipoCardapio.mesa) {

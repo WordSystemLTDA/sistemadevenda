@@ -1,11 +1,11 @@
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaSelecionarPagamento extends StatefulWidget {
-  final String idVenda;
   final double totalReceber;
   final double desconto;
   final String acrescimo;
@@ -14,7 +14,6 @@ class PaginaSelecionarPagamento extends StatefulWidget {
 
   const PaginaSelecionarPagamento({
     super.key,
-    required this.idVenda,
     required this.totalReceber,
     required this.desconto,
     required this.acrescimo,
@@ -85,7 +84,6 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
             context,
             MaterialPageRoute(
               builder: (context) => PaginaFinalizarFormaPagamento(
-                idVenda: widget.idVenda,
                 totalReceber: widget.totalReceber,
                 desconto: widget.desconto,
                 acrescimo: widget.acrescimo,
@@ -104,47 +102,69 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       body: Visibility(
         visible: carregando == false,
         replacement: const Center(child: CircularProgressIndicator()),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ListView.builder(
-                shrinkWrap: true,
-                itemCount: bancos.length,
-                itemBuilder: (context, index) {
-                  var item = bancos[index];
-
-                  return SizedBox(
-                    width: 130,
-                    height: 75,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: ElevatedButton(
-                        style: ButtonStyle(
-                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5))),
-                          backgroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.green) : null,
-                          foregroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.white) : null,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            pagamentoSelecionado = item.id;
-                          });
-                        },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.attach_money_outlined),
-                            Text('[${item.id}] ${item.nome}'),
-                          ],
-                        ),
-                      ),
+        child: Stack(
+          children: [
+            Positioned(
+              bottom: 120,
+              right: 20,
+              left: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
+                  Text(
+                    widget.totalReceber.obterReal(),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: bancos.length,
+                    itemBuilder: (context, index) {
+                      var item = bancos[index];
+
+                      return SizedBox(
+                        width: 130,
+                        height: 75,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: ElevatedButton(
+                            style: ButtonStyle(
+                              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5))),
+                              backgroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.green) : null,
+                              foregroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.white) : null,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                pagamentoSelecionado = item.id;
+                              });
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.attach_money_outlined),
+                                Text('[${item.id}] ${item.nome}'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

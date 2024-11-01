@@ -28,7 +28,6 @@ class AppWidget extends StatelessWidget {
               return const PaginaLogin();
             }
           },
-          // routerConfig: Modular.routerConfig,
         );
       },
     );

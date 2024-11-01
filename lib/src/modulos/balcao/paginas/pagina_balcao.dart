@@ -58,15 +58,15 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           shrinkWrap: true,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                            mainAxisExtent: 100,
-                            mainAxisSpacing: 2,
-                            crossAxisSpacing: 2,
-                          ),
+                          // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          //   crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
+                          //   mainAxisExtent: 100,
+                          //   mainAxisSpacing: 2,
+                          //   crossAxisSpacing: 2,
+                          // ),
                           scrollDirection: Axis.vertical,
                           itemCount: provedor.dados.length,
                           padding: const EdgeInsets.only(top: 5, bottom: 10),
