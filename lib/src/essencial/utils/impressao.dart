@@ -1,23 +1,111 @@
 import 'dart:convert';
 
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class Impressao {
-  static void enviarImpressao(String? idComanda, String? idMesa) async {
-    final channel = WebSocketChannel.connect(
-      Uri.parse('ws://localhost:9980/chat'),
-    );
+  static Future<bool> enviarImpressao({
+    List<ModeloNomeLancamento> nomelancamento = const [],
+    List<ModeloProduto> produtos = const [],
+    String tipo = '1',
+    String numeroPedido = '',
+    String nomeCliente = '',
+    String nomeEmpresa = '',
+    String comanda = '',
+    String permanencia = '',
+    String somaValorHistorico = '',
+    String celularEmpresa = '',
+    String cnpjEmpresa = '',
+    String enderecoEmpresa = '',
+    String total = '',
+    String local = '',
+    String valorentrega = '',
+    String tipodeentrega = '',
+    String celularCliente = '',
+    String enderecoCliente = '',
+    String valortroco = '',
+    String numeroCliente = '',
+    String bairroCliente = '',
+    String complementoCliente = '',
+    String cidadeCliente = '',
+  }) async {
+    var cliente = Modular.get<Client>();
+    var usuario = Modular.get<UsuarioProvedor>();
 
-    await channel.ready.then((_) {
-      channel.stream.listen((message) {
-        var data = {
-          'idComanda': idComanda,
-          'idMesa': idMesa,
-        };
+    final ConfigSharedPreferences config = ConfigSharedPreferences();
+    var conexao = await config.getConexao();
 
-        channel.sink.add(jsonEncode(data));
-        channel.sink.close();
-      });
-    });
+    if (cliente.connected == false) {
+      var sucessoConexao = await cliente.connect(conexao!.servidor, int.parse(conexao.porta));
+
+      if (sucessoConexao == false) {
+        return false;
+      }
+    }
+
+    // pedido
+    if (tipo == '1') {
+      cliente.write(jsonEncode({
+        'tipo': tipo,
+        'nomeConexao': usuario.usuario!.nome ?? 'Sem Nome',
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'comanda': comanda,
+        'numeroPedido': numeroPedido,
+        'nomeCliente': nomeCliente,
+        'nomeEmpresa': nomeEmpresa,
+        'tipodeentrega': tipodeentrega,
+        'local': local,
+      }));
+
+      // conta
+    } else if (tipo == '2') {
+      cliente.write(jsonEncode({
+        'tipo': tipo,
+        'nomeConexao': usuario.usuario!.nome ?? 'Sem Nome',
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+        'somaValorHistorico': somaValorHistorico,
+        'celularEmpresa': celularEmpresa,
+        'cnpjEmpresa': cnpjEmpresa,
+        'enderecoEmpresa': enderecoEmpresa,
+        'nomeEmpresa': nomeEmpresa,
+        'numeroPedido': numeroPedido,
+        'total': total,
+        'local': local,
+        'permanencia': permanencia,
+        'valorentrega': valorentrega,
+        'tipodeentrega': tipodeentrega,
+      }));
+    } else if (tipo == '3') {
+      cliente.write(jsonEncode({
+        'tipo': tipo,
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'nomelancamento': nomelancamento,
+        'somaValorHistorico': somaValorHistorico,
+        'celularEmpresa': celularEmpresa,
+        'cnpjEmpresa': cnpjEmpresa,
+        'enderecoEmpresa': enderecoEmpresa,
+        'nomeEmpresa': nomeEmpresa,
+        'total': total,
+        'permanencia': permanencia,
+        'valorentrega': valorentrega,
+        'numeroPedido': numeroPedido,
+        'tipodeentrega': tipodeentrega,
+        'nomeCliente': nomeCliente,
+        'celularCliente': celularCliente,
+        'enderecoCliente': enderecoCliente,
+        'valortroco': valortroco,
+        'numeroCliente': numeroCliente,
+        'bairroCliente': bairroCliente,
+        'complementoCliente': complementoCliente,
+        'cidadeCliente': cidadeCliente,
+      }));
+    }
+
+    return true;
   }
 }

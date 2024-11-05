@@ -35,6 +35,7 @@ class Client extends ChangeNotifier {
           'tipo': 'Conectou',
           'nomeConexao': usuario.usuario!.nome ?? 'Sem Nome',
         }));
+        await Future.delayed(const Duration(seconds: 1));
       }
 
       notifyListeners();

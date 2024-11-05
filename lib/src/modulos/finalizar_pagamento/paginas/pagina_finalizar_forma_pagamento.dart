@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
+import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
@@ -35,18 +37,17 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
 
 class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPagamento> {
   var provedor = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   final ValueNotifier<List<BancoPixModelo>> listaBancoPix = ValueNotifier([]);
   final ValueNotifier<bool> finalizando = ValueNotifier(false);
   final List<TextEditingController> listaBancosControllers = [];
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   final _dinheiroController = TextEditingController();
 
   String dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)));
 
-  final int _selecionado = 1;
   double _totalRegistrado = 0;
   double _desconto = 0;
   bool _carregando = true;
@@ -133,6 +134,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         descontoPercentual: widget.descontoPercentual,
                         totalPedido: widget.totalPedido,
                         totalReceber: widget.totalReceber.toStringAsFixed(2),
+                        pagamentoselecionado: widget.pagamentoselecionado,
                       ),
                     ),
                   );
@@ -166,7 +168,34 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
                   if (sucesso) {
                     if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
+                      var provedorBalcao = Modular.get<ProvedorBalcao>();
+                      await provedorBalcao.listar();
+
+                      var vendaBalcao = provedorBalcao.dados.where((element) => element.id == provedorCardapio.id).firstOrNull;
+
+                      if (vendaBalcao != null) {
+                        var sucessoAoImprimir = await Impressao.enviarImpressao(
+                          tipo: '1',
+                          comanda: "Balcão ${provedorCardapio.id}",
+                          numeroPedido: vendaBalcao.numeropedido,
+                          nomeCliente: vendaBalcao.nomecliente,
+                          nomeEmpresa: vendaBalcao.nomeEmpresa,
+                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                        );
+
+                        if (sucessoAoImprimir == false) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                              backgroundColor: Colors.red,
+                            ));
+                          }
+                        }
+                      }
+
                       carrinhoProvedor.removerComandasPedidos();
+
                       if (context.mounted) {
                         Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
                       }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
-import 'package:app/src/essencial/utils/enviar_pedido.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
@@ -203,13 +203,13 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                 IconButton(
                                   onPressed: () {
                                     if (widget.dados != null) {
-                                      EnviarPedido.enviarPedido(
+                                      Impressao.enviarImpressao(
                                         tipo: '1',
-                                        nomeTitulo: widget.dados!.nome!,
+                                        comanda: widget.dados!.nome!,
                                         numeroPedido: widget.dados!.numeroPedido!,
                                         nomeCliente: widget.dados!.nomeCliente!,
                                         nomeEmpresa: widget.dados!.nomeEmpresa!,
-                                        produtosNovos: [item],
+                                        produtos: [item],
                                       );
                                     }
                                   },

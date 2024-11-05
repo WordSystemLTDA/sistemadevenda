@@ -1,22 +1,23 @@
+import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
+import 'package:app/src/modulos/balcao/paginas/pagina_detalhes_da_venda_balcao.dart';
+import 'package:app/src/modulos/balcao/paginas/widgets/modal_cancelar_venda.dart';
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 
 class CardVendasBalcao extends StatefulWidget {
   final ModeloVendasBalcao item;
-  // final Function(String idCliente) aoClicarExcluir;
-  // final Function(ClienteModelo item) aoClicarHistAten;
-  // final Function(ClienteModelo item) editarDadosPessoais;
-  // final Function(ClienteModelo item) editarAtivo;
+  final Function() listar;
 
   const CardVendasBalcao({
     super.key,
     required this.item,
-    // required this.aoClicarExcluir,
-    // required this.aoClicarHistAten,
-    // required this.editarDadosPessoais,
-    // required this.editarAtivo,
+    required this.listar,
   });
 
   @override
@@ -24,9 +25,32 @@ class CardVendasBalcao extends StatefulWidget {
 }
 
 class _CardVendasBalcaoState extends State<CardVendasBalcao> {
-  double tamanhoCard = 110;
+  var servico = Modular.get<ServicoBalcao>();
+
   final SearchController pesquisaAtend = SearchController();
   final TextEditingController nomeAten = TextEditingController();
+
+  @override
+  void dispose() {
+    pesquisaAtend.dispose();
+    nomeAten.dispose();
+    super.dispose();
+  }
+
+  Future<void> cancelarVenda(String justificativa) async {
+    await servico.excluir(widget.item.id, justificativa).then((value) {
+      if (value.sucesso == false) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(value.mensagem),
+          ));
+        }
+      }
+    });
+
+    widget.listar();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,14 +58,18 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
 
     var item = widget.item;
     return SizedBox(
-      height: 110,
+      height: 115,
       child: Card(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: InkWell(
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) {
+                    return PaginaDetalhesDaVendaBalcao(idVenda: item.id);
+                  }));
+                },
                 child: Row(
                   children: [
                     Container(
@@ -73,6 +101,7 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                           ),
                           Text(item.nomeusuario, style: const TextStyle(fontSize: 12)),
                           Text(DateFormat('dd/MM/yyyy hh:ss').format(DateTime.parse(item.dataHora)), style: const TextStyle(fontSize: 12)),
+                          const SizedBox(height: 5),
                           Text(item.tipodeentrega, style: const TextStyle(fontSize: 12)),
                           Text((double.tryParse(item.subtotal) ?? 0).obterReal()),
                         ],
@@ -82,301 +111,187 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                 ),
               ),
             ),
-            Column(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    borderRadius: const BorderRadius.only(topRight: Radius.circular(8)),
-                    onTap: () async {
-                      // await servico.editarAtivo(item.id, item.ativo).then((sucesso) {
-                      //   if (sucesso) {
-                      //     setState(() {
-                      //       item.ativo = item.ativo == 'Sim' ? 'Não' : 'Sim';
-                      //     });
-
-                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      //       content: Text("Cliente editado com sucesso."),
-                      //       backgroundColor: Colors.green,
-                      //       showCloseIcon: true,
-                      //     ));
-                      //   }
-                      // });
-                    },
-                    child: SizedBox(
-                      width: 50,
-                      child: item.status == 'Sim' ? const Icon(Icons.check_box_outlined) : const Icon(Icons.check_box_outline_blank_rounded),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return ModalCancelarVenda(
+                              aoSalvar: (justificativa) async {
+                                await cancelarVenda(justificativa);
+                              },
+                            );
+                          },
+                        );
+                      },
+                      child: const SizedBox(width: 50, child: Icon(Icons.delete_outline_outlined)),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     builder: (context) => PaginaClienteEditorDadosPessoais(
-                      //       dadosCliente: item,
-                      //     ),
-                      //   ),
-                      // );
-                    },
-                    child: const SizedBox(width: 50, child: Icon(Icons.edit)),
-                  ),
-                ),
-                Expanded(
-                  child: MenuAnchor(
-                    builder: (BuildContext context, MenuController controller, Widget? child) {
-                      return SizedBox(
-                        width: 50,
-                        child: InkWell(
-                          borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
-                          onTap: () {
-                            if (controller.isOpen) {
-                              controller.close();
-                            } else {
-                              controller.open();
+                  Expanded(
+                    child: MenuAnchor(
+                      builder: (BuildContext context, MenuController controller, Widget? child) {
+                        return SizedBox(
+                          width: 50,
+                          child: InkWell(
+                            borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
+                            onTap: () {
+                              if (controller.isOpen) {
+                                controller.close();
+                              } else {
+                                controller.open();
+                              }
+                            },
+                            child: const Icon(Icons.more_vert),
+                          ),
+                        );
+                      },
+                      menuChildren: [
+                        MenuItemButton(
+                          onPressed: () async {
+                            var informacoes = await servico.listarPorId(widget.item.id);
+
+                            var sucessoAoImprimir = await Impressao.enviarImpressao(
+                              tipo: '1',
+                              comanda: "Balcão ${item.id}",
+                              numeroPedido: item.numeropedido,
+                              nomeCliente: item.nomecliente,
+                              nomeEmpresa: item.nomeEmpresa,
+                              produtos: informacoes.produtos,
+                              tipodeentrega: informacoes.informacoes.tipodeentrega,
+                            );
+
+                            if (sucessoAoImprimir == false) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                                  backgroundColor: Colors.red,
+                                ));
+                              }
                             }
                           },
-                          child: const Icon(Icons.more_vert),
+                          child: const Row(
+                            children: [
+                              SizedBox(width: 15),
+                              Text("Imprimir Preparo"),
+                              SizedBox(width: 15),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                    menuChildren: const [
-                      // MenuItemButton(
-                      //   onPressed: () {
-                      //     Navigator.push(context, MaterialPageRoute(builder: (context) => PaginaEndereco(idCliente: item.id)));
-                      //   },
-                      //   child: const Row(
-                      //     children: [
-                      //       SizedBox(width: 15),
-                      //       Text("Endereços"),
-                      //       SizedBox(width: 15),
-                      //     ],
-                      //   ),
-                      // ),
-                      // MenuItemButton(
-                      //   onPressed: () {
-                      //     // Navigator.push(
-                      //     //   context,
-                      //     //   MaterialPageRoute(
-                      //     //     builder: (context) => PaginaClienteResponsavel(
-                      //     //       idClientes: item.id,
-                      //     //       eCpf: item.tipoPessoa == 'Física',
-                      //     //     ),
-                      //     //   ),
-                      //     // );
-                      //   },
-                      //   child: item.tipoPessoa == 'Física'
-                      //       ? const Row(
-                      //           children: [
-                      //             SizedBox(width: 15),
-                      //             Text("Responsável do Cliente"),
-                      //             SizedBox(width: 15),
-                      //           ],
-                      //         )
-                      //       : const Row(
-                      //           children: [
-                      //             SizedBox(width: 15),
-                      //             Text("Responsável pela Empresa"),
-                      //             SizedBox(width: 15),
-                      //           ],
-                      //         ),
-                      // ),
-                      // const Divider(height: 0),
-                      // MenuItemButton(
-                      //   onPressed: () {
-                      //     showDialog<String>(
-                      //       context: context,
-                      //       builder: (BuildContext context) {
-                      //         return AlertDialog(
-                      //           title: const Text('Exclusão'),
-                      //           content: const SingleChildScrollView(
-                      //             child: ListBody(
-                      //               children: <Widget>[
-                      //                 Text("Deseja realmente excluir esse Cliente? "),
-                      //               ],
-                      //             ),
-                      //           ),
-                      //           actions: <Widget>[
-                      //             TextButton(
-                      //               child: const Text('Cancelar'),
-                      //               onPressed: () {
-                      //                 Navigator.of(context).pop();
-                      //               },
-                      //             ),
-                      //             TextButton(
-                      //               child: const Text('Excluir'),
-                      //               onPressed: () async {
-                      //                 await servico.excluir(item.id).then((sucesso) {
-                      //                   if (sucesso) {
-                      //                     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      //                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      //                       content: Text("Cliente excluído com sucesso."),
-                      //                       backgroundColor: Colors.green,
-                      //                       showCloseIcon: true,
-                      //                     ));
+                        MenuItemButton(
+                          onPressed: () async {
+                            var informacoes = await servico.listarPorId(widget.item.id);
+                            var parcelas = await servico.listarFinanceiroVenda(widget.item.id);
 
-                      //                     provedor.excluir(item);
+                            final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
+                            final newDuration = ConfigSistema.formatarHora(duration);
 
-                      //                     // paginacaoController.itemList = paginacaoController.itemList!.where((element) => element.id != idCliente).toList();
-                      //                   }
-                      //                   Navigator.pop(context);
-                      //                 });
-                      //               },
-                      //             ),
-                      //           ],
-                      //         );
-                      //       },
-                      //     );
-                      //   },
-                      //   child: const Row(
-                      //     children: [
-                      //       SizedBox(width: 15),
-                      //       Text("Excluir", style: TextStyle(color: Colors.red)),
-                      //       SizedBox(width: 15),
-                      //     ],
-                      //   ),
-                      // ),
-                    ],
+                            var sucessoAoImprimir = await Impressao.enviarImpressao(
+                              tipo: '2',
+                              nomeCliente: item.nomecliente,
+                              nomeEmpresa: item.nomeEmpresa,
+                              produtos: informacoes.produtos,
+                              nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                                return ModeloNomeLancamento(nome: elemento.descricaoMov, valor: elemento.valorMovF);
+                              })),
+                              somaValorHistorico: '',
+                              cnpjEmpresa: informacoes.informacoes.docempresa,
+                              celularEmpresa: informacoes.informacoes.celularcliente,
+                              enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+                              permanencia: newDuration,
+                              local: '',
+                              total: informacoes.informacoes.subtotal,
+                              numeroPedido: informacoes.informacoes.numerodopedido,
+                              tipodeentrega: informacoes.informacoes.tipodeentrega,
+                            );
+
+                            if (sucessoAoImprimir == false) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                                  backgroundColor: Colors.red,
+                                ));
+                              }
+                            }
+                          },
+                          child: const Row(
+                            children: [
+                              SizedBox(width: 15),
+                              Text("Comprovante da Conta"),
+                              SizedBox(width: 15),
+                            ],
+                          ),
+                        ),
+                        MenuItemButton(
+                          onPressed: () async {
+                            var informacoes = await servico.listarPorId(widget.item.id);
+                            var parcelas = await servico.listarFinanceiroVenda(widget.item.id);
+
+                            final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
+                            final newDuration = ConfigSistema.formatarHora(duration);
+
+                            var sucessoAoImprimir = await Impressao.enviarImpressao(
+                              tipo: '3',
+                              nomeCliente: item.nomecliente,
+                              nomeEmpresa: item.nomeEmpresa,
+                              produtos: informacoes.produtos,
+                              nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                                return ModeloNomeLancamento(nome: elemento.descricaoMov, valor: elemento.valorMovF);
+                              })),
+                              somaValorHistorico: '',
+                              cnpjEmpresa: informacoes.informacoes.docempresa,
+                              celularEmpresa: informacoes.informacoes.celularcliente,
+                              enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+                              permanencia: newDuration,
+                              local: '',
+                              total: informacoes.informacoes.subtotal,
+                              numeroPedido: informacoes.informacoes.numerodopedido,
+                              tipodeentrega: informacoes.informacoes.tipodeentrega,
+                              // '
+                              celularCliente: informacoes.informacoes.celularcliente,
+                              enderecoCliente: informacoes.informacoes.enderecoenderecocliente,
+                              valortroco: '0',
+                              valorentrega: '0',
+                              bairroCliente: informacoes.informacoes.nomebairro,
+                              cidadeCliente: informacoes.informacoes.nomecidade,
+                              complementoCliente: '',
+                              numeroCliente: informacoes.informacoes.numeroenderecocliente,
+                            );
+
+                            if (sucessoAoImprimir == false) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                                  backgroundColor: Colors.red,
+                                ));
+                              }
+                            }
+                          },
+                          child: const Row(
+                            children: [
+                              SizedBox(width: 15),
+                              Text("Comprovante do Entregador"),
+                              SizedBox(width: 15),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
-
-    // return SizedBox(
-    //   height: tamanhoCard,
-    //   child: Card(
-    //     child: InkWell(
-    //       onTap: () {},
-    //       borderRadius: BorderRadius.circular(8),
-    //       child: Row(
-    //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    //         children: [
-    //           Container(
-    //             width: 5,
-    //             clipBehavior: Clip.hardEdge,
-    //             decoration: const BoxDecoration(
-    //               borderRadius: BorderRadius.only(
-    //                 topLeft: Radius.circular(8),
-    //                 bottomLeft: Radius.circular(8),
-    //               ),
-    //             ),
-    //             child: VerticalDivider(
-    //               color: item.ativo == 'Sim' ? Colors.green : Colors.red,
-    //               thickness: 5,
-    //             ),
-    //           ),
-    //           Padding(
-    //             padding: const EdgeInsets.only(left: 10, top: 9),
-    //             child: Column(
-    //               crossAxisAlignment: CrossAxisAlignment.start,
-    //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    //               children: [
-    //                 SizedBox(
-    //                   width: width * 0.70,
-    //                   child: Text(
-    //                     item.nome,
-    //                     overflow: TextOverflow.ellipsis,
-    //                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-    //                   ),
-    //                 ),
-    //                 if (item.doc.isNotEmpty) Text(item.doc),
-    //                 if (item.celular.isNotEmpty) Text(item.celular),
-    //                 if (item.email.isNotEmpty) Text(item.email),
-    //               ],
-    //             ),
-    //           ),
-    //           SizedBox(
-    //             width: 50,
-    //             child: Card(
-    //               shape: const RoundedRectangleBorder(
-    //                 borderRadius: BorderRadius.only(topRight: Radius.circular(10), bottomRight: Radius.circular(10)),
-    //               ),
-    //               margin: EdgeInsets.zero,
-    //               child: Column(
-    //                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    //                 children: [
-    //                   Expanded(
-    //                     child: SizedBox(
-    //                       width: 50,
-    //                       child: InkWell(
-    //                         onTap: () {
-    //                           widget.editarAtivo(item);
-    //                         },
-    //                         borderRadius: const BorderRadius.only(topRight: Radius.circular(8)),
-    //                         child: item.ativo == 'Sim' ? const Icon(Icons.check_box_outlined) : const Icon(Icons.check_box_outline_blank_rounded),
-    //                       ),
-    //                     ),
-    //                   ),
-    //                   Expanded(
-    //                     child: SizedBox(
-    //                       width: 50,
-    //                       child: InkWell(
-    //                         onTap: () {
-    //                           widget.editarDadosPessoais(item);
-    //                         },
-    //                         child: const Icon(Icons.edit),
-    //                       ),
-    //                     ),
-    //                   ),
-    //                   Expanded(
-    //                     child: MenuAnchor(
-    //                       builder: (BuildContext context, MenuController controller, Widget? child) {
-    //                         return SizedBox(
-    //                           width: 50,
-    //                           child: InkWell(
-    //                             borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
-    //                             onTap: () {
-    //                               if (controller.isOpen) {
-    //                                 controller.close();
-    //                               } else {
-    //                                 controller.open();
-    //                               }
-    //                             },
-    //                             child: const Icon(Icons.more_vert),
-    //                           ),
-    //                         );
-    //                       },
-    //                       menuChildren: [
-    //                         // if (item.celular.isNotEmpty) ...[
-    //                         //   MenuItemButton(
-    //                         //     child: Text('WhatsApp ${item.celular}'),
-    //                         //     onPressed: () async {
-    //                         //       FuncoesGlobais.abrirWhatsapp(item.celular);
-    //                         //     },
-    //                         //   ),
-    //                         // ],
-    //                         MenuItemButton(
-    //                           onPressed: () {
-    //                             widget.aoClicarExcluir(item.id);
-    //                           },
-    //                           child: const Row(
-    //                             children: [
-    //                               SizedBox(width: 15),
-    //                               Text(
-    //                                 "Excluir",
-    //                                 style: TextStyle(color: Colors.red),
-    //                               ),
-    //                               SizedBox(width: 15),
-    //                             ],
-    //                           ),
-    //                         ),
-    //                       ],
-    //                     ),
-    //                   )
-    //                 ],
-    //               ),
-    //             ),
-    //           ),
-    //         ],
-    //       ),
-    //     ),
-    //   ),
-    // );
   }
 }

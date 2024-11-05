@@ -1,7 +1,14 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_enderecos_clientes.dart';
+import 'package:app/src/modulos/balcao/modelos/modelo_lista_financeiro_venda.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
+import 'package:app/src/modulos/balcao/modelos/retorno_listar_por_id_balcao.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class ServicoBalcao {
   final DioCliente dio;
@@ -25,6 +32,65 @@ class ServicoBalcao {
     }
 
     return [];
+  }
+
+  Future<RetornoListarPorIdBalcao> listarPorId(String idVenda) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+    try {
+      var response = await dio.cliente.get('$caminhoAPI/listar_por_id.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+
+      var jsonData = response.data;
+      var dados = jsonData['dados'];
+
+      return RetornoListarPorIdBalcao.fromMap(dados);
+    } on DioException catch (e) {
+      if (e.response == null) {
+        if (kDebugMode) {
+          log('ERRO API', error: e.error);
+        }
+      }
+
+      return RetornoListarPorIdBalcao.fromMap({});
+    }
+  }
+
+  Future<List<Modelolistafinanceirovenda>> listarFinanceiroVenda(String idVenda) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+    var response = await dio.cliente.get('$caminhoAPI/listar_financeiro_venda.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+
+    var jsonData = response.data;
+    var dados = jsonData['dados'];
+
+    return List<Modelolistafinanceirovenda>.from(dados.map((elemento) {
+      return Modelolistafinanceirovenda.fromMap(elemento);
+    }));
+  }
+
+  Future<({bool sucesso, String mensagem})> excluir(String id, String justificativaCancelamento) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+
+    var response = await dio.cliente.post(
+      '$caminhoAPI/excluir.php',
+      data: jsonEncode({
+        'id_empresa': idEmpresa,
+        'id_usuario': idUsuario,
+        'nivel_usuario': usuarioProvedor.usuario?.nivel,
+        'usuario_adm': '',
+        'senha_adm': '',
+        'id-excluir': id,
+        'justificativa_cancelamento': justificativaCancelamento,
+      }),
+    );
+
+    var jsonData = response.data;
+
+    bool sucesso = jsonData['sucesso'];
+    String mensagem = jsonData['mensagem'];
+
+    return (sucesso: sucesso, mensagem: mensagem);
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {

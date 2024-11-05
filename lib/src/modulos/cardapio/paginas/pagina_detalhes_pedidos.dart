@@ -1,4 +1,5 @@
-import 'package:app/src/essencial/utils/enviar_pedido.dart';
+import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
@@ -320,7 +321,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                                                   SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
                                                                 );
 
-                                                                EnviarPedido.enviarPedido(
+                                                                final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
+                                                                final newDuration = ConfigSistema.formatarHora(duration);
+
+                                                                Impressao.enviarImpressao(
                                                                   tipo: '2',
                                                                   nomeCliente: dados!.nomeCliente!,
                                                                   nomeEmpresa: dados!.nomeEmpresa!,
@@ -330,7 +334,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                                                   celularEmpresa: dados!.celularEmpresa!,
                                                                   cnpjEmpresa: dados!.cnpjEmpresa!,
                                                                   enderecoEmpresa: dados!.enderecoEmpresa!,
-                                                                  dataAbertura: dados!.dataAbertura!,
+                                                                  permanencia: newDuration,
                                                                   local: dados!.nome!,
                                                                   total: dados!.valorTotal!,
                                                                   numeroPedido: dados!.numeroPedido!,

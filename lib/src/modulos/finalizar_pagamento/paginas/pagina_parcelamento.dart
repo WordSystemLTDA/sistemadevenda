@@ -1,5 +1,10 @@
+import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/widgets/bottom_editar_parcelamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -20,6 +25,7 @@ class PaginaParcelamento extends StatefulWidget {
   // final String cartaoCredito;
   final String valorFalta;
   final String valorTroco;
+  final String pagamentoselecionado;
 
   const PaginaParcelamento({
     super.key,
@@ -36,6 +42,7 @@ class PaginaParcelamento extends StatefulWidget {
     // required this.cartaoCredito,
     required this.valorFalta,
     required this.valorTroco,
+    required this.pagamentoselecionado,
   });
 
   @override
@@ -43,6 +50,10 @@ class PaginaParcelamento extends StatefulWidget {
 }
 
 class _PaginaParcelamentoState extends State<PaginaParcelamento> {
+  var provedor = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+
   final _valorController = TextEditingController();
 
   final _dataController = TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
@@ -97,7 +108,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     for (var i = 0; i < _parcelas; i++) {
       parcelasNovas.add(ParcelasModelo(
         parcela: (i + 1).toString(),
-        valor: widget.valor.toStringAsFixed(2),
+        valor: (widget.valor / _parcelas).toStringAsFixed(2),
         vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
         vencimentoController: TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
         valorController: TextEditingController(
@@ -107,6 +118,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     }
 
     listaParcelas.value = parcelasNovas;
+
+    setState(() {});
   }
 
   void listarCliente() async {
@@ -124,6 +137,68 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     // final modelo = context.read<ProvedoresTelaNfeSaida>().venda;
 
     if (!mounted) return;
+
+    var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
+          provedor.idVenda,
+          provedorCardapio.idComanda,
+          provedorCardapio.idMesa,
+          provedorCardapio.idCliente,
+          widget.valor.toStringAsFixed(2), // valorLancamento,
+          widget.totalReceber, // valorOriginal,
+          int.parse(widget.pagamentoselecionado),
+          0, // quantidadePessoas,
+          widget.totalReceber, // subTotal,
+          dataOriginal, // dataLancamento,
+          _parcelas.toString(), // parcelas
+          listaParcelas.value, // parcelasLista
+          provedorCardapio.tipo,
+          (double.tryParse(widget.desconto) ?? 0).abs().toStringAsFixed(2), // valortroco,
+          '0', // TODO: fazer delivery (valorentrega)
+          carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
+          false, // novo,
+          provedorCardapio.tipodeentrega,
+          carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+          widget.totalReceber, // valorAPagarOriginal,
+        );
+
+    if (sucesso) {
+      if (widget.valor >= double.parse(widget.totalReceber)) {
+        var provedorBalcao = Modular.get<ProvedorBalcao>();
+        await provedorBalcao.listar();
+
+        var vendaBalcao = provedorBalcao.dados.where((element) => element.id == provedorCardapio.id).firstOrNull;
+
+        if (vendaBalcao != null) {
+          Impressao.enviarImpressao(
+            tipo: '1',
+            comanda: "Balcão ${provedorCardapio.id}",
+            numeroPedido: vendaBalcao.numeropedido,
+            nomeCliente: vendaBalcao.nomecliente,
+            nomeEmpresa: vendaBalcao.nomeEmpresa,
+            produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+          );
+        }
+
+        carrinhoProvedor.removerComandasPedidos();
+
+        if (mounted) {
+          Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+        }
+      } else {
+        if (context.mounted) {
+          provedor.idVenda = idvenda;
+          provedor.valor = double.parse(widget.totalReceber) - widget.valor;
+
+          Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+        }
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(mensagem),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
 
     // if (modelo == null) {
     //   ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -301,7 +376,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: widget.valor.toStringAsFixed(2),
+                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
                             vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
                             vencimentoController:
                                 TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
@@ -336,7 +411,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: widget.valor.toStringAsFixed(2),
+                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
                             vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
                             vencimentoController:
                                 TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
@@ -370,7 +445,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: widget.valor.toStringAsFixed(2),
+                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
                             vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
                             vencimentoController:
                                 TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
@@ -404,7 +479,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: widget.valor.toStringAsFixed(2),
+                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
                             vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
                             vencimentoController:
                                 TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
@@ -447,7 +522,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                       for (var i = 0; i < _parcelas; i++) {
                         parcelasNovas.add(ParcelasModelo(
                           parcela: (i + 1).toString(),
-                          valor: widget.valor.toStringAsFixed(2),
+                          valor: (widget.valor / _parcelas).toStringAsFixed(2),
                           vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
                           vencimentoController:
                               TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),

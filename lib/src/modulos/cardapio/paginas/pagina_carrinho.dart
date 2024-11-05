@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/client.dart';
-import 'package:app/src/essencial/utils/enviar_pedido.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
@@ -174,13 +174,13 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         }));
 
                         removerTodosItensCarrinho();
-                        EnviarPedido.enviarPedido(
+                        Impressao.enviarImpressao(
                           tipo: '1',
-                          nomeTitulo: "Mesa ${provedorCardapio.idMesa}",
+                          comanda: "Mesa ${provedorCardapio.idMesa}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
-                          produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                         );
 
                         if (context.mounted) {
@@ -229,13 +229,13 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         }));
 
                         removerTodosItensCarrinho();
-                        EnviarPedido.enviarPedido(
+                        Impressao.enviarImpressao(
                           tipo: '1',
-                          nomeTitulo: "Comanda ${provedorCardapio.idComanda}",
+                          comanda: "Comanda ${provedorCardapio.idComanda}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
-                          produtosNovos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                         );
 
                         if (context.mounted) {
