@@ -1,3 +1,5 @@
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -126,6 +128,61 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                 ListView(
                   padding: const EdgeInsets.only(right: 10, left: 10),
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            SearchAnchor(
+                              builder: (BuildContext context, SearchController controller) {
+                                return IconButton(
+                                  onPressed: () {
+                                    controller.openView();
+                                  },
+                                  icon: const Icon(Icons.menu),
+                                );
+                              },
+                              suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                                final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                                return [
+                                  ...res.map(
+                                    (e) => Card(
+                                      elevation: 3.0,
+                                      margin: const EdgeInsets.all(5.0),
+                                      child: InkWell(
+                                        onTap: () {},
+                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                        child: ListTile(
+                                          leading: const Icon(Icons.person_2_outlined),
+                                          title: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(e.pagamento),
+                                              Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                              Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                            ],
+                                          ),
+                                          subtitle: Text('ID: ${e.id}'),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ];
+                              },
+                            ),
+                            const Text('A pagar: ', style: TextStyle(fontSize: 25)),
+                          ],
+                        ),
+                        // const Spacer(),
+                        Text(
+                          _totalReceber.obterReal(),
+                          style: const TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 15),
                     const Column(
                       children: [

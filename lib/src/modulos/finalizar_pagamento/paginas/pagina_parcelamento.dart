@@ -63,8 +63,6 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   final ValueNotifier<List<ParcelasModelo>> listaParcelas = ValueNotifier([]);
   int _parcelas = 0;
 
-  final String _idCliente = '';
-  final String _nomeCliente = '';
   String _vendaDia1 = '30';
   String _vendaDia2 = '45';
   String _vendaDia3 = '60';
@@ -77,7 +75,6 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     _valorController.text = widget.valor.toStringAsFixed(2).replaceAll('.', ',');
 
     alterarParcelas(incrementar: true);
-    listarCliente();
     listarDatasVenda();
   }
 
@@ -120,16 +117,6 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     listaParcelas.value = parcelasNovas;
 
     setState(() {});
-  }
-
-  void listarCliente() async {
-    // final (idCliente, razaoSocialCliente) = await context.read<ProvedoresTelaNfeSaida>().listarCliente(context);
-    // if (!mounted) return;
-
-    // setState(() {
-    //   _idCliente = idCliente;
-    //   _nomeCliente = razaoSocialCliente; // AQUI
-    // });
   }
 
   void finalizar() async {
@@ -307,9 +294,11 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         ),
         backgroundColor: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now()) ? null : const Color(0xFF4f0073),
         foregroundColor: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now()) ? null : Colors.white,
-        onPressed: () {
-          finalizar();
-        },
+        onPressed: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now())
+            ? null
+            : () {
+                finalizar();
+              },
         label: SizedBox(
           width: MediaQuery.of(context).size.width - 70,
           child: ValueListenableBuilder(
@@ -340,19 +329,19 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '  ID Cliente: #$_idCliente',
+                  '  ID Cliente: #${provedorCardapio.idCliente}',
                   style: const TextStyle(fontSize: 14),
                 ),
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline_outlined, size: 22),
-                    const SizedBox(width: 5),
-                    Text(
-                      _nomeCliente,
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                  ],
-                ),
+                // Row(
+                //   children: [
+                //     const Icon(Icons.person_outline_outlined, size: 22),
+                //     const SizedBox(width: 5),
+                //     Text(
+                //       _nomeCliente,
+                //       style: const TextStyle(fontSize: 15),
+                //     ),
+                //   ],
+                // ),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

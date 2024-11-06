@@ -2,12 +2,15 @@
 
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_parcelamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -51,7 +54,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
   double _totalRegistrado = 0;
   double _desconto = 0;
   bool _carregando = true;
-
+  bool trocoEmCredito = false;
   FocusNode? focusNode;
 
   @override
@@ -62,6 +65,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
     _totalRegistrado = widget.totalReceber;
     _dinheiroController.text = widget.totalReceber.toStringAsFixed(2);
+    _dinheiroController.selection = TextSelection(baseOffset: 0, extentOffset: _dinheiroController.text.length);
     listarBancoPix();
   }
 
@@ -104,8 +108,8 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      resizeToAvoidBottomInset: false,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // resizeToAvoidBottomInset: false,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: ValueListenableBuilder(
           valueListenable: finalizando,
           builder: (context, finalizandoValue, _) {
@@ -113,8 +117,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(5)),
               ),
-              // backgroundColor: _desconto >= 0 ? null : const Color.fromARGB(255, 237, 232, 246),
-              backgroundColor: const Color.fromARGB(255, 237, 232, 246),
+              backgroundColor: _dinheiroController.text.isEmpty ? const Color.fromARGB(255, 237, 232, 246) : null,
               onPressed: () async {
                 if (widget.pagamentoselecionado == '2') {
                   Navigator.push(
@@ -244,7 +247,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
             : Stack(
                 children: [
                   Positioned(
-                    bottom: 120,
+                    bottom: 100,
                     left: 18,
                     right: 18,
                     child: Column(
@@ -252,24 +255,9 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
-                            // const Spacer(),
-                            Text(
-                              'R\$ ${widget.totalReceber.toStringAsFixed(2).replaceAll('.', ',')}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
                             const Text('Total Registrado ', style: TextStyle(fontSize: 15)),
-                            // const Spacer(),
                             Text(
-                              'R\$ ${_totalRegistrado.toStringAsFixed(2).replaceAll('.', ',')}',
+                              _totalRegistrado.obterReal(),
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -277,40 +265,6 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                             ),
                           ],
                         ),
-                        if (_desconto > 0) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Troco ', style: TextStyle(fontSize: 15, color: Colors.blue)),
-                              // const Spacer(),
-                              Text(
-                                'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (_desconto < 0) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Falta ', style: TextStyle(fontSize: 15, color: Colors.red)),
-                              // const Spacer(),
-                              Text(
-                                'R\$ ${(_desconto * -1).toStringAsFixed(2).replaceAll('.', ',')}',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -472,17 +426,75 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           // const Text('Você pode dar desconto em percentual\nou até mesmo em Valor.', style: TextStyle(fontSize: 15), textAlign: TextAlign.center),
                         ],
                       ),
-                      const SizedBox(height: 40),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SearchAnchor(
+                                builder: (BuildContext context, SearchController controller) {
+                                  return IconButton(
+                                    onPressed: () {
+                                      controller.openView();
+                                    },
+                                    icon: const Icon(Icons.menu),
+                                  );
+                                },
+                                suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                                  final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                                  return [
+                                    ...res.map(
+                                      (e) => Card(
+                                        elevation: 3.0,
+                                        margin: const EdgeInsets.all(5.0),
+                                        child: InkWell(
+                                          onTap: () {},
+                                          borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                          child: ListTile(
+                                            leading: const Icon(Icons.person_2_outlined),
+                                            title: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(e.pagamento),
+                                                Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                                Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                              ],
+                                            ),
+                                            subtitle: Text('ID: ${e.id}'),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ];
+                                },
+                              ),
+                              const Text('A pagar: ', style: TextStyle(fontSize: 25)),
+                            ],
+                          ),
+                          // const Spacer(),
+                          Text(
+                            widget.totalReceber.obterReal(),
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('Valor a receber', style: TextStyle(fontSize: 18)),
+                      const SizedBox(height: 3),
                       Row(
                         children: [
                           Expanded(
                             child: SizedBox(
-                              height: 50,
+                              height: 80,
                               child: TextField(
+                                maxLines: 3,
                                 controller: _dinheiroController,
                                 focusNode: focusNode,
+                                style: const TextStyle(fontSize: 35),
                                 decoration: InputDecoration(
-                                  // label: const Text('Dinheiro'),
                                   border: const OutlineInputBorder(),
                                   prefixText: 'R\$  ',
                                   suffixIcon: IconButton(
@@ -504,7 +516,67 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           ),
                         ],
                       ),
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 20),
+                      if (_desconto > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Troco: ', style: TextStyle(fontSize: 25)),
+                            // const Spacer(),
+                            Text(
+                              'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
+                              style: const TextStyle(
+                                fontSize: 25,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              trocoEmCredito = !trocoEmCredito;
+                            });
+                          },
+                          splashColor: Colors.transparent,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              SizedBox(
+                                width: 25,
+                                child: Checkbox(
+                                  value: trocoEmCredito,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      trocoEmCredito = value ?? false;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              const Text('Troco em Crédito')
+                            ],
+                          ),
+                        ),
+                      ],
+                      // if (_desconto < 0) ...[
+                      //   Row(
+                      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      //     children: [
+                      //       const Text('Falta ', style: TextStyle(fontSize: 25, color: Colors.red)),
+                      //       // const Spacer(),
+                      //       Text(
+                      //         'R\$ ${(_desconto * -1).toStringAsFixed(2).replaceAll('.', ',')}',
+                      //         style: const TextStyle(
+                      //           fontSize: 25,
+                      //           color: Colors.red,
+                      //           fontWeight: FontWeight.w600,
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ],
                     ],
                   ),
                 ],

@@ -8,7 +8,7 @@ class DioCliente {
 
   var cliente = Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
 
-  void configurar() async {
-    cliente.options.baseUrl = (await Apis().getConexao()).servidor;
+  void configurar({String? servidor}) async {
+    cliente.options.baseUrl = servidor ?? (await Apis().getConexao()).servidor;
   }
 }

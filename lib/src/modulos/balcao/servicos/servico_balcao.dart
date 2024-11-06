@@ -4,9 +4,11 @@ import 'dart:developer';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_enderecos_clientes.dart';
+import 'package:app/src/modulos/balcao/modelos/modelo_historico_pagamentos.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_lista_financeiro_venda.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/modelos/retorno_listar_por_id_balcao.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -53,6 +55,20 @@ class ServicoBalcao {
 
       return RetornoListarPorIdBalcao.fromMap({});
     }
+  }
+
+  Future<List<ModeloHistoricoPagamentos>> listarHistoricoPagamentos(String id, TipoCardapio tipo) async {
+    var idEmpresa = usuarioProvedor.usuario!.empresa;
+    var idUsuario = usuarioProvedor.usuario!.id;
+
+    var response = await dio.cliente.get('balcao/listar_historico_pagamentos.php?id=$id&empresa=$idEmpresa&id_usuario=$idUsuario');
+
+    var jsonData = response.data;
+    var produtos = List<ModeloHistoricoPagamentos>.from(jsonData.map((elemento) {
+      return ModeloHistoricoPagamentos.fromMap(elemento);
+    }));
+
+    return produtos;
   }
 
   Future<List<Modelolistafinanceirovenda>> listarFinanceiroVenda(String idVenda) async {

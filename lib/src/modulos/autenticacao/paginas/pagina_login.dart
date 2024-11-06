@@ -66,12 +66,12 @@ class _PaginaLoginState extends State<PaginaLogin> {
             },
           ));
         }
-      } else {
-        setState(() {
-          verificando = false;
-        });
       }
-    } else {}
+    }
+
+    setState(() {
+      verificando = false;
+    });
   }
 
   @override

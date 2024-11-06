@@ -59,127 +59,224 @@ class _CardComandaState extends State<CardComanda> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(3),
+    return SizedBox(
+      height: widget.itemComanda.comandaOcupada ? null : 75,
       child: Container(
+        clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: widget.itemComanda.comandaOcupada
-              ? LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.inversePrimary,
-                    Theme.of(context).colorScheme.primary,
-                  ],
-                  end: Alignment.bottomRight,
-                )
-              : null,
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: InkWell(
-          onTap: () {
-            if (!widget.itemComanda.comandaOcupada) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PaginaComandaDesocupada(
-                    id: widget.itemComanda.id,
-                    idComandaPedido: widget.itemComanda.idComandaPedido,
-                    nome: widget.itemComanda.nome,
-                    tipo: TipoCardapio.comanda,
-                  ),
-                ),
-              );
-            } else {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PaginaDetalhesPedido(
-                    idComandaPedido: widget.itemComanda.idComandaPedido,
-                    idComanda: widget.itemComanda.id,
-                    tipo: TipoCardapio.comanda,
-                  ),
-                ),
-              );
-            }
-          },
-          borderRadius: const BorderRadius.all(Radius.circular(8)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                children: [
-                  const SizedBox(width: 15),
-                  const Icon(Icons.topic_outlined, size: 30),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 - 70,
-                    child: Text(
-                      widget.itemComanda.nome,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
+        child: Stack(
+          children: [
+            Container(
+              padding: widget.itemComanda.comandaOcupada ? const EdgeInsets.only(bottom: 10, top: 10) : null,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(width: 0.5, color: Colors.grey),
               ),
-              if (widget.itemComanda.comandaOcupada) ...[
-                Row(
-                  children: [
-                    const SizedBox(width: 15),
-                    SizedBox(
-                      width: 150,
-                      child: Text(
-                        widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+              child: InkWell(
+                onTap: () {
+                  if (!widget.itemComanda.comandaOcupada) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PaginaComandaDesocupada(
+                          id: widget.itemComanda.id,
+                          idComandaPedido: widget.itemComanda.idComandaPedido,
+                          nome: widget.itemComanda.nome,
+                          tipo: TipoCardapio.comanda,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Padding(
-                  padding: const EdgeInsets.only(left: 15.0, top: 1, right: 15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      StreamBuilder<String>(
-                        stream: tempoLancadoController.stream,
-                        initialData: 'Carregando',
-                        builder: (context, snapshot) {
-                          return Text(snapshot.data!, style: const TextStyle(fontSize: 12));
-                        },
+                    );
+                  } else {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PaginaDetalhesPedido(
+                          idComandaPedido: widget.itemComanda.idComandaPedido,
+                          idComanda: widget.itemComanda.id,
+                          tipo: TipoCardapio.comanda,
+                        ),
                       ),
-                      Text(double.parse(widget.itemComanda.valor ?? '0').obterReal(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))
+                    );
+                  }
+                },
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              // const SizedBox(width: 15),
+                              // const Icon(Icons.topic_outlined, size: 24),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width / 2 - 70,
+                                child: Text(
+                                  widget.itemComanda.nome,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (widget.itemComanda.idComandaPedido != null) Text('#${widget.itemComanda.idComandaPedido}'),
+                            ],
+                          ),
+                        ),
+                        if (widget.itemComanda.comandaOcupada)
+                          // const Padding(
+                          //   padding: EdgeInsets.only(right: 10.0),
+                          //   child: Icon(Icons.more_vert_outlined),
+                          // ),
+                          MenuAnchor(
+                            builder: (BuildContext context, MenuController controller, Widget? child) {
+                              return SizedBox(
+                                width: 50,
+                                child: InkWell(
+                                  borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
+                                  onTap: () {
+                                    if (controller.isOpen) {
+                                      controller.close();
+                                    } else {
+                                      controller.open();
+                                    }
+                                  },
+                                  child: const Icon(Icons.more_vert),
+                                ),
+                              );
+                            },
+                            menuChildren: [
+                              SizedBox(
+                                height: 30,
+                                child: MenuItemButton(
+                                  onPressed: () async {},
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("ID: ${widget.itemComanda.id}"),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const Divider(),
+                              SizedBox(
+                                height: 30,
+                                child: MenuItemButton(
+                                  onPressed: () async {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => PaginaDetalhesPedido(
+                                          idComandaPedido: widget.itemComanda.idComandaPedido,
+                                          idComanda: widget.itemComanda.id,
+                                          tipo: TipoCardapio.comanda,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Row(
+                                    children: [
+                                      Text("Abrir Comanda"),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const Divider(),
+                    if (widget.itemComanda.comandaOcupada == false) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(left: 15.0, top: 1, right: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (DateTime.tryParse(widget.itemComanda.ultimaVezAbertoDataHora ?? '') != null) ...[
+                              Text('Última Abertura: ${ConfigSistema.formatarHora((DateTime.now().difference(DateTime.parse(widget.itemComanda.ultimaVezAbertoDataHora ?? ''))))}',
+                                  style: const TextStyle(color: Color.fromARGB(255, 93, 93, 93))),
+                            ] else ...[
+                              const Text('Nunca Utilizada', style: TextStyle(color: Color.fromARGB(255, 93, 93, 93))),
+                            ],
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
-                ),
-                if (widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                    if (widget.itemComanda.comandaOcupada) ...[
                       Row(
                         children: [
                           const SizedBox(width: 15),
-                          Text(
-                            widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}' : '',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+                          SizedBox(
+                            width: 150,
+                            child: Text(
+                              widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+                              ),
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 15.0, top: 1, right: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            StreamBuilder<String>(
+                              stream: tempoLancadoController.stream,
+                              initialData: 'Carregando',
+                              builder: (context, snapshot) {
+                                return Text(snapshot.data!, style: const TextStyle(fontSize: 12));
+                              },
+                            ),
+                            Text(double.parse(widget.itemComanda.valor ?? '0').obterReal(), style: const TextStyle(fontWeight: FontWeight.w600))
+                          ],
+                        ),
+                      ),
+                      if (widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const SizedBox(width: 15),
+                                Text(
+                                  widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}' : '',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                     ],
-                  ),
-              ],
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: -6,
+              bottom: 0,
+              top: 0,
+              child: VerticalDivider(
+                color: widget.itemComanda.comandaOcupada ? Colors.red : Colors.green,
+                thickness: 4,
+              ),
+            ),
+          ],
         ),
       ),
     );

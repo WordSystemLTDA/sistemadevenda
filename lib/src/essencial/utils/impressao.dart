@@ -83,8 +83,9 @@ class Impressao {
     } else if (tipo == '3') {
       cliente.write(jsonEncode({
         'tipo': tipo,
+        'nomeConexao': usuario.usuario!.nome ?? 'Sem Nome',
         'produtos': produtos.map((e) => e.toMap()).toList(),
-        'nomelancamento': nomelancamento,
+        'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
         'somaValorHistorico': somaValorHistorico,
         'celularEmpresa': celularEmpresa,
         'cnpjEmpresa': cnpjEmpresa,

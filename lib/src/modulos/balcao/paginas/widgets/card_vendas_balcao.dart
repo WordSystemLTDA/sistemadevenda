@@ -198,9 +198,10 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
                               nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                                return ModeloNomeLancamento(nome: elemento.descricaoMov, valor: elemento.valorMovF);
+                                return ModeloNomeLancamento(
+                                    nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
                               })),
-                              somaValorHistorico: '',
+                              somaValorHistorico: informacoes.informacoes.subtotal,
                               cnpjEmpresa: informacoes.informacoes.docempresa,
                               celularEmpresa: informacoes.informacoes.celularcliente,
                               enderecoEmpresa: informacoes.informacoes.enderecoempresa,
@@ -243,9 +244,10 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
                               nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                                return ModeloNomeLancamento(nome: elemento.descricaoMov, valor: elemento.valorMovF);
+                                return ModeloNomeLancamento(
+                                    nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
                               })),
-                              somaValorHistorico: '',
+                              somaValorHistorico: informacoes.informacoes.subtotal,
                               cnpjEmpresa: informacoes.informacoes.docempresa,
                               celularEmpresa: informacoes.informacoes.celularcliente,
                               enderecoEmpresa: informacoes.informacoes.enderecoempresa,
@@ -257,11 +259,11 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               // '
                               celularCliente: informacoes.informacoes.celularcliente,
                               enderecoCliente: informacoes.informacoes.enderecoenderecocliente,
-                              valortroco: '0',
-                              valorentrega: '0',
+                              valortroco: informacoes.informacoes.valortroco,
+                              valorentrega: informacoes.informacoes.valorentrega,
                               bairroCliente: informacoes.informacoes.nomebairro,
                               cidadeCliente: informacoes.informacoes.nomecidade,
-                              complementoCliente: '',
+                              complementoCliente: informacoes.informacoes.complementoenderecocliente,
                               numeroCliente: informacoes.informacoes.numeroenderecocliente,
                             );
 

@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
 class InformacoesRetornoModelo {
@@ -67,6 +68,9 @@ class InformacoesRetornoModelo {
   final String idmesa;
   final String enderecoempresa;
   final String tipodeentrega;
+  final String valortroco;
+  final String valorentrega;
+  final String dataAbertura;
   final String? motivoCancelamento;
 
   InformacoesRetornoModelo({
@@ -136,6 +140,9 @@ class InformacoesRetornoModelo {
     required this.idmesa,
     required this.enderecoempresa,
     required this.tipodeentrega,
+    required this.valortroco,
+    required this.valorentrega,
+    required this.dataAbertura,
     this.motivoCancelamento,
   });
 
@@ -207,6 +214,9 @@ class InformacoesRetornoModelo {
       'idmesa': idmesa,
       'enderecoempresa': enderecoempresa,
       'tipodeentrega': tipodeentrega,
+      'valortroco': valortroco,
+      'valorentrega': valorentrega,
+      'dataAbertura': dataAbertura,
       'motivoCancelamento': motivoCancelamento,
     };
   }
@@ -279,6 +289,9 @@ class InformacoesRetornoModelo {
       idmesa: map['idmesa'] as String,
       enderecoempresa: map['enderecoempresa'] as String,
       tipodeentrega: map['tipodeentrega'] as String,
+      valortroco: map['valortroco'] as String,
+      valorentrega: map['valorentrega'] as String,
+      dataAbertura: map['dataAbertura'] as String,
       motivoCancelamento: map['motivoCancelamento'] != null ? map['motivoCancelamento'] as String : null,
     );
   }

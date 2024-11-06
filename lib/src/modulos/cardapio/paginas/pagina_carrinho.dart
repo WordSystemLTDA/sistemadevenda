@@ -145,6 +145,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                   provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
 
                   if (provedorCardapio.tipo == TipoCardapio.balcao) {
+                    setState(() => isLoading = !isLoading);
                     Navigator.push(
                       context,
                       MaterialPageRoute(

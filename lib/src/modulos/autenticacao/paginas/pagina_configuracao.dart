@@ -60,7 +60,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     await prefs.reload();
 
-    DioCliente().configurar();
+    DioCliente().configurar(servidor: 'http://${servidorController.text}/sistema/apis_restaurantes/api_restaurantes_venda/');
 
     if (tipoConexaoController.text == 'localhost') {
       await conectarAoServidor(servidorController.text, portaController.text);

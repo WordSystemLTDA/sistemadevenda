@@ -21,23 +21,27 @@ class ServicoAutenticacao {
       "senha": senha,
     };
 
-    final response = await dio.cliente.post(
-      'autenticacao/entrar.php',
-      options: Options(headers: {
-        HttpHeaders.contentTypeHeader: "application/json",
-      }),
-      data: jsonEncode(campos),
-    );
+    try {
+      final response = await dio.cliente.post(
+        'autenticacao/entrar.php',
+        options: Options(headers: {
+          HttpHeaders.contentTypeHeader: "application/json",
+        }),
+        data: jsonEncode(campos),
+      );
 
-    Map result = response.data;
-    bool sucesso = result['sucesso'];
-    dynamic dados = result['resultado'];
+      Map result = response.data;
+      bool sucesso = result['sucesso'];
+      dynamic dados = result['resultado'];
 
-    if (response.statusCode == 200 && sucesso == true) {
-      await prefs.setString(ConfigSharedPreferences.usuario, jsonEncode(dados));
-      usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
-      return sucesso;
-    } else {
+      if (response.statusCode == 200 && sucesso == true) {
+        await prefs.setString(ConfigSharedPreferences.usuario, jsonEncode(dados));
+        usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
+        return sucesso;
+      } else {
+        return false;
+      }
+    } on DioException catch (_) {
       return false;
     }
   }

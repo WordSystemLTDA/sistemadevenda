@@ -1,5 +1,8 @@
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +29,7 @@ class PaginaSelecionarPagamento extends StatefulWidget {
 }
 
 class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
+  var provedor = Modular.get<ProvedorFinalizarPagamento>();
   String pagamentoSelecionado = '1';
 
   bool carregando = true;
@@ -104,40 +108,97 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
         replacement: const Center(child: CircularProgressIndicator()),
         child: Stack(
           children: [
-            Positioned(
-              bottom: 120,
-              right: 20,
-              left: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
-                  Text(
-                    widget.totalReceber.obterReal(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Positioned(
+            //   bottom: 120,
+            //   right: 20,
+            //   left: 20,
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
+            //       Text(
+            //         widget.totalReceber.obterReal(),
+            //         style: const TextStyle(
+            //           fontSize: 15,
+            //           fontWeight: FontWeight.w600,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          SearchAnchor(
+                            builder: (BuildContext context, SearchController controller) {
+                              return IconButton(
+                                onPressed: () {
+                                  controller.openView();
+                                },
+                                icon: const Icon(Icons.menu),
+                              );
+                            },
+                            suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                              final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                              return [
+                                ...res.map(
+                                  (e) => Card(
+                                    elevation: 3.0,
+                                    margin: const EdgeInsets.all(5.0),
+                                    child: InkWell(
+                                      onTap: () {},
+                                      borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                      child: ListTile(
+                                        leading: const Icon(Icons.person_2_outlined),
+                                        title: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(e.pagamento),
+                                            Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                            Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                          ],
+                                        ),
+                                        subtitle: Text('ID: ${e.id}'),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ];
+                            },
+                          ),
+                          const Text('A pagar: ', style: TextStyle(fontSize: 25)),
+                        ],
+                      ),
+                      // const Spacer(),
+                      Text(
+                        widget.totalReceber.obterReal(),
+                        style: const TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   ListView.builder(
                     shrinkWrap: true,
                     itemCount: bancos.length,
+                    padding: const EdgeInsets.only(left: 20, right: 20),
                     itemBuilder: (context, index) {
                       var item = bancos[index];
 
                       return SizedBox(
                         width: 130,
-                        height: 75,
+                        height: 78,
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10.0),
+                          padding: const EdgeInsets.only(bottom: 13.0),
                           child: ElevatedButton(
                             style: ButtonStyle(
                               shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5))),
