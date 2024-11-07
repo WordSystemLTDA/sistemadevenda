@@ -59,7 +59,6 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
     await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
       if (mounted) {
         carrinhoProvedor.listarComandasPedidos();
-        Navigator.pop(context);
       }
 
       if (sucesso) return;
@@ -185,13 +184,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         );
 
                         if (context.mounted) {
-                          if (provedorCardapio.idComanda != '0') {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                          } else if (provedorCardapio.idMesa != '0') {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                          }
+                          Navigator.popUntil(context, ModalRoute.withName('PaginaMesas'));
                         }
 
                         return;
@@ -240,13 +233,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         );
 
                         if (context.mounted) {
-                          if (provedorCardapio.idComanda != '0') {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                          } else if (provedorCardapio.idMesa != '0') {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                          }
+                          Navigator.popUntil(context, ModalRoute.withName('PaginaComandas'));
                         }
 
                         return;

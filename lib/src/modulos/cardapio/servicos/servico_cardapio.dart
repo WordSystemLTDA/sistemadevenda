@@ -15,11 +15,14 @@ class ServicoCardapio {
 
   ServicoCardapio(this.dio, this.usuarioProvedor);
 
-  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens) async {
+  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens, {String? codigoQrcode}) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
+    print(tipo);
+
+    final response =
+        await dio.cliente.get('cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
     if (response.statusCode == 200) {
       return Modeloworddadoscardapio.fromMap(response.data);

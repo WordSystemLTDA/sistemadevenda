@@ -118,6 +118,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
                           hintStyle: TextStyle(fontWeight: FontWeight.w300),
                           border: OutlineInputBorder(),
                         ),
+                        keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 20),
                       TextField(

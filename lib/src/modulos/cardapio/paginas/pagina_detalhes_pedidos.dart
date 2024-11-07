@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaDetalhesPedido extends StatefulWidget {
+  final String? codigoQrcode;
   final String? idComanda;
   final String? idComandaPedido;
   final String? idMesa;
@@ -18,6 +19,7 @@ class PaginaDetalhesPedido extends StatefulWidget {
 
   const PaginaDetalhesPedido({
     super.key,
+    this.codigoQrcode,
     this.idComanda,
     this.idComandaPedido,
     this.idMesa,
@@ -33,10 +35,17 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
 
   Modeloworddadoscardapio? dados;
   bool carregando = false;
+  String idComanda = '0';
+  String idComandaPedido = '0';
+  String idMesa = '0';
 
   @override
   void initState() {
     super.initState();
+    idComanda = widget.idComanda ?? '0';
+    idComandaPedido = widget.idComandaPedido ?? '0';
+    idMesa = widget.idMesa ?? '0';
+
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       if (mounted) {
         listarComandasPedidos();
@@ -49,8 +58,11 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
       carregando = true;
     });
 
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Não').then((value) {
+    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não', codigoQrcode: widget.codigoQrcode).then((value) {
       dados = value;
+      idComanda = value.idComanda ?? '0';
+      idComandaPedido = value.id ?? '0';
+      idMesa = value.idMesa ?? '0';
     });
 
     setState(() {
@@ -69,6 +81,29 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
           title: Text('Detalhes da $nomeTipo'),
         ),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (dados!.id == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: Text('Detalhes da $nomeTipo'),
+        ),
+        body: Center(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Não foi possível encontrar essa $nomeTipo',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 20),
+              const Icon(Icons.not_listed_location_outlined, size: 32),
+            ],
+          ),
+        ),
       );
     }
 
@@ -143,7 +178,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                   idComanda: dados!.idComanda,
                                   idMesa: '0',
                                   idCliente: dados!.idCliente!,
-                                  id: widget.idComandaPedido,
+                                  id: idComandaPedido,
                                 );
                               },
                             ));
@@ -153,9 +188,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                 return PaginaCardapio(
                                   tipo: TipoCardapio.mesa,
                                   idComanda: '0',
-                                  idMesa: widget.idMesa ?? '0',
+                                  idMesa: idMesa,
                                   idCliente: dados!.idCliente!,
-                                  id: widget.idComandaPedido,
+                                  id: idComandaPedido,
                                 );
                               },
                             ));
@@ -182,7 +217,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (context) {
-                              return PaginaAcompanharPedido(idComanda: widget.idComanda, idComandaPedido: widget.idComandaPedido, idMesa: widget.idMesa);
+                              return PaginaAcompanharPedido(idComanda: idComanda, idComandaPedido: idComandaPedido, idMesa: idMesa);
                             },
                           ));
                         },
@@ -216,12 +251,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             return;
                           }
 
-                          if (widget.idComanda != null) {
+                          if (idComanda != '0') {
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => PaginaComandaDesocupada(
-                                  id: widget.idComanda!,
-                                  idComandaPedido: widget.idComandaPedido!,
+                                  id: idComanda,
+                                  idComandaPedido: idComandaPedido,
                                   nome: dados!.nome!,
                                   tipo: widget.tipo,
                                 ),
@@ -313,7 +348,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                                         const SizedBox(width: 10),
                                                         TextButton(
                                                           onPressed: () async {
-                                                            servicoCardapio.fecharAbrirComanda(widget.idComandaPedido!, 'Fechamento').then((value) async {
+                                                            servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
                                                               if (context.mounted) {
                                                                 Navigator.pop(context);
 
@@ -401,7 +436,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                                         const SizedBox(width: 10),
                                                         TextButton(
                                                           onPressed: () async {
-                                                            servicoCardapio.fecharAbrirComanda(widget.idComandaPedido!, 'Andamento').then((value) {
+                                                            servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
                                                               if (context.mounted) {
                                                                 Navigator.pop(context);
                                                                 ScaffoldMessenger.of(context).showSnackBar(

@@ -220,7 +220,7 @@ class _CardComandaState extends State<CardComanda> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+                                color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
                               ),
                             ),
                           ),

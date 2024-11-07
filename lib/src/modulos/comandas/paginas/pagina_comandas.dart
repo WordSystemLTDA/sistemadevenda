@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -128,7 +130,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   height: 40,
                                   child: Tab(
                                     child: Text(
-                                      "${e.titulo} (${e.comandas!.length})",
+                                      "${e.titulo} (${e.comandas?.length ?? 0})",
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                   ),
@@ -178,7 +180,13 @@ class _PaginaComandasState extends State<PaginaComandas> {
                               ),
                             ),
                             GestureDetector(
-                              onTap: () {},
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(
+                                  builder: (context) {
+                                    return const BarcodeScannerWithOverlay(tipo: TipoCardapio.comanda);
+                                  },
+                                ));
+                              },
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 15, top: 15),
                                 child: Container(
@@ -307,12 +315,6 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                             return ListView.builder(
                                               physics: const NeverScrollableScrollPhysics(),
                                               shrinkWrap: true,
-                                              // gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                              //   crossAxisCount: MediaQuery.of(context).size.width <= 1440 ? 2 : 3,
-                                              //   mainAxisExtent: 100,
-                                              //   mainAxisSpacing: 2,
-                                              //   crossAxisSpacing: 2,
-                                              // ),
                                               scrollDirection: Axis.vertical,
                                               itemCount: item.comandas!.length,
                                               padding: const EdgeInsets.only(top: 5, bottom: 10),
