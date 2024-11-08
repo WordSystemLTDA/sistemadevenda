@@ -51,5 +51,17 @@
 	<string>This app needs camera access to scan QR codes</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photos access to get QR code from photo library</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>This app needs NFC to acess comandas/mesas</string>
+	<key>com.apple.developer.nfc.readersession.felica.systemcodes</key>
+	<array>
+		<string>12FC</string>
+		<string>6A82</string>
+		<string>8008</string>
+	</array>
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>04CAA893C12A81</string>
+	</array>
 </dict>
 </plist>

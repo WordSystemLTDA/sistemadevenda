@@ -29,7 +29,6 @@ class _BarcodeScannerSimpleState extends State<BarcodeScannerSimple> {
   }
 
   void _handleBarcode(BarcodeCapture barcodes) {
-    print(barcodes);
     if (mounted) {
       setState(() {
         _barcode = barcodes.barcodes.firstOrNull;

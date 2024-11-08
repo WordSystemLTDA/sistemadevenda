@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class PaginaComandas extends StatefulWidget {
@@ -17,10 +19,7 @@ class PaginaComandas extends StatefulWidget {
 }
 
 class _PaginaComandasState extends State<PaginaComandas> {
-  final MobileScannerController controller = MobileScannerController(
-      // required options for the scanner
-
-      );
+  final MobileScannerController controller = MobileScannerController();
 
   Timer? debounce;
   Timer? _debounce;
@@ -40,10 +39,87 @@ class _PaginaComandasState extends State<PaginaComandas> {
   void initState() {
     super.initState();
     listarComandas();
+    nfc();
+  }
+
+  void nfc() async {
+    FlutterNfcKit.finish();
+
+    try {
+      var tag =
+          await FlutterNfcKit.poll(timeout: const Duration(seconds: 10), iosMultipleTagMessage: "Multiple tags found!", iosAlertMessage: "Scan your tag", readIso14443A: true);
+
+      if (tag.type == NFCTagType.mifare_ultralight) {
+        // var a = await FlutterNfcKit.readNDEFRawRecords();
+        var ndef = await FlutterNfcKit.readNDEFRecords();
+        // print(a);
+        // print(b);
+
+        var payload = ndef.first.toString();
+        var dataText = payload.indexOf('text=');
+        var codigo = payload.substring(dataText + 5);
+
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => PaginaDetalhesPedido(
+                idComandaPedido: '0',
+                idComanda: '0',
+                codigoQrcode: codigo,
+                tipo: TipoCardapio.comanda,
+              ),
+            ),
+          );
+        }
+        // Uint8List.fromList(stringPdf.codeUnits);
+        // print(ndef.first.);
+      }
+
+      if (tag.type == NFCTagType.iso15693) {
+        await FlutterNfcKit.writeBlock(
+            1, // index
+            [0xde, 0xad, 0xbe, 0xff], // data
+            iso15693Flags: Iso15693RequestFlags(), // optional flags for ISO 15693
+            iso15693ExtendedMode: false // use extended mode for ISO 15693
+            );
+      }
+
+      if (tag.type == NFCTagType.iso15693) {
+        await FlutterNfcKit.writeBlock(
+            1, // index
+            [0xde, 0xad, 0xbe, 0xff], // data
+            iso15693Flags: Iso15693RequestFlags(), // optional flags for ISO 15693
+            iso15693ExtendedMode: false // use extended mode for ISO 15693
+            );
+      }
+
+      if (tag.type == NFCTagType.iso7816) {
+        var result = await FlutterNfcKit.transceive("04CAA893C12A81"); // timeout is still Android-only, persist until next change
+        print(result);
+      }
+
+      if (tag.type == NFCTagType.mifare_classic) {
+        try {
+          await FlutterNfcKit.authenticateSector(0, keyA: "04CAA893C12A81");
+          var data = await FlutterNfcKit.readSector(0); // read one sector, or
+          // var data = await FlutterNfcKit.readBlock(0); // read one block
+
+          print(data);
+        } catch (e) {
+          print(e);
+        }
+      }
+
+      FlutterNfcKit.finish(iosAlertMessage: 'Sucesso ao ler TAG');
+    } catch (e) {
+      print(e);
+    }
+    // print(jsonEncode(tag));
   }
 
   @override
   void dispose() {
+    FlutterNfcKit.finish();
     if (_timer != null) {
       _timer!.cancel();
     }
