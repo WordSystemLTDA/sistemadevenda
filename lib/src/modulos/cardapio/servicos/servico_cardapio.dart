@@ -19,8 +19,6 @@ class ServicoCardapio {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
-    print(tipo);
-
     final response =
         await dio.cliente.get('cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
@@ -29,6 +27,22 @@ class ServicoCardapio {
     } else {
       return Future.error("Ops! Um erro ocorreu.");
     }
+  }
+
+  Future<({String id, String nome, String idComandaPedido, bool ocupado, bool sucesso})> listarIdCodigoQrcode(TipoCardapio tipo, String? codigoQrcode) async {
+    final empresa = usuarioProvedor.usuario!.empresa;
+    final idUsuario = usuarioProvedor.usuario!.id;
+
+    final response = await dio.cliente.get('cardapio/listar_id_por_codigo.php?codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}');
+
+    var jsonData = response.data;
+    bool ocupado = jsonData['ocupado'];
+    bool sucesso = jsonData['sucesso'];
+    String id = jsonData['id'];
+    String nome = jsonData['nome'];
+    String idComandaPedido = jsonData['idComandaPedido'];
+
+    return (id: id, nome: nome, idComandaPedido: idComandaPedido, ocupado: ocupado, sucesso: sucesso);
   }
 
   Future<(bool, String)> inserirProdutosComanda(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {

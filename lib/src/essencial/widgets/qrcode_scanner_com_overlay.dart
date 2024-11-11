@@ -3,6 +3,8 @@ import 'package:app/src/essencial/widgets/scanner_overlay.dart';
 import 'package:app/src/essencial/widgets/toggle_flash_button.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
@@ -47,7 +49,7 @@ class _BarcodeScannerWithOverlayState extends State<BarcodeScannerWithOverlay> {
               fit: BoxFit.cover,
               controller: controller,
               scanWindow: scanWindow,
-              onDetect: (barcodes) {
+              onDetect: (barcodes) async {
                 if (scanear == false) return;
 
                 controller.stop();
@@ -56,23 +58,48 @@ class _BarcodeScannerWithOverlayState extends State<BarcodeScannerWithOverlay> {
                   scanear = false;
                 });
 
-                Navigator.of(context)
-                    .push(
-                  MaterialPageRoute(
-                    builder: (context) => PaginaDetalhesPedido(
-                      idComandaPedido: '0',
-                      idComanda: '0',
-                      codigoQrcode: barcodes.barcodes.first.rawValue,
-                      tipo: widget.tipo,
-                    ),
-                  ),
-                )
-                    .then((value) {
-                  controller.start();
-                  setState(() {
-                    scanear = true;
+                if (barcodes.barcodes.first.rawValue != null) {
+                  final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+
+                  await servicoCardapio.listarIdCodigoQrcode(widget.tipo, barcodes.barcodes.first.rawValue).then((value) {
+                    if (value.ocupado) {
+                      if (context.mounted) {
+                        Navigator.of(context)
+                            .push(
+                          MaterialPageRoute(
+                            builder: (context) => PaginaDetalhesPedido(
+                              idComandaPedido: '0',
+                              idComanda: '0',
+                              codigoQrcode: barcodes.barcodes.first.rawValue,
+                              tipo: widget.tipo,
+                            ),
+                          ),
+                        )
+                            .then((value) {
+                          controller.start();
+                          setState(() {
+                            scanear = true;
+                          });
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                    } else {
+                      if (context.mounted) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => PaginaComandaDesocupada(
+                              id: value.id,
+                              nome: '',
+                              tipo: widget.tipo,
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   });
-                });
+                }
               },
               errorBuilder: (context, error, child) {
                 return ScannerErrorWidget(error: error);

@@ -16,6 +16,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 class PaginaComandaDesocupada extends StatefulWidget {
   final String id;
   final String? idComandaPedido;
+  final String? codigoQrcode;
   final String nome;
   final TipoCardapio tipo;
 
@@ -23,6 +24,7 @@ class PaginaComandaDesocupada extends StatefulWidget {
     super.key,
     required this.id,
     this.idComandaPedido,
+    this.codigoQrcode,
     required this.nome,
     required this.tipo,
   });
@@ -43,6 +45,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
   Modeloworddadoscardapio? dados;
 
+  String id = '0';
   String idMesa = '0';
   String idCliente = '0';
 
@@ -53,6 +56,8 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   @override
   void initState() {
     super.initState();
+    id = widget.id;
+
     listarDados();
     if (widget.idComandaPedido != null) {
       listarComandasPedidos();
@@ -73,6 +78,20 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     await servicoConfigBigchef.listar().then((value) {
       setState(() {
         configBigchef = value;
+      });
+    });
+  }
+
+  Future<void> listarPorCodigoQrcode() async {
+    await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda, 'Não').then((value) {
+      setState(() {
+        dados = value;
+        _clienteSearchController.text = value.nomeCliente!;
+        _mesaDestinoSearchController.text = value.nomeMesa!;
+        _obsconstroller.text = value.observacoes!;
+        idCliente = value.idCliente!;
+        idMesa = value.idMesa!;
+        carregando = false;
       });
     });
   }
@@ -115,7 +134,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
             if (widget.tipo == TipoCardapio.mesa) {
               final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
-              await provedorMesas.inserirMesaOcupada(widget.id, idCliente, _obsconstroller.text).then((resposta) async {
+              await provedorMesas.inserirMesaOcupada(id, idCliente, _obsconstroller.text).then((resposta) async {
                 if (context.mounted) {
                   provedorComanda.listarMesas('');
 
@@ -130,7 +149,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                           builder: (context) {
                             return PaginaCardapio(
                               tipo: TipoCardapio.comanda,
-                              idComanda: widget.id,
+                              idComanda: id,
                               idMesa: '0',
                               idCliente: idCliente,
                               id: resposta.idcomandapedido,
@@ -176,7 +195,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                   }
                 });
               } else {
-                await _state.inserirComandaOcupada(widget.id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
+                await _state.inserirComandaOcupada(id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
                   if (context.mounted) {
                     provedorComanda.listarComandas('');
 
@@ -191,7 +210,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                             builder: (context) {
                               return PaginaCardapio(
                                 tipo: TipoCardapio.comanda,
-                                idComanda: widget.id,
+                                idComanda: id,
                                 idMesa: '0',
                                 idCliente: idCliente,
                                 id: resposta.idcomandapedido,

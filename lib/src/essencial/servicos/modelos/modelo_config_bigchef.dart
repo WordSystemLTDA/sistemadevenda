@@ -19,6 +19,7 @@ class ModeloConfigBigchef {
   final String agrupamentodeitenscomproventregador;
   final String valordiferenca;
   final String saborlimitedeborda;
+  final String autenticarcomtag;
 
   ModeloConfigBigchef({
     required this.abrircomandadireto,
@@ -38,6 +39,7 @@ class ModeloConfigBigchef {
     required this.agrupamentodeitenscomproventregador,
     required this.valordiferenca,
     required this.saborlimitedeborda,
+    required this.autenticarcomtag,
   });
 
   Map<String, dynamic> toMap() {
@@ -59,6 +61,7 @@ class ModeloConfigBigchef {
       'agrupamentodeitenscomproventregador': agrupamentodeitenscomproventregador,
       'valordiferenca': valordiferenca,
       'saborlimitedeborda': saborlimitedeborda,
+      'autenticarcomtag': autenticarcomtag,
     };
   }
 
@@ -81,6 +84,7 @@ class ModeloConfigBigchef {
       agrupamentodeitenscomproventregador: map['agrupamentodeitenscomproventregador'] as String,
       valordiferenca: map['valordiferenca'] as String,
       saborlimitedeborda: map['saborlimitedeborda'] as String,
+      autenticarcomtag: map['autenticarcomtag'] as String,
     );
   }
 

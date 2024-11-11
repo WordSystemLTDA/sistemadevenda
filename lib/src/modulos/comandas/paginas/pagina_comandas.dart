@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -19,6 +24,7 @@ class PaginaComandas extends StatefulWidget {
 }
 
 class _PaginaComandasState extends State<PaginaComandas> {
+  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   final MobileScannerController controller = MobileScannerController();
 
   Timer? debounce;
@@ -28,10 +34,16 @@ class _PaginaComandasState extends State<PaginaComandas> {
   bool isLoading = false;
   Timer? _timer;
   String opcaoFiltro = 'Ocupadas';
+  ModeloConfigBigchef? configBigchef;
 
   void listarComandas() async {
+    configBigchef = await servicoConfigBigchef.listar();
     setState(() => isLoading = !isLoading);
     await provedor.listarComandas('');
+
+    if (configBigchef?.autenticarcomtag == 'Sim') {
+      nfc();
+    }
     setState(() => isLoading = !isLoading);
   }
 
@@ -39,7 +51,6 @@ class _PaginaComandasState extends State<PaginaComandas> {
   void initState() {
     super.initState();
     listarComandas();
-    nfc();
   }
 
   void nfc() async {
@@ -48,6 +59,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
     try {
       var tag =
           await FlutterNfcKit.poll(timeout: const Duration(seconds: 10), iosMultipleTagMessage: "Multiple tags found!", iosAlertMessage: "Scan your tag", readIso14443A: true);
+
+      print(jsonEncode(tag));
 
       if (tag.type == NFCTagType.mifare_ultralight) {
         // var a = await FlutterNfcKit.readNDEFRawRecords();
@@ -59,18 +72,76 @@ class _PaginaComandasState extends State<PaginaComandas> {
         var dataText = payload.indexOf('text=');
         var codigo = payload.substring(dataText + 5);
 
-        if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => PaginaDetalhesPedido(
-                idComandaPedido: '0',
-                idComanda: '0',
-                codigoQrcode: codigo,
-                tipo: TipoCardapio.comanda,
-              ),
-            ),
-          );
-        }
+        print(codigo);
+
+        final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+
+        print(codigo);
+
+        await servicoCardapio.listarIdCodigoQrcode(TipoCardapio.comanda, codigo).then((value) {
+          // print(jsonDecode(value.toString()));
+
+          if (value.sucesso == false) {
+            // if (mounted) {
+            //   ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            //   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            //     content: Text('Não existe comanda'),
+            //     backgroundColor: Colors.red,
+            //   ));
+            // }
+
+            FlutterNfcKit.finish(iosErrorMessage: 'Não existe comanda');
+            return;
+          } else {
+            // FlutterNfcKit.
+            FlutterNfcKit.finish();
+          }
+
+          if (value.ocupado == true) {
+            if (mounted) {
+              Navigator.of(context)
+                  .push(
+                MaterialPageRoute(
+                  builder: (context) => PaginaDetalhesPedido(
+                    idComandaPedido: value.idComandaPedido,
+                    idComanda: value.id,
+                    tipo: TipoCardapio.comanda,
+                  ),
+                ),
+              )
+                  .then((value) {
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              });
+            }
+          } else {
+            if (mounted) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PaginaComandaDesocupada(
+                    id: value.id,
+                    nome: value.nome,
+                    tipo: TipoCardapio.comanda,
+                  ),
+                ),
+              );
+            }
+          }
+        });
+
+        // if (mounted) {
+        //   Navigator.of(context).push(
+        //     MaterialPageRoute(
+        //       builder: (context) => PaginaDetalhesPedido(
+        //         idComandaPedido: '0',
+        //         idComanda: '0',
+        //         codigoQrcode: codigo,
+        //         tipo: TipoCardapio.comanda,
+        //       ),
+        //     ),
+        //   );
+        // }
         // Uint8List.fromList(stringPdf.codeUnits);
         // print(ndef.first.);
       }
@@ -109,9 +180,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
           print(e);
         }
       }
-
-      FlutterNfcKit.finish(iosAlertMessage: 'Sucesso ao ler TAG');
     } catch (e) {
+      FlutterNfcKit.finish(iosErrorMessage: 'Não existe comanda');
       print(e);
     }
     // print(jsonEncode(tag));
@@ -322,94 +392,97 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   ],
                                 ),
                               ),
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarComandas();
-                                },
-                                child: Column(
-                                  children: [
-                                    ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).map((e) {
-                                      return Expanded(
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          shrinkWrap: true,
-                                          itemCount:
-                                              provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.comandas
+                              if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).isNotEmpty)
+                                RefreshIndicator(
+                                  onRefresh: () async {
+                                    listarComandas();
+                                  },
+                                  child: Column(
+                                    children: [
+                                      ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).map((e) {
+                                        return Expanded(
+                                          child: ListView.builder(
+                                            padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
+                                            shrinkWrap: true,
+                                            itemCount: provedor.comandas
                                                 .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
-                                                .toList()[index];
+                                                .length,
+                                            itemBuilder: (context, index) {
+                                              final item = provedor.comandas
+                                                  .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
+                                                  .toList()[index];
 
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                                ListView.builder(
-                                                  physics: const NeverScrollableScrollPhysics(),
-                                                  shrinkWrap: true,
-                                                  scrollDirection: Axis.vertical,
-                                                  itemCount: item.comandas!.length,
-                                                  padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                  itemBuilder: (_, index) {
-                                                    var itemComanda = item.comandas![index];
+                                              return Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(item.titulo, style: const TextStyle(fontSize: 16)),
+                                                  ListView.builder(
+                                                    physics: const NeverScrollableScrollPhysics(),
+                                                    shrinkWrap: true,
+                                                    scrollDirection: Axis.vertical,
+                                                    itemCount: item.comandas!.length,
+                                                    padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                                    itemBuilder: (_, index) {
+                                                      var itemComanda = item.comandas![index];
 
-                                                    return Padding(
-                                                      padding: const EdgeInsets.only(bottom: 10),
-                                                      child: CardComanda(itemComanda: itemComanda),
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
+                                                      return Padding(
+                                                        padding: const EdgeInsets.only(bottom: 10),
+                                                        child: CardComanda(itemComanda: itemComanda),
+                                                      );
+                                                    },
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarComandas();
-                                },
-                                child: Column(
-                                  children: [
-                                    ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).map((e) {
-                                      return Expanded(
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          shrinkWrap: true,
-                                          itemCount: provedor.comandas
-                                              .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                              .toList()
-                                              .length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.comandas
+                              if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).isNotEmpty)
+                                RefreshIndicator(
+                                  onRefresh: () async {
+                                    listarComandas();
+                                  },
+                                  child: Column(
+                                    children: [
+                                      ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).map((e) {
+                                        return Expanded(
+                                          child: ListView.builder(
+                                            padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
+                                            shrinkWrap: true,
+                                            itemCount: provedor.comandas
                                                 .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                                .toList()[index];
+                                                .toList()
+                                                .length,
+                                            itemBuilder: (context, index) {
+                                              final item = provedor.comandas
+                                                  .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
+                                                  .toList()[index];
 
-                                            return ListView.builder(
-                                              physics: const NeverScrollableScrollPhysics(),
-                                              shrinkWrap: true,
-                                              scrollDirection: Axis.vertical,
-                                              itemCount: item.comandas!.length,
-                                              padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                              itemBuilder: (_, index) {
-                                                var itemComanda = item.comandas![index];
+                                              return ListView.builder(
+                                                physics: const NeverScrollableScrollPhysics(),
+                                                shrinkWrap: true,
+                                                scrollDirection: Axis.vertical,
+                                                itemCount: item.comandas!.length,
+                                                padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                                itemBuilder: (_, index) {
+                                                  var itemComanda = item.comandas![index];
 
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 10),
-                                                  child: CardComanda(itemComanda: itemComanda),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
+                                                  return Padding(
+                                                    padding: const EdgeInsets.only(bottom: 10),
+                                                    child: CardComanda(itemComanda: itemComanda),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
