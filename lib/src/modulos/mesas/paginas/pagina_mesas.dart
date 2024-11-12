@@ -48,7 +48,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
     await provedor.listarMesas('');
     setState(() => isLoading = false);
 
-    if (configBigchef?.autenticarcomtag == 'Sim') {
+    if (configBigchef?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available) {
       await nfc();
     }
   }

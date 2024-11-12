@@ -48,7 +48,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
     await provedor.listarComandas('');
     setState(() => isLoading = false);
 
-    if (configBigchef?.autenticarcomtag == 'Sim') {
+    if (configBigchef?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available) {
       await nfc();
     }
   }
@@ -122,7 +122,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
 
   @override
   void dispose() {
-    FlutterNfcKit.finish();
+    // FlutterNfcKit.finish();
+
     if (_timer != null) {
       _timer!.cancel();
     }

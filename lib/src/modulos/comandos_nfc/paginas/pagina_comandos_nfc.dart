@@ -16,53 +16,55 @@ class PaginaComandosNfc extends StatefulWidget {
 
 class _PaginaComandosNfcState extends State<PaginaComandosNfc> {
   Future<void> abrirLeitorNFC(TipoCardapio tipo) async {
-    // FlutterNfcKit.finish();
+    if (await FlutterNfcKit.nfcAvailability == NFCAvailability.available) {
+      // FlutterNfcKit.finish();
 
-    try {
-      var tag = await FlutterNfcKit.poll(
-        timeout: const Duration(seconds: 10),
-        iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
-        iosAlertMessage: "Escaneie a sua TAG",
-        readIso14443A: true,
-      );
+      try {
+        var tag = await FlutterNfcKit.poll(
+          timeout: const Duration(seconds: 10),
+          iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
+          iosAlertMessage: "Escaneie a sua TAG",
+          readIso14443A: true,
+        );
 
-      if (tag.type == NFCTagType.mifare_ultralight) {
-        var ndef = await FlutterNfcKit.readNDEFRecords();
+        if (tag.type == NFCTagType.mifare_ultralight) {
+          var ndef = await FlutterNfcKit.readNDEFRecords();
 
-        if (ndef.isEmpty) {
-          FlutterNfcKit.finish(iosErrorMessage: 'Essa TAG não tem código Registrado.');
-          return;
-        }
-
-        var payload = ndef.first.toString();
-        var dataText = payload.indexOf('text=');
-        var codigo = payload.substring(dataText + 5);
-
-        final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
-
-        await servicoCardapio.listarIdCodigoQrcode(tipo, codigo).then((value) {
-          if (value.sucesso == false) {
-            FlutterNfcKit.finish(iosErrorMessage: 'Essa ${tipo.nome} não existe.');
+          if (ndef.isEmpty) {
+            FlutterNfcKit.finish(iosErrorMessage: 'Essa TAG não tem código Registrado.');
             return;
-          } else {
-            FlutterNfcKit.finish();
           }
 
-          Nfc.enviarComando(
-            tipo: tipo,
-            idComandaPedido: value.idComandaPedido,
-            ocupado: value.ocupado,
-            codigo: value.codigo,
-            id: value.id,
-            nome: value.nome,
-          );
-        });
-      } else {
-        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
-        return;
+          var payload = ndef.first.toString();
+          var dataText = payload.indexOf('text=');
+          var codigo = payload.substring(dataText + 5);
+
+          final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+
+          await servicoCardapio.listarIdCodigoQrcode(tipo, codigo).then((value) {
+            if (value.sucesso == false) {
+              FlutterNfcKit.finish(iosErrorMessage: 'Essa ${tipo.nome} não existe.');
+              return;
+            } else {
+              FlutterNfcKit.finish();
+            }
+
+            Nfc.enviarComando(
+              tipo: tipo,
+              idComandaPedido: value.idComandaPedido,
+              ocupado: value.ocupado,
+              codigo: value.codigo,
+              id: value.id,
+              nome: value.nome,
+            );
+          });
+        } else {
+          FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+          return;
+        }
+      } on PlatformException catch (e) {
+        FlutterNfcKit.finish(iosErrorMessage: e.details);
       }
-    } on PlatformException catch (e) {
-      FlutterNfcKit.finish(iosErrorMessage: e.details);
     }
   }
 
