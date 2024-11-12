@@ -29,7 +29,7 @@ class ServicoCardapio {
     }
   }
 
-  Future<({String id, String nome, String idComandaPedido, bool ocupado, bool sucesso})> listarIdCodigoQrcode(TipoCardapio tipo, String? codigoQrcode) async {
+  Future<({String id, String codigo, String nome, String idComandaPedido, bool ocupado, bool sucesso})> listarIdCodigoQrcode(TipoCardapio tipo, String? codigoQrcode) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
@@ -39,10 +39,18 @@ class ServicoCardapio {
     bool ocupado = jsonData['ocupado'];
     bool sucesso = jsonData['sucesso'];
     String id = jsonData['id'];
+    String codigo = jsonData['codigo'];
     String nome = jsonData['nome'];
     String idComandaPedido = jsonData['idComandaPedido'];
 
-    return (id: id, nome: nome, idComandaPedido: idComandaPedido, ocupado: ocupado, sucesso: sucesso);
+    return (
+      id: id,
+      codigo: codigo,
+      nome: nome,
+      idComandaPedido: idComandaPedido,
+      ocupado: ocupado,
+      sucesso: sucesso,
+    );
   }
 
   Future<(bool, String)> inserirProdutosComanda(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {

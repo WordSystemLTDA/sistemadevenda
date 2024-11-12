@@ -6,8 +6,17 @@ class NovaComanda extends StatefulWidget {
   final bool editar;
   final String? nome;
   final String? id;
+  final String? codigo;
   final Function() aoSalvar;
-  const NovaComanda({super.key, this.nome, this.id, required this.editar, required this.aoSalvar});
+
+  const NovaComanda({
+    super.key,
+    this.nome,
+    this.id,
+    this.codigo,
+    required this.editar,
+    required this.aoSalvar,
+  });
 
   @override
   State<NovaComanda> createState() => _NovaComandaState();
@@ -17,6 +26,7 @@ class _NovaComandaState extends State<NovaComanda> {
   final ProvedorComanda _state = Modular.get<ProvedorComanda>();
 
   final nomeController = TextEditingController();
+  final codigoController = TextEditingController();
 
   @override
   void initState() {
@@ -24,7 +34,15 @@ class _NovaComandaState extends State<NovaComanda> {
 
     if (widget.editar) {
       nomeController.text = widget.nome!;
+      codigoController.text = widget.codigo!;
     }
+  }
+
+  @override
+  void dispose() {
+    codigoController.dispose();
+    nomeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -42,11 +60,20 @@ class _NovaComandaState extends State<NovaComanda> {
           children: [
             const SizedBox(height: 10),
             TextField(
+              controller: codigoController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.all(13),
+                label: Text('Código'),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
               controller: nomeController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.all(13),
-                label: Text('Digite o Nome'),
+                label: Text('Nome'),
               ),
             ),
             const SizedBox(height: 20),
@@ -68,7 +95,7 @@ class _NovaComandaState extends State<NovaComanda> {
                   if (nomeController.text.isEmpty) return;
 
                   if (widget.editar) {
-                    await _state.editarComanda(widget.id!, nomeController.text).then((sucesso) {
+                    await _state.editarComanda(widget.id!, codigoController.text, nomeController.text).then((sucesso) {
                       if (sucesso) {
                         widget.aoSalvar();
                       }

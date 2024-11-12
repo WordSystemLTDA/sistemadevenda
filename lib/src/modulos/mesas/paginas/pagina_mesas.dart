@@ -1,12 +1,19 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class PaginaMesas extends StatefulWidget {
@@ -17,29 +24,96 @@ class PaginaMesas extends StatefulWidget {
 }
 
 class _PaginaMesasState extends State<PaginaMesas> {
-  final MobileScannerController controller = MobileScannerController(
-      // required options for the scanner
-
-      );
+  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  final MobileScannerController controller = MobileScannerController();
 
   Timer? debounce;
   Timer? _debounce;
 
   final ProvedorMesas provedor = Modular.get<ProvedorMesas>();
-  bool isLoading = false;
+  bool isLoading = true;
   Timer? _timer;
   String opcaoFiltro = 'Ocupadas';
-
-  void listarMesas() async {
-    setState(() => isLoading = !isLoading);
-    await provedor.listarMesas('');
-    setState(() => isLoading = !isLoading);
-  }
+  ModeloConfigBigchef? configBigchef;
 
   @override
   void initState() {
     super.initState();
     listarMesas();
+  }
+
+  void listarMesas() async {
+    configBigchef = await servicoConfigBigchef.listar();
+    setState(() => isLoading = true);
+    await provedor.listarMesas('');
+    setState(() => isLoading = false);
+
+    if (configBigchef?.autenticarcomtag == 'Sim') {
+      await nfc();
+    }
+  }
+
+  Future<void> nfc() async {
+    FlutterNfcKit.finish();
+
+    try {
+      var tag = await FlutterNfcKit.poll(
+        timeout: const Duration(seconds: 10),
+        iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
+        iosAlertMessage: "Escaneie a sua TAG",
+        readIso14443A: true,
+      );
+
+      if (tag.type == NFCTagType.mifare_ultralight) {
+        var ndef = await FlutterNfcKit.readNDEFRecords();
+
+        var payload = ndef.first.toString();
+        var dataText = payload.indexOf('text=');
+        var codigo = payload.substring(dataText + 5);
+
+        final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+
+        await servicoCardapio.listarIdCodigoQrcode(TipoCardapio.mesa, codigo).then((value) {
+          if (value.sucesso == false) {
+            FlutterNfcKit.finish(iosErrorMessage: 'Essa mesa não existe.');
+            return;
+          } else {
+            FlutterNfcKit.finish();
+          }
+
+          if (value.ocupado == true) {
+            if (mounted) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PaginaDetalhesPedido(
+                    idComandaPedido: value.idComandaPedido,
+                    idMesa: value.id,
+                    tipo: TipoCardapio.mesa,
+                  ),
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PaginaComandaDesocupada(
+                    id: value.id,
+                    nome: value.nome,
+                    tipo: TipoCardapio.mesa,
+                  ),
+                ),
+              );
+            }
+          }
+        });
+      } else {
+        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        return;
+      }
+    } on PlatformException catch (e) {
+      FlutterNfcKit.finish(iosErrorMessage: e.details);
+    }
   }
 
   @override

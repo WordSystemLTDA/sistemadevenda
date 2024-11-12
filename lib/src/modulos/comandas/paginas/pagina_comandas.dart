@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -12,6 +11,7 @@ import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -31,21 +31,10 @@ class _PaginaComandasState extends State<PaginaComandas> {
   Timer? _debounce;
 
   final ProvedorComanda provedor = Modular.get<ProvedorComanda>();
-  bool isLoading = false;
+  bool isLoading = true;
   Timer? _timer;
   String opcaoFiltro = 'Ocupadas';
   ModeloConfigBigchef? configBigchef;
-
-  void listarComandas() async {
-    configBigchef = await servicoConfigBigchef.listar();
-    setState(() => isLoading = !isLoading);
-    await provedor.listarComandas('');
-
-    if (configBigchef?.autenticarcomtag == 'Sim') {
-      nfc();
-    }
-    setState(() => isLoading = !isLoading);
-  }
 
   @override
   void initState() {
@@ -53,54 +42,52 @@ class _PaginaComandasState extends State<PaginaComandas> {
     listarComandas();
   }
 
-  void nfc() async {
+  void listarComandas() async {
+    configBigchef = await servicoConfigBigchef.listar();
+    setState(() => isLoading = true);
+    await provedor.listarComandas('');
+    setState(() => isLoading = false);
+
+    if (configBigchef?.autenticarcomtag == 'Sim') {
+      await nfc();
+    }
+  }
+
+  Future<void> nfc() async {
     FlutterNfcKit.finish();
 
     try {
-      var tag =
-          await FlutterNfcKit.poll(timeout: const Duration(seconds: 10), iosMultipleTagMessage: "Multiple tags found!", iosAlertMessage: "Scan your tag", readIso14443A: true);
-
-      print(jsonEncode(tag));
+      var tag = await FlutterNfcKit.poll(
+        timeout: const Duration(seconds: 10),
+        iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
+        iosAlertMessage: "Escaneie a sua TAG",
+        readIso14443A: true,
+      );
 
       if (tag.type == NFCTagType.mifare_ultralight) {
-        // var a = await FlutterNfcKit.readNDEFRawRecords();
         var ndef = await FlutterNfcKit.readNDEFRecords();
-        // print(a);
-        // print(b);
+        if (ndef.isEmpty) {
+          FlutterNfcKit.finish(iosErrorMessage: 'Essa TAG não tem código Registrado.');
+          return;
+        }
 
         var payload = ndef.first.toString();
         var dataText = payload.indexOf('text=');
         var codigo = payload.substring(dataText + 5);
 
-        print(codigo);
-
         final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
 
-        print(codigo);
-
         await servicoCardapio.listarIdCodigoQrcode(TipoCardapio.comanda, codigo).then((value) {
-          // print(jsonDecode(value.toString()));
-
           if (value.sucesso == false) {
-            // if (mounted) {
-            //   ScaffoldMessenger.of(context).removeCurrentSnackBar();
-            //   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            //     content: Text('Não existe comanda'),
-            //     backgroundColor: Colors.red,
-            //   ));
-            // }
-
-            FlutterNfcKit.finish(iosErrorMessage: 'Não existe comanda');
+            FlutterNfcKit.finish(iosErrorMessage: 'Essa comanda não existe.');
             return;
           } else {
-            // FlutterNfcKit.
             FlutterNfcKit.finish();
           }
 
           if (value.ocupado == true) {
             if (mounted) {
-              Navigator.of(context)
-                  .push(
+              Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => PaginaDetalhesPedido(
                     idComandaPedido: value.idComandaPedido,
@@ -108,12 +95,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
                     tipo: TipoCardapio.comanda,
                   ),
                 ),
-              )
-                  .then((value) {
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              });
+              );
             }
           } else {
             if (mounted) {
@@ -129,62 +111,13 @@ class _PaginaComandasState extends State<PaginaComandas> {
             }
           }
         });
-
-        // if (mounted) {
-        //   Navigator.of(context).push(
-        //     MaterialPageRoute(
-        //       builder: (context) => PaginaDetalhesPedido(
-        //         idComandaPedido: '0',
-        //         idComanda: '0',
-        //         codigoQrcode: codigo,
-        //         tipo: TipoCardapio.comanda,
-        //       ),
-        //     ),
-        //   );
-        // }
-        // Uint8List.fromList(stringPdf.codeUnits);
-        // print(ndef.first.);
+      } else {
+        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        return;
       }
-
-      if (tag.type == NFCTagType.iso15693) {
-        await FlutterNfcKit.writeBlock(
-            1, // index
-            [0xde, 0xad, 0xbe, 0xff], // data
-            iso15693Flags: Iso15693RequestFlags(), // optional flags for ISO 15693
-            iso15693ExtendedMode: false // use extended mode for ISO 15693
-            );
-      }
-
-      if (tag.type == NFCTagType.iso15693) {
-        await FlutterNfcKit.writeBlock(
-            1, // index
-            [0xde, 0xad, 0xbe, 0xff], // data
-            iso15693Flags: Iso15693RequestFlags(), // optional flags for ISO 15693
-            iso15693ExtendedMode: false // use extended mode for ISO 15693
-            );
-      }
-
-      if (tag.type == NFCTagType.iso7816) {
-        var result = await FlutterNfcKit.transceive("04CAA893C12A81"); // timeout is still Android-only, persist until next change
-        print(result);
-      }
-
-      if (tag.type == NFCTagType.mifare_classic) {
-        try {
-          await FlutterNfcKit.authenticateSector(0, keyA: "04CAA893C12A81");
-          var data = await FlutterNfcKit.readSector(0); // read one sector, or
-          // var data = await FlutterNfcKit.readBlock(0); // read one block
-
-          print(data);
-        } catch (e) {
-          print(e);
-        }
-      }
-    } catch (e) {
-      FlutterNfcKit.finish(iosErrorMessage: 'Não existe comanda');
-      print(e);
+    } on PlatformException catch (e) {
+      FlutterNfcKit.finish(iosErrorMessage: e.details);
     }
-    // print(jsonEncode(tag));
   }
 
   @override
@@ -250,7 +183,12 @@ class _PaginaComandasState extends State<PaginaComandas> {
               child: Stack(
                 children: [
                   DefaultTabController(
-                    length: provedor.comandas.isNotEmpty ? (provedor.comandas.length + 1) : 1,
+                    length: (provedor.comandas.isNotEmpty ? (provedor.comandas.length + 1) : 1) -
+                        (provedor.comandas
+                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty)
+                                .isNotEmpty
+                            ? 1
+                            : 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -271,17 +209,17 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   ),
                                 ),
                               ),
-                              ...provedor.comandas.map(
-                                (e) => SizedBox(
-                                  height: 40,
-                                  child: Tab(
-                                    child: Text(
-                                      "${e.titulo} (${e.comandas?.length ?? 0})",
-                                      style: const TextStyle(fontSize: 14),
+                              ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element.titulo != 'em Fechamento').isNotEmpty).map(
+                                    (e) => SizedBox(
+                                      height: 40,
+                                      child: Tab(
+                                        child: Text(
+                                          "${e.titulo} (${e.comandas?.length ?? 0})",
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -399,44 +337,41 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   },
                                   child: Column(
                                     children: [
-                                      ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).map((e) {
-                                        return Expanded(
-                                          child: ListView.builder(
-                                            padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                            shrinkWrap: true,
-                                            itemCount: provedor.comandas
+                                      Expanded(
+                                        child: ListView.builder(
+                                          shrinkWrap: true,
+                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
+                                          itemCount:
+                                              provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).length,
+                                          itemBuilder: (context, index) {
+                                            final item = provedor.comandas
                                                 .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
-                                                .length,
-                                            itemBuilder: (context, index) {
-                                              final item = provedor.comandas
-                                                  .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
-                                                  .toList()[index];
+                                                .toList()[index];
 
-                                              return Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                                  ListView.builder(
-                                                    physics: const NeverScrollableScrollPhysics(),
-                                                    shrinkWrap: true,
-                                                    scrollDirection: Axis.vertical,
-                                                    itemCount: item.comandas!.length,
-                                                    padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                    itemBuilder: (_, index) {
-                                                      var itemComanda = item.comandas![index];
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(item.titulo, style: const TextStyle(fontSize: 16)),
+                                                ListView.builder(
+                                                  physics: const NeverScrollableScrollPhysics(),
+                                                  shrinkWrap: true,
+                                                  scrollDirection: Axis.vertical,
+                                                  itemCount: item.comandas?.length ?? 0,
+                                                  padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                                  itemBuilder: (_, index) {
+                                                    var itemComanda = item.comandas![index];
 
-                                                      return Padding(
-                                                        padding: const EdgeInsets.only(bottom: 10),
-                                                        child: CardComanda(itemComanda: itemComanda),
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      }),
+                                                    return Padding(
+                                                      padding: const EdgeInsets.only(bottom: 10),
+                                                      child: CardComanda(itemComanda: itemComanda),
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),

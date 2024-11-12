@@ -1,9 +1,12 @@
 import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
+import 'package:app/src/modulos/comandos_nfc/paginas/pagina_comandos_nfc.dart';
 import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
 import 'package:flutter/material.dart';
@@ -17,13 +20,24 @@ class PaginaInicio extends StatefulWidget {
 }
 
 class _PaginaInicioState extends State<PaginaInicio> {
+  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ModeloConfigBigchef? configBigchef;
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    conectarAoServidor();
+    listarDados();
   }
 
-  void conectarAoServidor() async {
+  void listarDados() async {
+    setState(() => isLoading = true);
+    await conectarAoServidor();
+    await listarDadosConfigBigChef();
+    setState(() => isLoading = false);
+  }
+
+  Future<void> conectarAoServidor() async {
     var cliente = Modular.get<Client>();
     final ConfigSharedPreferences config = ConfigSharedPreferences();
     var conexao = await config.getConexao();
@@ -42,6 +56,10 @@ class _PaginaInicioState extends State<PaginaInicio> {
     });
   }
 
+  Future<void> listarDadosConfigBigChef() async {
+    configBigchef = await servicoConfigBigchef.listar();
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -58,59 +76,76 @@ class _PaginaInicioState extends State<PaginaInicio> {
             title: const Text('Início'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           ),
-          body: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    shrinkWrap: true,
-                    childAspectRatio: (itemWidth / itemHeight),
-                    children: [
-                      CardHome(
-                        nome: 'Mesas',
-                        icone: const Icon(Icons.table_bar_outlined, size: 40),
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            settings: const RouteSettings(name: 'PaginaMesas'),
-                            builder: (context) {
-                              return const PaginaMesas();
+          body: Visibility(
+            visible: isLoading == false,
+            replacement: const Center(child: CircularProgressIndicator()),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      shrinkWrap: true,
+                      childAspectRatio: (itemWidth / itemHeight),
+                      children: [
+                        CardHome(
+                          nome: 'Mesas',
+                          icone: const Icon(Icons.table_bar_outlined, size: 40),
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(name: 'PaginaMesas'),
+                              builder: (context) {
+                                return const PaginaMesas();
+                              },
+                            ));
+                          },
+                        ),
+                        CardHome(
+                          nome: 'Comandas',
+                          icone: const Icon(Icons.fact_check_outlined, size: 40),
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(name: 'PaginaComandas'),
+                              builder: (context) {
+                                return const PaginaComandas();
+                              },
+                            ));
+                          },
+                        ),
+                        CardHome(
+                          nome: 'Balcão',
+                          icone: const Icon(Icons.shopping_cart_outlined, size: 40),
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(name: 'PaginaBalcao'),
+                              builder: (context) {
+                                return const PaginaBalcao();
+                              },
+                            ));
+                          },
+                        ),
+                        if (configBigchef?.autenticarcomtag == 'Sim')
+                          CardHome(
+                            nome: 'Comandos NFC',
+                            icone: const Icon(Icons.send_to_mobile_outlined, size: 40),
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                settings: const RouteSettings(name: 'PaginaComandosNfc'),
+                                builder: (context) {
+                                  return const PaginaComandosNfc();
+                                },
+                              ));
                             },
-                          ));
-                        },
-                      ),
-                      CardHome(
-                        nome: 'Comandas',
-                        icone: const Icon(Icons.fact_check_outlined, size: 40),
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            settings: const RouteSettings(name: 'PaginaComandas'),
-                            builder: (context) {
-                              return const PaginaComandas();
-                            },
-                          ));
-                        },
-                      ),
-                      CardHome(
-                        nome: 'Balcão',
-                        icone: const Icon(Icons.shopping_cart_outlined, size: 40),
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            settings: const RouteSettings(name: 'PaginaBalcao'),
-                            builder: (context) {
-                              return const PaginaBalcao();
-                            },
-                          ));
-                        },
-                      ),
-                    ],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

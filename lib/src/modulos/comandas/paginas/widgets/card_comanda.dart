@@ -213,7 +213,7 @@ class _CardComandaState extends State<CardComanda> {
                         children: [
                           const SizedBox(width: 15),
                           SizedBox(
-                            width: 150,
+                            width: 180,
                             child: Text(
                               widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
                               maxLines: 1,
@@ -251,11 +251,11 @@ class _CardComandaState extends State<CardComanda> {
                               children: [
                                 const SizedBox(width: 15),
                                 Text(
-                                  widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty ? 'Mesa: ${widget.itemComanda.nomeMesa!.split(' ')[1]}' : '',
+                                  (widget.itemComanda.nomeMesa != null && widget.itemComanda.nomeMesa!.isNotEmpty) ? widget.itemComanda.nomeMesa! : '',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
-                                    color: widget.itemComanda.comandaOcupada ? Colors.black : Colors.grey[600],
+                                    color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
                                   ),
                                 ),
                               ],

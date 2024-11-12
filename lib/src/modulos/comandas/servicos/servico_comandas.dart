@@ -80,11 +80,12 @@ class ServicoComandas {
     return response.data['sucesso'];
   }
 
-  Future<bool> editarComanda(String id, String nome) async {
+  Future<bool> editarComanda(String id, String codigo, String nome) async {
     const url = 'comandas/editar_comanda.php';
 
     final response = await dio.cliente.post(url, data: {
       'id': id,
+      'codigo': codigo,
       'nome': nome,
     });
 

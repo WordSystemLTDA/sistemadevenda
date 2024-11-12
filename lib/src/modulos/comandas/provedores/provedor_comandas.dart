@@ -78,8 +78,8 @@ class ProvedorComanda extends ChangeNotifier {
     return res;
   }
 
-  Future<bool> editarComanda(String id, String nome) async {
-    final res = await _servico.editarComanda(id, nome);
+  Future<bool> editarComanda(String id, String codigo, String nome) async {
+    final res = await _servico.editarComanda(id, codigo, nome);
     listarComandas('');
     return res;
   }

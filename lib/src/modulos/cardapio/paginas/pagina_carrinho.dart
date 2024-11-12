@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -29,6 +30,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+  final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
+  final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  final ProvedorFinalizarPagamento provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
+  final Client client = Modular.get<Client>();
+  final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
+
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
   bool carregando = true;
@@ -138,8 +145,6 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  var provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
-
                   provedorFinalizarPagamento.idVenda = provedorCardapio.id;
                   provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
 
@@ -164,13 +169,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                       var (sucesso, mensagem) = resposta;
 
                       if (sucesso) {
-                        final Client client = Modular.get<Client>();
-
-                        final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
-
                         provedorMesas.listarMesas('');
                         client.write(jsonEncode({
                           'tipo': 'Mesa',
+                          'nomeConexao': usuarioProvedor.usuario!.nome,
                         }));
 
                         removerTodosItensCarrinho();
@@ -213,13 +215,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                       var (sucesso, mensagem) = resposta;
 
                       if (sucesso) {
-                        final Client client = Modular.get<Client>();
-                        final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
                         // final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
 
                         provedorComanda.listarComandas('');
                         client.write(jsonEncode({
                           'tipo': 'Comanda',
+                          'nomeConexao': usuarioProvedor.usuario!.nome,
                         }));
 
                         removerTodosItensCarrinho();

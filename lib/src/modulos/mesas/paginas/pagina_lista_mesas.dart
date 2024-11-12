@@ -1,7 +1,11 @@
 import 'package:app/src/modulos/mesas/paginas/widgets/nova_mesa.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
+// ignore: depend_on_referenced_packages
+import 'package:ndef/ndef.dart' as ndef;
 
 class PaginaListaMesas extends StatefulWidget {
   const PaginaListaMesas({super.key});
@@ -12,20 +16,14 @@ class PaginaListaMesas extends StatefulWidget {
 
 class PaginaListaMesasState extends State<PaginaListaMesas> {
   final ProvedorMesas _state = Modular.get<ProvedorMesas>();
-  bool isLoading = false;
+  bool isLoading = true;
+  bool _isNfcAvailable = false;
 
   final pesquisaController = TextEditingController();
-
-  void listar() async {
-    setState(() => isLoading = !isLoading);
-    await _state.listarMesasLista('');
-    setState(() => isLoading = !isLoading);
-  }
 
   @override
   void initState() {
     super.initState();
-
     listar();
   }
 
@@ -33,6 +31,51 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
   void dispose() {
     pesquisaController.dispose();
     super.dispose();
+  }
+
+  void listar() async {
+    setState(() => isLoading = true);
+    await _state.listarMesasLista('');
+    await initNFC();
+    setState(() => isLoading = false);
+  }
+
+  Future<void> initNFC() async {
+    try {
+      final availability = await FlutterNfcKit.nfcAvailability;
+      _isNfcAvailable = availability == NFCAvailability.available;
+    } catch (e) {
+      _isNfcAvailable = false;
+    }
+  }
+
+  Future<void> escreverCodigoNaTag(String codigo) async {
+    FlutterNfcKit.finish();
+
+    try {
+      var tag = await FlutterNfcKit.poll(
+        timeout: const Duration(seconds: 10),
+        iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
+        iosAlertMessage: "Escaneie a sua TAG",
+        readIso14443A: true,
+      );
+
+      if (tag.type == NFCTagType.mifare_ultralight) {
+        if (tag.ndefWritable ?? false) {
+          await FlutterNfcKit.writeNDEFRecords([
+            ndef.TextRecord(encoding: ndef.TextEncoding.UTF8, language: 'pt', text: codigo),
+          ]);
+          FlutterNfcKit.finish(iosAlertMessage: 'Tag editada com Sucesso.');
+        } else {
+          FlutterNfcKit.finish(iosErrorMessage: 'Tag não é editavel.');
+        }
+      } else {
+        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        return;
+      }
+    } on PlatformException catch (e) {
+      FlutterNfcKit.finish(iosErrorMessage: e.details);
+    }
   }
 
   @override
@@ -213,8 +256,15 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                           ),
                                                         );
                                                       },
-                                                      child: const Text('Editar Mesa'),
+                                                      child: const Text('Editar'),
                                                     ),
+                                                    if (_isNfcAvailable && item.codigo.isNotEmpty)
+                                                      MenuItemButton(
+                                                        onPressed: () {
+                                                          escreverCodigoNaTag(item.codigo);
+                                                        },
+                                                        child: const Text('Escrever Código'),
+                                                      ),
                                                     MenuItemButton(
                                                       onPressed: () async {
                                                         showDialog(
@@ -260,7 +310,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                                             }
                                                                           });
                                                                         },
-                                                                        child: const Text('excluir'),
+                                                                        child: const Text('Excluir'),
                                                                       ),
                                                                     ],
                                                                   ),
@@ -270,7 +320,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
                                                           ),
                                                         );
                                                       },
-                                                      child: const Text('Excluir Mesa'),
+                                                      child: const Text('Excluir'),
                                                     ),
                                                   ],
                                                 ),

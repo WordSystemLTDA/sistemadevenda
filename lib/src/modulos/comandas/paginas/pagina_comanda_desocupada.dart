@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
@@ -50,6 +51,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   String idCliente = '0';
 
   final ProvedorComanda _state = Modular.get<ProvedorComanda>();
+  final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   final ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   ModeloConfigBigchef? configBigchef;
 
@@ -134,36 +136,20 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
             if (widget.tipo == TipoCardapio.mesa) {
               final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
-              await provedorMesas.inserirMesaOcupada(id, idCliente, _obsconstroller.text).then((resposta) async {
-                if (context.mounted) {
-                  provedorComanda.listarMesas('');
+              if (widget.idComandaPedido != null) {
+                await provedorMesas.editarMesaOcupada(widget.idComandaPedido!, id, idCliente, _obsconstroller.text).then((sucesso) {
+                  if (context.mounted) {
+                    if (sucesso) {
+                      client.write(jsonEncode({
+                        'tipo': 'Mesa',
+                        'nomeConexao': usuarioProvedor.usuario!.nome,
+                      }));
 
-                  if (resposta.sucesso) {
-                    client.write(jsonEncode({
-                      'tipo': 'Mesa',
-                    }));
-                    Navigator.pop(context);
-                    if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
-                      if (context.mounted) {
-                        Navigator.push(context, MaterialPageRoute(
-                          builder: (context) {
-                            return PaginaCardapio(
-                              tipo: TipoCardapio.comanda,
-                              idComanda: id,
-                              idMesa: '0',
-                              idCliente: idCliente,
-                              id: resposta.idcomandapedido,
-                            );
-                          },
-                        ));
-                      }
-                    } else {
+                      Navigator.pop(context);
                       Navigator.pop(context);
                     }
-                  }
 
-                  if (!resposta.sucesso) {
-                    if (context.mounted) {
+                    if (!sucesso) {
                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('Ocorreu um erro'),
@@ -171,8 +157,49 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                       ));
                     }
                   }
-                }
-              });
+                });
+              } else {
+                await provedorMesas.inserirMesaOcupada(id, idCliente, _obsconstroller.text).then((resposta) async {
+                  if (context.mounted) {
+                    provedorComanda.listarMesas('');
+
+                    if (resposta.sucesso) {
+                      client.write(jsonEncode({
+                        'tipo': 'Mesa',
+                        'nomeConexao': usuarioProvedor.usuario!.nome,
+                      }));
+                      Navigator.pop(context);
+                      if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
+                        if (context.mounted) {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) {
+                              return PaginaCardapio(
+                                tipo: TipoCardapio.mesa,
+                                idComanda: '0',
+                                idMesa: id,
+                                idCliente: idCliente,
+                                id: resposta.idcomandapedido,
+                              );
+                            },
+                          ));
+                        }
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    }
+
+                    if (!resposta.sucesso) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Ocorreu um erro'),
+                          showCloseIcon: true,
+                        ));
+                      }
+                    }
+                  }
+                });
+              }
             } else {
               if (widget.idComandaPedido != null) {
                 await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
@@ -180,6 +207,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                     if (sucesso) {
                       client.write(jsonEncode({
                         'tipo': 'Comanda',
+                        'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));
                       Navigator.pop(context);
                       Navigator.pop(context);
@@ -202,7 +230,9 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                     if (resposta.sucesso) {
                       client.write(jsonEncode({
                         'tipo': 'Comanda',
+                        'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));
+
                       Navigator.pop(context);
                       if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
                         if (context.mounted) {

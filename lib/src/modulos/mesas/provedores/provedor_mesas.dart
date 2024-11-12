@@ -35,6 +35,15 @@ class ProvedorMesas extends ChangeNotifier {
     return res;
   }
 
+  Future<bool> editarMesaOcupada(String id, String idMesa, String idCliente, String obs) async {
+    final res = await _servico.editarMesaOcupada(id, idMesa, idCliente, obs);
+
+    if (res) {
+      listarMesas('');
+    }
+    return res;
+  }
+
   Future<bool> editarAtivo(String id, String ativo) async {
     final res = await _servico.editarAtivo(id, ativo);
     listarMesasLista('');

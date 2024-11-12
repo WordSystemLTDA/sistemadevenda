@@ -103,6 +103,27 @@ class ServicoMesas {
     return response.data;
   }
 
+  Future<bool> editarMesaOcupada(String id, String idMesa, String idCliente, String obs) async {
+    const url = 'comandas/editar_comanda_ocupada.php';
+
+    final empresa = usuarioProvedor.usuario!.empresa;
+    final usuario = usuarioProvedor.usuario!.id;
+
+    final response = await dio.cliente.post(
+      url,
+      data: {
+        'id': id,
+        'idMesa': idMesa,
+        'idCliente': idCliente,
+        'obs': obs,
+        'usuario': usuario,
+        'empresa': empresa,
+      },
+    ).timeout(const Duration(seconds: 60));
+
+    return response.data['sucesso'];
+  }
+
   Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
     const url = 'mesas/inserir_mesa_ocupada.php';
 

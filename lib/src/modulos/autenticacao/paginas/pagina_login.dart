@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
+import 'package:app/src/modulos/autenticacao/paginas/pagina_pre_cadastro.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/inicio/paginas/pagina_inicio.dart';
 import 'package:flutter/material.dart';
@@ -159,6 +160,12 @@ class _PaginaLoginState extends State<PaginaLogin> {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const PaginaConfiguracao()));
                         },
                         child: const Text('Configurações'),
+                      ),
+                      TextButton(
+                        child: const Text("Não está cadastrado? Cadastre-se"),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const PaginaPreCadastro()));
+                        },
                       ),
                     ],
                   ),

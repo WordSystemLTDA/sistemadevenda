@@ -1,7 +1,11 @@
 import 'package:app/src/modulos/comandas/paginas/nova_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
+// ignore: depend_on_referenced_packages
+import 'package:ndef/ndef.dart' as ndef;
 
 class TodasComandas extends StatefulWidget {
   const TodasComandas({super.key});
@@ -13,14 +17,9 @@ class TodasComandas extends StatefulWidget {
 class _TodasComandasState extends State<TodasComandas> {
   final ProvedorComanda _state = Modular.get<ProvedorComanda>();
   bool isLoading = false;
+  bool _isNfcAvailable = false;
 
   final pesquisaController = TextEditingController();
-
-  void listarComandas() async {
-    setState(() => isLoading = !isLoading);
-    await _state.listarComandasLista('');
-    setState(() => isLoading = !isLoading);
-  }
 
   @override
   void initState() {
@@ -29,12 +28,56 @@ class _TodasComandasState extends State<TodasComandas> {
     listarComandas();
   }
 
-  // @override
-  // void dispose() {
-  //   super.dispose();
+  @override
+  void dispose() {
+    pesquisaController.dispose();
+    super.dispose();
+  }
 
-  //   _state.listarComandas('');
-  // }
+  void listarComandas() async {
+    setState(() => isLoading = !isLoading);
+    await _state.listarComandasLista('');
+    await initNFC();
+    setState(() => isLoading = !isLoading);
+  }
+
+  Future<void> initNFC() async {
+    try {
+      final availability = await FlutterNfcKit.nfcAvailability;
+      _isNfcAvailable = availability == NFCAvailability.available;
+    } catch (e) {
+      _isNfcAvailable = false;
+    }
+  }
+
+  Future<void> escreverCodigoNaTag(String codigo) async {
+    FlutterNfcKit.finish();
+
+    try {
+      var tag = await FlutterNfcKit.poll(
+        timeout: const Duration(seconds: 10),
+        iosMultipleTagMessage: "Multiplas TAGS Encontradas!",
+        iosAlertMessage: "Escaneie a sua TAG",
+        readIso14443A: true,
+      );
+
+      if (tag.type == NFCTagType.mifare_ultralight) {
+        if (tag.ndefWritable ?? false) {
+          await FlutterNfcKit.writeNDEFRecords([
+            ndef.TextRecord(encoding: ndef.TextEncoding.UTF8, language: 'pt', text: codigo),
+          ]);
+          FlutterNfcKit.finish(iosAlertMessage: 'Tag editada com Sucesso.');
+        } else {
+          FlutterNfcKit.finish(iosErrorMessage: 'Tag não é editavel.');
+        }
+      } else {
+        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        return;
+      }
+    } on PlatformException catch (e) {
+      FlutterNfcKit.finish(iosErrorMessage: e.details);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +147,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                 final item = listaComandas[index];
 
                                 return SizedBox(
-                                  height: 80,
+                                  height: 108,
                                   child: Card(
                                     child: InkWell(
                                       onTap: () {},
@@ -136,12 +179,9 @@ class _TodasComandasState extends State<TodasComandas> {
                                                   children: [
                                                     Text('ID: ${item.id}'),
                                                     const SizedBox(height: 10),
-                                                    Row(
-                                                      children: [
-                                                        const Text('Nome: '),
-                                                        Text(item.nome),
-                                                      ],
-                                                    )
+                                                    Text(item.nome),
+                                                    const SizedBox(height: 10),
+                                                    Text("Código: ${item.codigo.isNotEmpty ? item.codigo : 'Sem Código'}"),
                                                   ],
                                                 ),
                                               ),
@@ -201,6 +241,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           builder: (context) => NovaComanda(
                                                             editar: true,
                                                             nome: item.nome,
+                                                            codigo: item.codigo,
                                                             id: item.id,
                                                             aoSalvar: () {
                                                               listarComandas();
@@ -208,8 +249,15 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           ),
                                                         );
                                                       },
-                                                      child: const Text('Editar Comanda'),
+                                                      child: const Text('Editar'),
                                                     ),
+                                                    if (_isNfcAvailable && item.codigo.isNotEmpty)
+                                                      MenuItemButton(
+                                                        onPressed: () {
+                                                          escreverCodigoNaTag(item.codigo);
+                                                        },
+                                                        child: const Text('Escrever Código'),
+                                                      ),
                                                     MenuItemButton(
                                                       onPressed: () async {
                                                         showDialog(
@@ -219,10 +267,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                               padding: const EdgeInsets.all(20),
                                                               shrinkWrap: true,
                                                               children: [
-                                                                const Text(
-                                                                  'Deseja realmente excluir?',
-                                                                  style: TextStyle(fontSize: 20),
-                                                                ),
+                                                                const Text('Deseja realmente excluir?', style: TextStyle(fontSize: 20)),
                                                                 const SizedBox(height: 15),
                                                                 Expanded(
                                                                   child: Row(
@@ -232,7 +277,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                         onPressed: () {
                                                                           Navigator.pop(context);
                                                                         },
-                                                                        child: const Text('Carcelar'),
+                                                                        child: const Text('Cancelar'),
                                                                       ),
                                                                       const SizedBox(width: 10),
                                                                       TextButton(
@@ -255,7 +300,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                                             }
                                                                           });
                                                                         },
-                                                                        child: const Text('excluir'),
+                                                                        child: const Text('Excluir'),
                                                                       ),
                                                                     ],
                                                                   ),
@@ -265,7 +310,7 @@ class _TodasComandasState extends State<TodasComandas> {
                                                           ),
                                                         );
                                                       },
-                                                      child: const Text('Excluir Comanda'),
+                                                      child: const Text('Excluir'),
                                                     ),
                                                   ],
                                                 ),

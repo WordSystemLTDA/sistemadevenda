@@ -83,7 +83,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                           id: widget.item.id,
                           idComandaPedido: widget.item.idComandaPedido,
                           nome: widget.item.nome,
-                          tipo: TipoCardapio.comanda,
+                          tipo: TipoCardapio.mesa,
                         ),
                       ),
                     );
@@ -92,8 +92,8 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       MaterialPageRoute(
                         builder: (context) => PaginaDetalhesPedido(
                           idComandaPedido: widget.item.idComandaPedido,
-                          idComanda: widget.item.id,
-                          tipo: TipoCardapio.comanda,
+                          idMesa: widget.item.id,
+                          tipo: TipoCardapio.mesa,
                         ),
                       ),
                     );
@@ -110,8 +110,6 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                         Expanded(
                           child: Row(
                             children: [
-                              // const SizedBox(width: 15),
-                              // const Icon(Icons.topic_outlined, size: 24),
                               const SizedBox(width: 10),
                               SizedBox(
                                 width: MediaQuery.of(context).size.width / 2 - 70,
@@ -131,10 +129,6 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                           ),
                         ),
                         if (widget.item.mesaOcupada)
-                          // const Padding(
-                          //   padding: EdgeInsets.only(right: 10.0),
-                          //   child: Icon(Icons.more_vert_outlined),
-                          // ),
                           MenuAnchor(
                             builder: (BuildContext context, MenuController controller, Widget? child) {
                               return SizedBox(
@@ -174,8 +168,8 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                                       MaterialPageRoute(
                                         builder: (context) => PaginaDetalhesPedido(
                                           idComandaPedido: widget.item.idComandaPedido,
-                                          idComanda: widget.item.id,
-                                          tipo: TipoCardapio.comanda,
+                                          idMesa: widget.item.id,
+                                          tipo: TipoCardapio.mesa,
                                         ),
                                       ),
                                     );
@@ -213,7 +207,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                         children: [
                           const SizedBox(width: 15),
                           SizedBox(
-                            width: 150,
+                            width: 180,
                             child: Text(
                               widget.item.nomeCliente != null && widget.item.nomeCliente!.isNotEmpty ? widget.item.nomeCliente! : 'Sem Cliente',
                               maxLines: 1,

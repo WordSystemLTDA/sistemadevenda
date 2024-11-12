@@ -32,8 +32,8 @@ class _NovaMesaState extends State<NovaMesa> {
 
   @override
   void dispose() {
-    nomeController.dispose();
     codigoController.dispose();
+    nomeController.dispose();
     super.dispose();
   }
 
@@ -48,20 +48,20 @@ class _NovaMesaState extends State<NovaMesa> {
           children: [
             const SizedBox(height: 10),
             TextField(
-              controller: nomeController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.all(13),
-                label: Text('Digite o Nome'),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
               controller: codigoController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.all(13),
-                label: Text('Digite o Código'),
+                label: Text('Código'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: nomeController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.all(13),
+                label: Text('Nome'),
               ),
             ),
             const SizedBox(height: 20),

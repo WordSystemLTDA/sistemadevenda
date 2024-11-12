@@ -3,6 +3,7 @@ import 'package:app/src/essencial/api/socket/client.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
+import 'package:app/src/modulos/autenticacao/servicos/servico_cidade.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -71,5 +72,7 @@ class AppModule extends Module {
     // Produto
     i.addSingleton<ProvedorProduto>(ProvedorProduto.new);
     i.add(ServicoProduto.new);
+
+    i.add(ServicoCidade.new);
   }
 }

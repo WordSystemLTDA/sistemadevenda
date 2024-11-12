@@ -29,7 +29,7 @@ class _CardHomeState extends State<CardHome> {
         children: [
           widget.icone,
           const SizedBox(height: 10),
-          Text(widget.nome, style: const TextStyle(fontSize: 18)),
+          Text(widget.nome, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
         ],
       ),
     );

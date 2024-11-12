@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
+import 'package:app/src/modulos/autenticacao/modelos/pre_cadastro_modelo.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,26 @@ class ServicoAutenticacao {
       }
     } on DioException catch (_) {
       return false;
+    }
+  }
+
+  Future<List<dynamic>> preCadastro(PreCadastroModelo formulario) async {
+    var url = 'autenticacao/pre_cadastro.php';
+
+    final data = {
+      ...formulario.toMap(),
+    };
+
+    final response = await dio.cliente.post(url, data: jsonEncode(data));
+
+    Map result = response.data;
+    bool sucesso = result['sucesso'];
+    dynamic mensagem = result['mensagem'];
+
+    if (response.statusCode == 200) {
+      return [sucesso, mensagem];
+    } else {
+      return [false, 'Erro ao tentar inserir'];
     }
   }
 }
