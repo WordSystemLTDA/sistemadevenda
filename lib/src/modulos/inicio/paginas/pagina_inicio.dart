@@ -32,9 +32,9 @@ class _PaginaInicioState extends State<PaginaInicio> {
 
   void listarDados() async {
     setState(() => isLoading = true);
-    await conectarAoServidor();
     await listarDadosConfigBigChef();
     setState(() => isLoading = false);
+    await conectarAoServidor();
   }
 
   Future<void> conectarAoServidor() async {
