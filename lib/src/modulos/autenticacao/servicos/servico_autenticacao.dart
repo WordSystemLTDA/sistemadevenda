@@ -66,4 +66,31 @@ class ServicoAutenticacao {
       return [false, 'Erro ao tentar inserir'];
     }
   }
+
+  Future<({bool sucesso, String mensagem})> excluirConta() async {
+    var id = usuarioProvedor.usuario!.id;
+    var empresa = usuarioProvedor.usuario!.empresa;
+
+    var url = 'autenticacao/excluir_conta.php';
+
+    var campos = {
+      "id_cliente": id,
+      "empresa": empresa,
+    };
+
+    final response = await dio.cliente.post(
+      url,
+      data: jsonEncode(campos),
+    );
+
+    Map result = response.data;
+    bool sucesso = result['sucesso'];
+    String mensagem = result['mensagem'];
+
+    if (response.statusCode == 200 && sucesso == true) {
+      return (sucesso: sucesso, mensagem: mensagem);
+    } else {
+      return (sucesso: false, mensagem: mensagem);
+    }
+  }
 }

@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
+import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +20,8 @@ class DrawerCustomizado extends StatefulWidget {
 }
 
 class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProviderStateMixin {
-  var cliente = Modular.get<Client>();
+  Client cliente = Modular.get<Client>();
+  ServicoAutenticacao servicoAutenticacao = Modular.get<ServicoAutenticacao>();
 
   String nome = '';
   String email = '';
@@ -87,6 +90,83 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
         ));
       }
     });
+  }
+
+  void excluirConta() async {
+    showDialog<String>(
+      context: context,
+      builder: (BuildContext contextDialog) {
+        return AlertDialog(
+          title: const Text('Excluir'),
+          content: const SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text("Deseja realmente excluir sua conta?"),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Não'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Sim'),
+              onPressed: () async {
+                showDialog<String>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text('Exclusão de Conta'),
+                      content: const SingleChildScrollView(
+                        child: ListBody(
+                          children: <Widget>[
+                            Text("Excluindo a sua conta você perderá o acesso a todos os seus dados, tem certeza que quer excluir?"),
+                          ],
+                        ),
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text('Não'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        TextButton(
+                          child: const Text('Sim'),
+                          onPressed: () async {
+                            await servicoAutenticacao.excluirConta().then((value) {
+                              if (value.sucesso) {
+                                if (context.mounted) {
+                                  UsuarioServico.sair(context).then((value) {
+                                    if (context.mounted) {
+                                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const PaginaLogin()), (route) => false);
+                                    }
+                                  });
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      backgroundColor: Colors.red,
+                                      content: Text(value.mensagem),
+                                    ));
+                                  }
+                                }
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -160,6 +240,13 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
             leading: const Icon(Icons.edit),
             title: const Text('Editar Dados'),
             onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_forever_outlined),
+            title: const Text('Excluir Conta'),
+            onTap: () {
+              excluirConta();
+            },
           ),
           ListTile(
             iconColor: Colors.red,
