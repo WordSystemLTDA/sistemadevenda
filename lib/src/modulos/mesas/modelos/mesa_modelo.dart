@@ -7,12 +7,14 @@ class MesaModelo {
   final String nome;
   final bool mesaOcupada;
   String ativo;
+  String? idCliente;
   String? nomeCliente;
   String? dataAbertura;
   String? horaAbertura;
   String? idComandaPedido;
   String? valor;
   String? ultimaVezAbertoDataHora;
+  bool? fechamento;
 
   MesaModelo({
     required this.id,
@@ -20,12 +22,14 @@ class MesaModelo {
     required this.nome,
     required this.mesaOcupada,
     required this.ativo,
+    this.idCliente,
     required this.nomeCliente,
     required this.dataAbertura,
     required this.horaAbertura,
     this.idComandaPedido,
     this.valor,
     this.ultimaVezAbertoDataHora,
+    this.fechamento,
   });
 
   Map<String, dynamic> toMap() {
@@ -35,12 +39,14 @@ class MesaModelo {
       'nome': nome,
       'mesaOcupada': mesaOcupada,
       'ativo': ativo,
+      'idCliente': idCliente,
       'nomeCliente': nomeCliente,
       'dataAbertura': dataAbertura,
       'horaAbertura': horaAbertura,
       'idComandaPedido': idComandaPedido,
       'valor': valor,
       'ultimaVezAbertoDataHora': ultimaVezAbertoDataHora,
+      'fechamento': fechamento,
     };
   }
 
@@ -51,12 +57,14 @@ class MesaModelo {
       nome: map['nome'] as String,
       mesaOcupada: map['mesaOcupada'] as bool,
       ativo: map['ativo'] as String,
+      idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
       dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
       horaAbertura: map['horaAbertura'] != null ? map['horaAbertura'] as String : null,
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
       ultimaVezAbertoDataHora: map['ultimaVezAbertoDataHora'] != null ? map['ultimaVezAbertoDataHora'] as String : null,
+      fechamento: map['fechamento'] != null ? map['fechamento'] as bool : null,
     );
   }
 

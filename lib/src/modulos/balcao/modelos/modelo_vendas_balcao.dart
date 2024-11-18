@@ -14,6 +14,7 @@ class ModeloVendasBalcao {
   final String dataHora;
   final String valorTotalF;
   final int tamanhoLista;
+  final String idtipodeentrega;
   final String tipodeentrega;
   final String nomeEmpresa;
 
@@ -30,6 +31,7 @@ class ModeloVendasBalcao {
     required this.dataHora,
     required this.valorTotalF,
     required this.tamanhoLista,
+    required this.idtipodeentrega,
     required this.tipodeentrega,
     required this.nomeEmpresa,
   });
@@ -48,6 +50,7 @@ class ModeloVendasBalcao {
       'dataHora': dataHora,
       'valorTotalF': valorTotalF,
       'tamanhoLista': tamanhoLista,
+      'idtipodeentrega': idtipodeentrega,
       'tipodeentrega': tipodeentrega,
       'nomeEmpresa': nomeEmpresa,
     };
@@ -67,6 +70,7 @@ class ModeloVendasBalcao {
       dataHora: map['dataHora'] as String,
       valorTotalF: map['valorTotalF'] as String,
       tamanhoLista: map['tamanhoLista'] as int,
+      idtipodeentrega: map['idtipodeentrega'] as String,
       tipodeentrega: map['tipodeentrega'] as String,
       nomeEmpresa: map['nomeEmpresa'] as String,
     );

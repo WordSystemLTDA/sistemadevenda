@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class CardMesaOcupada extends StatefulWidget {
   final MesaModelo item;
@@ -17,6 +19,7 @@ class CardMesaOcupada extends StatefulWidget {
 }
 
 class _CardMesaOcupadaState extends State<CardMesaOcupada> {
+  UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   // late StreamController<String> _timeStreamController;
   // late Stream<String> _timeStream;
 
@@ -97,6 +100,54 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                         ),
                       ),
                     );
+                  }
+
+                  if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '1') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PaginaDetalhesPedido(
+                          idComandaPedido: widget.item.idComandaPedido,
+                          idMesa: widget.item.id,
+                          tipo: TipoCardapio.mesa,
+                        ),
+                      ),
+                    );
+                  } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '2') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => PaginaDetalhesPedido(
+                          idComandaPedido: widget.item.idComandaPedido,
+                          idMesa: widget.item.id,
+                          tipo: TipoCardapio.mesa,
+                          abrirModalFecharDireto: true,
+                        ),
+                      ),
+                    );
+                  } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '3') {
+                    if (widget.item.fechamento == true) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => PaginaDetalhesPedido(
+                            idComandaPedido: widget.item.idComandaPedido,
+                            idMesa: widget.item.id,
+                            tipo: TipoCardapio.mesa,
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return PaginaCardapio(
+                          tipo: TipoCardapio.comanda,
+                          idComanda: widget.item.id,
+                          idMesa: '0',
+                          idCliente: widget.item.idCliente,
+                          id: widget.item.idComandaPedido,
+                        );
+                      },
+                    ));
                   }
                 },
                 borderRadius: const BorderRadius.all(Radius.circular(8)),

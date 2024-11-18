@@ -7,6 +7,7 @@ import 'package:app/src/modulos/balcao/paginas/widgets/modal_cancelar_venda.dart
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
@@ -80,7 +81,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       final newDuration = ConfigSistema.formatarHora(duration);
 
                       var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipo: '3',
+                        tipoImpressao: '3',
+                        tipo: TipoCardapio.balcao,
                         nomeCliente: informacoes!.informacoes.nomeCliente,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
@@ -126,7 +128,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       final newDuration = ConfigSistema.formatarHora(duration);
 
                       var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipo: '2',
+                        tipoImpressao: '2',
+                        tipo: TipoCardapio.balcao,
                         nomeCliente: informacoes!.informacoes.nomeCliente,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
@@ -161,7 +164,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                     heroTag: null,
                     onPressed: () async {
                       var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipo: '1',
+                        tipoImpressao: '1',
+                        tipo: TipoCardapio.balcao,
                         comanda: "Balcão ${widget.idVenda}",
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         nomeCliente: informacoes!.informacoes.nomeCliente,

@@ -199,14 +199,21 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                   ),
                                 ),
                               ),
-                              ...provedor.mesas.map(
-                                (e) => SizedBox(
-                                  height: 40,
-                                  child: Tab(
-                                    child: Text(
-                                      "${e.titulo} (${e.mesas!.length})",
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
+                              SizedBox(
+                                height: 40,
+                                child: Tab(
+                                  child: Text(
+                                    "Ocupadas (${provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.mesas?.length ?? 0))})",
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                height: 40,
+                                child: Tab(
+                                  child: Text(
+                                    "Livres (${provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == false).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.mesas?.length ?? 0))})",
+                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 ),
                               ),

@@ -1,12 +1,13 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-class ComandaModel {
+class ModeloComanda {
   String id;
   String nome;
   String codigo;
   String ativo;
   bool comandaOcupada;
+  String? idCliente;
   String? nomeCliente;
   String? nomeMesa;
   String? dataAbertura;
@@ -14,13 +15,15 @@ class ComandaModel {
   String? idComandaPedido;
   String? valor;
   String? ultimaVezAbertoDataHora;
+  bool? fechamento;
 
-  ComandaModel({
+  ModeloComanda({
     required this.id,
     required this.nome,
     required this.codigo,
     required this.ativo,
     required this.comandaOcupada,
+    this.idCliente,
     this.nomeCliente,
     this.nomeMesa,
     this.dataAbertura,
@@ -28,6 +31,7 @@ class ComandaModel {
     this.idComandaPedido,
     this.valor,
     this.ultimaVezAbertoDataHora,
+    this.fechamento,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,6 +41,7 @@ class ComandaModel {
       'codigo': codigo,
       'ativo': ativo,
       'comandaOcupada': comandaOcupada,
+      'idCliente': idCliente,
       'nomeCliente': nomeCliente,
       'nomeMesa': nomeMesa,
       'dataAbertura': dataAbertura,
@@ -44,16 +49,18 @@ class ComandaModel {
       'idComandaPedido': idComandaPedido,
       'valor': valor,
       'ultimaVezAbertoDataHora': ultimaVezAbertoDataHora,
+      'fechamento': fechamento,
     };
   }
 
-  factory ComandaModel.fromMap(Map<String, dynamic> map) {
-    return ComandaModel(
+  factory ModeloComanda.fromMap(Map<String, dynamic> map) {
+    return ModeloComanda(
       id: map['id'] as String,
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
       ativo: map['ativo'] as String,
       comandaOcupada: map['comandaOcupada'] as bool,
+      idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
       dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
@@ -61,24 +68,25 @@ class ComandaModel {
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
       ultimaVezAbertoDataHora: map['ultimaVezAbertoDataHora'] != null ? map['ultimaVezAbertoDataHora'] as String : null,
+      fechamento: map['fechamento'] != null ? map['fechamento'] as bool : null,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory ComandaModel.fromJson(String source) => ComandaModel.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloComanda.fromJson(String source) => ModeloComanda.fromMap(json.decode(source) as Map<String, dynamic>);
 }
 
 
 
 // import 'dart:convert';
 
-// class ComandaModel {
+// class ModeloComanda {
 //   String id;
 //   String nome;
 //   bool comandaOcupada;
 
-//   ComandaModel({
+//   ModeloComanda({
 //     required this.id,
 //     required this.nome,
 //     required this.comandaOcupada,
@@ -92,8 +100,8 @@ class ComandaModel {
 //     };
 //   }
 
-//   factory ComandaModel.fromMap(Map<String, dynamic> map) {
-//     return ComandaModel(
+//   factory ModeloComanda.fromMap(Map<String, dynamic> map) {
+//     return ModeloComanda(
 //       id: map['id'] as String,
 //       nome: map['nome'] as String,
 //       comandaOcupada: map['comandaOcupada'] as bool,
@@ -102,6 +110,6 @@ class ComandaModel {
 
 //   String toJson() => json.encode(toMap());
 
-//   factory ComandaModel.fromJson(String source) => ComandaModel.fromMap(json.decode(source) as Map<String, dynamic>);
+//   factory ModeloComanda.fromJson(String source) => ModeloComanda.fromMap(json.decode(source) as Map<String, dynamic>);
 // }
 

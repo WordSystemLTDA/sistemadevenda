@@ -17,8 +17,9 @@ class ServicoProduto {
 
   Future<List<ModeloProduto>> listarPorCategoria(String categoria) async {
     var empresa = usuarioProvedor.usuario!.empresa;
+    var idusuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa');
+    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario');
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {

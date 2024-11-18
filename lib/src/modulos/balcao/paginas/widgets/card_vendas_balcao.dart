@@ -5,6 +5,7 @@ import 'package:app/src/modulos/balcao/paginas/pagina_detalhes_da_venda_balcao.d
 import 'package:app/src/modulos/balcao/paginas/widgets/modal_cancelar_venda.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -157,7 +158,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                             var informacoes = await servico.listarPorId(widget.item.id);
 
                             var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipo: '1',
+                              tipoImpressao: '1',
+                              tipo: TipoCardapio.balcao,
                               comanda: "Balcão ${item.id}",
                               numeroPedido: item.numeropedido,
                               nomeCliente: item.nomecliente,
@@ -193,7 +195,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                             final newDuration = ConfigSistema.formatarHora(duration);
 
                             var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipo: '2',
+                              tipoImpressao: '2',
+                              tipo: TipoCardapio.balcao,
                               nomeCliente: item.nomecliente,
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
@@ -239,7 +242,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                             final newDuration = ConfigSistema.formatarHora(duration);
 
                             var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipo: '3',
+                              tipoImpressao: '3',
+                              tipo: TipoCardapio.balcao,
                               nomeCliente: item.nomecliente,
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,

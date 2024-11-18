@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaAcompanharPedido extends StatefulWidget {
+  final TipoCardapio tipo;
   final String? idComanda;
   final String? idComandaPedido;
   final String? idMesa;
@@ -15,6 +16,7 @@ class PaginaAcompanharPedido extends StatefulWidget {
     this.idComanda,
     this.idComandaPedido,
     this.idMesa,
+    required this.tipo,
   });
 
   @override
@@ -108,6 +110,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> {
                   idMesa: widget.idMesa ?? '0',
                   setarQuantidade: (increase) {},
                   value: '',
+                  tipo: widget.tipo,
                 );
               },
             ),

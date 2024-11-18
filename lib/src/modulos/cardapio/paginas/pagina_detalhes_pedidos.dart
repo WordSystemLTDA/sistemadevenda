@@ -6,6 +6,8 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -15,6 +17,7 @@ class PaginaDetalhesPedido extends StatefulWidget {
   final String? idComanda;
   final String? idComandaPedido;
   final String? idMesa;
+  final bool? abrirModalFecharDireto;
   final TipoCardapio tipo;
 
   const PaginaDetalhesPedido({
@@ -23,6 +26,7 @@ class PaginaDetalhesPedido extends StatefulWidget {
     this.idComanda,
     this.idComandaPedido,
     this.idMesa,
+    this.abrirModalFecharDireto,
     required this.tipo,
   });
 
@@ -32,6 +36,8 @@ class PaginaDetalhesPedido extends StatefulWidget {
 
 class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+  final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
+  final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
 
   Modeloworddadoscardapio? dados;
   bool carregando = false;
@@ -68,6 +74,139 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
     setState(() {
       carregando = false;
     });
+
+    if (widget.abrirModalFecharDireto == true) {
+      fechar();
+    }
+  }
+
+  void fechar() async {
+    if (dados!.status == 'Fechamento') return;
+
+    showDialog(
+      context: context,
+      builder: (contextDialog) => Dialog(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          shrinkWrap: true,
+          children: [
+            const Text(
+              'Deseja realmente fechar essa comanda?',
+              style: TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Não'),
+                ),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: () async {
+                    await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
+                      if (mounted) {
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
+                        );
+
+                        final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
+                        final newDuration = ConfigSistema.formatarHora(duration);
+
+                        Impressao.enviarImpressao(
+                          tipoImpressao: '2',
+                          tipo: widget.tipo,
+                          nomeCliente: dados!.nomeCliente!,
+                          nomeEmpresa: dados!.nomeEmpresa!,
+                          produtos: dados!.produtos!,
+                          nomelancamento: dados!.nomelancamento!,
+                          somaValorHistorico: dados!.somaValorHistorico!,
+                          celularEmpresa: dados!.celularEmpresa!,
+                          cnpjEmpresa: dados!.cnpjEmpresa!,
+                          enderecoEmpresa: dados!.enderecoEmpresa!,
+                          permanencia: newDuration,
+                          local: dados!.nome!,
+                          total: dados!.valorTotal!,
+                          numeroPedido: dados!.numeroPedido!,
+                        );
+
+                        if (widget.tipo == TipoCardapio.mesa) {
+                          provedorMesas.listarMesas('');
+                        } else if (widget.tipo == TipoCardapio.comanda) {
+                          provedorComanda.listarComandas('');
+                        }
+
+                        await listarComandasPedidos();
+                      }
+                    });
+                  },
+                  child: const Text('Sim'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void abrir() async {
+    if (dados!.status == 'Andamento') return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          shrinkWrap: true,
+          children: [
+            const Text(
+              'Deseja realmente abrir essa comanda?',
+              style: TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Não'),
+                ),
+                const SizedBox(width: 10),
+                TextButton(
+                  onPressed: () async {
+                    servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
+                        );
+
+                        if (widget.tipo == TipoCardapio.mesa) {
+                          provedorMesas.listarMesas('');
+                        } else if (widget.tipo == TipoCardapio.comanda) {
+                          provedorComanda.listarComandas('');
+                        }
+
+                        listarComandasPedidos();
+                      }
+                    });
+                  },
+                  child: const Text('Sim'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -217,7 +356,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
                             builder: (context) {
-                              return PaginaAcompanharPedido(idComanda: idComanda, idComandaPedido: idComandaPedido, idMesa: idMesa);
+                              return PaginaAcompanharPedido(
+                                idComanda: idComanda,
+                                idComandaPedido: idComandaPedido,
+                                idMesa: idMesa,
+                                tipo: widget.tipo,
+                              );
                             },
                           ));
                         },
@@ -322,71 +466,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                             foregroundColor: WidgetStatePropertyAll(dados!.status == 'Fechamento' ? const Color.fromARGB(255, 112, 110, 110) : null),
                                           ),
                                           onPressed: () {
-                                            if (dados!.status == 'Fechamento') return;
-
-                                            showDialog(
-                                              context: context,
-                                              builder: (contextDialog) => Dialog(
-                                                child: ListView(
-                                                  padding: const EdgeInsets.all(20),
-                                                  shrinkWrap: true,
-                                                  children: [
-                                                    const Text(
-                                                      'Deseja realmente fechar essa comanda?',
-                                                      style: TextStyle(fontSize: 20),
-                                                    ),
-                                                    const SizedBox(height: 15),
-                                                    Row(
-                                                      mainAxisAlignment: MainAxisAlignment.end,
-                                                      children: [
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(context);
-                                                          },
-                                                          child: const Text('Não'),
-                                                        ),
-                                                        const SizedBox(width: 10),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
-                                                              if (context.mounted) {
-                                                                Navigator.pop(context);
-
-                                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                                  SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
-                                                                );
-
-                                                                final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
-                                                                final newDuration = ConfigSistema.formatarHora(duration);
-
-                                                                Impressao.enviarImpressao(
-                                                                  tipo: '2',
-                                                                  nomeCliente: dados!.nomeCliente!,
-                                                                  nomeEmpresa: dados!.nomeEmpresa!,
-                                                                  produtos: dados!.produtos!,
-                                                                  nomelancamento: dados!.nomelancamento!,
-                                                                  somaValorHistorico: dados!.somaValorHistorico!,
-                                                                  celularEmpresa: dados!.celularEmpresa!,
-                                                                  cnpjEmpresa: dados!.cnpjEmpresa!,
-                                                                  enderecoEmpresa: dados!.enderecoEmpresa!,
-                                                                  permanencia: newDuration,
-                                                                  local: dados!.nome!,
-                                                                  total: dados!.valorTotal!,
-                                                                  numeroPedido: dados!.numeroPedido!,
-                                                                );
-
-                                                                await listarComandasPedidos();
-                                                              }
-                                                            });
-                                                          },
-                                                          child: const Text('Sim'),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
+                                            fechar();
                                           },
                                           child: const Row(
                                             mainAxisAlignment: MainAxisAlignment.center,
@@ -410,50 +490,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                             foregroundColor: WidgetStatePropertyAll(dados!.status == 'Andamento' ? const Color.fromARGB(255, 112, 110, 110) : null),
                                           ),
                                           onPressed: () {
-                                            if (dados!.status == 'Andamento') return;
-
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => Dialog(
-                                                child: ListView(
-                                                  padding: const EdgeInsets.all(20),
-                                                  shrinkWrap: true,
-                                                  children: [
-                                                    const Text(
-                                                      'Deseja realmente abrir essa comanda?',
-                                                      style: TextStyle(fontSize: 20),
-                                                    ),
-                                                    const SizedBox(height: 15),
-                                                    Row(
-                                                      mainAxisAlignment: MainAxisAlignment.end,
-                                                      children: [
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(context);
-                                                          },
-                                                          child: const Text('Não'),
-                                                        ),
-                                                        const SizedBox(width: 10),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
-                                                              if (context.mounted) {
-                                                                Navigator.pop(context);
-                                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                                  SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
-                                                                );
-                                                                listarComandasPedidos();
-                                                              }
-                                                            });
-                                                          },
-                                                          child: const Text('Sim'),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
+                                            abrir();
                                           },
                                           child: const Row(
                                             mainAxisAlignment: MainAxisAlignment.center,

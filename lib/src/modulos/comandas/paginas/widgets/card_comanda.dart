@@ -1,15 +1,17 @@
 import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
-import 'package:app/src/modulos/comandas/modelos/comanda_model.dart';
+import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 
 class CardComanda extends StatefulWidget {
-  final ComandaModel itemComanda;
+  final ModeloComanda itemComanda;
   const CardComanda({super.key, required this.itemComanda});
 
   @override
@@ -17,7 +19,7 @@ class CardComanda extends StatefulWidget {
 }
 
 class _CardComandaState extends State<CardComanda> {
-  // late StreamController<String> _timeStreamController;
+  UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   // late Stream<String> _timeStream;
 
   // final Temporizador temporizador = Temporizador();
@@ -88,15 +90,53 @@ class _CardComandaState extends State<CardComanda> {
                       ),
                     );
                   } else {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => PaginaDetalhesPedido(
-                          idComandaPedido: widget.itemComanda.idComandaPedido,
-                          idComanda: widget.itemComanda.id,
-                          tipo: TipoCardapio.comanda,
+                    if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '1') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => PaginaDetalhesPedido(
+                            idComandaPedido: widget.itemComanda.idComandaPedido,
+                            idComanda: widget.itemComanda.id,
+                            tipo: TipoCardapio.comanda,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '2') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => PaginaDetalhesPedido(
+                            idComandaPedido: widget.itemComanda.idComandaPedido,
+                            idComanda: widget.itemComanda.id,
+                            tipo: TipoCardapio.comanda,
+                            abrirModalFecharDireto: true,
+                          ),
+                        ),
+                      );
+                    } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '3') {
+                      if (widget.itemComanda.fechamento == true) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => PaginaDetalhesPedido(
+                              idComandaPedido: widget.itemComanda.idComandaPedido,
+                              idComanda: widget.itemComanda.id,
+                              tipo: TipoCardapio.comanda,
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) {
+                          return PaginaCardapio(
+                            tipo: TipoCardapio.comanda,
+                            idComanda: widget.itemComanda.id,
+                            idMesa: '0',
+                            idCliente: widget.itemComanda.idCliente,
+                            id: widget.itemComanda.idComandaPedido,
+                          );
+                        },
+                      ));
+                    }
                   }
                 },
                 borderRadius: const BorderRadius.all(Radius.circular(8)),

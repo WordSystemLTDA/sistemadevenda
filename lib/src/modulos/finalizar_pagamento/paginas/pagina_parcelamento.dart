@@ -1,5 +1,10 @@
+import 'dart:convert';
+
+import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
@@ -53,6 +58,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   var provedor = Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final Client client = Modular.get<Client>();
+  final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 
   final _valorController = TextEditingController();
 
@@ -153,17 +160,34 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         var provedorBalcao = Modular.get<ProvedorBalcao>();
         await provedorBalcao.listar();
 
-        var vendaBalcao = provedorBalcao.dados.where((element) => element.id == provedorCardapio.id).firstOrNull;
+        var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
 
         if (vendaBalcao != null) {
-          Impressao.enviarImpressao(
-            tipo: '1',
-            comanda: "Balcão ${provedorCardapio.id}",
+          client.write(jsonEncode({
+            'tipo': TipoCardapio.balcao.nome,
+            'nomeConexao': usuarioProvedor.usuario!.nome,
+          }));
+
+          await Impressao.enviarImpressao(
+            tipoImpressao: '1',
+            tipo: provedorCardapio.tipo,
+            comanda: "Balcão $idvenda",
             numeroPedido: vendaBalcao.numeropedido,
             nomeCliente: vendaBalcao.nomecliente,
             nomeEmpresa: vendaBalcao.nomeEmpresa,
             produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+            tipodeentrega: vendaBalcao.idtipodeentrega,
           );
+
+          // Impressao.enviarImpressao(
+          //   tipoImpressao: '1',
+          //   tipo: provedorCardapio.tipo,
+          //   comanda: "Balcão ${provedorCardapio.id}",
+          //   numeroPedido: vendaBalcao.numeropedido,
+          //   nomeCliente: vendaBalcao.nomecliente,
+          //   nomeEmpresa: vendaBalcao.nomeEmpresa,
+          //   produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+          // );
         }
 
         carrinhoProvedor.removerComandasPedidos();

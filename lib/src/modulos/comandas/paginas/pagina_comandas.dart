@@ -210,17 +210,24 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   ),
                                 ),
                               ),
-                              ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element.titulo != 'em Fechamento').isNotEmpty).map(
-                                    (e) => SizedBox(
-                                      height: 40,
-                                      child: Tab(
-                                        child: Text(
-                                          "${e.titulo} (${e.comandas?.length ?? 0})",
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                      ),
-                                    ),
+                              SizedBox(
+                                height: 40,
+                                child: Tab(
+                                  child: Text(
+                                    "Ocupadas (${provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.comandas?.length ?? 0))})",
+                                    style: const TextStyle(fontSize: 14),
                                   ),
+                                ),
+                              ),
+                              SizedBox(
+                                height: 40,
+                                child: Tab(
+                                  child: Text(
+                                    "Livres (${provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.comandas?.length ?? 0))})",
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),

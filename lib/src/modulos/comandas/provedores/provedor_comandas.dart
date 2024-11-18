@@ -1,5 +1,5 @@
-import 'package:app/src/modulos/comandas/modelos/comanda_model.dart';
-import 'package:app/src/modulos/comandas/modelos/comandas_model.dart';
+import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
+import 'package:app/src/modulos/comandas/modelos/modelo_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:flutter/material.dart';
 
@@ -9,10 +9,10 @@ class ProvedorComanda extends ChangeNotifier {
   final ServicoComandas _servico;
   ProvedorComanda(this._servico);
 
-  List<ComandasModel> comandas = [];
-  List<ComandaModel> comandasLista = [];
+  List<ModeloComandas> comandas = [];
+  List<ModeloComanda> comandasLista = [];
 
-  Future<List<ComandasModel>> listarComandas(String pesquisa) async {
+  Future<List<ModeloComandas>> listarComandas(String pesquisa) async {
     final res = await _servico.listar(pesquisa);
     comandas = res;
 

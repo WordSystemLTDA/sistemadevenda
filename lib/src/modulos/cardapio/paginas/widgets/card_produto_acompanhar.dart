@@ -4,6 +4,7 @@ import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -17,6 +18,7 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final String idComandaPedido;
   final String idMesa;
   final dynamic value;
+  final TipoCardapio tipo;
   final Function(bool increase) setarQuantidade;
 
   const CardProdutoAcompanhar({
@@ -28,6 +30,7 @@ class CardProdutoAcompanhar extends StatefulWidget {
     required this.idMesa,
     required this.value,
     required this.setarQuantidade,
+    required this.tipo,
   });
 
   @override
@@ -204,7 +207,8 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                   onPressed: () {
                                     if (widget.dados != null) {
                                       Impressao.enviarImpressao(
-                                        tipo: '1',
+                                        tipoImpressao: '2',
+                                        tipo: widget.tipo,
                                         comanda: widget.dados!.nome!,
                                         numeroPedido: widget.dados!.numeroPedido!,
                                         nomeCliente: widget.dados!.nomeCliente!,

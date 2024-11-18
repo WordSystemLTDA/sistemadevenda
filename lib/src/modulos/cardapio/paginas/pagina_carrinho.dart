@@ -31,10 +31,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
+  final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   final ProvedorFinalizarPagamento provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
   final Client client = Modular.get<Client>();
-  final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
 
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
@@ -177,7 +177,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         removerTodosItensCarrinho();
                         Impressao.enviarImpressao(
-                          tipo: '1',
+                          tipoImpressao: '1',
+                          tipo: provedorCardapio.tipo,
                           comanda: "Mesa ${provedorCardapio.idMesa}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
@@ -225,7 +226,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         removerTodosItensCarrinho();
                         Impressao.enviarImpressao(
-                          tipo: '1',
+                          tipoImpressao: '1',
+                          tipo: provedorCardapio.tipo,
                           comanda: "Comanda ${provedorCardapio.idComanda}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,

@@ -12,7 +12,7 @@ class ProvedorCarrinho extends ChangeNotifier {
 
   ProvedorCarrinho(this._servico);
 
-  var itensCarrinho = ItensComandaModelo(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
+  var itensCarrinho = ItensModeloComandao(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
 
   Future<dynamic> listarComandasPedidos() async {
     // final res = await _servicoCardapio.listarPorId(idComanda, TipoCardapio.comanda);
@@ -37,7 +37,7 @@ class ProvedorCarrinho extends ChangeNotifier {
       precoTotal += double.parse(itemF.valorVenda) * (itemF.quantidade ?? 1);
     }
 
-    itensCarrinho = ItensComandaModelo(
+    itensCarrinho = ItensModeloComandao(
       listaComandosPedidos: listaItens,
       quantidadeTotal: quantidadeTotal,
       precoTotal: precoTotal,
@@ -56,7 +56,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     //     precoTotal += double.parse(item.valorVenda) * (item.quantidade ?? 1);
     //   }
 
-    //   itensCarrinho = ItensComandaModelo(
+    //   itensCarrinho = ItensModeloComandao(
     //     listaComandosPedidos: listaItens,
     //     quantidadeTotal: quantidadeTotal,
     //     precoTotal: precoTotal,
