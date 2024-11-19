@@ -30,20 +30,37 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     if (conexao == null) return;
 
-    setState(() {
-      tipoConexaoController.text = conexao.tipoConexao;
-      servidorController.text = conexao.servidor;
-      portaController.text = conexao.porta;
-    });
+    if (mounted) {
+      setState(() {
+        tipoConexaoController.text = conexao.tipoConexao;
+        servidorController.text = conexao.servidor;
+        portaController.text = conexao.porta;
+      });
+    }
   }
 
   void verificar() async {
+    setState(() => isLoading = true);
+
+    Future.delayed(const Duration(seconds: 10)).then((value) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível conectar a esse Servidor.'),
+          showCloseIcon: true,
+          backgroundColor: Colors.red,
+        ));
+        setState(() => isLoading = false);
+      }
+    });
+
     if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty || portaController.text.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Campos precisam ser preenchidos'),
         showCloseIcon: true,
       ));
+      setState(() => isLoading = false);
       return;
     }
 
@@ -66,8 +83,8 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
       await conectarAoServidor(servidorController.text, portaController.text);
     }
 
-    setState(() => isLoading = !isLoading);
     if (mounted) {
+      setState(() => isLoading = false);
       var usuario = await UsuarioServico.pegarUsuario(context);
       if (mounted) {
         context.read<UsuarioProvedor>().setUsuario(usuario);

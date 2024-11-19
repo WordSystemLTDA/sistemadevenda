@@ -16,7 +16,6 @@ class PaginaLogin extends StatefulWidget {
 class _PaginaLoginState extends State<PaginaLogin> {
   final TextEditingController usuarioController = TextEditingController();
   final TextEditingController senhaController = TextEditingController();
-
   final ServicoAutenticacao _service = Modular.get<ServicoAutenticacao>();
 
   var verificando = true;
@@ -88,7 +87,15 @@ class _PaginaLoginState extends State<PaginaLogin> {
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: verificando == true
-            ? const Center(child: CircularProgressIndicator())
+            ? const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Center(child: CircularProgressIndicator()),
+                  SizedBox(height: 10),
+                  Text('Conectando ao Servidor Local...'),
+                ],
+              )
             : Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: SingleChildScrollView(
@@ -115,7 +122,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
                         onSubmitted: (a) => entrar(),
                         decoration: const InputDecoration(
                           contentPadding: EdgeInsets.all(13),
-                          labelText: "Usuário",
+                          labelText: "Usuário ou E-mail",
                           hintStyle: TextStyle(fontWeight: FontWeight.w300),
                           border: OutlineInputBorder(),
                         ),

@@ -1,4 +1,4 @@
-package com.bigchef.garcom
+package com.bigchefgarcom
 
 import io.flutter.embedding.android.FlutterActivity
 

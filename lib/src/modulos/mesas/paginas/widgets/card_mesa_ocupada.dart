@@ -91,40 +91,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       ),
                     );
                   } else {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => PaginaDetalhesPedido(
-                          idComandaPedido: widget.item.idComandaPedido,
-                          idMesa: widget.item.id,
-                          tipo: TipoCardapio.mesa,
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '1') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => PaginaDetalhesPedido(
-                          idComandaPedido: widget.item.idComandaPedido,
-                          idMesa: widget.item.id,
-                          tipo: TipoCardapio.mesa,
-                        ),
-                      ),
-                    );
-                  } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '2') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => PaginaDetalhesPedido(
-                          idComandaPedido: widget.item.idComandaPedido,
-                          idMesa: widget.item.id,
-                          tipo: TipoCardapio.mesa,
-                          abrirModalFecharDireto: true,
-                        ),
-                      ),
-                    );
-                  } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '3') {
-                    if (widget.item.fechamento == true) {
+                    if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '1') {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => PaginaDetalhesPedido(
@@ -134,20 +101,43 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                           ),
                         ),
                       );
-                      return;
-                    }
-
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) {
-                        return PaginaCardapio(
-                          tipo: TipoCardapio.comanda,
-                          idComanda: widget.item.id,
-                          idMesa: '0',
-                          idCliente: widget.item.idCliente,
-                          id: widget.item.idComandaPedido,
+                    } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '2') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => PaginaDetalhesPedido(
+                            idComandaPedido: widget.item.idComandaPedido,
+                            idMesa: widget.item.id,
+                            tipo: TipoCardapio.mesa,
+                            abrirModalFecharDireto: true,
+                          ),
+                        ),
+                      );
+                    } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '3') {
+                      if (widget.item.fechamento == true) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => PaginaDetalhesPedido(
+                              idComandaPedido: widget.item.idComandaPedido,
+                              idMesa: widget.item.id,
+                              tipo: TipoCardapio.mesa,
+                            ),
+                          ),
                         );
-                      },
-                    ));
+                        return;
+                      }
+
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) {
+                          return PaginaCardapio(
+                            tipo: TipoCardapio.comanda,
+                            idComanda: widget.item.id,
+                            idMesa: '0',
+                            idCliente: widget.item.idCliente,
+                            id: widget.item.idComandaPedido,
+                          );
+                        },
+                      ));
+                    }
                   }
                 },
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
