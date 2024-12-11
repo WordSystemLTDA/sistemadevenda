@@ -8,7 +8,7 @@
 // class CardItensRetiradas extends StatefulWidget {
 //   final ModeloDadosOpcoesPacotes item;
 //   final bool kit;
-//   final ModeloProduto? dadosKit;
+//   final Modelowordprodutos? dadosKit;
 //   const CardItensRetiradas({super.key, required this.item, required this.kit, this.dadosKit});
 
 //   @override
@@ -49,12 +49,12 @@
 //             children: [
 //               Row(
 //                 children: [
-                  // Checkbox(
-                  //   value: retornarListaItensRetiradas().where((element) => element.id == item.id).isNotEmpty,
-                  //   onChanged: (bool? value) {
-                  //     _provedorProduto.selecionarItensRetirada(item, widget.kit, widget.dadosKit);
-                  //   },
-                  // ),
+//                   Checkbox(
+//                     value: retornarListaItensRetiradas().where((element) => element.id == item.id).isNotEmpty,
+//                     onChanged: (bool? value) {
+//                       _provedorProduto.selecionarItensRetirada(item, widget.kit, widget.dadosKit);
+//                     },
+//                   ),
 //                   Text(item.nome),
 //                 ],
 //               ),

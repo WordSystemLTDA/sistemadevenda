@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
@@ -34,7 +34,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   final ProvedorFinalizarPagamento provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
-  final Client client = Modular.get<Client>();
+  final Server server = Modular.get<Server>();
 
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
@@ -170,20 +170,21 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                       if (sucesso) {
                         provedorMesas.listarMesas('');
-                        client.write(jsonEncode({
+                        server.write(jsonEncode({
                           'tipo': 'Mesa',
                           'nomeConexao': usuarioProvedor.usuario!.nome,
                         }));
 
                         removerTodosItensCarrinho();
-                        Impressao.enviarImpressao(
-                          tipoImpressao: '1',
-                          tipo: provedorCardapio.tipo,
+                        Impressao.comprovanteDePedido(
+                          tipodeentrega: provedorCardapio.tipodeentrega,
+                          tipoTela: provedorCardapio.tipo,
                           comanda: "Mesa ${provedorCardapio.idMesa}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          local: '',
                         );
 
                         if (context.mounted) {
@@ -219,19 +220,22 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         // final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
 
                         provedorComanda.listarComandas('');
-                        client.write(jsonEncode({
+                        server.write(jsonEncode({
                           'tipo': 'Comanda',
                           'nomeConexao': usuarioProvedor.usuario!.nome,
                         }));
 
                         removerTodosItensCarrinho();
-                        Impressao.enviarImpressao(
-                          tipoImpressao: '1',
-                          tipo: provedorCardapio.tipo,
+                        Impressao.comprovanteDePedido(
+                          // tipoImpressao: '1',
+                          local: "",
+                          tipodeentrega: provedorCardapio.tipodeentrega,
+                          tipoTela: provedorCardapio.tipo,
                           comanda: "Comanda ${provedorCardapio.idComanda}",
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
+
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                         );
 
@@ -260,7 +264,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         height: 50,
                         child: const Center(
                           child: CircularProgressIndicator(),
-                        ))
+                        ),
+                      )
                     : SizedBox(
                         width: width - 70,
                         child: Row(

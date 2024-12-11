@@ -15,7 +15,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardProduto extends StatefulWidget {
   final bool estaPesquisando;
   final SearchController? searchController;
-  final ModeloProduto item;
+  final Modelowordprodutos item;
   final ModeloCategoria? categoria;
 
   const CardProduto({
@@ -126,7 +126,7 @@ class _CardProdutoState extends State<CardProduto> {
 
                 await carrinhoProvedor
                     .inserir(
-                  ModeloProduto(
+                  Modelowordprodutos(
                     id: item.id,
                     nome: item.nome,
                     codigo: item.codigo,

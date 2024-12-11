@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class CardKit extends StatefulWidget {
-  final ModeloProduto item;
+  final Modelowordprodutos item;
   const CardKit({super.key, required this.item});
 
   @override

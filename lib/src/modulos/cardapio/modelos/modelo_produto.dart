@@ -6,11 +6,11 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_ingredientes_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
-class ModeloProduto {
+class Modelowordprodutos {
   String id;
-
+  String? iditensvenda;
   String nome;
   String codigo;
   String estoque;
@@ -24,32 +24,36 @@ class ModeloProduto {
   String? dataLancado;
   String? ativarEdQtd;
   String? ativarCustoDeProducao;
-
+  // bool excluir;
   bool? novo;
   ModeloDestinoImpressao? destinoDeImpressao;
   String habilTipo;
   String? habilItensRetirada;
   String? ativoLoja;
+  List<Modelowordtamanhosproduto>? tamanhosPizza;
   // List<Modelowordcortesiasproduto> cortesias;
-  // List<ModeloProduto> kits;
+  // List<Modelowordprodutos> kits;
   // List<Modelowordadicionaisproduto> adicionais;
   // List<Modelowordacompanhamentosproduto> acompanhamentos;
   // List<Modelowordtamanhosproduto> tamanhos;
   // List<Modeloworditensretiradaproduto> itensRetiradas;
-  List<Modelowordtamanhosproduto>? tamanhosPizza;
   List<Modelowordingredientesproduto> ingredientes;
   double? quantidade;
   int? quantidadePessoa;
   int? tamanhoLista;
   String? valorTotalVendas;
   String? observacao;
+  TextEditingController? quantidadeController;
+  Widget? acoes;
   String? valorRestoDivisao;
   List<ModeloOpcoesPacotes>? opcoesPacotes;
   List<ModeloOpcoesPacotes>? opcoesPacotesListaFinal;
   ModeloDescontoProduto? descontoProduto;
+  String? habilsepardelivery;
 
-  ModeloProduto({
+  Modelowordprodutos({
     required this.id,
+    this.iditensvenda,
     required this.nome,
     required this.codigo,
     required this.estoque,
@@ -68,28 +72,32 @@ class ModeloProduto {
     required this.habilTipo,
     this.habilItensRetirada,
     this.ativoLoja,
+    this.tamanhosPizza,
     // required this.cortesias,
     // required this.kits,
     // required this.adicionais,
     // required this.acompanhamentos,
     // required this.tamanhos,
     // required this.itensRetiradas,
-    this.tamanhosPizza,
     required this.ingredientes,
     this.quantidade,
     this.quantidadePessoa = 1,
     this.tamanhoLista,
     this.valorTotalVendas,
     this.observacao,
+    this.quantidadeController,
+    this.acoes,
     this.valorRestoDivisao,
     this.opcoesPacotes,
     this.opcoesPacotesListaFinal,
     this.descontoProduto,
+    this.habilsepardelivery,
   });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
+      'iditensvenda': iditensvenda,
       'nome': nome,
       'codigo': codigo,
       'estoque': estoque,
@@ -107,30 +115,34 @@ class ModeloProduto {
       'destinoDeImpressao': destinoDeImpressao?.toMap(),
       'habilTipo': habilTipo,
       'ativoLoja': ativoLoja,
+      'tamanhosPizza': tamanhosPizza?.map((x) => x.toMap()).toList(),
       // 'cortesias': cortesias.map((x) => x.toMap()).toList(),
       // 'kits': kits.map((x) => x.toMap()).toList(),
       // 'adicionais': adicionais.map((x) => x.toMap()).toList(),
       // 'acompanhamentos': acompanhamentos.map((x) => x.toMap()).toList(),
       // 'tamanhos': tamanhos.map((x) => x.toMap()).toList(),
       // 'itensRetiradas': itensRetiradas.map((x) => x.toMap()).toList(),
-      'tamanhosPizza': tamanhosPizza?.map((x) => x.toMap()).toList(),
       'ingredientes': ingredientes.map((x) => x.toMap()).toList(),
       'quantidade': quantidade,
       'quantidadePessoa': quantidadePessoa,
       'tamanhoLista': tamanhoLista,
       'valorTotalVendas': valorTotalVendas,
       'observacao': observacao,
+      'quantidadeController': quantidadeController,
+      'acoes': acoes,
       'habilItensRetirada': habilItensRetirada,
       'valorRestoDivisao': valorRestoDivisao,
       'opcoesPacotes': opcoesPacotes?.map((x) => x.toMap()).toList(),
       'opcoesPacotesListaFinal': opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
       'descontoProduto': descontoProduto?.toMap(),
+      'habilsepardelivery': habilsepardelivery,
     };
   }
 
-  factory ModeloProduto.fromMap(Map<String, dynamic> map) {
-    return ModeloProduto(
+  factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
+    return Modelowordprodutos(
       id: map['id'] as String,
+      iditensvenda: map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
       estoque: map['estoque'] as String,
@@ -142,7 +154,7 @@ class ModeloProduto {
       categoria: map['categoria'] as String,
       nomeCategoria: map['nomeCategoria'] as String,
       dataLancado: map['dataLancado'] != null ? map['dataLancado'] as String : null,
-      ativarEdQtd: map['ativarEdQtd'] != null ? map['ativarEdQtd'] as String : null,
+      habilsepardelivery: map['habilsepardelivery'] != null ? map['habilsepardelivery'] as String : null,
       ativarCustoDeProducao: map['ativarCustoDeProducao'] != null ? map['ativarCustoDeProducao'] as String : null,
       novo: map['novo'] != null ? map['novo'] as bool : null,
       destinoDeImpressao: map['destinoDeImpressao'] != null ? ModeloDestinoImpressao.fromMap(map['destinoDeImpressao'] as Map<String, dynamic>) : null,
@@ -154,9 +166,9 @@ class ModeloProduto {
       //     (x) => Modelowordcortesiasproduto.fromMap(x as Map<String, dynamic>),
       //   ),
       // ),
-      // kits: List<ModeloProduto>.from(
-      //   (map['kits'] as List<dynamic>).map<ModeloProduto>(
-      //     (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+      // kits: List<Modelowordprodutos>.from(
+      //   (map['kits'] as List<dynamic>).map<Modelowordprodutos>(
+      //     (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
       //   ),
       // ),
       // adicionais: List<Modelowordadicionaisproduto>.from(
@@ -193,6 +205,8 @@ class ModeloProduto {
       tamanhoLista: map['tamanhoLista'] != null ? map['tamanhoLista'] as int : null,
       valorTotalVendas: map['valorTotalVendas'] != null ? map['valorTotalVendas'] as String : null,
       observacao: map['observacao'] != null ? map['observacao'] as String : null,
+      quantidadeController: map['quantidadeController'] != null ? map['quantidadeController'] as TextEditingController : null,
+      acoes: map['acoes'] != null ? map['acoes'] as Widget : null,
       valorRestoDivisao: map['valorRestoDivisao'] != null ? map['valorRestoDivisao'] as String : null,
       opcoesPacotes: map['opcoesPacotes'] != null
           ? List<ModeloOpcoesPacotes>.from(
@@ -221,10 +235,10 @@ class ModeloProduto {
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloProduto.fromJson(String source) => ModeloProduto.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modelowordprodutos.fromJson(String source) => Modelowordprodutos.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
-  bool operator ==(covariant ModeloProduto other) {
+  bool operator ==(covariant Modelowordprodutos other) {
     if (identical(this, other)) return true;
 
     return other.id == id &&
@@ -243,12 +257,18 @@ class ModeloProduto {
         other.destinoDeImpressao == destinoDeImpressao &&
         other.habilTipo == habilTipo &&
         other.ativoLoja == ativoLoja &&
-        listEquals(other.ingredientes, ingredientes) &&
+        // listEquals(other.adicionais, adicionais) &&
+        // listEquals(other.acompanhamentos, acompanhamentos) &&
+        // listEquals(other.tamanhos, tamanhos) &&
+        // listEquals(other.itensRetiradas, itensRetiradas) &&
+        // listEquals(other.ingredientes, ingredientes) &&
         other.quantidade == quantidade &&
         other.quantidadePessoa == quantidadePessoa &&
         other.tamanhoLista == tamanhoLista &&
         other.valorTotalVendas == valorTotalVendas &&
         other.observacao == observacao &&
+        other.quantidadeController == quantidadeController &&
+        other.acoes == acoes &&
         other.valorRestoDivisao == valorRestoDivisao;
   }
 
@@ -270,12 +290,18 @@ class ModeloProduto {
         destinoDeImpressao.hashCode ^
         habilTipo.hashCode ^
         ativoLoja.hashCode ^
+        // adicionais.hashCode ^
+        // acompanhamentos.hashCode ^
+        // tamanhos.hashCode ^
+        // itensRetiradas.hashCode ^
         ingredientes.hashCode ^
         quantidade.hashCode ^
         quantidadePessoa.hashCode ^
         tamanhoLista.hashCode ^
         valorTotalVendas.hashCode ^
         observacao.hashCode ^
-        valorRestoDivisao.hashCode;
+        quantidadeController.hashCode ^
+        valorRestoDivisao.hashCode ^
+        acoes.hashCode;
   }
 }

@@ -14,7 +14,7 @@ class Modeloworddadoscardapio {
   String? dataUltimoProdutoInserido;
   String? idCliente;
   String? nomeCliente;
-  List<ModeloProduto>? produtos;
+  List<Modelowordprodutos>? produtos;
 
   String? valorTotal;
   String? numeroPedido;
@@ -37,6 +37,8 @@ class Modeloworddadoscardapio {
   String? idBalcao;
   String? observacoes;
   String? nomeMesa;
+  String? tipodeentrega;
+  String? valorentrega;
 
   Modeloworddadoscardapio({
     this.id,
@@ -70,6 +72,8 @@ class Modeloworddadoscardapio {
     this.idBalcao,
     this.observacoes,
     this.nomeMesa,
+    this.tipodeentrega,
+    this.valorentrega,
   });
 
   Map<String, dynamic> toMap() {
@@ -105,6 +109,8 @@ class Modeloworddadoscardapio {
       'idBalcao': idBalcao,
       'observacoes': observacoes,
       'nomeMesa': nomeMesa,
+      'tipodeentrega': tipodeentrega,
+      'valorentrega': valorentrega,
     };
   }
 
@@ -120,9 +126,9 @@ class Modeloworddadoscardapio {
       idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
       produtos: map['produtos'] != null
-          ? List<ModeloProduto>.from(
-              (map['produtos'] as List<dynamic>).map<ModeloProduto?>(
-                (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+          ? List<Modelowordprodutos>.from(
+              (map['produtos'] as List<dynamic>).map<Modelowordprodutos?>(
+                (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,
@@ -153,6 +159,8 @@ class Modeloworddadoscardapio {
       idBalcao: map['idBalcao'] != null ? map['idBalcao'] as String : null,
       observacoes: map['observacoes'] != null ? map['observacoes'] as String : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
+      tipodeentrega: map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
+      valorentrega: map['valorentrega'] != null ? map['valorentrega'] as String : null,
     );
   }
 

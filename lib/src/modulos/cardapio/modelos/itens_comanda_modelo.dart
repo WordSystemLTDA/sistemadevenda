@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class ItensModeloComandao {
-  final List<ModeloProduto> listaComandosPedidos;
+  final List<Modelowordprodutos> listaComandosPedidos;
   final num quantidadeTotal;
   double precoTotal;
 
@@ -23,9 +23,9 @@ class ItensModeloComandao {
 
   factory ItensModeloComandao.fromMap(Map<String, dynamic> map) {
     return ItensModeloComandao(
-      listaComandosPedidos: List<ModeloProduto>.from(
-        (map['listaComandosPedidos'] as List<dynamic>).map<ModeloProduto>(
-          (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+      listaComandosPedidos: List<Modelowordprodutos>.from(
+        (map['listaComandosPedidos'] as List<dynamic>).map<Modelowordprodutos>(
+          (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
         ),
       ),
       quantidadeTotal: map['quantidadeTotal'] as num,

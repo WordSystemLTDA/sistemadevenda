@@ -66,9 +66,9 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ModeloProduto> _saboresPizzaSelecionados = [];
-  List<ModeloProduto> get saboresPizzaSelecionados => _saboresPizzaSelecionados;
-  set saboresPizzaSelecionados(List<ModeloProduto> value) {
+  List<Modelowordprodutos> _saboresPizzaSelecionados = [];
+  List<Modelowordprodutos> get saboresPizzaSelecionados => _saboresPizzaSelecionados;
+  set saboresPizzaSelecionados(List<Modelowordprodutos> value) {
     _saboresPizzaSelecionados = value;
     notifyListeners();
   }

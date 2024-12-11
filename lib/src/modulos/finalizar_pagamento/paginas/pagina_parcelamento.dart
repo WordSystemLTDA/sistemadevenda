@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
@@ -55,11 +55,11 @@ class PaginaParcelamento extends StatefulWidget {
 }
 
 class _PaginaParcelamentoState extends State<PaginaParcelamento> {
-  var provedor = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorFinalizarPagamento provedor = Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final Client client = Modular.get<Client>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  final Server server = Modular.get<Server>();
 
   final _valorController = TextEditingController();
 
@@ -163,14 +163,14 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
 
         if (vendaBalcao != null) {
-          client.write(jsonEncode({
+          server.write(jsonEncode({
             'tipo': TipoCardapio.balcao.nome,
             'nomeConexao': usuarioProvedor.usuario!.nome,
           }));
 
-          await Impressao.enviarImpressao(
-            tipoImpressao: '1',
-            tipo: provedorCardapio.tipo,
+          await Impressao.comprovanteDePedido(
+            local: '',
+            tipoTela: provedorCardapio.tipo,
             comanda: "Balcão $idvenda",
             numeroPedido: vendaBalcao.numeropedido,
             nomeCliente: vendaBalcao.nomecliente,

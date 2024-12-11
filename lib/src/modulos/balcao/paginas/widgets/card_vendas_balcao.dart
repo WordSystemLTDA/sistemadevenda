@@ -157,9 +157,9 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                           onPressed: () async {
                             var informacoes = await servico.listarPorId(widget.item.id);
 
-                            var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipoImpressao: '1',
-                              tipo: TipoCardapio.balcao,
+                            await Impressao.comprovanteDePedido(
+                              local: "",
+                              tipoTela: TipoCardapio.balcao,
                               comanda: "Balcão ${item.id}",
                               numeroPedido: item.numeropedido,
                               nomeCliente: item.nomecliente,
@@ -168,15 +168,15 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               tipodeentrega: informacoes.informacoes.tipodeentrega,
                             );
 
-                            if (sucessoAoImprimir == false) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                                  backgroundColor: Colors.red,
-                                ));
-                              }
-                            }
+                            // if (sucessoAoImprimir == false) {
+                            //   if (context.mounted) {
+                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                            //       backgroundColor: Colors.red,
+                            //     ));
+                            //   }
+                            // }
                           },
                           child: const Row(
                             children: [
@@ -194,10 +194,12 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                             final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
                             final newDuration = ConfigSistema.formatarHora(duration);
 
-                            var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipoImpressao: '2',
-                              tipo: TipoCardapio.balcao,
-                              nomeCliente: item.nomecliente,
+                            Impressao.comprovanteDeConsumo(
+                              // tipoImpressao: '2',
+                              // : TipoCardapio.balcao,
+                              // nomeCliente: item.nomecliente,
+
+                              valorentrega: informacoes.informacoes.valorentrega,
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
                               nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
@@ -215,15 +217,15 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               tipodeentrega: informacoes.informacoes.tipodeentrega,
                             );
 
-                            if (sucessoAoImprimir == false) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                                  backgroundColor: Colors.red,
-                                ));
-                              }
-                            }
+                            // if (sucessoAoImprimir == false) {
+                            //   if (context.mounted) {
+                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                            //       backgroundColor: Colors.red,
+                            //     ));
+                            //   }
+                            // }
                           },
                           child: const Row(
                             children: [
@@ -241,9 +243,9 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                             final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
                             final newDuration = ConfigSistema.formatarHora(duration);
 
-                            var sucessoAoImprimir = await Impressao.enviarImpressao(
-                              tipoImpressao: '3',
-                              tipo: TipoCardapio.balcao,
+                            Impressao.comprovanteDoEntregador(
+                              // tipoImpressao: '3',
+                              // tipo: TipoCardapio.balcao,
                               nomeCliente: item.nomecliente,
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
@@ -256,7 +258,7 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               celularEmpresa: informacoes.informacoes.celularcliente,
                               enderecoEmpresa: informacoes.informacoes.enderecoempresa,
                               permanencia: newDuration,
-                              local: '',
+                              // local: '',
                               total: informacoes.informacoes.subtotal,
                               numeroPedido: informacoes.informacoes.numerodopedido,
                               tipodeentrega: informacoes.informacoes.tipodeentrega,
@@ -271,15 +273,15 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               numeroCliente: informacoes.informacoes.numeroenderecocliente,
                             );
 
-                            if (sucessoAoImprimir == false) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                                  backgroundColor: Colors.red,
-                                ));
-                              }
-                            }
+                            // if (sucessoAoImprimir == false) {
+                            //   if (context.mounted) {
+                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                            //       backgroundColor: Colors.red,
+                            //     ));
+                            //   }
+                            // }
                           },
                           child: const Row(
                             children: [

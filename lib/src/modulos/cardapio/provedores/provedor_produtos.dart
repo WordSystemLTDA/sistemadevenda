@@ -7,9 +7,9 @@ class ProvedorProdutos extends ChangeNotifier {
 
   ProvedorProdutos(this._produtoService);
 
-  List<ModeloProduto> _produtos = [];
-  List<ModeloProduto> get produtos => _produtos;
-  set produtos(List<ModeloProduto> value) {
+  List<Modelowordprodutos> _produtos = [];
+  List<Modelowordprodutos> get produtos => _produtos;
+  set produtos(List<Modelowordprodutos> value) {
     _produtos = value;
     notifyListeners();
   }
@@ -27,7 +27,7 @@ class ProvedorProdutos extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ModeloProduto>> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
+  Future<List<Modelowordprodutos>> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
     return await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
   }
 }

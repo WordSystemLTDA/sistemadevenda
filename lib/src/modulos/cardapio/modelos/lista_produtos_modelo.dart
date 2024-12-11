@@ -4,7 +4,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class ListaProdutosModelo {
   final String categoria;
-  final List<ModeloProduto> listaProdutos;
+  final List<Modelowordprodutos> listaProdutos;
 
   ListaProdutosModelo({
     required this.categoria,
@@ -21,9 +21,9 @@ class ListaProdutosModelo {
   factory ListaProdutosModelo.fromMap(Map<String, dynamic> map) {
     return ListaProdutosModelo(
       categoria: map['categoria'] as String,
-      listaProdutos: List<ModeloProduto>.from(
-        (map['listaProdutos'] as List<ModeloProduto>).map<ModeloProduto>(
-          (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+      listaProdutos: List<Modelowordprodutos>.from(
+        (map['listaProdutos'] as List<Modelowordprodutos>).map<Modelowordprodutos>(
+          (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
         ),
       ),
     );

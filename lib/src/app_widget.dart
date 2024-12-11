@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+GlobalKey<NavigatorState>? navigatorKey = GlobalKey<NavigatorState>();
 
 class AppWidget extends StatelessWidget {
   const AppWidget({super.key});
@@ -23,6 +24,7 @@ class AppWidget extends StatelessWidget {
           darkTheme: ThemeData.dark(),
           debugShowCheckedModeBanner: false,
           initialRoute: "login",
+          navigatorKey: navigatorKey,
           routes: {
             'login': (context) {
               return const PaginaLogin();

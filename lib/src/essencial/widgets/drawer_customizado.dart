@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
@@ -20,7 +20,7 @@ class DrawerCustomizado extends StatefulWidget {
 }
 
 class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProviderStateMixin {
-  Client cliente = Modular.get<Client>();
+  Server server = Modular.get<Server>();
   ServicoAutenticacao servicoAutenticacao = Modular.get<ServicoAutenticacao>();
 
   String nome = '';
@@ -186,7 +186,7 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
           ),
           if (ipServidor.isNotEmpty)
             ListTile(
-              leading: cliente.connected ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.error, color: Colors.red),
+              leading: server.connected ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.error, color: Colors.red),
               title: Text(ipServidor),
             ),
           ListTile(

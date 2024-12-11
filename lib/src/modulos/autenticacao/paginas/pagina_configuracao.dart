@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -94,9 +94,9 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   }
 
   Future<void> conectarAoServidor(String ip, String porta) async {
-    var cliente = Modular.get<Client>();
+    var server = Modular.get<Server>();
 
-    await cliente.connect(ip, int.parse(porta)).then((sucesso) {
+    await server.start(ip, porta).then((sucesso) {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();

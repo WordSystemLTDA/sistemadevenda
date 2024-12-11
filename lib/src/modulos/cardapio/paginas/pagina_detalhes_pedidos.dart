@@ -118,10 +118,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
                         final newDuration = ConfigSistema.formatarHora(duration);
 
-                        Impressao.enviarImpressao(
-                          tipoImpressao: '2',
-                          tipo: widget.tipo,
-                          nomeCliente: dados!.nomeCliente!,
+                        Impressao.comprovanteDeConsumo(
+                          // tipoImpressao: '2',
+                          // tipo: widget.tipo,
+                          // nomeCliente: dados!.nomeCliente!,
+                          tipodeentrega: dados!.tipodeentrega ?? '',
+                          valorentrega: dados!.valorentrega ?? '',
                           nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: dados!.produtos!,
                           nomelancamento: dados!.nomelancamento!,

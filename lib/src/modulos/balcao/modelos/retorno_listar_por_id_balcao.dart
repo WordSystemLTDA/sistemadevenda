@@ -5,7 +5,7 @@ import 'package:app/src/modulos/balcao/modelos/informacoes_retorno_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class RetornoListarPorIdBalcao {
-  List<ModeloProduto> produtos;
+  List<Modelowordprodutos> produtos;
   InformacoesRetornoModelo informacoes;
 
   RetornoListarPorIdBalcao({
@@ -22,9 +22,9 @@ class RetornoListarPorIdBalcao {
 
   factory RetornoListarPorIdBalcao.fromMap(Map<String, dynamic> map) {
     return RetornoListarPorIdBalcao(
-      produtos: List<ModeloProduto>.from(
-        (map['produtos'] as List<dynamic>).map<ModeloProduto>(
-          (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+      produtos: List<Modelowordprodutos>.from(
+        (map['produtos'] as List<dynamic>).map<Modelowordprodutos>(
+          (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
         ),
       ),
       informacoes: InformacoesRetornoModelo.fromMap(map['informacoes'] as Map<String, dynamic>),

@@ -9,7 +9,7 @@
 // class CardCortesias extends StatefulWidget {
 //   final ModeloDadosOpcoesPacotes item;
 //   final bool kit;
-//   final ModeloProduto? dadosKit;
+//   final Modelowordprodutos? dadosKit;
 //   const CardCortesias({super.key, required this.item, required this.kit, this.dadosKit});
 
 //   @override

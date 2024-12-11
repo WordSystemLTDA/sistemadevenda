@@ -35,7 +35,7 @@ class ServicoFinalizarPagamento {
     String valoresProduto,
     bool novo,
     String tipodeentrega,
-    List<ModeloProduto> produtos,
+    List<Modelowordprodutos> produtos,
     String valorAPagarOriginal,
   ) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;

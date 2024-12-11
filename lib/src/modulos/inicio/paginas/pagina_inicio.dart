@@ -1,4 +1,4 @@
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -38,11 +38,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
   }
 
   Future<void> conectarAoServidor() async {
-    var cliente = Modular.get<Client>();
+    var server = Modular.get<Server>();
+
     final ConfigSharedPreferences config = ConfigSharedPreferences();
     var conexao = await config.getConexao();
 
-    await cliente.connect(conexao!.servidor, int.parse(conexao.porta)).then((sucesso) {
+    await server.start(conexao!.servidor, conexao.porta).then((sucesso) {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

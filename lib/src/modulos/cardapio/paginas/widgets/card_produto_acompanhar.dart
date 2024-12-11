@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardProdutoAcompanhar extends StatefulWidget {
-  final ModeloProduto item;
+  final Modelowordprodutos item;
   final Modeloworddadoscardapio? dados;
   final String idComanda;
   final String idComandaPedido;
@@ -206,14 +206,27 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                 IconButton(
                                   onPressed: () {
                                     if (widget.dados != null) {
-                                      Impressao.enviarImpressao(
-                                        tipoImpressao: '2',
-                                        tipo: widget.tipo,
-                                        comanda: widget.dados!.nome!,
+                                      final duration = DateTime.now().difference(DateTime.parse(widget.dados!.dataAbertura!));
+                                      final newDuration = ConfigSistema.formatarHora(duration);
+
+                                      Impressao.comprovanteDeConsumo(
+                                        // tipoImpressao: '2',
+                                        // tipo: widget.tipo,
+                                        // comanda: widget.dados!.nome!,
                                         numeroPedido: widget.dados!.numeroPedido!,
-                                        nomeCliente: widget.dados!.nomeCliente!,
+                                        // nomeCliente: widget.dados!.nomeCliente!,
                                         nomeEmpresa: widget.dados!.nomeEmpresa!,
                                         produtos: [item],
+                                        celularEmpresa: widget.dados!.celularEmpresa ?? '',
+                                        cnpjEmpresa: widget.dados!.cnpjEmpresa ?? '',
+                                        enderecoEmpresa: widget.dados!.enderecoEmpresa ?? '',
+                                        local: '',
+                                        nomelancamento: widget.dados!.nomelancamento ?? [],
+                                        permanencia: newDuration,
+                                        somaValorHistorico: widget.dados!.somaValorHistorico ?? '',
+                                        tipodeentrega: widget.dados!.tipodeentrega ?? '',
+                                        total: widget.dados!.valorTotal ?? '',
+                                        valorentrega: widget.dados!.valorentrega ?? '',
                                       );
                                     }
                                   },

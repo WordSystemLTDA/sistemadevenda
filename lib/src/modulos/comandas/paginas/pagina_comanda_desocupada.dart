@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-import 'package:app/src/essencial/api/socket/client.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -131,7 +131,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
               salvando = true;
             });
 
-            final Client client = Modular.get<Client>();
+            final Server server = Modular.get<Server>();
             final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
 
             if (widget.tipo == TipoCardapio.mesa) {
@@ -140,7 +140,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                 await provedorMesas.editarMesaOcupada(widget.idComandaPedido!, id, idCliente, _obsconstroller.text).then((sucesso) {
                   if (context.mounted) {
                     if (sucesso) {
-                      client.write(jsonEncode({
+                      server.write(jsonEncode({
                         'tipo': 'Mesa',
                         'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));
@@ -164,7 +164,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                     provedorComanda.listarMesas('');
 
                     if (resposta.sucesso) {
-                      client.write(jsonEncode({
+                      server.write(jsonEncode({
                         'tipo': 'Mesa',
                         'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));
@@ -205,7 +205,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                 await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
                   if (context.mounted) {
                     if (sucesso) {
-                      client.write(jsonEncode({
+                      server.write(jsonEncode({
                         'tipo': 'Comanda',
                         'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));
@@ -228,7 +228,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                     provedorComanda.listarComandas('');
 
                     if (resposta.sucesso) {
-                      client.write(jsonEncode({
+                      server.write(jsonEncode({
                         'tipo': 'Comanda',
                         'nomeConexao': usuarioProvedor.usuario!.nome,
                       }));

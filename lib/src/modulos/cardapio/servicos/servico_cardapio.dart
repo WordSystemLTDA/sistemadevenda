@@ -53,7 +53,7 @@ class ServicoCardapio {
     );
   }
 
-  Future<(bool, String)> inserirProdutosComanda(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {
+  Future<(bool, String)> inserirProdutosComanda(List<Modelowordprodutos> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
@@ -86,7 +86,7 @@ class ServicoCardapio {
     }
   }
 
-  Future<(bool, String)> inserirProdutosMesa(List<ModeloProduto> produtos, String idMesa, String idComandaPedido, String idcliente) async {
+  Future<(bool, String)> inserirProdutosMesa(List<Modelowordprodutos> produtos, String idMesa, String idComandaPedido, String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 

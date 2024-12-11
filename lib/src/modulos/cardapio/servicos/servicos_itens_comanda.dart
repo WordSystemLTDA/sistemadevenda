@@ -40,7 +40,7 @@ class ServicosItensComanda {
   }
 
   Future<bool> inserir(
-    ModeloProduto produto,
+    Modelowordprodutos produto,
     tipo,
     idMesa,
     idComanda,

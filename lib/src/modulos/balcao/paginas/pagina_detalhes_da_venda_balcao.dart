@@ -80,9 +80,7 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       final duration = DateTime.now().difference(DateTime.parse(informacoes!.informacoes.dataAbertura));
                       final newDuration = ConfigSistema.formatarHora(duration);
 
-                      var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipoImpressao: '3',
-                        tipo: TipoCardapio.balcao,
+                      Impressao.comprovanteDoEntregador(
                         nomeCliente: informacoes!.informacoes.nomeCliente,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
@@ -94,7 +92,6 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         celularEmpresa: informacoes!.informacoes.celularcliente,
                         enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
                         permanencia: newDuration,
-                        local: '',
                         total: informacoes!.informacoes.subtotal,
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
@@ -107,16 +104,43 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         complementoCliente: informacoes!.informacoes.complementoenderecocliente,
                         numeroCliente: informacoes!.informacoes.numeroenderecocliente,
                       );
+                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
+                      //   tipoImpressao: '3',
+                      //   tipo: TipoCardapio.balcao,
+                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
+                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
+                      //   produtos: informacoes!.produtos,
+                      //   nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                      //     return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                      //   })),
+                      //   somaValorHistorico: informacoes!.informacoes.subtotal,
+                      //   cnpjEmpresa: informacoes!.informacoes.docempresa,
+                      //   celularEmpresa: informacoes!.informacoes.celularcliente,
+                      //   enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
+                      //   permanencia: newDuration,
+                      //   local: '',
+                      //   total: informacoes!.informacoes.subtotal,
+                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
+                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
+                      //   celularCliente: informacoes!.informacoes.celularcliente,
+                      //   enderecoCliente: informacoes!.informacoes.enderecoenderecocliente,
+                      //   valortroco: informacoes!.informacoes.valortroco,
+                      //   valorentrega: informacoes!.informacoes.valorentrega,
+                      //   bairroCliente: informacoes!.informacoes.nomebairro,
+                      //   cidadeCliente: informacoes!.informacoes.nomecidade,
+                      //   complementoCliente: informacoes!.informacoes.complementoenderecocliente,
+                      //   numeroCliente: informacoes!.informacoes.numeroenderecocliente,
+                      // );
 
-                      if (sucessoAoImprimir == false) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            backgroundColor: Colors.red,
-                          ));
-                        }
-                      }
+                      // if (sucessoAoImprimir == false) {
+                      //   if (context.mounted) {
+                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                      //       backgroundColor: Colors.red,
+                      //     ));
+                      //   }
+                      // }
                     },
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                     label: const Text('Comprovante do Entregador'),
@@ -127,10 +151,10 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       final duration = DateTime.now().difference(DateTime.parse(informacoes!.informacoes.dataAbertura));
                       final newDuration = ConfigSistema.formatarHora(duration);
 
-                      var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipoImpressao: '2',
-                        tipo: TipoCardapio.balcao,
-                        nomeCliente: informacoes!.informacoes.nomeCliente,
+                      Impressao.comprovanteDeConsumo(
+                        // tipoImpressao: '2',
+                        // tipo: TipoCardapio.balcao,
+                        // nomeCliente: informacoes!.informacoes.nomeCliente,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
                         nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
@@ -146,16 +170,35 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
                       );
+                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
+                      //   tipoImpressao: '2',
+                      //   tipo: TipoCardapio.balcao,
+                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
+                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
+                      //   produtos: informacoes!.produtos,
+                      //   nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                      //     return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                      //   })),
+                      //   somaValorHistorico: informacoes!.informacoes.subtotal,
+                      //   cnpjEmpresa: informacoes!.informacoes.docempresa,
+                      //   celularEmpresa: informacoes!.informacoes.celularcliente,
+                      //   enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
+                      //   permanencia: newDuration,
+                      //   local: '',
+                      //   total: informacoes!.informacoes.subtotal,
+                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
+                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
+                      // );
 
-                      if (sucessoAoImprimir == false) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            backgroundColor: Colors.red,
-                          ));
-                        }
-                      }
+                      // if (sucessoAoImprimir == false) {
+                      //   if (context.mounted) {
+                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                      //       backgroundColor: Colors.red,
+                      //     ));
+                      //   }
+                      // }
                     },
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                     label: const Text('Comprovante de Conta'),
@@ -163,9 +206,10 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                   FloatingActionButton.extended(
                     heroTag: null,
                     onPressed: () async {
-                      var sucessoAoImprimir = await Impressao.enviarImpressao(
-                        tipoImpressao: '1',
-                        tipo: TipoCardapio.balcao,
+                      // var sucessoAoImprimir = await Impressao.comprovanteDePedido(
+                      await Impressao.comprovanteDePedido(
+                        local: "",
+                        tipoTela: TipoCardapio.balcao,
                         comanda: "Balcão ${widget.idVenda}",
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         nomeCliente: informacoes!.informacoes.nomeCliente,
@@ -173,16 +217,26 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         produtos: informacoes!.produtos,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
                       );
+                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
+                      //   tipoImpressao: '1',
+                      //   tipo: TipoCardapio.balcao,
+                      //   comanda: "Balcão ${widget.idVenda}",
+                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
+                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
+                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
+                      //   produtos: informacoes!.produtos,
+                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
+                      // );
 
-                      if (sucessoAoImprimir == false) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            backgroundColor: Colors.red,
-                          ));
-                        }
-                      }
+                      // if (sucessoAoImprimir == false) {
+                      //   if (context.mounted) {
+                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                      //       backgroundColor: Colors.red,
+                      //     ));
+                      //   }
+                      // }
                     },
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                     label: const Text('Imprimir Preparo'),

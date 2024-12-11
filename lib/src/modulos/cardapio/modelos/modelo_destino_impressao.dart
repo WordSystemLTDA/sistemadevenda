@@ -5,14 +5,24 @@ class ModeloDestinoImpressao {
   final String nome;
   final String nomeDaImpressora;
   final String tamanhoDoPapel;
+  final String? avancoPapel;
+  final String? nomedopc;
 
-  ModeloDestinoImpressao({required this.nome, required this.nomeDaImpressora, required this.tamanhoDoPapel});
+  ModeloDestinoImpressao({
+    required this.nome,
+    required this.nomeDaImpressora,
+    required this.tamanhoDoPapel,
+    this.avancoPapel,
+    this.nomedopc,
+  });
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'nome': nome,
       'nomeDaImpressora': nomeDaImpressora,
       'tamanhoDoPapel': tamanhoDoPapel,
+      'avancoPapel': avancoPapel,
+      'nomedopc': nomedopc,
     };
   }
 
@@ -21,6 +31,8 @@ class ModeloDestinoImpressao {
       nome: map['nome'] as String,
       nomeDaImpressora: map['nomeDaImpressora'] as String,
       tamanhoDoPapel: map['tamanhoDoPapel'] as String,
+      avancoPapel: map['avancoPapel'] != null ? map['avancoPapel'] as String : null,
+      nomedopc: map['nomedopc'] != null ? map['nomedopc'] as String : null,
     );
   }
 

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardCarrinho extends StatefulWidget {
-  final ModeloProduto item;
+  final Modelowordprodutos item;
   final String idComanda;
 
   final String idMesa;

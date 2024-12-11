@@ -3,7 +3,7 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
 class CardPedidoKit extends StatefulWidget {
-  final ModeloProduto item;
+  final Modelowordprodutos item;
   final bool somarValores;
 
   const CardPedidoKit({

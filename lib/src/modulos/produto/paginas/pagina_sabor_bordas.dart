@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaSaborBordas extends StatefulWidget {
-  final ModeloProduto produto;
+  final Modelowordprodutos produto;
   final double? valorVenda;
 
   const PaginaSaborBordas({
@@ -30,7 +30,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
 
-  ModeloProduto? itemProduto;
+  Modelowordprodutos? itemProduto;
   bool carregando = false;
   TextEditingController obsController = TextEditingController();
 

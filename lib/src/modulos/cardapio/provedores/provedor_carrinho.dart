@@ -23,14 +23,14 @@ class ProvedorCarrinho extends ChangeNotifier {
     var carrinhoString = prefs.getString('carrinho');
     List<dynamic> carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
-    List<ModeloProduto> listaItens = [];
+    List<Modelowordprodutos> listaItens = [];
     num quantidadeTotal = 0;
     double precoTotal = 0;
 
     for (int index = 0; index < carrinho.length; index++) {
       final item = carrinho[index];
 
-      var itemF = item is String ? ModeloProduto.fromJson(item) : ModeloProduto.fromMap(item);
+      var itemF = item is String ? Modelowordprodutos.fromJson(item) : Modelowordprodutos.fromMap(item);
 
       listaItens.add(itemF);
       quantidadeTotal += itemF.quantidade ?? 1;
@@ -44,7 +44,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     );
     notifyListeners();
     // } else {
-    //   List<ModeloProduto> listaItens = [];
+    //   List<Modelowordprodutos> listaItens = [];
     //   num quantidadeTotal = 0;
     //   double precoTotal = 0;
 
@@ -72,7 +72,7 @@ class ProvedorCarrinho extends ChangeNotifier {
   }
 
   Future<bool> inserir(
-    ModeloProduto produto,
+    Modelowordprodutos produto,
     tipo,
     idMesa,
     idComanda,

@@ -11,7 +11,7 @@ class ModeloOpcoesPacotes {
   final int? tipo;
   List<ModeloDadosOpcoesPacotes>? dados;
   List<ModeloOpcoesPacotes>? opcoesPacote;
-  List<ModeloProduto>? produtos;
+  List<Modelowordprodutos>? produtos;
 
   ModeloOpcoesPacotes({
     required this.id,
@@ -56,9 +56,9 @@ class ModeloOpcoesPacotes {
             )
           : null,
       produtos: map['produtos'] != null
-          ? List<ModeloProduto>.from(
-              (map['produtos'] as List<dynamic>).map<ModeloProduto?>(
-                (x) => ModeloProduto.fromMap(x as Map<String, dynamic>),
+          ? List<Modelowordprodutos>.from(
+              (map['produtos'] as List<dynamic>).map<Modelowordprodutos?>(
+                (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,
