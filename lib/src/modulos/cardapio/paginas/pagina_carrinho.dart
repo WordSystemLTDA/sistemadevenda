@@ -48,7 +48,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
   void listar() async {
     await carrinhoProvedor.listarComandasPedidos();
-    await servicoCardapio.listarPorId(provedorCardapio.id, TipoCardapio.comanda, "Não").then((value) {
+    await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
       dados = value;
     });
 
@@ -179,7 +179,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         Impressao.comprovanteDePedido(
                           tipodeentrega: provedorCardapio.tipodeentrega,
                           tipoTela: provedorCardapio.tipo,
-                          comanda: "Mesa ${provedorCardapio.idMesa}",
+                          comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
@@ -227,16 +227,14 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
                         removerTodosItensCarrinho();
                         Impressao.comprovanteDePedido(
-                          // tipoImpressao: '1',
-                          local: "",
                           tipodeentrega: provedorCardapio.tipodeentrega,
                           tipoTela: provedorCardapio.tipo,
-                          comanda: "Comanda ${provedorCardapio.idComanda}",
+                          comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
                           nomeCliente: dados!.nomeCliente!,
                           nomeEmpresa: dados!.nomeEmpresa!,
-
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          local: '',
                         );
 
                         if (context.mounted) {

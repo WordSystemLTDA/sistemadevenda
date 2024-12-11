@@ -37,6 +37,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
       child: Stack(
         children: [
           Card(
+            color: Theme.of(context).brightness == Brightness.dark ? const Color.fromARGB(255, 50, 50, 50) : null,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
             margin: EdgeInsets.zero,
             child: InkWell(

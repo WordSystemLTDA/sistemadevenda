@@ -395,7 +395,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             borderRadius: BorderRadius.circular(8),
                             child: Card(
                               margin: EdgeInsets.zero,
-                              color: Colors.white,
+                              // color: Colors.white,
+                              color: Theme.of(context).brightness == Brightness.dark ? null : Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                               elevation: 0,
                               child: Column(

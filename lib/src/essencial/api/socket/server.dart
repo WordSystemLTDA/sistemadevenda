@@ -175,25 +175,27 @@ class Server extends ChangeNotifier {
         return;
       }
 
-      if (contextMesa != null) {
-        if (contextMesa!.mounted) {
-          Navigator.pop(contextMesa!);
+      if (dados.tipo == 'MesaNFC' || dados.tipo == 'ComandaNFC') {
+        if (contextMesa != null) {
+          if (contextMesa!.mounted) {
+            Navigator.pop(contextMesa!);
+          }
         }
-      }
 
-      if (contextMesa1 != null) {
-        if (contextMesa1!.mounted) {
-          Navigator.pop(contextMesa1!);
+        if (contextMesa1 != null) {
+          if (contextMesa1!.mounted) {
+            Navigator.pop(contextMesa1!);
+          }
         }
-      }
-      if (contextComanda != null) {
-        if (contextComanda!.mounted) {
-          Navigator.pop(contextComanda!);
+        if (contextComanda != null) {
+          if (contextComanda!.mounted) {
+            Navigator.pop(contextComanda!);
+          }
         }
-      }
-      if (contextComanda1 != null) {
-        if (contextComanda1!.mounted) {
-          Navigator.pop(contextComanda1!);
+        if (contextComanda1 != null) {
+          if (contextComanda1!.mounted) {
+            Navigator.pop(contextComanda1!);
+          }
         }
       }
 
