@@ -7,7 +7,6 @@ class ConfigProvider extends ChangeNotifier {
   ConfigModelo? get configs => _configs;
 
   void setConfig(ConfigModelo? configs) {
-    print(configs!.toMap());
     _configs = configs;
     notifyListeners();
   }
