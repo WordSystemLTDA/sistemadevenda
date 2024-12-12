@@ -129,7 +129,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       Navigator.push(context, MaterialPageRoute(
                         builder: (context) {
                           return PaginaCardapio(
-                            tipo: TipoCardapio.comanda,
+                            tipo: TipoCardapio.mesa,
                             idComanda: widget.item.id,
                             idMesa: '0',
                             idCliente: widget.item.idCliente,

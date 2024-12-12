@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:app/src/app_widget.dart';
+import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
@@ -20,14 +21,17 @@ class Server extends ChangeNotifier {
   String hostname = '';
   int port = 0;
 
-  BuildContext? contextMesa;
-  BuildContext? contextMesa1;
+  // BuildContext? contextMesa;
+  // BuildContext? contextMesa1;
 
-  BuildContext? contextComanda;
-  BuildContext? contextComanda1;
+  // BuildContext? contextComanda;
+  // BuildContext? contextComanda1;
 
   Future<bool> start(String ip, String porta) async {
     bool sucesso = false;
+    hostname = ip;
+    port = int.parse(porta);
+    notifyListeners();
 
     sucesso = await runZoned(() async {
       try {
@@ -38,8 +42,7 @@ class Server extends ChangeNotifier {
         await channel!.ready;
 
         connected = true;
-        hostname = ip;
-        port = int.parse(porta);
+
         notifyListeners();
 
         // !IMPORTANTE! Caso o client se conecte isso mudara o ip do servidor também
@@ -175,107 +178,107 @@ class Server extends ChangeNotifier {
         return;
       }
 
-      if (dados.tipo == 'MesaNFC' || dados.tipo == 'ComandaNFC') {
-        if (contextMesa != null) {
-          if (contextMesa!.mounted) {
-            Navigator.pop(contextMesa!);
-          }
-        }
+      // if (dados.tipo == 'MesaNFC' || dados.tipo == 'ComandaNFC') {
+      //   if (contextMesa != null) {
+      //     if (contextMesa!.mounted) {
+      //       Navigator.pop(contextMesa!);
+      //     }
+      //   }
 
-        if (contextMesa1 != null) {
-          if (contextMesa1!.mounted) {
-            Navigator.pop(contextMesa1!);
-          }
-        }
-        if (contextComanda != null) {
-          if (contextComanda!.mounted) {
-            Navigator.pop(contextComanda!);
-          }
-        }
-        if (contextComanda1 != null) {
-          if (contextComanda1!.mounted) {
-            Navigator.pop(contextComanda1!);
-          }
-        }
-      }
+      //   if (contextMesa1 != null) {
+      //     if (contextMesa1!.mounted) {
+      //       Navigator.pop(contextMesa1!);
+      //     }
+      //   }
+      //   if (contextComanda != null) {
+      //     if (contextComanda!.mounted) {
+      //       Navigator.pop(contextComanda!);
+      //     }
+      //   }
+      //   if (contextComanda1 != null) {
+      //     if (contextComanda1!.mounted) {
+      //       Navigator.pop(contextComanda1!);
+      //     }
+      //   }
+      // }
 
-      if (dados.tipo == 'MesaNFC') {
-        // MesaModelo mesa = MesaModelo.fromMap({
-        //   'id': dados.id,
-        //   'idComandaPedido': dados.idComandaPedido,
-        //   'nome': dados.nome,
-        //   'codigo': dados.codigo,
-        //   'mesaOcupada': dados.ocupado,
-        // });
+      // if (dados.tipo == 'MesaNFC') {
+      //   // MesaModelo mesa = MesaModelo.fromMap({
+      //   //   'id': dados.id,
+      //   //   'idComandaPedido': dados.idComandaPedido,
+      //   //   'nome': dados.nome,
+      //   //   'codigo': dados.codigo,
+      //   //   'mesaOcupada': dados.ocupado,
+      //   // });
 
-        if (dados.ocupado == true) {
-          // showDialog(
-          //   context: navigatorKey!.currentContext!,
-          //   builder: (context) {
-          //     contextMesa = context;
+      //   if (dados.ocupado == true) {
+      //     // showDialog(
+      //     //   context: navigatorKey!.currentContext!,
+      //     //   builder: (context) {
+      //     //     contextMesa = context;
 
-          //     return ModalAddOuFinalizarMesa(
-          //       mesa: mesa,
-          //     );
-          //   },
-          // );
-        } else {
-          // var provedor = Modular.get<Provedoreswordmesa>();
-          // provedor.modalEstaAparecendo = true;
+      //     //     return ModalAddOuFinalizarMesa(
+      //     //       mesa: mesa,
+      //     //     );
+      //     //   },
+      //     // );
+      //   } else {
+      //     // var provedor = Modular.get<Provedoreswordmesa>();
+      //     // provedor.modalEstaAparecendo = true;
 
-          // showDialog(
-          //   context: navigatorKey!.currentContext!,
-          //   builder: (context) {
-          //     contextMesa1 = context;
+      //     // showDialog(
+      //     //   context: navigatorKey!.currentContext!,
+      //     //   builder: (context) {
+      //     //     contextMesa1 = context;
 
-          //     return ModalAbrirMesa(
-          //       mesa: mesa,
-          //     );
-          //   },
-          // ).then((value) {
-          //   provedor.modalEstaAparecendo = false;
-          // });
-        }
-      } else if (dados.tipo == 'ComandaNFC') {
-        // Modelowordcomanda comanda = Modelowordcomanda.fromMap({
-        //   'id': dados.id,
-        //   'idComandaPedido': dados.idComandaPedido,
-        //   'nome': dados.nome,
-        //   'codigo': dados.codigo,
-        //   'comandaOcupada': dados.ocupado,
-        // });
+      //     //     return ModalAbrirMesa(
+      //     //       mesa: mesa,
+      //     //     );
+      //     //   },
+      //     // ).then((value) {
+      //     //   provedor.modalEstaAparecendo = false;
+      //     // });
+      //   }
+      // } else if (dados.tipo == 'ComandaNFC') {
+      //   // Modelowordcomanda comanda = Modelowordcomanda.fromMap({
+      //   //   'id': dados.id,
+      //   //   'idComandaPedido': dados.idComandaPedido,
+      //   //   'nome': dados.nome,
+      //   //   'codigo': dados.codigo,
+      //   //   'comandaOcupada': dados.ocupado,
+      //   // });
 
-        if (dados.ocupado == true) {
-          // showDialog(
-          //   context: navigatorKey!.currentContext!,
-          //   builder: (context) {
-          //     contextComanda = context;
+      //   if (dados.ocupado == true) {
+      //     // showDialog(
+      //     //   context: navigatorKey!.currentContext!,
+      //     //   builder: (context) {
+      //     //     contextComanda = context;
 
-          //     return ModalAddOuFinalizar(
-          //       comanda: comanda,
-          //     );
-          //   },
-          // );
-        } else {
-          // var provedor = Modular.get<Provedoreswordcomandaspedidos>();
-          // provedor.modalEstaAparecendo = true;
+      //     //     return ModalAddOuFinalizar(
+      //     //       comanda: comanda,
+      //     //     );
+      //     //   },
+      //     // );
+      //   } else {
+      //     // var provedor = Modular.get<Provedoreswordcomandaspedidos>();
+      //     // provedor.modalEstaAparecendo = true;
 
-          // showDialog(
-          //   context: navigatorKey!.currentContext!,
-          //   builder: (context) {
-          //     contextComanda1 = context;
+      //     // showDialog(
+      //     //   context: navigatorKey!.currentContext!,
+      //     //   builder: (context) {
+      //     //     contextComanda1 = context;
 
-          //     return ModalAbrirComanda(
-          //       comanda: comanda,
-          //     );
-          //   },
-          // ).then((value) {
-          //   provedor.modalEstaAparecendo = false;
-          // });
-        }
-      }
+      //     //     return ModalAbrirComanda(
+      //     //       comanda: comanda,
+      //     //     );
+      //     //   },
+      //     // ).then((value) {
+      //     //   provedor.modalEstaAparecendo = false;
+      //     // });
+      //   }
+      // }
 
-      // AtualizacaoDeTela().call(dados);
+      AtualizacaoDeTela().call(dados);
 
       // pedido
       if (dados.tipoImpressao == '1') {

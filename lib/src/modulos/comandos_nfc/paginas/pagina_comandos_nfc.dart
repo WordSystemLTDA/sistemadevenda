@@ -70,11 +70,6 @@ class _PaginaComandosNfcState extends State<PaginaComandosNfc> {
 
   @override
   Widget build(BuildContext context) {
-    var size = MediaQuery.sizeOf(context);
-
-    final double itemHeight = (size.height - 40) / 5;
-    final double itemWidth = size.width / 2;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enviar Comandos NFC'),
@@ -85,26 +80,28 @@ class _PaginaComandosNfcState extends State<PaginaComandosNfc> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                shrinkWrap: true,
-                childAspectRatio: (itemWidth / itemHeight),
+              child: ListView(
                 children: [
-                  CardHome(
-                    nome: 'Mesas',
-                    icone: const Icon(Icons.table_bar_outlined, size: 40),
-                    onPressed: () {
-                      abrirLeitorNFC(TipoCardapio.mesa);
-                    },
+                  SizedBox(
+                    height: 170,
+                    child: CardHome(
+                      nome: 'Mesas',
+                      icone: const Icon(Icons.table_bar_outlined, size: 40),
+                      onPressed: () {
+                        abrirLeitorNFC(TipoCardapio.mesa);
+                      },
+                    ),
                   ),
-                  CardHome(
-                    nome: 'Comandas',
-                    icone: const Icon(Icons.fact_check_outlined, size: 40),
-                    onPressed: () {
-                      abrirLeitorNFC(TipoCardapio.comanda);
-                    },
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 170,
+                    child: CardHome(
+                      nome: 'Comandas',
+                      icone: const Icon(Icons.fact_check_outlined, size: 40),
+                      onPressed: () {
+                        abrirLeitorNFC(TipoCardapio.comanda);
+                      },
+                    ),
                   ),
                 ],
               ),

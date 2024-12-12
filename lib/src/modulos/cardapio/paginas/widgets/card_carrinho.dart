@@ -1,5 +1,6 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -124,9 +125,19 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                               Padding(
                                 padding: const EdgeInsets.only(top: 5),
                                 child: GestureDetector(
-                                  onTap: () {},
+                                  onTap: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      builder: (context) {
+                                        return ModalEditarObservacao(
+                                          idProduto: widget.item.id,
+                                          observacao: widget.item.observacao ?? '',
+                                        );
+                                      },
+                                    );
+                                  },
                                   child: const Text(
-                                    'Editar',
+                                    'Observação',
                                     style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w500),
                                   ),
                                 ),

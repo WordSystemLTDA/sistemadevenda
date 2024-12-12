@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
@@ -26,6 +27,7 @@ class PaginaMesas extends StatefulWidget {
 class _PaginaMesasState extends State<PaginaMesas> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   final MobileScannerController controller = MobileScannerController();
+  UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 
   Timer? debounce;
   Timer? _debounce;
@@ -33,6 +35,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
   final ProvedorMesas provedor = Modular.get<ProvedorMesas>();
   bool isLoading = true;
   Timer? _timer;
+  bool nfcDisponivel = true;
   String opcaoFiltro = 'Ocupadas';
   ModeloConfigBigchef? configBigchef;
 
@@ -44,6 +47,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
   void listarMesas() async {
     configBigchef = await servicoConfigBigchef.listar();
+    nfcDisponivel = await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+
     setState(() => isLoading = true);
     await provedor.listarMesas('');
     setState(() => isLoading = false);
@@ -82,16 +87,60 @@ class _PaginaMesasState extends State<PaginaMesas> {
           }
 
           if (value.ocupado == true) {
-            if (mounted) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PaginaDetalhesPedido(
-                    idComandaPedido: value.idComandaPedido,
-                    idMesa: value.id,
-                    tipo: TipoCardapio.mesa,
+            if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '1') {
+              if (mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaginaDetalhesPedido(
+                      idComandaPedido: value.idComandaPedido,
+                      idMesa: value.id,
+                      tipo: TipoCardapio.mesa,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '2') {
+              if (mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaginaDetalhesPedido(
+                      idComandaPedido: value.idComandaPedido,
+                      idMesa: value.id,
+                      tipo: TipoCardapio.mesa,
+                      abrirModalFecharDireto: true,
+                    ),
+                  ),
+                );
+              }
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '3') {
+              if (value.fechamento == true) {
+                if (mounted) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PaginaDetalhesPedido(
+                        idComandaPedido: value.idComandaPedido,
+                        idMesa: value.id,
+                        tipo: TipoCardapio.mesa,
+                      ),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              if (mounted) {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context) {
+                    return PaginaCardapio(
+                      tipo: TipoCardapio.comanda,
+                      idComanda: value.id,
+                      idMesa: '0',
+                      idCliente: value.idCliente,
+                      id: value.idComandaPedido,
+                    );
+                  },
+                ));
+              }
             }
           } else {
             if (mounted) {
@@ -281,6 +330,24 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                 ),
                               ),
                             ),
+                            if (configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel)
+                              GestureDetector(
+                                onTap: () async {
+                                  await nfc();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 15, top: 15),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey[700]!),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(Icons.nfc_outlined),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         Expanded(

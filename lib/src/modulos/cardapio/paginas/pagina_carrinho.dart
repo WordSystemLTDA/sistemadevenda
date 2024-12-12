@@ -121,7 +121,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                                 onPressed: () async {
                                   removerTodosItensCarrinho();
                                 },
-                                child: const Text('excluir'),
+                                child: const Text('Excluir'),
                               ),
                             ],
                           ),

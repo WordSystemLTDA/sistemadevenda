@@ -1,5 +1,7 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/provedores/config/config_provedor.dart';
+import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
@@ -30,8 +32,10 @@ class AppModule extends Module {
     i.addInstance(DioCliente());
     i.addSingleton(UsuarioProvedor.new);
     i.addSingleton(Server.new);
+    i.addSingleton(ConfigProvider.new);
 
     i.add(ServicoConfigBigchef.new);
+    i.add(ServicoConfig.new);
 
     // Categorias
     i.add(ServicosCategoria.new);

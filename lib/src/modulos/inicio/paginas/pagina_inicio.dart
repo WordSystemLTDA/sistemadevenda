@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/constantes/funcoes_global.dart';
+import 'package:app/src/essencial/provedores/config/config_modelo.dart';
+import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -11,6 +16,7 @@ import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaginaInicio extends StatefulWidget {
   const PaginaInicio({super.key});
@@ -21,6 +27,7 @@ class PaginaInicio extends StatefulWidget {
 
 class _PaginaInicioState extends State<PaginaInicio> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ServicoConfig servicoConfig = Modular.get<ServicoConfig>();
   ModeloConfigBigchef? configBigchef;
   bool isLoading = true;
 
@@ -28,6 +35,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   void initState() {
     super.initState();
     listarDados();
+    listarDadosAtualizacoes();
   }
 
   void listarDados() async {
@@ -35,6 +43,62 @@ class _PaginaInicioState extends State<PaginaInicio> {
     await listarDadosConfigBigChef();
     setState(() => isLoading = false);
     await conectarAoServidor();
+  }
+
+  Future<void> listarDadosAtualizacoes() async {
+    var config = await servicoConfig.listar();
+
+    if (config != null) {
+      if (mounted) {
+        verificarAtualizacao(context, config);
+      }
+    }
+  }
+
+  void verificarAtualizacao(context, ConfigModelo versoes) async {
+    if (await FuncoesGlobais.appPrecisaAtualizar(versoes.versaoAppAndroid, versoes.versaoAppIos)) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext contextDialog) {
+          return AlertDialog(
+            title: const Text(
+              'Atualização disponível',
+              style: TextStyle(fontSize: 16),
+            ),
+            content: const Text('Clique no botão ATUALIZAR para poder atualizar o aplicativo'),
+            actions: <Widget>[
+              TextButton(
+                style: TextButton.styleFrom(
+                  textStyle: Theme.of(context).textTheme.labelLarge,
+                ),
+                child: const Text('Atualizar'),
+                onPressed: () async {
+                  try {
+                    if (Platform.isAndroid) {
+                      if (await canLaunchUrl(Uri.parse(versoes.linkAtualizacaoAndroid))) {
+                        await launchUrl(Uri.parse(versoes.linkAtualizacaoAndroid));
+                      }
+                    } else if (Platform.isIOS) {
+                      if (await canLaunchUrl(Uri.parse(versoes.linkAtualizacaoIos))) {
+                        await launchUrl(Uri.parse(versoes.linkAtualizacaoIos));
+                      }
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Não foi possível abrir o LINK, entre em contato com o suporte.'),
+                      backgroundColor: Colors.red,
+                      showCloseIcon: true,
+                    ));
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   Future<void> conectarAoServidor() async {
@@ -65,7 +129,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
 
-    final double itemHeight = (size.height - 40) / 5;
+    final double itemHeight = (size.height - 40) / 4;
     final double itemWidth = size.width / 2;
 
     return ListenableBuilder(

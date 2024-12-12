@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
@@ -26,6 +27,7 @@ class PaginaComandas extends StatefulWidget {
 class _PaginaComandasState extends State<PaginaComandas> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   final MobileScannerController controller = MobileScannerController();
+  UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 
   Timer? debounce;
   Timer? _debounce;
@@ -34,6 +36,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
   bool isLoading = true;
   Timer? _timer;
   String opcaoFiltro = 'Ocupadas';
+  bool nfcDisponivel = true;
   ModeloConfigBigchef? configBigchef;
 
   @override
@@ -44,6 +47,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
 
   void listarComandas() async {
     configBigchef = await servicoConfigBigchef.listar();
+    nfcDisponivel = await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+
     setState(() => isLoading = true);
     await provedor.listarComandas('');
     setState(() => isLoading = false);
@@ -86,16 +91,60 @@ class _PaginaComandasState extends State<PaginaComandas> {
           }
 
           if (value.ocupado == true) {
-            if (mounted) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => PaginaDetalhesPedido(
-                    idComandaPedido: value.idComandaPedido,
-                    idComanda: value.id,
-                    tipo: TipoCardapio.comanda,
+            if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '1') {
+              if (mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaginaDetalhesPedido(
+                      idComandaPedido: value.idComandaPedido,
+                      idComanda: value.id,
+                      tipo: TipoCardapio.comanda,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '2') {
+              if (mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PaginaDetalhesPedido(
+                      idComandaPedido: value.idComandaPedido,
+                      idComanda: value.id,
+                      tipo: TipoCardapio.comanda,
+                      abrirModalFecharDireto: true,
+                    ),
+                  ),
+                );
+              }
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '3') {
+              if (value.fechamento == true) {
+                if (mounted) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PaginaDetalhesPedido(
+                        idComandaPedido: value.idComandaPedido,
+                        idComanda: value.id,
+                        tipo: TipoCardapio.comanda,
+                      ),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              if (mounted) {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context) {
+                    return PaginaCardapio(
+                      tipo: TipoCardapio.comanda,
+                      idComanda: value.id,
+                      idMesa: '0',
+                      idCliente: value.idCliente,
+                      id: value.idComandaPedido,
+                    );
+                  },
+                ));
+              }
             }
           } else {
             if (mounted) {
@@ -292,6 +341,24 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                 ),
                               ),
                             ),
+                            if (configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel)
+                              GestureDetector(
+                                onTap: () async {
+                                  await nfc();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 15, top: 15),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey[700]!),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(Icons.nfc_outlined),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         Expanded(
