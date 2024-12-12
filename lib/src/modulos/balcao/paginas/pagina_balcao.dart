@@ -89,44 +89,56 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: TextField(
-                                readOnly: true,
-                                controller: dataManualController,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
+                              child: SizedBox(
+                                height: 40,
+                                child: TextField(
+                                  readOnly: true,
+                                  controller: dataManualController,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.only(left: 0),
+                                  ),
+                                  style: const TextStyle(fontSize: 14),
+                                  textAlign: TextAlign.center,
+                                  onTap: () async {
+                                    DateTimeRange? picked = await showDateRangePicker(
+                                      context: context,
+                                      firstDate: DateTime(DateTime.now().year - 35),
+                                      lastDate: DateTime(DateTime.now().year + 50),
+                                      initialDateRange: DateTimeRange(
+                                        start: DateTime.parse(dataInicial),
+                                        end: DateTime.parse(dataFim),
+                                      ),
+                                    );
+
+                                    if (picked != null) {
+                                      setState(() {
+                                        dataManualController.text = "${DateFormat('dd/MM/yyyy').format(picked.start)} - ${DateFormat('dd/MM/yyyy').format(picked.end)}";
+                                        if (mounted) {
+                                          provedor.dataSelecionada = picked;
+
+                                          dataInicial = DateFormat('yyyy-MM-dd').format(picked.start);
+                                          dataFim = DateFormat('yyyy-MM-dd').format(picked.end);
+                                        }
+                                      });
+
+                                      provedor.listar(mostrarCarregamento: true);
+                                    }
+                                  },
                                 ),
-                                style: const TextStyle(fontSize: 14),
-                                onTap: () async {
-                                  DateTimeRange? picked = await showDateRangePicker(
-                                    context: context,
-                                    firstDate: DateTime(DateTime.now().year - 35),
-                                    lastDate: DateTime(DateTime.now().year + 50),
-                                    initialDateRange: DateTimeRange(
-                                      start: DateTime.parse(dataInicial),
-                                      end: DateTime.parse(dataFim),
-                                    ),
-                                  );
-
-                                  if (picked != null) {
-                                    setState(() {
-                                      dataManualController.text = "${DateFormat('dd/MM/yyyy').format(picked.start)} - ${DateFormat('dd/MM/yyyy').format(picked.end)}";
-                                      if (mounted) {
-                                        provedor.dataSelecionada = picked;
-
-                                        dataInicial = DateFormat('yyyy-MM-dd').format(picked.start);
-                                        dataFim = DateFormat('yyyy-MM-dd').format(picked.end);
-                                      }
-                                    });
-
-                                    provedor.listar(mostrarCarregamento: true);
-                                  }
-                                },
                               ),
                             ),
                             const SizedBox(width: 10),
                             SizedBox(
                               width: 120,
+                              height: 40,
                               child: DropdownMenu(
+                                inputDecorationTheme: InputDecorationTheme(
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                  constraints: BoxConstraints.tight(const Size.fromHeight(40)),
+                                  border: const OutlineInputBorder(),
+                                ),
                                 initialSelection: dataPersonalizada,
                                 dropdownMenuEntries: const [
                                   DropdownMenuEntry(value: 'mes_anterior', label: 'Mês Anterior'),
@@ -194,74 +206,94 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 75,
-                              child: TextField(
-                                readOnly: true,
-                                controller: _horaController,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                ),
-                                onTap: () async {
-                                  var dataInicial =
-                                      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, provedor.horaSelecionado.hour, provedor.horaSelecionado.minute);
-
-                                  TimeOfDay? picked = await showTimePicker(
-                                    context: context,
-                                    initialEntryMode: TimePickerEntryMode.input,
-                                    initialTime: TimeOfDay.fromDateTime(dataInicial),
-                                    builder: (context, child) {
-                                      return MediaQuery(
-                                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            ConstrainedBox(
-                                              constraints: const BoxConstraints(maxWidth: 700, maxHeight: 500),
-                                              child: child,
-                                            )
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  );
-
-                                  if (picked != null) {
-                                    provedor.horaSelecionado = picked;
-                                    _horaController.text = "${picked.hour < 10 ? '0${picked.hour}' : picked.hour}:${picked.minute < 10 ? '0${picked.minute}' : picked.minute}";
-
-                                    provedor.listar(mostrarCarregamento: true);
-                                  }
-                                },
-                              ),
-                            ),
                           ],
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
-                        child: TextField(
-                          controller: _pesquisaController,
-                          decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Busque aqui'),
-                          onChanged: (textoPesquisa) {
-                            if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 80,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
+                              child: SizedBox(
+                                width: 75,
+                                height: 40,
+                                child: TextField(
+                                  readOnly: true,
+                                  controller: _horaController,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.only(left: 10),
+                                  ),
+                                  onTap: () async {
+                                    var dataInicial =
+                                        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, provedor.horaSelecionado.hour, provedor.horaSelecionado.minute);
 
-                            _debounce = Timer(const Duration(milliseconds: 500), () {
-                              if (textoPesquisa.isNotEmpty) {
-                                if (debounce?.isActive ?? false) {
-                                  debounce!.cancel();
-                                }
+                                    TimeOfDay? picked = await showTimePicker(
+                                      context: context,
+                                      initialEntryMode: TimePickerEntryMode.input,
+                                      initialTime: TimeOfDay.fromDateTime(dataInicial),
+                                      builder: (context, child) {
+                                        return MediaQuery(
+                                          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              ConstrainedBox(
+                                                constraints: const BoxConstraints(maxWidth: 700, maxHeight: 500),
+                                                child: child,
+                                              )
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    );
 
-                                debounce = Timer(const Duration(milliseconds: 200), () async {
-                                  provedor.listar(pesquisa: textoPesquisa, mostrarCarregamento: true);
-                                });
-                              } else {
-                                provedor.listar(pesquisa: '', mostrarCarregamento: true);
-                              }
-                            });
-                          },
-                        ),
+                                    if (picked != null) {
+                                      provedor.horaSelecionado = picked;
+                                      _horaController.text = "${picked.hour < 10 ? '0${picked.hour}' : picked.hour}:${picked.minute < 10 ? '0${picked.minute}' : picked.minute}";
+
+                                      provedor.listar(mostrarCarregamento: true);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
+                              child: SizedBox(
+                                height: 40,
+                                child: TextField(
+                                  controller: _pesquisaController,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    hintText: 'Busque aqui',
+                                    contentPadding: EdgeInsets.only(left: 10),
+                                  ),
+                                  onChanged: (textoPesquisa) {
+                                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+                                    _debounce = Timer(const Duration(milliseconds: 500), () {
+                                      if (textoPesquisa.isNotEmpty) {
+                                        if (debounce?.isActive ?? false) {
+                                          debounce!.cancel();
+                                        }
+
+                                        debounce = Timer(const Duration(milliseconds: 200), () async {
+                                          provedor.listar(pesquisa: textoPesquisa, mostrarCarregamento: true);
+                                        });
+                                      } else {
+                                        provedor.listar(pesquisa: '', mostrarCarregamento: true);
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const Divider(),
                       Expanded(

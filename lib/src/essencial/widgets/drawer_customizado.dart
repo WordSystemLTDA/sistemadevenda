@@ -4,6 +4,7 @@ import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
+import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
@@ -383,7 +384,19 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
                               title: const Text('Baixar APK'),
                             ),
                           ],
+                          ValueListenableBuilder<ThemeMode>(
+                            valueListenable: context.read<ThemeController>(),
+                            builder: (context, state, _) {
+                              return ListTile(
+                                leading: context.read<ThemeController>().value == ThemeMode.dark ? const Icon(Icons.nightlight_round) : const Icon(Icons.wb_sunny),
+                                title: const Text('Mudar Tema'),
+                                onTap: () => context.read<ThemeController>().onThemeSwitchEvent(),
+                              );
+                            },
+                          ),
                           ListTile(
+                            iconColor: Colors.red,
+                            textColor: Colors.red,
                             leading: const Icon(Icons.delete_forever_outlined),
                             title: const Text('Excluir Conta'),
                             onTap: () {

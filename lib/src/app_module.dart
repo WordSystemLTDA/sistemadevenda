@@ -4,6 +4,7 @@ import 'package:app/src/essencial/provedores/config/config_provedor.dart';
 import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_cidade.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
@@ -33,6 +34,7 @@ class AppModule extends Module {
     i.addSingleton(UsuarioProvedor.new);
     i.addSingleton(Server.new);
     i.addSingleton(ConfigProvider.new);
+    i.addSingleton(ThemeController.new);
 
     i.add(ServicoConfigBigchef.new);
     i.add(ServicoConfig.new);

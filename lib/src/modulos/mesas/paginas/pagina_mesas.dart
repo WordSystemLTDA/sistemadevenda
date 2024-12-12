@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
+import 'package:app/src/modulos/comandas/paginas/widgets/modal_digitar_codigo.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
@@ -306,6 +307,38 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                       });
                                     },
                                   ),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  showDragHandle: false,
+                                  builder: (context) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const ModalDigitarCodigo(
+                                        tipo: TipoCardapio.mesa,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 15, top: 15),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey[700]!),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(Icons.add_task),
                                 ),
                               ),
                             ),

@@ -10,8 +10,10 @@ class ModeloComanda {
   String? idCliente;
   String? nomeCliente;
   String? nomeMesa;
+  String? idmesa;
   String? dataAbertura;
   String? horaAbertura;
+  String? dataultimopedido;
   String? idComandaPedido;
   String? valor;
   String? ultimaVezAbertoDataHora;
@@ -26,8 +28,10 @@ class ModeloComanda {
     this.idCliente,
     this.nomeCliente,
     this.nomeMesa,
+    this.idmesa,
     this.dataAbertura,
     this.horaAbertura,
+    this.dataultimopedido,
     this.idComandaPedido,
     this.valor,
     this.ultimaVezAbertoDataHora,
@@ -44,8 +48,10 @@ class ModeloComanda {
       'idCliente': idCliente,
       'nomeCliente': nomeCliente,
       'nomeMesa': nomeMesa,
+      'idmesa': idmesa,
       'dataAbertura': dataAbertura,
       'horaAbertura': horaAbertura,
+      'dataultimopedido': dataultimopedido,
       'idComandaPedido': idComandaPedido,
       'valor': valor,
       'ultimaVezAbertoDataHora': ultimaVezAbertoDataHora,
@@ -63,8 +69,10 @@ class ModeloComanda {
       idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
+      idmesa: map['idmesa'] != null ? map['idmesa'] as String : null,
       dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
       horaAbertura: map['horaAbertura'] != null ? map['horaAbertura'] as String : null,
+      dataultimopedido: map['dataultimopedido'] != null ? map['dataultimopedido'] as String : null,
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
       ultimaVezAbertoDataHora: map['ultimaVezAbertoDataHora'] != null ? map['ultimaVezAbertoDataHora'] as String : null,

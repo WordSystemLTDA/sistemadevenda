@@ -14,6 +14,7 @@ class MesaModelo {
   String? idComandaPedido;
   String? valor;
   String? ultimaVezAbertoDataHora;
+  String? dataultimopedido;
   bool? fechamento;
 
   MesaModelo({
@@ -30,6 +31,7 @@ class MesaModelo {
     this.valor,
     this.ultimaVezAbertoDataHora,
     this.fechamento,
+    this.dataultimopedido,
   });
 
   Map<String, dynamic> toMap() {
@@ -46,6 +48,7 @@ class MesaModelo {
       'idComandaPedido': idComandaPedido,
       'valor': valor,
       'ultimaVezAbertoDataHora': ultimaVezAbertoDataHora,
+      'dataultimopedido': dataultimopedido,
       'fechamento': fechamento,
     };
   }
@@ -64,6 +67,7 @@ class MesaModelo {
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
       ultimaVezAbertoDataHora: map['ultimaVezAbertoDataHora'] != null ? map['ultimaVezAbertoDataHora'] as String : null,
+      dataultimopedido: map['dataultimopedido'] != null ? map['dataultimopedido'] as String : null,
       fechamento: map['fechamento'] != null ? map['fechamento'] as bool : null,
     );
   }

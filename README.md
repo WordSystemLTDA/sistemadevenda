@@ -4,7 +4,7 @@
 - [x] Quando ir para Qrcode, não pode voltar para qrcode e ir para comandas/mesas
 - [x] Fazer permissão de nfc tag quando abrir
 - [x] Arrumar a listagem de mesa, e abrir a mesa não está funcionado
-- [ ] Login quando muda configurações não muda o ip
+- [x] Login quando muda configurações não muda o ip
 - [x] fazer login por Usuario e email
 - [x] fechar ou abrir direto pegar permissão de usuarios
 - [x] se permissão no usuario for igual a 3 ira abrir direto pagina de adicionar produto

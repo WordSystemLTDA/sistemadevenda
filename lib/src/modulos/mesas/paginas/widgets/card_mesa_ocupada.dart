@@ -28,6 +28,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
   Timer? _tickerTempoLancado;
   // antiga animação card produto
   StreamController<String> tempoLancadoController = StreamController<String>.broadcast();
+  StreamController<String> dataUltimoPedidoLancadoController = StreamController<String>.broadcast();
 
   void _updateTimer() {
     if (widget.item.dataAbertura != null) {
@@ -35,6 +36,13 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
       final newDuration = ConfigSistema.formatarHora(duration);
 
       tempoLancadoController.add(newDuration);
+
+      if (DateTime.tryParse(widget.item.dataultimopedido ?? '') != null) {
+        final durationPedido = DateTime.now().difference(DateTime.parse(widget.item.dataultimopedido!));
+        final newDurationPedido = ConfigSistema.formatarHora(durationPedido);
+
+        dataUltimoPedidoLancadoController.add(newDurationPedido);
+      }
     }
   }
 
@@ -56,6 +64,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
     if (_tickerTempoLancado != null) {
       _tickerTempoLancado!.cancel();
       tempoLancadoController.close();
+      dataUltimoPedidoLancadoController.close();
     }
     super.dispose();
   }
@@ -130,8 +139,8 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                         builder: (context) {
                           return PaginaCardapio(
                             tipo: TipoCardapio.mesa,
-                            idComanda: widget.item.id,
-                            idMesa: '0',
+                            idComanda: '0',
+                            idMesa: widget.item.id,
                             idCliente: widget.item.idCliente,
                             id: widget.item.idComandaPedido,
                           );
@@ -263,15 +272,29 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       ),
                       const SizedBox(height: 2),
                       Padding(
+                        padding: const EdgeInsets.only(left: 15),
+                        child: StreamBuilder<String>(
+                          stream: tempoLancadoController.stream,
+                          initialData: 'Carregando',
+                          builder: (context, snapshot) {
+                            return Text("Aberta em ${snapshot.data!}", style: const TextStyle(fontSize: 12));
+                          },
+                        ),
+                      ),
+                      Padding(
                         padding: const EdgeInsets.only(left: 15.0, top: 1, right: 15),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             StreamBuilder<String>(
-                              stream: tempoLancadoController.stream,
+                              stream: dataUltimoPedidoLancadoController.stream,
                               initialData: 'Carregando',
                               builder: (context, snapshot) {
-                                return Text(snapshot.data!, style: const TextStyle(fontSize: 12));
+                                if (DateTime.tryParse(widget.item.dataultimopedido ?? '') == null) {
+                                  return const Text("Nenhum item lançado", style: TextStyle(fontSize: 12));
+                                }
+
+                                return Text("Último item lançado à ${snapshot.data!}", style: const TextStyle(fontSize: 12));
                               },
                             ),
                             Text(double.parse(widget.item.valor ?? '0').obterReal(), style: const TextStyle(fontWeight: FontWeight.w600))

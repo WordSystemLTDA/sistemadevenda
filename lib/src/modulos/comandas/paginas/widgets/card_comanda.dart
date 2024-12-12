@@ -27,6 +27,7 @@ class _CardComandaState extends State<CardComanda> {
   Timer? _tickerTempoLancado;
   // antiga animação card produto
   StreamController<String> tempoLancadoController = StreamController<String>.broadcast();
+  StreamController<String> dataUltimoPedidoLancadoController = StreamController<String>.broadcast();
 
   void _updateTimer() {
     if (widget.itemComanda.dataAbertura != null) {
@@ -34,6 +35,13 @@ class _CardComandaState extends State<CardComanda> {
       final newDuration = ConfigSistema.formatarHora(duration);
 
       tempoLancadoController.add(newDuration);
+
+      if (DateTime.tryParse(widget.itemComanda.dataultimopedido ?? '') != null) {
+        final durationPedido = DateTime.now().difference(DateTime.parse(widget.itemComanda.dataultimopedido!));
+        final newDurationPedido = ConfigSistema.formatarHora(durationPedido);
+
+        dataUltimoPedidoLancadoController.add(newDurationPedido);
+      }
     }
   }
 
@@ -55,6 +63,7 @@ class _CardComandaState extends State<CardComanda> {
     if (_tickerTempoLancado != null) {
       _tickerTempoLancado!.cancel();
       tempoLancadoController.close();
+      dataUltimoPedidoLancadoController.close();
     }
     super.dispose();
   }
@@ -130,7 +139,7 @@ class _CardComandaState extends State<CardComanda> {
                           return PaginaCardapio(
                             tipo: TipoCardapio.comanda,
                             idComanda: widget.itemComanda.id,
-                            idMesa: '0',
+                            idMesa: widget.itemComanda.idmesa,
                             idCliente: widget.itemComanda.idCliente,
                             id: widget.itemComanda.idComandaPedido,
                           );
@@ -171,10 +180,6 @@ class _CardComandaState extends State<CardComanda> {
                           ),
                         ),
                         if (widget.itemComanda.comandaOcupada)
-                          // const Padding(
-                          //   padding: EdgeInsets.only(right: 10.0),
-                          //   child: Icon(Icons.more_vert_outlined),
-                          // ),
                           MenuAnchor(
                             builder: (BuildContext context, MenuController controller, Widget? child) {
                               return SizedBox(
@@ -249,34 +254,59 @@ class _CardComandaState extends State<CardComanda> {
                       ),
                     ],
                     if (widget.itemComanda.comandaOcupada) ...[
-                      Row(
-                        children: [
-                          const SizedBox(width: 15),
-                          SizedBox(
-                            width: 180,
-                            child: Text(
-                              widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // const SizedBox(width: 15),
+                            SizedBox(
+                              width: 180,
+                              child: Text(
+                                widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            // StreamBuilder<String>(
+                            //   stream: tempoLancadoController.stream,
+                            //   initialData: 'Carregando',
+                            //   builder: (context, snapshot) {
+                            //     return Text("Aberta em ${snapshot.data!}", style: const TextStyle(fontSize: 12));
+                            //   },
+                            // ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 15),
+                        child: StreamBuilder<String>(
+                          stream: tempoLancadoController.stream,
+                          initialData: 'Carregando',
+                          builder: (context, snapshot) {
+                            return Text("Aberta em ${snapshot.data!}", style: const TextStyle(fontSize: 12));
+                          },
+                        ),
+                      ),
                       Padding(
                         padding: const EdgeInsets.only(left: 15.0, top: 1, right: 15),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             StreamBuilder<String>(
-                              stream: tempoLancadoController.stream,
+                              stream: dataUltimoPedidoLancadoController.stream,
                               initialData: 'Carregando',
                               builder: (context, snapshot) {
-                                return Text(snapshot.data!, style: const TextStyle(fontSize: 12));
+                                if (DateTime.tryParse(widget.itemComanda.dataultimopedido ?? '') == null) {
+                                  return const Text("Nenhum item lançado", style: TextStyle(fontSize: 12));
+                                }
+
+                                return Text("Último item lançado à ${snapshot.data!}", style: const TextStyle(fontSize: 12));
                               },
                             ),
                             Text(double.parse(widget.itemComanda.valor ?? '0').obterReal(), style: const TextStyle(fontWeight: FontWeight.w600))

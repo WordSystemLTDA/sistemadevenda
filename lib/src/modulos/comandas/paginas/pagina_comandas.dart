@@ -10,6 +10,7 @@ import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
+import 'package:app/src/modulos/comandas/paginas/widgets/modal_digitar_codigo.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -322,6 +323,38 @@ class _PaginaComandasState extends State<PaginaComandas> {
                             ),
                             GestureDetector(
                               onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  showDragHandle: false,
+                                  builder: (context) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: const ModalDigitarCodigo(
+                                        tipo: TipoCardapio.comanda,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 15, top: 15),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey[700]!),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(Icons.add_task),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
                                 Navigator.push(context, MaterialPageRoute(
                                   builder: (context) {
                                     return const BarcodeScannerWithOverlay(tipo: TipoCardapio.comanda);
@@ -405,77 +438,33 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                   ],
                                 ),
                               ),
-                              if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).isNotEmpty)
-                                RefreshIndicator(
-                                  onRefresh: () async {
-                                    listarComandas();
-                                  },
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: ListView.builder(
-                                          shrinkWrap: true,
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          itemCount:
-                                              provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.comandas
-                                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
-                                                .toList()[index];
+                              // if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).isNotEmpty)
+                              RefreshIndicator(
+                                onRefresh: () async {
+                                  listarComandas();
+                                },
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
+                                        itemCount:
+                                            provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).length,
+                                        itemBuilder: (context, index) {
+                                          final item = provedor.comandas
+                                              .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
+                                              .toList()[index];
 
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                                ListView.builder(
-                                                  physics: const NeverScrollableScrollPhysics(),
-                                                  shrinkWrap: true,
-                                                  scrollDirection: Axis.vertical,
-                                                  itemCount: item.comandas?.length ?? 0,
-                                                  padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                  itemBuilder: (_, index) {
-                                                    var itemComanda = item.comandas![index];
-
-                                                    return Padding(
-                                                      padding: const EdgeInsets.only(bottom: 10),
-                                                      child: CardComanda(itemComanda: itemComanda),
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).isNotEmpty)
-                                RefreshIndicator(
-                                  onRefresh: () async {
-                                    listarComandas();
-                                  },
-                                  child: Column(
-                                    children: [
-                                      ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).map((e) {
-                                        return Expanded(
-                                          child: ListView.builder(
-                                            padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                            shrinkWrap: true,
-                                            itemCount: provedor.comandas
-                                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                                .toList()
-                                                .length,
-                                            itemBuilder: (context, index) {
-                                              final item = provedor.comandas
-                                                  .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                                  .toList()[index];
-
-                                              return ListView.builder(
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(item.titulo, style: const TextStyle(fontSize: 16)),
+                                              ListView.builder(
                                                 physics: const NeverScrollableScrollPhysics(),
                                                 shrinkWrap: true,
                                                 scrollDirection: Axis.vertical,
-                                                itemCount: item.comandas!.length,
+                                                itemCount: item.comandas?.length ?? 0,
                                                 padding: const EdgeInsets.only(top: 5, bottom: 10),
                                                 itemBuilder: (_, index) {
                                                   var itemComanda = item.comandas![index];
@@ -485,14 +474,58 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                                     child: CardComanda(itemComanda: itemComanda),
                                                   );
                                                 },
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              // if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).isNotEmpty)
+                              RefreshIndicator(
+                                onRefresh: () async {
+                                  listarComandas();
+                                },
+                                child: Column(
+                                  children: [
+                                    ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).map((e) {
+                                      return Expanded(
+                                        child: ListView.builder(
+                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
+                                          shrinkWrap: true,
+                                          itemCount: provedor.comandas
+                                              .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
+                                              .toList()
+                                              .length,
+                                          itemBuilder: (context, index) {
+                                            final item = provedor.comandas
+                                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
+                                                .toList()[index];
+
+                                            return ListView.builder(
+                                              physics: const NeverScrollableScrollPhysics(),
+                                              shrinkWrap: true,
+                                              scrollDirection: Axis.vertical,
+                                              itemCount: item.comandas!.length,
+                                              padding: const EdgeInsets.only(top: 5, bottom: 10),
+                                              itemBuilder: (_, index) {
+                                                var itemComanda = item.comandas![index];
+
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(bottom: 10),
+                                                  child: CardComanda(itemComanda: itemComanda),
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         ),

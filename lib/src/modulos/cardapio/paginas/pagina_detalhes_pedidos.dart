@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
@@ -109,6 +112,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   onPressed: () async {
                     await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
                       if (mounted) {
+                        if (value.sucesso) {
+                          Modular.get<Server>().write(jsonEncode({
+                            'tipo': widget.tipo.nome,
+                          }));
+                        }
+
                         Navigator.pop(context);
 
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -186,6 +195,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   onPressed: () async {
                     servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
                       if (context.mounted) {
+                        if (value.sucesso) {
+                          Modular.get<Server>().write(jsonEncode({
+                            'tipo': widget.tipo.nome,
+                          }));
+                        }
+
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
