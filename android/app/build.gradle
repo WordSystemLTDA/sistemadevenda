@@ -30,17 +30,17 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "br.com.bigchefgarcom"
-    compileSdkVersion flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
+    compileSdkVersion 34
+    ndkVersion "25.1.8937393"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+    // kotlinOptions {
+    //     jvmTarget = '21'
+    // }
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -51,7 +51,7 @@ android {
         applicationId "br.com.bigchefgarcom"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion 27
+        minSdkVersion 26
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
