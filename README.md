@@ -17,3 +17,4 @@
 - [x] pagina mesa está voltando muitas paginas e fica preta a tela
 - [ ] Arrumar ao finalizar BALCÃO ele não imprime CONSUMO
 - [ ] (REVER)Ao editar ip do servidor ele não conecta, tem que sair e entrar no app de novo
+- [ ] Colocar versão do app no drawer
