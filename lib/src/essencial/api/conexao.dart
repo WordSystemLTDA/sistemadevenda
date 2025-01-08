@@ -8,7 +8,7 @@ class Apis {
     var conexao = await _config.getConexao();
 
     if (conexao!.tipoConexao == 'online') {
-      return ModeloConexao(tipoConexao: 'online', servidor: 'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api1', porta: '');
+      return ModeloConexao(tipoConexao: 'online', servidor: 'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api1/', porta: '');
     }
 
     return ModeloConexao(tipoConexao: conexao.tipoConexao, porta: conexao.porta, servidor: 'http://${conexao.servidor}/sistema/apis_restaurantes/api_restaurantes_venda/api1/');
