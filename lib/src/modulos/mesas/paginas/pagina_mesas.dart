@@ -228,7 +228,13 @@ class _PaginaMesasState extends State<PaginaMesas> {
               child: Stack(
                 children: [
                   DefaultTabController(
-                    length: provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1,
+                    // length: provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1,
+                    length: (provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1) -
+                        (provedor.mesas
+                                .where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty)
+                                .isNotEmpty
+                            ? 1
+                            : 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

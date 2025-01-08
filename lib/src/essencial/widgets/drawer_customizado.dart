@@ -278,12 +278,19 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
                       child: ListView(
                         padding: EdgeInsets.zero,
                         children: [
-                          UserAccountsDrawerHeader(
-                            accountName: Text("#${usuarioProvedor.usuario?.id} ${usuarioProvedor.usuario?.nome}"),
-                            accountEmail: Text(usuarioProvedor.usuario?.email ?? ''),
-                            currentAccountPicture: const CircleAvatar(
-                              child: ClipOval(
-                                child: Icon(Icons.person),
+                          SizedBox(
+                            height: 200,
+                            child: UserAccountsDrawerHeader(
+                              accountName: Text("#${usuarioProvedor.usuario?.id} ${usuarioProvedor.usuario?.nome}"),
+                              accountEmail: Text(usuarioProvedor.usuario?.email ?? ''),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.inversePrimary,
+                              ),
+                              currentAccountPictureSize: const Size(50, 50),
+                              currentAccountPicture: const CircleAvatar(
+                                child: ClipOval(
+                                  child: Icon(Icons.person),
+                                ),
                               ),
                             ),
                           ),

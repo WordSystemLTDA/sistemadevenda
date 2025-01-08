@@ -3,10 +3,12 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -178,6 +180,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                   if (sucesso) {
                     if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
                       var provedorBalcao = Modular.get<ProvedorBalcao>();
+                      var servico = Modular.get<ServicoBalcao>();
                       await provedorBalcao.listar();
 
                       var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
@@ -197,6 +200,30 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           nomeEmpresa: vendaBalcao.nomeEmpresa,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                           tipodeentrega: vendaBalcao.idtipodeentrega,
+                        );
+
+                        var informacoes = await servico.listarPorId(idvenda);
+                        var parcelas = await servico.listarFinanceiroVenda(idvenda);
+
+                        final duration = DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
+                        final newDuration = ConfigSistema.formatarHora(duration);
+
+                        Impressao.comprovanteDeConsumo(
+                          valorentrega: informacoes.informacoes.valorentrega,
+                          nomeEmpresa: vendaBalcao.nomeEmpresa,
+                          produtos: informacoes.produtos,
+                          nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                            return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                          })),
+                          somaValorHistorico: informacoes.informacoes.subtotal,
+                          cnpjEmpresa: informacoes.informacoes.docempresa,
+                          celularEmpresa: informacoes.informacoes.celularcliente,
+                          enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+                          permanencia: newDuration,
+                          local: '',
+                          total: informacoes.informacoes.subtotal,
+                          numeroPedido: informacoes.informacoes.numerodopedido,
+                          tipodeentrega: informacoes.informacoes.tipodeentrega,
                         );
                       }
 

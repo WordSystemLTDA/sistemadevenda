@@ -42,17 +42,17 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   void verificar() async {
     setState(() => isLoading = true);
 
-    Future.delayed(const Duration(seconds: 10)).then((value) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Não foi possível conectar a esse Servidor.'),
-          showCloseIcon: true,
-          backgroundColor: Colors.red,
-        ));
-        setState(() => isLoading = false);
-      }
-    });
+    // Future.delayed(const Duration(seconds: 10)).then((value) {
+    //   if (mounted) {
+    //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    //       content: Text('Não foi possível conectar a esse Servidor.'),
+    //       showCloseIcon: true,
+    //       backgroundColor: Colors.red,
+    //     ));
+    //     setState(() => isLoading = false);
+    //   }
+    // });
 
     if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty || portaController.text.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -79,9 +79,9 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     DioCliente().configurar(servidor: 'http://${servidorController.text}/sistema/apis_restaurantes/api_restaurantes_venda/');
 
-    if (tipoConexaoController.text == 'localhost') {
-      await conectarAoServidor(servidorController.text, portaController.text);
-    }
+    // if (tipoConexaoController.text == 'localhost') {
+    await conectarAoServidor(servidorController.text, portaController.text);
+    // }
 
     if (mounted) {
       setState(() => isLoading = false);

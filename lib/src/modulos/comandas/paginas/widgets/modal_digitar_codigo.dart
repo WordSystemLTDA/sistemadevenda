@@ -224,9 +224,9 @@ class _ModalDigitarCodigoState extends State<ModalDigitarCodigo> {
               return Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+                    color: Theme.of(context).scaffoldBackgroundColor,
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),

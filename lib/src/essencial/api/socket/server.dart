@@ -86,7 +86,7 @@ class Server extends ChangeNotifier {
     try {
       if (channel == null) return;
 
-      abrirModalReconectar();
+      // abrirModalReconectar();
 
       channel!.sink.close();
       connected = false;
@@ -100,56 +100,49 @@ class Server extends ChangeNotifier {
 
   void abrirModalReconectar() {
     if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-      ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Servidor foi desconectado.'),
-              Row(
-                children: [
-                  SizedBox(
-                    height: 30,
-                    child: TextButton(
-                      onPressed: () async {
-                        final ConfigSharedPreferences config = ConfigSharedPreferences();
-                        var conexao = await config.getConexao();
-                        // ConfigSistema.retornarIPMaquina().then((ip) {
-                        start(conexao!.servidor, conexao.porta).then((sucesso) {
-                          if (sucesso == false) {
-                            if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-                              ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
-                                content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
-                                backgroundColor: Colors.red,
-                                showCloseIcon: true,
-                                duration: const Duration(hours: 1),
-                              ));
-                            }
-                          }
-                          // });
-                        });
-
-                        ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
-                      },
-                      child: const Text('Reconectar', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 40,
-                    child: IconButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
-                      },
-                      icon: const Icon(Icons.close, color: Colors.white),
-                    ),
-                  ),
+      showDialog(
+        context: navigatorKey!.currentContext!,
+        barrierDismissible: false,
+        builder: (BuildContext contextDialog) {
+          return AlertDialog(
+            title: const Text('Servidor foi desconectado.'),
+            content: const SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text("Clique em 'Reconectar' para tentar se reconectar ao servidor."),
                 ],
-              )
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Reconectar'),
+                onPressed: () async {
+                  final ConfigSharedPreferences config = ConfigSharedPreferences();
+                  var conexao = await config.getConexao();
+                  // ConfigSistema.retornarIPMaquina().then((ip) {
+                  start(conexao!.servidor, conexao.porta).then((sucesso) {
+                    if (sucesso == false) {
+                      if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
+                        ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
+                          content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
+                          backgroundColor: Colors.red,
+                          showCloseIcon: true,
+                          duration: const Duration(hours: 1),
+                        ));
+                      }
+                    }
+                    // });
+                  });
+
+                  // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
+                  if (contextDialog.mounted) {
+                    Navigator.of(contextDialog).pop();
+                  }
+                },
+              ),
             ],
-          ),
-          backgroundColor: Colors.red,
-          duration: const Duration(days: 300),
-        ),
+          );
+        },
       );
     }
   }

@@ -25,9 +25,9 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
               return Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+                    color: Theme.of(context).scaffoldBackgroundColor,
                   ),
                   child: GestureDetector(
                     onTap: () {},
@@ -67,9 +67,6 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 ElevatedButton(
-                                  style: const ButtonStyle(
-                                    backgroundColor: WidgetStatePropertyAll(Color(0xffe3d9f4)),
-                                  ),
                                   onPressed: () {
                                     Navigator.pop(context);
                                   },
@@ -77,9 +74,6 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
                                 ),
                                 const SizedBox(width: 10),
                                 ElevatedButton(
-                                  style: const ButtonStyle(
-                                    backgroundColor: WidgetStatePropertyAll(Color(0xffe3d9f4)),
-                                  ),
                                   onPressed: () {
                                     if ((double.tryParse(_valorController.text) ?? 0) <= 0) {
                                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
