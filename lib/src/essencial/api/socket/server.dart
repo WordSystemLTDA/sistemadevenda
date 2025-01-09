@@ -6,13 +6,13 @@ import 'dart:io';
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
+import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Server extends ChangeNotifier {
@@ -22,6 +22,7 @@ class Server extends ChangeNotifier {
   String nomedopc = '';
   String hostname = '';
   int port = 0;
+  bool aparecendoModalReconectar = false;
 
   // BuildContext? contextMesa;
   // BuildContext? contextMesa1;
@@ -51,19 +52,20 @@ class Server extends ChangeNotifier {
         if (connected) {
           DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
           var nomedopcLocal = '';
+          var ip = await ConfigSistema.retornarIPMaquina();
 
           if (Platform.isAndroid) {
             AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
             nomedopcLocal = androidInfo.model;
           } else if (Platform.isIOS) {
             IosDeviceInfo iosDeviceInfo = await deviceInfo.iosInfo;
-            nomedopcLocal = iosDeviceInfo.name;
+            nomedopcLocal = iosDeviceInfo.modelName;
           }
 
           channel!.sink.add(jsonEncode({
             'tipo': 'Rede',
-            'ip': Modular.get<Server>().hostname,
             'nomedopc': nomedopcLocal,
+            'ip': ip,
           }));
         }
         //  else {
@@ -114,7 +116,12 @@ class Server extends ChangeNotifier {
   }
 
   void abrirModalReconectar() {
+    if (aparecendoModalReconectar) return;
+
     if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
+      aparecendoModalReconectar = true;
+      notifyListeners();
+
       showDialog(
         context: navigatorKey!.currentContext!,
         barrierDismissible: false,
@@ -158,7 +165,10 @@ class Server extends ChangeNotifier {
             ],
           );
         },
-      );
+      ).whenComplete(() {
+        aparecendoModalReconectar = false;
+        notifyListeners();
+      });
     }
   }
 

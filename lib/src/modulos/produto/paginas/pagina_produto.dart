@@ -176,6 +176,26 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
     itemProduto!.observacao = obsController.text;
+
+    _provedorProduto.opcoesPacotesListaFinal.insert(
+      0,
+      ModeloOpcoesPacotes(
+        id: 11,
+        titulo: 'Observação',
+        tipo: 7,
+        obrigatorio: false,
+        dados: [
+          ModeloDadosOpcoesPacotes(
+            id: '0',
+            nome: obsController.text,
+            foto: '',
+            estaSelecionado: false,
+            excluir: false,
+          ),
+        ],
+      ),
+    );
+
     itemProduto!.opcoesPacotesListaFinal = _provedorProduto.opcoesPacotesListaFinal;
 
     await carrinhoProvedor
