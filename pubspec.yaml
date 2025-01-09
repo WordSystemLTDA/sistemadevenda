@@ -55,6 +55,7 @@ dependencies:
   url_launcher: ^6.3.1
   package_info_plus: ^4.2.0
   pub_semver: ^2.1.4
+  device_info_plus: ^11.2.0
 
 dev_dependencies:
   flutter_test:

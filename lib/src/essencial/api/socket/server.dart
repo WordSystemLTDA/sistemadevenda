@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
@@ -8,6 +9,7 @@ import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart'
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -46,17 +48,30 @@ class Server extends ChangeNotifier {
         notifyListeners();
 
         // !IMPORTANTE! Caso o client se conecte isso mudara o ip do servidor também
-        if (Modular.get<Server>().connected) {
+        if (connected) {
+          DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+          var nomedopcLocal = '';
+
+          if (Platform.isAndroid) {
+            AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+            nomedopcLocal = androidInfo.model;
+          } else if (Platform.isIOS) {
+            IosDeviceInfo iosDeviceInfo = await deviceInfo.iosInfo;
+            nomedopcLocal = iosDeviceInfo.name;
+          }
+
           channel!.sink.add(jsonEncode({
             'tipo': 'Rede',
             'ip': Modular.get<Server>().hostname,
-          }));
-        } else {
-          channel!.sink.add(jsonEncode({
-            'tipo': 'Rede',
-            'ip': '',
+            'nomedopc': nomedopcLocal,
           }));
         }
+        //  else {
+        //   channel!.sink.add(jsonEncode({
+        //     'tipo': 'Rede',
+        //     'ip': '',
+        //   }));
+        // }
 
         channel!.stream.listen(
           (message) {
