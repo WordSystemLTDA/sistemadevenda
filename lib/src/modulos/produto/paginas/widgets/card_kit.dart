@@ -160,7 +160,7 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.5),
+                            color: Colors.grey.withValues(alpha: 0.5),
                             blurRadius: 30.0,
                             spreadRadius: -30,
                           ),

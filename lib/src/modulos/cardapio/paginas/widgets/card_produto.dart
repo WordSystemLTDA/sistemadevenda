@@ -207,7 +207,7 @@ class _CardProdutoState extends State<CardProduto> {
                               color: Colors.deepOrange,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
+                                  color: Colors.grey.withValues(alpha: 0.5),
                                   spreadRadius: 0,
                                   blurRadius: 7,
                                   offset: const Offset(0, 3), // changes position of shadow
@@ -233,7 +233,7 @@ class _CardProdutoState extends State<CardProduto> {
                               color: Colors.blue,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
+                                  color: Colors.grey.withValues(alpha: .5),
                                   spreadRadius: 0,
                                   blurRadius: 7,
                                   offset: const Offset(0, 3), // changes position of shadow
