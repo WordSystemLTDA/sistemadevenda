@@ -19,3 +19,4 @@
 - [x] (REVER)Ao editar ip do servidor ele não conecta, tem que sair e entrar no app de novo
 - [x] Colocar versão do app no drawer
 - [x] Arrumar listagem Mesas em fechamento, está somente Ocupadas
+- [ ] Arrumar conexão com o servidor fecha quando o celular desligar a tela
