@@ -62,18 +62,21 @@ class Server extends ChangeNotifier {
             nomedopcLocal = iosDeviceInfo.modelName;
           }
 
+          // channel!.sink.add(jsonEncode({
+          //   'tipo': 'Rede',
+          //   'nomedopc': nomedopcLocal,
+          //   'ip': ip,
+          // }));
+
           channel!.sink.add(jsonEncode({
             'tipo': 'Rede',
             'nomedopc': nomedopcLocal,
+            'tipodeempresa': '2',
+            'nomedosistema': 'Big Chef Garçom',
+            "sistemaoperacional": Platform.operatingSystem,
             'ip': ip,
           }));
         }
-        //  else {
-        //   channel!.sink.add(jsonEncode({
-        //     'tipo': 'Rede',
-        //     'ip': '',
-        //   }));
-        // }
 
         channel!.stream.listen(
           (message) {
