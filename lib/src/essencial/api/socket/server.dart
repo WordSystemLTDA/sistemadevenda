@@ -31,6 +31,15 @@ class Server extends ChangeNotifier {
   // BuildContext? contextComanda1;
 
   Future<bool> start(String ip, String porta) async {
+    if (connected && hostname == ip) {
+      return true;
+    }
+
+    if (channel != null && hostname != ip) {
+      debugPrint('await disconnect();');
+      await disconnect();
+    }
+
     bool sucesso = false;
     hostname = ip;
     port = int.parse(porta);
@@ -43,9 +52,7 @@ class Server extends ChangeNotifier {
         channel = WebSocketChannel.connect(wsUrl);
 
         await channel!.ready;
-
         connected = true;
-
         notifyListeners();
 
         // !IMPORTANTE! Caso o client se conecte isso mudara o ip do servidor também
@@ -61,12 +68,6 @@ class Server extends ChangeNotifier {
             IosDeviceInfo iosDeviceInfo = await deviceInfo.iosInfo;
             nomedopcLocal = iosDeviceInfo.modelName;
           }
-
-          // channel!.sink.add(jsonEncode({
-          //   'tipo': 'Rede',
-          //   'nomedopc': nomedopcLocal,
-          //   'ip': ip,
-          // }));
 
           channel!.sink.add(jsonEncode({
             'tipo': 'Rede',
@@ -86,7 +87,14 @@ class Server extends ChangeNotifier {
             log('Error: $error');
           },
           onDone: () {
+            debugPrint('abrirModalReconectar();');
             abrirModalReconectar();
+
+            channel = null;
+            connected = false;
+            hostname = '';
+            port = 0;
+            notifyListeners();
           },
         );
 
@@ -102,13 +110,13 @@ class Server extends ChangeNotifier {
     return sucesso;
   }
 
-  disconnect() async {
+  disconnect([int? closeCode, String? closeReason]) async {
     try {
       if (channel == null) return;
 
-      // abrirModalReconectar();
-
-      channel!.sink.close();
+      // channel!.sink.close(4999, 'Conexão foi fechada manualmente.');
+      channel!.sink.close(closeCode, closeReason);
+      channel = null;
       connected = false;
       notifyListeners();
     } catch (e) {
@@ -118,61 +126,85 @@ class Server extends ChangeNotifier {
     }
   }
 
-  void abrirModalReconectar() {
-    if (aparecendoModalReconectar) return;
+  void abrirModalReconectar() async {
+    final ConfigSharedPreferences config = ConfigSharedPreferences();
+    var conexao = await config.getConexao();
 
-    if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-      aparecendoModalReconectar = true;
-      notifyListeners();
+    // ConfigSistema.retornarIPMaquina().then((ip) {
+    start(conexao!.servidor, conexao.porta).then((sucesso) {
+      if (sucesso == false) {
+        if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
+          ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
+            content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
+            backgroundColor: Colors.red,
+            showCloseIcon: true,
+            duration: const Duration(hours: 1),
+          ));
+        }
+      }
+      // });
+    });
 
-      showDialog(
-        context: navigatorKey!.currentContext!,
-        barrierDismissible: false,
-        builder: (BuildContext contextDialog) {
-          return AlertDialog(
-            title: const Text('Servidor foi desconectado.'),
-            content: const SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  Text("Clique em 'Reconectar' para tentar se reconectar ao servidor."),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Reconectar'),
-                onPressed: () async {
-                  final ConfigSharedPreferences config = ConfigSharedPreferences();
-                  var conexao = await config.getConexao();
-                  // ConfigSistema.retornarIPMaquina().then((ip) {
-                  start(conexao!.servidor, conexao.porta).then((sucesso) {
-                    if (sucesso == false) {
-                      if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-                        ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
-                          content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
-                          backgroundColor: Colors.red,
-                          showCloseIcon: true,
-                          duration: const Duration(hours: 1),
-                        ));
-                      }
-                    }
-                    // });
-                  });
+    // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
+    // if (contextDialog.mounted) {
+    //   Navigator.of(contextDialog).pop();
+    // }
 
-                  // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
-                  if (contextDialog.mounted) {
-                    Navigator.of(contextDialog).pop();
-                  }
-                },
-              ),
-            ],
-          );
-        },
-      ).whenComplete(() {
-        aparecendoModalReconectar = false;
-        notifyListeners();
-      });
-    }
+    // if (aparecendoModalReconectar) return;
+
+    // if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
+    //   aparecendoModalReconectar = true;
+    //   notifyListeners();
+    //   // print('APARECEU MODAL DE RECONECTAR ${DateTime.now()}');
+
+    //   showDialog(
+    //     context: navigatorKey!.currentContext!,
+    //     barrierDismissible: false,
+    //     builder: (BuildContext contextDialog) {
+    //       return AlertDialog(
+    //         title: const Text('Servidor foi desconectado.'),
+    //         content: const SingleChildScrollView(
+    //           child: ListBody(
+    //             children: <Widget>[
+    //               Text("Clique em 'Reconectar' para tentar se reconectar ao servidor."),
+    //             ],
+    //           ),
+    //         ),
+    //         actions: <Widget>[
+    //           TextButton(
+    //             child: const Text('Reconectar'),
+    //             onPressed: () async {
+    // final ConfigSharedPreferences config = ConfigSharedPreferences();
+    // var conexao = await config.getConexao();
+    // // ConfigSistema.retornarIPMaquina().then((ip) {
+    // start(conexao!.servidor, conexao.porta).then((sucesso) {
+    //   if (sucesso == false) {
+    //     if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
+    //       ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
+    //         content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
+    //         backgroundColor: Colors.red,
+    //         showCloseIcon: true,
+    //         duration: const Duration(hours: 1),
+    //       ));
+    //     }
+    //   }
+    //   // });
+    // });
+
+    // // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
+    // if (contextDialog.mounted) {
+    //   Navigator.of(contextDialog).pop();
+    // }
+    //             },
+    //           ),
+    //         ],
+    //       );
+    //     },
+    //   ).whenComplete(() {
+    //     aparecendoModalReconectar = false;
+    //     notifyListeners();
+    //   });
+    // }
   }
 
   write(String message) {
