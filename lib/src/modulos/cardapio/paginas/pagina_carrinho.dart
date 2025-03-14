@@ -102,10 +102,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         padding: const EdgeInsets.all(20),
                         shrinkWrap: true,
                         children: [
-                          const Text(
-                            'Deseja realmente excluir todos?',
-                            style: TextStyle(fontSize: 20),
-                          ),
+                          const Text('Deseja realmente excluir todos?', style: TextStyle(fontSize: 20)),
                           const SizedBox(height: 15),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,

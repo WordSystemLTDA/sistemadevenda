@@ -282,7 +282,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     ),
             ),
             body: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 100),
+              padding: const EdgeInsets.only(bottom: 140),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -350,36 +350,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                                 Text("Total", style: TextStyle(fontSize: 18)),
                               ],
                             ),
+                            Text(
+                              (_provedorProduto.valorVenda * _provedorProduto.quantidade).obterReal(),
+                              style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Observações: ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        Text(
-                          (_provedorProduto.valorVenda * _provedorProduto.quantidade).obterReal(),
-                          style: const TextStyle(color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    child: TextField(
-                      controller: obsController,
-                      decoration: const InputDecoration(
-                        alignLabelWithHint: true,
-                        hintText: "Digite alguma observação",
-                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                        border: UnderlineInputBorder(),
-                      ),
-                    ),
-                  ),
+                  Divider(),
                   const SizedBox(height: 15),
                   if (itemProduto!.descricao.isNotEmpty) ...[
                     Padding(
@@ -464,6 +444,23 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                       );
                     }),
                   ],
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20, bottom: 10, top: 10),
+                    child: Text('Observação do Produto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    child: TextField(
+                      controller: obsController,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        alignLabelWithHint: true,
+                        hintText: "Digite alguma observação",
+                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
