@@ -130,6 +130,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                                             .quantidade! -
                                         1;
                               });
+                              _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
                             }
                           },
                           icon: Icon(
@@ -152,6 +153,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                                   _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade! +
                                       1;
                             });
+
+                            _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
                           },
                           icon: const Icon(
                             Icons.add_circle_outline,

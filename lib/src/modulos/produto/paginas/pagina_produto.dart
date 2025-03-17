@@ -291,24 +291,25 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        itemProduto!.foto.isEmpty
-                            ? Image.asset(Assets.boxAsset, width: 120, height: 120)
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(8.0),
-                                child: CachedNetworkImage(
-                                  width: 120,
-                                  height: 120,
-                                  fit: BoxFit.contain,
-                                  fadeOutDuration: const Duration(milliseconds: 100),
-                                  placeholder: (context, url) => const SizedBox(
-                                    height: 50.0,
-                                    width: 50.0,
-                                    child: Center(child: CircularProgressIndicator()),
-                                  ),
-                                  errorWidget: (context, url, error) => const Icon(Icons.error),
-                                  imageUrl: itemProduto!.foto,
-                                ),
+                        if (itemProduto!.foto.isEmpty)
+                          Image.asset(Assets.boxAsset, width: 120, height: 120)
+                        else
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8.0),
+                            child: CachedNetworkImage(
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.contain,
+                              fadeOutDuration: const Duration(milliseconds: 100),
+                              placeholder: (context, url) => const SizedBox(
+                                height: 50.0,
+                                width: 50.0,
+                                child: Center(child: CircularProgressIndicator()),
                               ),
+                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                              imageUrl: itemProduto!.foto,
+                            ),
+                          ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [

@@ -50,7 +50,23 @@ class ProvedorProduto extends ChangeNotifier {
     if (opcoesPacotesListaFinal.isNotEmpty) {
       for (var element in opcoesPacotesListaFinal) {
         if (element.id != 4) {
-          if (element.id == 6) {
+          if (element.id == 2) {
+            element.produtos!.map((e1) {
+              e1.opcoesPacotes?.map((e2) {
+                for (var element22 in e2.dados!) {
+                  if (element22.quantidade != null) {
+                    soma += double.parse(element22.valor ?? '0') * (element22.quantidade ?? 0);
+                  } else {
+                    soma += double.parse(element22.valor ?? '0');
+                  }
+                }
+
+                return e2;
+              }).toList();
+
+              return e1;
+            }).toList();
+          } else if (element.id == 6) {
             soma += calcularPrecoBorda();
           } else if (element.dados != null) {
             for (var element2 in element.dados!) {
@@ -103,6 +119,8 @@ class ProvedorProduto extends ChangeNotifier {
 
   void selecionarItem(ModeloDadosOpcoesPacotes item, ModeloOpcoesPacotes opcoesPacote, bool kit, String idProduto) {
     var dadosID = retornarDadosPorID([opcoesPacote.id], kit, idProduto);
+
+    item.estaSelecionado = true;
 
     // CORTESIA
     if (opcoesPacote.tipo == 6) {
