@@ -10,6 +10,7 @@ class CardCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
   final String idComanda;
 
+  final int index;
   final String idMesa;
   final dynamic value;
   final Function(bool increase) setarQuantidade;
@@ -17,6 +18,7 @@ class CardCarrinho extends StatefulWidget {
   const CardCarrinho({
     super.key,
     required this.item,
+    required this.index,
     required this.idComanda,
     required this.idMesa,
     required this.value,
@@ -173,7 +175,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                       const SizedBox(width: 10),
                                                       TextButton(
                                                         onPressed: () async {
-                                                          await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
+                                                          await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index).then((sucesso) {
                                                             if (context.mounted) {
                                                               carrinhoProvedor.listarComandasPedidos();
                                                               Navigator.pop(context);

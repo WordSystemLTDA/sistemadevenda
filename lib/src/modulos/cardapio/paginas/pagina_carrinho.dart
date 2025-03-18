@@ -292,6 +292,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         item: item,
                         idComanda: provedorCardapio.idComanda,
                         idMesa: provedorCardapio.idMesa,
+                        index: index,
                         value: carrinhoProvedor.itensCarrinho,
                         setarQuantidade: (increase) {
                           if (increase) {

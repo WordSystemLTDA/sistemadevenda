@@ -71,6 +71,30 @@ class ProvedorCarrinho extends ChangeNotifier {
     return true;
   }
 
+  Future<bool> excluirItemCarrinho(String id, int index) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    // prefs.remove(ChavesSharedPreferences.carrinho);
+
+    String? itensCarrinho = prefs.getString('carrinho');
+
+    if (itensCarrinho != null) {
+      List<Modelowordprodutos> carrinho = List<Modelowordprodutos>.from(json.decode(itensCarrinho).map((e) {
+        if (e is String) {
+          return Modelowordprodutos.fromMap(jsonDecode(e));
+        } else {
+          return Modelowordprodutos.fromMap(e);
+        }
+      }));
+
+      carrinho.removeAt(index);
+
+      // var carrinho = await listarCarrinho();
+      prefs.setString('carrinho', json.encode(carrinho));
+    }
+
+    return true;
+  }
+
   Future<bool> inserir(
     Modelowordprodutos produto,
     tipo,
