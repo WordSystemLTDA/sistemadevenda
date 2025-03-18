@@ -1,7 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 // import 'package:app/src/modulos/cardapio/interactor/cubit/produtos_cubit.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -40,7 +39,7 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: TextField(
-              readOnly: true,
+              // readOnly: true,
               decoration: InputDecoration(
                 filled: true,
                 border: InputBorder.none,
@@ -54,7 +53,13 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
                   icon: const Icon(Icons.arrow_back_outlined),
                 ),
               ),
-              onTap: () => _searchController.openView(),
+              onChanged: (value) async {
+                print(value);
+
+                // provedor.resetarTudo();
+                provedor.listarProdutosPorNome(value, widget.categoria!.id, widget.idcliente);
+              },
+              // onTap: () => _searchController.openView(),
             ),
           ),
         );
@@ -62,18 +67,18 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
       suggestionsBuilder: (BuildContext context, SearchController controller) async {
         if (widget.categoria == null) return [];
 
-        final keyword = controller.value.text;
-        final res = await provedor.listarProdutosPorNome(keyword, widget.categoria!.id, widget.idcliente);
+        // final keyword = controller.value.text;
+        // final res = await provedor.listarProdutosPorNome(keyword, widget.categoria!.id, widget.idcliente);
 
         return [
-          ...res.map(
-            (e) => CardProduto(
-              estaPesquisando: true,
-              searchController: controller,
-              item: e,
-              categoria: widget.categoria,
-            ),
-          ),
+          // ...res.map(
+          //   (e) => CardProduto(
+          //     estaPesquisando: true,
+          //     searchController: controller,
+          //     item: e,
+          //     categoria: widget.categoria,
+          //   ),
+          // ),
         ];
       },
     );

@@ -1,10 +1,10 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/buscar_produtos.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:brasil_fields/brasil_fields.dart';
@@ -69,6 +69,7 @@ class PaginaCardapio extends StatefulWidget {
 class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
   final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorProdutos provedorProdutos = Modular.get<ProvedorProdutos>();
 
   TabController? _tabController;
   List<String> listaCategorias = [];
@@ -138,13 +139,14 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             automaticallyImplyLeading: false,
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(50.0),
+              preferredSize: const Size.fromHeight(0.0),
               child: Column(
                 children: [
-                  BuscarProdutos(
-                    categoria: provedor.categorias.isEmpty ? null : provedor.categorias[indexTabBar],
-                    idcliente: '0',
-                  ),
+                  // BuscarProdutos(
+                  //   categoria: provedor.categorias.isEmpty ? null : provedor.categorias[indexTabBar],
+                  //   idcliente: '0',
+                  // ),
+
                   const SizedBox(height: 5),
                   Visibility(
                     visible: _tabController != null,

@@ -48,6 +48,35 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
         builder: (context, _) {
           return Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: TextField(
+                    // readOnly: true,
+                    decoration: InputDecoration(
+                      filled: true,
+                      border: InputBorder.none,
+                      fillColor: Colors.white,
+                      hintText: 'Pesquisar...',
+                      prefixIcon: IconButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          provedor.resetarTudo();
+                        },
+                        icon: const Icon(Icons.arrow_back_outlined),
+                      ),
+                    ),
+                    onChanged: (value) async {
+                      print(value);
+
+                      // provedor.resetarTudo();
+                      provedor.listarProdutosPorNome(value, widget.category, '0');
+                    },
+                    // onTap: () => _searchController.openView(),
+                  ),
+                ),
+              ),
               if (widget.categoria.tamanhosPizza != null && widget.categoria.tamanhosPizza!.isNotEmpty) ...[
                 ListaTamanhosPizza(categoria: widget.categoria),
               ],

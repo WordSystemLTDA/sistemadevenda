@@ -27,7 +27,13 @@ class ProvedorProdutos extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<Modelowordprodutos>> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
-    return await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
+  Future<void> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
+    final res = await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
+    // if (res.isEmpty) return;
+
+    // print(res);
+
+    produtos = res;
+    notifyListeners();
   }
 }
