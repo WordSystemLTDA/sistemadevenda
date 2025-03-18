@@ -29,6 +29,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   final MobileScannerController controller = MobileScannerController();
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  TextEditingController pesquisaController = TextEditingController();
 
   Timer? debounce;
   Timer? _debounce;
@@ -291,6 +292,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                 child: SizedBox(
                                   height: 40,
                                   child: TextField(
+                                    controller: pesquisaController,
                                     decoration: InputDecoration(
                                       border: OutlineInputBorder(
                                         borderSide: BorderSide(color: Colors.grey[700]!),
@@ -301,21 +303,22 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                       contentPadding: const EdgeInsets.all(0),
                                     ),
                                     onChanged: (textoPesquisa) async {
-                                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                                      setState(() {});
+                                      // if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-                                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                                        if (textoPesquisa.isNotEmpty) {
-                                          if (debounce?.isActive ?? false) {
-                                            debounce!.cancel();
-                                          }
+                                      // _debounce = Timer(const Duration(milliseconds: 500), () {
+                                      //   if (textoPesquisa.isNotEmpty) {
+                                      //     if (debounce?.isActive ?? false) {
+                                      //       debounce!.cancel();
+                                      //     }
 
-                                          debounce = Timer(const Duration(milliseconds: 200), () async {
-                                            provedor.listarComandas(textoPesquisa);
-                                          });
-                                        } else {
-                                          provedor.listarComandas('');
-                                        }
-                                      });
+                                      //     debounce = Timer(const Duration(milliseconds: 200), () async {
+                                      //       provedor.listarComandas(textoPesquisa);
+                                      //     });
+                                      //   } else {
+                                      //     provedor.listarComandas('');
+                                      //   }
+                                      // });
                                     },
                                   ),
                                 ),
@@ -419,10 +422,20 @@ class _PaginaComandasState extends State<PaginaComandas> {
                                                 physics: const NeverScrollableScrollPhysics(),
                                                 shrinkWrap: true,
                                                 scrollDirection: Axis.vertical,
-                                                itemCount: item.comandas?.length ?? 0,
+                                                itemCount: (item.comandas ?? [])
+                                                    .where((element) =>
+                                                        (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                        (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                        (element.nome).toLowerCase().contains(pesquisaController.text))
+                                                    .length,
                                                 padding: const EdgeInsets.only(top: 5, bottom: 10),
                                                 itemBuilder: (_, index) {
-                                                  var itemComanda = item.comandas![index];
+                                                  var itemComanda = (item.comandas ?? [])
+                                                      .where((element) =>
+                                                          (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                          (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                          (element.nome).toLowerCase().contains(pesquisaController.text))
+                                                      .toList()[index];
 
                                                   return Padding(
                                                     padding: const EdgeInsets.only(bottom: 10),

@@ -260,18 +260,35 @@ class _CardComandaState extends State<CardComanda> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             // const SizedBox(width: 15),
-                            SizedBox(
-                              width: 180,
-                              child: Text(
-                                widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
+                            if ((widget.itemComanda.nomeCliente ?? '').isEmpty && (widget.itemComanda.obs ?? '').isNotEmpty) ...[
+                              SizedBox(
+                                width: 180,
+                                child: Text(
+                                  widget.itemComanda.obs != null && widget.itemComanda.obs!.isNotEmpty ? widget.itemComanda.obs! : 'Sem Cliente',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
+                                  ),
                                 ),
                               ),
-                            ),
+                            ] else ...[
+                              SizedBox(
+                                width: 180,
+                                child: Text(
+                                  widget.itemComanda.nomeCliente != null && widget.itemComanda.nomeCliente!.isNotEmpty ? widget.itemComanda.nomeCliente! : 'Sem Cliente',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.itemComanda.comandaOcupada ? null : Colors.grey[600],
+                                  ),
+                                ),
+                              ),
+                            ],
                             // StreamBuilder<String>(
                             //   stream: tempoLancadoController.stream,
                             //   initialData: 'Carregando',

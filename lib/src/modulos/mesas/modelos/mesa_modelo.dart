@@ -9,6 +9,7 @@ class MesaModelo {
   String ativo;
   String? idCliente;
   String? nomeCliente;
+  String? obs;
   String? dataAbertura;
   String? horaAbertura;
   String? idComandaPedido;
@@ -25,6 +26,7 @@ class MesaModelo {
     required this.ativo,
     this.idCliente,
     required this.nomeCliente,
+    this.obs,
     required this.dataAbertura,
     required this.horaAbertura,
     this.idComandaPedido,
@@ -43,6 +45,7 @@ class MesaModelo {
       'ativo': ativo,
       'idCliente': idCliente,
       'nomeCliente': nomeCliente,
+      'obs': obs,
       'dataAbertura': dataAbertura,
       'horaAbertura': horaAbertura,
       'idComandaPedido': idComandaPedido,
@@ -69,6 +72,7 @@ class MesaModelo {
       ultimaVezAbertoDataHora: map['ultimaVezAbertoDataHora'] != null ? map['ultimaVezAbertoDataHora'] as String : null,
       dataultimopedido: map['dataultimopedido'] != null ? map['dataultimopedido'] as String : null,
       fechamento: map['fechamento'] != null ? map['fechamento'] as bool : null,
+      obs: map['obs'] != null ? map['obs'] as String : null,
     );
   }
 

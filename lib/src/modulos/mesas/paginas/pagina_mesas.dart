@@ -29,6 +29,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
   final MobileScannerController controller = MobileScannerController();
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  TextEditingController pesquisaController = TextEditingController();
 
   Timer? debounce;
   Timer? _debounce;
@@ -286,6 +287,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                 child: SizedBox(
                                   height: 40,
                                   child: TextField(
+                                    controller: pesquisaController,
                                     decoration: InputDecoration(
                                       border: OutlineInputBorder(
                                         borderSide: BorderSide(color: Colors.grey[700]!),
@@ -296,21 +298,22 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                       contentPadding: const EdgeInsets.all(0),
                                     ),
                                     onChanged: (textoPesquisa) async {
-                                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                                      setState(() {});
+                                      // if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-                                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                                        if (textoPesquisa.isNotEmpty) {
-                                          if (debounce?.isActive ?? false) {
-                                            debounce!.cancel();
-                                          }
+                                      // _debounce = Timer(const Duration(milliseconds: 500), () {
+                                      //   if (textoPesquisa.isNotEmpty) {
+                                      //     if (debounce?.isActive ?? false) {
+                                      //       debounce!.cancel();
+                                      //     }
 
-                                          debounce = Timer(const Duration(milliseconds: 200), () async {
-                                            provedor.listarMesas(textoPesquisa);
-                                          });
-                                        } else {
-                                          provedor.listarMesas('');
-                                        }
-                                      });
+                                      //     debounce = Timer(const Duration(milliseconds: 200), () async {
+                                      //       provedor.listarMesas(textoPesquisa);
+                                      //     });
+                                      //   } else {
+                                      //     provedor.listarMesas('');
+                                      //   }
+                                      // });
                                     },
                                   ),
                                 ),
@@ -415,10 +418,20 @@ class _PaginaMesasState extends State<PaginaMesas> {
                                                 physics: const NeverScrollableScrollPhysics(),
                                                 shrinkWrap: true,
                                                 scrollDirection: Axis.vertical,
-                                                itemCount: item.mesas?.length ?? 0,
+                                                itemCount: (item.mesas ?? [])
+                                                    .where((element) =>
+                                                        (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                        (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                        (element.nome).toLowerCase().contains(pesquisaController.text))
+                                                    .length,
                                                 padding: const EdgeInsets.only(top: 5, bottom: 10),
                                                 itemBuilder: (_, index) {
-                                                  var itemMesa = item.mesas![index];
+                                                  var itemMesa = (item.mesas ?? [])
+                                                      .where((element) =>
+                                                          (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                          (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
+                                                          (element.nome).toLowerCase().contains(pesquisaController.text))
+                                                      .toList()[index];
 
                                                   return Padding(
                                                     padding: const EdgeInsets.only(bottom: 10),

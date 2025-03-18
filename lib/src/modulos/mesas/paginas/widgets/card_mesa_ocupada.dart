@@ -256,18 +256,35 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       Row(
                         children: [
                           const SizedBox(width: 15),
-                          SizedBox(
-                            width: 180,
-                            child: Text(
-                              widget.item.nomeCliente != null && widget.item.nomeCliente!.isNotEmpty ? widget.item.nomeCliente! : 'Sem Cliente',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: widget.item.mesaOcupada ? null : Colors.grey[600],
+                          if ((widget.item.nomeCliente ?? '').isEmpty && (widget.item.obs ?? '').isNotEmpty) ...[
+                            SizedBox(
+                              width: 180,
+                              child: Text(
+                                widget.item.obs != null && widget.item.obs!.isNotEmpty ? widget.item.obs! : 'Sem Cliente',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.item.mesaOcupada ? null : Colors.grey[600],
+                                ),
                               ),
                             ),
-                          ),
+                          ] else ...[
+                            SizedBox(
+                              width: 180,
+                              child: Text(
+                                widget.item.nomeCliente != null && widget.item.nomeCliente!.isNotEmpty ? widget.item.nomeCliente! : 'Sem Cliente',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.item.mesaOcupada ? null : Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 2),

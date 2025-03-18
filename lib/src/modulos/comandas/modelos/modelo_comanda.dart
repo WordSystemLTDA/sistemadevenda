@@ -9,6 +9,7 @@ class ModeloComanda {
   bool comandaOcupada;
   String? idCliente;
   String? nomeCliente;
+  String? obs;
   String? nomeMesa;
   String? idmesa;
   String? dataAbertura;
@@ -27,6 +28,7 @@ class ModeloComanda {
     required this.comandaOcupada,
     this.idCliente,
     this.nomeCliente,
+    this.obs,
     this.nomeMesa,
     this.idmesa,
     this.dataAbertura,
@@ -47,6 +49,7 @@ class ModeloComanda {
       'comandaOcupada': comandaOcupada,
       'idCliente': idCliente,
       'nomeCliente': nomeCliente,
+      'obs': obs,
       'nomeMesa': nomeMesa,
       'idmesa': idmesa,
       'dataAbertura': dataAbertura,
@@ -68,6 +71,7 @@ class ModeloComanda {
       comandaOcupada: map['comandaOcupada'] as bool,
       idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
+      obs: map['obs'] != null ? map['obs'] as String : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
       idmesa: map['idmesa'] != null ? map['idmesa'] as String : null,
       dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
