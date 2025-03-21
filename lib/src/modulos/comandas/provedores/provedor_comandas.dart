@@ -56,7 +56,7 @@ class ProvedorComanda extends ChangeNotifier {
     return res;
   }
 
-  Future<bool> inserirCliente(String nome, String celular, String email, String obs) async {
+  Future<({bool sucesso, String idcliente, String nomecliente, String mensagem})> inserirCliente(String nome, String celular, String email, String obs) async {
     return await _servico.inserirCliente(nome, celular, email, obs);
   }
 

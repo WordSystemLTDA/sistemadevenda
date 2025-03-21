@@ -129,11 +129,15 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                 child: GestureDetector(
                                   onTap: () {
                                     showModalBottomSheet(
+                                      isScrollControlled: true,
                                       context: context,
                                       builder: (context) {
-                                        return ModalEditarObservacao(
-                                          idProduto: widget.item.id,
-                                          observacao: widget.item.observacao ?? '',
+                                        return Padding(
+                                          padding: MediaQuery.of(context).viewInsets,
+                                          child: ModalEditarObservacao(
+                                            idProduto: widget.item.id,
+                                            observacao: widget.item.observacao ?? '',
+                                          ),
                                         );
                                       },
                                     );

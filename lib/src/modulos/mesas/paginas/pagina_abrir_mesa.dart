@@ -121,12 +121,15 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
               ),
               const SizedBox(height: 10),
               const Text('Observação', style: TextStyle(fontSize: 18)),
-              TextField(
-                controller: _obsconstroller,
-                decoration: const InputDecoration(
-                  border: UnderlineInputBorder(),
-                  isDense: true,
-                  hintText: 'Obs',
+              SizedBox(
+                height: 150,
+                child: TextField(
+                  maxLines: 4,
+                  controller: _obsconstroller,
+                  decoration: const InputDecoration(
+                    hintText: 'Observação',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
             ],

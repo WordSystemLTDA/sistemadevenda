@@ -157,7 +157,7 @@ class ServicoComandas {
     return response.data['sucesso'];
   }
 
-  Future<bool> inserirCliente(String nome, String celular, String email, String obs) async {
+  Future<({bool sucesso, String idcliente, String nomecliente, String mensagem})> inserirCliente(String nome, String celular, String email, String obs) async {
     const url = 'comandas/inserir_cliente.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -173,6 +173,16 @@ class ServicoComandas {
       },
     ).timeout(const Duration(seconds: 60));
 
-    return response.data['sucesso'];
+    bool sucesso = response.data['sucesso'];
+    String idcliente = response.data['idcliente'];
+    String nomecliente = response.data['nomecliente'];
+    String mensagem = response.data['mensagem'];
+
+    return (
+      sucesso: sucesso,
+      idcliente: idcliente,
+      nomecliente: nomecliente,
+      mensagem: mensagem,
+    );
   }
 }

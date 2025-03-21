@@ -46,15 +46,19 @@ class _InserirClienteState extends State<InserirCliente> {
             emailController.text,
             obsController.text,
           )
-              .then((sucesso) {
-            if (context.mounted && sucesso) {
-              Navigator.pop(context);
+              .then((responsta) {
+            if (context.mounted && responsta.sucesso) {
+              Navigator.pop(context, {
+                'idcliente': responsta.idcliente,
+                'nomecliente': responsta.nomecliente,
+              });
             }
 
             if (context.mounted) {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: sucesso ? const Text('Cliente Cadastrado') : const Text('Ocorreu um erro'),
+                content: Text(responsta.mensagem),
+                backgroundColor: responsta.sucesso ? Colors.green : Colors.red,
                 showCloseIcon: true,
               ));
             }
@@ -84,7 +88,7 @@ class _InserirClienteState extends State<InserirCliente> {
                 decoration: const InputDecoration(
                   border: UnderlineInputBorder(),
                   isDense: true,
-                  hintText: 'Digite o Nome do Cliente',
+                  hintText: '',
                 ),
               ),
               const SizedBox(height: 10),
@@ -95,10 +99,11 @@ class _InserirClienteState extends State<InserirCliente> {
                   FilteringTextInputFormatter.digitsOnly,
                   TelefoneInputFormatter(),
                 ],
+                keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   border: UnderlineInputBorder(),
                   isDense: true,
-                  hintText: 'Digite o Celular do Cliente',
+                  hintText: '',
                 ),
               ),
               const SizedBox(height: 10),
@@ -109,7 +114,7 @@ class _InserirClienteState extends State<InserirCliente> {
                 decoration: const InputDecoration(
                   border: UnderlineInputBorder(),
                   isDense: true,
-                  hintText: 'Digite o E-mail do Cliente',
+                  hintText: '',
                 ),
               ),
               const SizedBox(height: 10),
@@ -119,7 +124,7 @@ class _InserirClienteState extends State<InserirCliente> {
                 decoration: const InputDecoration(
                   border: UnderlineInputBorder(),
                   isDense: true,
-                  hintText: 'Obs',
+                  hintText: '',
                 ),
               ),
               const SizedBox(height: 10),
