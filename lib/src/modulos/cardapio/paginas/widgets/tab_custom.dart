@@ -68,9 +68,6 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                       ),
                     ),
                     onChanged: (value) async {
-                      print(value);
-
-                      // provedor.resetarTudo();
                       provedor.listarProdutosPorNome(value, widget.category, '0');
                     },
                     // onTap: () => _searchController.openView(),

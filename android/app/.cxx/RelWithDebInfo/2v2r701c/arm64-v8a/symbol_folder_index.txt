@@ -1,0 +1,1 @@
+/Applications/XAMPP/xamppfiles/htdocs/ProjetosFlutter/sistemadevenda/build/app/intermediates/cxx/RelWithDebInfo/2v2r701c/obj/arm64-v8a

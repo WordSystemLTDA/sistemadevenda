@@ -54,9 +54,6 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
                 ),
               ),
               onChanged: (value) async {
-                print(value);
-
-                // provedor.resetarTudo();
                 provedor.listarProdutosPorNome(value, widget.categoria!.id, widget.idcliente);
               },
               // onTap: () => _searchController.openView(),
