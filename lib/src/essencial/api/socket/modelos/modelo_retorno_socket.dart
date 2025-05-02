@@ -40,6 +40,7 @@ class ModeloRetornoSocket {
   final String? idComandaPedido;
   final String? nome;
   final String? codigo;
+  final String? observacaoDoPedido;
 
   ModeloRetornoSocket({
     required this.tipo,
@@ -75,6 +76,7 @@ class ModeloRetornoSocket {
     this.idComandaPedido,
     this.nome,
     this.codigo,
+    this.observacaoDoPedido,
   });
 
   Map<String, dynamic> toMap() {
@@ -112,6 +114,7 @@ class ModeloRetornoSocket {
       'idComandaPedido': idComandaPedido,
       'nome': nome,
       'codigo': codigo,
+      'observacaoDoPedido': observacaoDoPedido,
     };
   }
 
@@ -162,6 +165,7 @@ class ModeloRetornoSocket {
       idComandaPedido: map['idComandaPedido'] != null ? map['idComandaPedido'] as String : null,
       nome: map['nome'] != null ? map['nome'] as String : null,
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
+      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
     );
   }
 

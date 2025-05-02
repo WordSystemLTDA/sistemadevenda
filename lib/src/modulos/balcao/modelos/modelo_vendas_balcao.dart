@@ -17,6 +17,7 @@ class ModeloVendasBalcao {
   final String idtipodeentrega;
   final String tipodeentrega;
   final String nomeEmpresa;
+  final String? observacaoDoPedido;
 
   ModeloVendasBalcao({
     required this.id,
@@ -34,6 +35,7 @@ class ModeloVendasBalcao {
     required this.idtipodeentrega,
     required this.tipodeentrega,
     required this.nomeEmpresa,
+    this.observacaoDoPedido,
   });
 
   Map<String, dynamic> toMap() {
@@ -53,6 +55,7 @@ class ModeloVendasBalcao {
       'idtipodeentrega': idtipodeentrega,
       'tipodeentrega': tipodeentrega,
       'nomeEmpresa': nomeEmpresa,
+      'observacaoDoPedido': observacaoDoPedido,
     };
   }
 
@@ -73,6 +76,7 @@ class ModeloVendasBalcao {
       idtipodeentrega: map['idtipodeentrega'] as String,
       tipodeentrega: map['tipodeentrega'] as String,
       nomeEmpresa: map['nomeEmpresa'] as String,
+      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
     );
   }
 

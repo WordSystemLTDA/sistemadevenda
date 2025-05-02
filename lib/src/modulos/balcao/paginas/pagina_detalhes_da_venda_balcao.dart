@@ -212,7 +212,10 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         tipoTela: TipoCardapio.balcao,
                         comanda: "Balcão ${widget.idVenda}",
                         numeroPedido: informacoes!.informacoes.numerodopedido,
-                        nomeCliente: informacoes!.informacoes.nomeCliente,
+                        // nomeCliente: informacoes!.informacoes.nomeCliente,
+                        nomeCliente: (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (informacoes?.informacoes.observacaoDoPedido ?? '').isNotEmpty
+                            ? (informacoes?.informacoes.observacaoDoPedido ?? '')
+                            : (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente'),
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,

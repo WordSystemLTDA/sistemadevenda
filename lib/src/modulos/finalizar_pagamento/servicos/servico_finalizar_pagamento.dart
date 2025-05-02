@@ -37,6 +37,7 @@ class ServicoFinalizarPagamento {
     String tipodeentrega,
     List<Modelowordprodutos> produtos,
     String valorAPagarOriginal,
+    String obs,
   ) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
@@ -68,7 +69,7 @@ class ServicoFinalizarPagamento {
       'novo': novo,
       'tipodeentrega': tipodeentrega,
       'id_endereco': '',
-      'obs': '',
+      'obs': obs,
       'produtos': produtos.toList(),
       'valorAPagarOriginal': valorAPagarOriginal,
     };

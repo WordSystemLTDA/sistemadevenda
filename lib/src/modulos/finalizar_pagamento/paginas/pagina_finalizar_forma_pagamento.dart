@@ -49,6 +49,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  final ProvedorBalcao provedorBalcao = Modular.get<ProvedorBalcao>();
   final Server server = Modular.get<Server>();
 
   final ValueNotifier<List<BancoPixModelo>> listaBancoPix = ValueNotifier([]);
@@ -175,9 +176,12 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         provedorCardapio.tipodeentrega,
                         carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                         widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
+                        provedorBalcao.observacaoDoPedido,
                       );
 
                   if (sucesso) {
+                    provedorBalcao.observacaoDoPedido = '';
+
                     if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
                       var provedorBalcao = Modular.get<ProvedorBalcao>();
                       var servico = Modular.get<ServicoBalcao>();
@@ -196,7 +200,10 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           tipoTela: provedorCardapio.tipo,
                           comanda: "Balcão $idvenda",
                           numeroPedido: vendaBalcao.numeropedido,
-                          nomeCliente: vendaBalcao.nomecliente,
+                          // nomeCliente: vendaBalcao.nomecliente,
+                          nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
+                              ? (vendaBalcao.observacaoDoPedido ?? '')
+                              : (vendaBalcao.nomecliente),
                           nomeEmpresa: vendaBalcao.nomeEmpresa,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                           tipodeentrega: vendaBalcao.idtipodeentrega,
@@ -224,6 +231,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           total: informacoes.informacoes.subtotal,
                           numeroPedido: informacoes.informacoes.numerodopedido,
                           tipodeentrega: informacoes.informacoes.tipodeentrega,
+                          nomeCliente: (informacoes.informacoes.nomeCliente == '' ? null : informacoes.informacoes.nomeCliente) ?? 'Sem Cliente',
                         );
                       }
 

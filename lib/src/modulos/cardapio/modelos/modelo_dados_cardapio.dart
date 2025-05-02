@@ -35,7 +35,7 @@ class Modeloworddadoscardapio {
   String? idMesa;
   String? idDelivery;
   String? idBalcao;
-  String? observacoes;
+  String? observacaoDoPedido;
   String? nomeMesa;
   String? tipodeentrega;
   String? valorentrega;
@@ -70,7 +70,7 @@ class Modeloworddadoscardapio {
     this.idMesa,
     this.idDelivery,
     this.idBalcao,
-    this.observacoes,
+    this.observacaoDoPedido,
     this.nomeMesa,
     this.tipodeentrega,
     this.valorentrega,
@@ -107,7 +107,7 @@ class Modeloworddadoscardapio {
       'idMesa': idMesa,
       'idDelivery': idDelivery,
       'idBalcao': idBalcao,
-      'observacoes': observacoes,
+      'observacaoDoPedido': observacaoDoPedido,
       'nomeMesa': nomeMesa,
       'tipodeentrega': tipodeentrega,
       'valorentrega': valorentrega,
@@ -157,7 +157,7 @@ class Modeloworddadoscardapio {
       idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
       idDelivery: map['idDelivery'] != null ? map['idDelivery'] as String : null,
       idBalcao: map['idBalcao'] != null ? map['idBalcao'] as String : null,
-      observacoes: map['observacoes'] != null ? map['observacoes'] as String : null,
+      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
       tipodeentrega: map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
       valorentrega: map['valorentrega'] != null ? map['valorentrega'] as String : null,

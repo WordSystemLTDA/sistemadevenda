@@ -90,7 +90,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
         dados = value;
         _clienteSearchController.text = value.nomeCliente!;
         _mesaDestinoSearchController.text = value.nomeMesa!;
-        _obsconstroller.text = value.observacoes!;
+        _obsconstroller.text = value.observacaoDoPedido!;
         idCliente = value.idCliente!;
         idMesa = value.idMesa!;
         carregando = false;
@@ -104,7 +104,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
         dados = value;
         _clienteSearchController.text = value.nomeCliente!;
         _mesaDestinoSearchController.text = value.nomeMesa!;
-        _obsconstroller.text = value.observacoes!;
+        _obsconstroller.text = value.observacaoDoPedido!;
         idCliente = value.idCliente!;
         idMesa = value.idMesa!;
         carregando = false;

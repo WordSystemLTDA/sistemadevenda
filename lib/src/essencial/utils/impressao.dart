@@ -256,6 +256,7 @@ class Impressao {
     String permanencia = '',
     String valorentrega = '',
     String tipodeentrega = '',
+    String nomeCliente = '',
     bool imprimirSomenteLocal = false,
     bool enviarDeVolta = true,
   }) async {
@@ -288,6 +289,7 @@ class Impressao {
           'nomeUsuario': usuario.usuario?.nome ?? '',
           'idEmpresa': usuario.usuario?.empresa ?? '0',
           'idUsuario': usuario.usuario?.id ?? '1',
+          'nomeCliente': nomeCliente,
           'enviarDeVolta': enviarDeVolta,
         }));
       }

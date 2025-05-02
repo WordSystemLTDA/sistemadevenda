@@ -213,70 +213,7 @@ class _PaginaListarVendasState extends State<PaginaListarVendas> {
                                         ),
                                       );
                                     },
-                                    menuChildren: const [
-                                      // MenuItemButton(
-                                      //   onPressed: () {
-                                      //     showDialog(
-                                      //       context: context,
-                                      //       builder: (context) => Dialog(
-                                      //         child: ListView(
-                                      //           padding: const EdgeInsets.all(20),
-                                      //           shrinkWrap: true,
-                                      //           children: [
-                                      //             const Text(
-                                      //               'Deseja realmente excluir?',
-                                      //               style: TextStyle(fontSize: 20),
-                                      //             ),
-                                      //             const SizedBox(height: 15),
-                                      //             Expanded(
-                                      //               child: Row(
-                                      //                 mainAxisAlignment: MainAxisAlignment.end,
-                                      //                 children: [
-                                      //                   TextButton(
-                                      //                     onPressed: () {
-                                      //                       Navigator.pop(context);
-                                      //                     },
-                                      //                     child: const Text('Carcelar'),
-                                      //                   ),
-                                      //                   const SizedBox(width: 10),
-                                      //                   TextButton(
-                                      //                     onPressed: () async {
-                                      //                       final res = await context.read<FornecedorProvedor>().excluir(item.id);
-
-                                      //                       Navigator.pop(context);
-
-                                      //                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                      //                       ScaffoldMessenger.of(context).showSnackBar(
-                                      //                         SnackBar(
-                                      //                           content:
-                                      //                               Text(res == 'sucesso' ? 'Fornecedor excluído!' : 'Ocorreu um erro!'),
-                                      //                           showCloseIcon: true,
-                                      //                           backgroundColor: res == 'sucesso' ? Colors.green : Colors.red,
-                                      //                         ),
-                                      //                       );
-                                      //                     },
-                                      //                     child: const Text('excluir'),
-                                      //                   ),
-                                      //                 ],
-                                      //               ),
-                                      //             ),
-                                      //           ],
-                                      //         ),
-                                      //       ),
-                                      //     );
-                                      //   },
-                                      //   child: const Row(
-                                      //     children: [
-                                      //       SizedBox(width: 15),
-                                      //       Text(
-                                      //         "Excluir",
-                                      //         style: TextStyle(color: Colors.red),
-                                      //       ),
-                                      //       SizedBox(width: 15),
-                                      //     ],
-                                      //   ),
-                                      // ),
-                                    ],
+                                    menuChildren: const [],
                                   ),
                                 ),
                               ],

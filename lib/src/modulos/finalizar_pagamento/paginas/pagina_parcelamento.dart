@@ -59,6 +59,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
+  final ProvedorBalcao provedorBalcao = Modular.get<ProvedorBalcao>();
   final Server server = Modular.get<Server>();
 
   final _valorController = TextEditingController();
@@ -153,9 +154,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
           provedorCardapio.tipodeentrega,
           carrinhoProvedor.itensCarrinho.listaComandosPedidos,
           widget.totalReceber, // valorAPagarOriginal,
+          provedorBalcao.observacaoDoPedido,
         );
 
     if (sucesso) {
+      provedorBalcao.observacaoDoPedido = '';
+
       if (widget.valor >= double.parse(widget.totalReceber)) {
         var provedorBalcao = Modular.get<ProvedorBalcao>();
         await provedorBalcao.listar();
@@ -173,7 +177,10 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             tipoTela: provedorCardapio.tipo,
             comanda: "Balcão $idvenda",
             numeroPedido: vendaBalcao.numeropedido,
-            nomeCliente: vendaBalcao.nomecliente,
+            // nomeCliente: vendaBalcao.nomecliente,
+            nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
+                ? (vendaBalcao.observacaoDoPedido ?? '')
+                : (vendaBalcao.nomecliente),
             nomeEmpresa: vendaBalcao.nomeEmpresa,
             produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
             tipodeentrega: vendaBalcao.idtipodeentrega,

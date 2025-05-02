@@ -144,67 +144,6 @@ class Server extends ChangeNotifier {
       }
       // });
     });
-
-    // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
-    // if (contextDialog.mounted) {
-    //   Navigator.of(contextDialog).pop();
-    // }
-
-    // if (aparecendoModalReconectar) return;
-
-    // if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-    //   aparecendoModalReconectar = true;
-    //   notifyListeners();
-    //   // print('APARECEU MODAL DE RECONECTAR ${DateTime.now()}');
-
-    //   showDialog(
-    //     context: navigatorKey!.currentContext!,
-    //     barrierDismissible: false,
-    //     builder: (BuildContext contextDialog) {
-    //       return AlertDialog(
-    //         title: const Text('Servidor foi desconectado.'),
-    //         content: const SingleChildScrollView(
-    //           child: ListBody(
-    //             children: <Widget>[
-    //               Text("Clique em 'Reconectar' para tentar se reconectar ao servidor."),
-    //             ],
-    //           ),
-    //         ),
-    //         actions: <Widget>[
-    //           TextButton(
-    //             child: const Text('Reconectar'),
-    //             onPressed: () async {
-    // final ConfigSharedPreferences config = ConfigSharedPreferences();
-    // var conexao = await config.getConexao();
-    // // ConfigSistema.retornarIPMaquina().then((ip) {
-    // start(conexao!.servidor, conexao.porta).then((sucesso) {
-    //   if (sucesso == false) {
-    //     if (navigatorKey?.currentContext != null && navigatorKey!.currentContext!.mounted) {
-    //       ScaffoldMessenger.of(navigatorKey!.currentContext!).showSnackBar(SnackBar(
-    //         content: Text('Não foi possível conectar ao servidor em ${conexao.servidor}:${conexao.porta}, tente conectar manualmente.'),
-    //         backgroundColor: Colors.red,
-    //         showCloseIcon: true,
-    //         duration: const Duration(hours: 1),
-    //       ));
-    //     }
-    //   }
-    //   // });
-    // });
-
-    // // ScaffoldMessenger.of(navigatorKey!.currentContext!).removeCurrentSnackBar();
-    // if (contextDialog.mounted) {
-    //   Navigator.of(contextDialog).pop();
-    // }
-    //             },
-    //           ),
-    //         ],
-    //       );
-    //     },
-    //   ).whenComplete(() {
-    //     aparecendoModalReconectar = false;
-    //     notifyListeners();
-    //   });
-    // }
   }
 
   write(String message) {
@@ -231,106 +170,6 @@ class Server extends ChangeNotifier {
         return;
       }
 
-      // if (dados.tipo == 'MesaNFC' || dados.tipo == 'ComandaNFC') {
-      //   if (contextMesa != null) {
-      //     if (contextMesa!.mounted) {
-      //       Navigator.pop(contextMesa!);
-      //     }
-      //   }
-
-      //   if (contextMesa1 != null) {
-      //     if (contextMesa1!.mounted) {
-      //       Navigator.pop(contextMesa1!);
-      //     }
-      //   }
-      //   if (contextComanda != null) {
-      //     if (contextComanda!.mounted) {
-      //       Navigator.pop(contextComanda!);
-      //     }
-      //   }
-      //   if (contextComanda1 != null) {
-      //     if (contextComanda1!.mounted) {
-      //       Navigator.pop(contextComanda1!);
-      //     }
-      //   }
-      // }
-
-      // if (dados.tipo == 'MesaNFC') {
-      //   // MesaModelo mesa = MesaModelo.fromMap({
-      //   //   'id': dados.id,
-      //   //   'idComandaPedido': dados.idComandaPedido,
-      //   //   'nome': dados.nome,
-      //   //   'codigo': dados.codigo,
-      //   //   'mesaOcupada': dados.ocupado,
-      //   // });
-
-      //   if (dados.ocupado == true) {
-      //     // showDialog(
-      //     //   context: navigatorKey!.currentContext!,
-      //     //   builder: (context) {
-      //     //     contextMesa = context;
-
-      //     //     return ModalAddOuFinalizarMesa(
-      //     //       mesa: mesa,
-      //     //     );
-      //     //   },
-      //     // );
-      //   } else {
-      //     // var provedor = Modular.get<Provedoreswordmesa>();
-      //     // provedor.modalEstaAparecendo = true;
-
-      //     // showDialog(
-      //     //   context: navigatorKey!.currentContext!,
-      //     //   builder: (context) {
-      //     //     contextMesa1 = context;
-
-      //     //     return ModalAbrirMesa(
-      //     //       mesa: mesa,
-      //     //     );
-      //     //   },
-      //     // ).then((value) {
-      //     //   provedor.modalEstaAparecendo = false;
-      //     // });
-      //   }
-      // } else if (dados.tipo == 'ComandaNFC') {
-      //   // Modelowordcomanda comanda = Modelowordcomanda.fromMap({
-      //   //   'id': dados.id,
-      //   //   'idComandaPedido': dados.idComandaPedido,
-      //   //   'nome': dados.nome,
-      //   //   'codigo': dados.codigo,
-      //   //   'comandaOcupada': dados.ocupado,
-      //   // });
-
-      //   if (dados.ocupado == true) {
-      //     // showDialog(
-      //     //   context: navigatorKey!.currentContext!,
-      //     //   builder: (context) {
-      //     //     contextComanda = context;
-
-      //     //     return ModalAddOuFinalizar(
-      //     //       comanda: comanda,
-      //     //     );
-      //     //   },
-      //     // );
-      //   } else {
-      //     // var provedor = Modular.get<Provedoreswordcomandaspedidos>();
-      //     // provedor.modalEstaAparecendo = true;
-
-      //     // showDialog(
-      //     //   context: navigatorKey!.currentContext!,
-      //     //   builder: (context) {
-      //     //     contextComanda1 = context;
-
-      //     //     return ModalAbrirComanda(
-      //     //       comanda: comanda,
-      //     //     );
-      //     //   },
-      //     // ).then((value) {
-      //     //   provedor.modalEstaAparecendo = false;
-      //     // });
-      //   }
-      // }
-
       AtualizacaoDeTela().call(dados);
 
       // pedido
@@ -339,7 +178,9 @@ class Server extends ChangeNotifier {
           produtos: dados.produtos ?? [],
           comanda: dados.comanda ?? '',
           numeroPedido: dados.numeroPedido ?? '',
-          nomeCliente: dados.nomeCliente ?? '',
+          nomeCliente: (dados.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados.observacaoDoPedido ?? '').isNotEmpty
+              ? (dados.observacaoDoPedido ?? '')
+              : (dados.nomeCliente ?? 'Sem Cliente'),
           nomeEmpresa: dados.nomeEmpresa ?? '',
           tipodeentrega: dados.tipodeentrega ?? '',
           tipoTela: dados.tipo == 'Mesa'
@@ -367,6 +208,7 @@ class Server extends ChangeNotifier {
           permanencia: dados.permanencia!,
           tipodeentrega: dados.tipodeentrega!,
           imprimirSomenteLocal: true,
+          nomeCliente: (dados.nomeCliente == '' ? null : dados.nomeCliente) ?? 'Sem Cliente',
           enviarDeVolta: dados.enviarDeVolta ?? false,
         );
       } else if (dados.tipoImpressao == '3') {

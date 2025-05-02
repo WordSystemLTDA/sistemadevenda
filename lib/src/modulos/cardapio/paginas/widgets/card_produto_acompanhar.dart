@@ -227,6 +227,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                         tipodeentrega: widget.dados!.tipodeentrega ?? '',
                                         total: widget.dados!.valorTotal ?? '',
                                         valorentrega: widget.dados!.valorentrega ?? '',
+                                        nomeCliente: (widget.dados!.nomeCliente == '' ? null : widget.dados!.nomeCliente) ?? 'Sem Cliente',
                                       );
                                     }
                                   },
@@ -243,54 +244,47 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                       if (widget.item.quantidade! <= 1) {
                                         showDialog(
                                           context: context,
-                                          builder: (context) => Dialog(
-                                            child: ListView(
-                                              padding: const EdgeInsets.all(20),
-                                              shrinkWrap: true,
-                                              children: [
-                                                const Text(
-                                                  'Deseja realmente excluir?',
-                                                  style: TextStyle(fontSize: 20),
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title: const Text('Excluir produto'),
+                                              content: const SingleChildScrollView(
+                                                child: ListBody(
+                                                  children: <Widget>[
+                                                    Text('Deseja realmente excluir esse item?'),
+                                                  ],
                                                 ),
-                                                const SizedBox(height: 15),
-                                                Expanded(
-                                                  child: Row(
-                                                    mainAxisAlignment: MainAxisAlignment.end,
-                                                    children: [
-                                                      TextButton(
-                                                        onPressed: () {
-                                                          Navigator.pop(context);
-                                                        },
-                                                        child: const Text('Cancelar'),
-                                                      ),
-                                                      const SizedBox(width: 10),
-                                                      TextButton(
-                                                        onPressed: () async {
-                                                          await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
-                                                            if (context.mounted) {
-                                                              carrinhoProvedor.listarComandasPedidos();
-                                                              Navigator.pop(context);
-                                                            }
+                                              ),
+                                              actions: <Widget>[
+                                                TextButton(
+                                                  child: const Text('Cancelar'),
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                ),
+                                                TextButton(
+                                                  child: const Text('Excluir'),
+                                                  onPressed: () async {
+                                                    await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
+                                                      if (context.mounted) {
+                                                        carrinhoProvedor.listarComandasPedidos();
+                                                        Navigator.pop(context);
+                                                      }
 
-                                                            if (sucesso) return;
+                                                      if (sucesso) return;
 
-                                                            if (context.mounted) {
-                                                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                                content: Text('Ocorreu um erro'),
-                                                                showCloseIcon: true,
-                                                              ));
-                                                            }
-                                                          });
-                                                        },
-                                                        child: const Text('excluir'),
-                                                      ),
-                                                    ],
-                                                  ),
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                                          content: Text('Ocorreu um erro'),
+                                                          showCloseIcon: true,
+                                                        ));
+                                                      }
+                                                    });
+                                                  },
                                                 ),
                                               ],
-                                            ),
-                                          ),
+                                            );
+                                          },
                                         );
                                       } else {
                                         widget.setarQuantidade(false);

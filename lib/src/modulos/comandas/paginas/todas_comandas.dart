@@ -262,52 +262,48 @@ class _TodasComandasState extends State<TodasComandas> {
                                                       onPressed: () async {
                                                         showDialog(
                                                           context: context,
-                                                          builder: (context) => Dialog(
-                                                            child: ListView(
-                                                              padding: const EdgeInsets.all(20),
-                                                              shrinkWrap: true,
-                                                              children: [
-                                                                const Text('Deseja realmente excluir?', style: TextStyle(fontSize: 20)),
-                                                                const SizedBox(height: 15),
-                                                                Expanded(
-                                                                  child: Row(
-                                                                    mainAxisAlignment: MainAxisAlignment.end,
-                                                                    children: [
-                                                                      TextButton(
-                                                                        onPressed: () {
-                                                                          Navigator.pop(context);
-                                                                        },
-                                                                        child: const Text('Cancelar'),
-                                                                      ),
-                                                                      const SizedBox(width: 10),
-                                                                      TextButton(
-                                                                        onPressed: () async {
-                                                                          await _state.excluirComanda(item.id).then((value) {
-                                                                            if (context.mounted) {
-                                                                              Navigator.pop(context);
-                                                                            }
+                                                          builder: (context) {
+                                                            return AlertDialog(
+                                                              title: const Text('Exclusão'),
+                                                              content: const SingleChildScrollView(
+                                                                child: ListBody(
+                                                                  children: <Widget>[
+                                                                    Text('Deseja realmente Excluir?'),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                              actions: <Widget>[
+                                                                TextButton(
+                                                                  child: const Text('Cancelar'),
+                                                                  onPressed: () {
+                                                                    Navigator.of(context).pop();
+                                                                  },
+                                                                ),
+                                                                TextButton(
+                                                                  child: const Text('Excluir'),
+                                                                  onPressed: () async {
+                                                                    await _state.excluirComanda(item.id).then((value) {
+                                                                      if (context.mounted) {
+                                                                        Navigator.pop(context);
+                                                                      }
 
-                                                                            if (context.mounted && !value['sucesso']) {
-                                                                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                                                SnackBar(
-                                                                                  content: Text(value['mensagem'] ?? 'Ocorreu um erro!'),
-                                                                                  showCloseIcon: true,
-                                                                                ),
-                                                                              );
-                                                                            } else {
-                                                                              listarComandas();
-                                                                            }
-                                                                          });
-                                                                        },
-                                                                        child: const Text('Excluir'),
-                                                                      ),
-                                                                    ],
-                                                                  ),
+                                                                      if (context.mounted && !value['sucesso']) {
+                                                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                                          SnackBar(
+                                                                            content: Text(value['mensagem'] ?? 'Ocorreu um erro!'),
+                                                                            showCloseIcon: true,
+                                                                          ),
+                                                                        );
+                                                                      } else {
+                                                                        listarComandas();
+                                                                      }
+                                                                    });
+                                                                  },
                                                                 ),
                                                               ],
-                                                            ),
-                                                          ),
+                                                            );
+                                                          },
                                                         );
                                                       },
                                                       child: const Text('Excluir'),

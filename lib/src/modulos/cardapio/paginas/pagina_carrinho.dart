@@ -97,35 +97,33 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (context) => Dialog(
-                      child: ListView(
-                        padding: const EdgeInsets.all(20),
-                        shrinkWrap: true,
-                        children: [
-                          const Text('Deseja realmente excluir todos?', style: TextStyle(fontSize: 20)),
-                          const SizedBox(height: 15),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('Cancelar'),
-                              ),
-                              const SizedBox(width: 10),
-                              TextButton(
-                                onPressed: () async {
-                                  removerTodosItensCarrinho();
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('Excluir'),
-                              ),
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Exclusão de Produtos'),
+                        content: const SingleChildScrollView(
+                          child: ListBody(
+                            children: <Widget>[
+                              Text('Deseja realmente excluir todos os produtos no carrinho?'),
                             ],
                           ),
+                        ),
+                        actions: <Widget>[
+                          TextButton(
+                            child: const Text('Cancelar'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                          TextButton(
+                            child: const Text('Excluir'),
+                            onPressed: () async {
+                              removerTodosItensCarrinho();
+                              Navigator.pop(context);
+                            },
+                          ),
                         ],
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
                 icon: const Icon(Icons.delete),
@@ -179,7 +177,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                           tipoTela: provedorCardapio.tipo,
                           comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
-                          nomeCliente: dados!.nomeCliente!,
+                          // nomeCliente: dados!.nomeCliente!,
+                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                              ? (dados?.observacaoDoPedido ?? '')
+                              : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                           local: '',
@@ -229,7 +230,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                           tipoTela: provedorCardapio.tipo,
                           comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
-                          nomeCliente: dados!.nomeCliente!,
+                          // nomeCliente: dados!.nomeCliente!,
+                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                              ? (dados?.observacaoDoPedido ?? '')
+                              : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                           local: '',

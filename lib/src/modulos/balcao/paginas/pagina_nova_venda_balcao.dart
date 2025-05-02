@@ -254,6 +254,8 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
   }
 
   void abrir() async {
+    provedor.observacaoDoPedido = obsController.text;
+
     Navigator.push(context, MaterialPageRoute(
       builder: (context) {
         return PaginaCardapio(

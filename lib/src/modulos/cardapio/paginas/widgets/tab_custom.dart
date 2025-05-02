@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
@@ -21,6 +23,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
 
   ValueNotifier<bool> carregando = ValueNotifier(true);
+  Timer? _debounce;
 
   void listarProdutos(categoria) async {
     await provedor.listarProdutosPorCategoria(categoria);
@@ -50,25 +53,37 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  height: 40,
                   child: TextField(
                     // readOnly: true,
                     decoration: InputDecoration(
-                      filled: true,
-                      border: InputBorder.none,
-                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey[700]!),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      contentPadding: const EdgeInsets.all(0),
                       hintText: 'Pesquisar...',
                       prefixIcon: IconButton(
                         onPressed: () {
                           Navigator.pop(context);
                           provedor.resetarTudo();
                         },
-                        icon: const Icon(Icons.arrow_back_outlined),
+                        icon: const Icon(Icons.arrow_back),
                       ),
                     ),
                     onChanged: (value) async {
-                      provedor.listarProdutosPorNome(value, widget.category, '0');
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+                      _debounce = Timer(const Duration(milliseconds: 500), () {
+                        if (value.isEmpty) {
+                          provedor.listarProdutosPorNome('', widget.category, '0');
+
+                          return;
+                        }
+
+                        provedor.listarProdutosPorNome(value, widget.category, '0');
+                      });
                     },
                     // onTap: () => _searchController.openView(),
                   ),

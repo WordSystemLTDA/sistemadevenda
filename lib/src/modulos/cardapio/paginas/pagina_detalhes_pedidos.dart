@@ -88,79 +88,76 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
 
     showDialog(
       context: context,
-      builder: (contextDialog) => Dialog(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          shrinkWrap: true,
-          children: [
-            const Text(
-              'Deseja realmente fechar essa comanda?',
-              style: TextStyle(fontSize: 20),
-            ),
-            const SizedBox(height: 15),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Não'),
-                ),
-                const SizedBox(width: 10),
-                TextButton(
-                  onPressed: () async {
-                    await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
-                      if (mounted) {
-                        if (value.sucesso) {
-                          Modular.get<Server>().write(jsonEncode({
-                            'tipo': widget.tipo.nome,
-                          }));
-                        }
+      builder: (contextDialog) => AlertDialog(
+        title: Text("Fechamento de Comanda"),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Não'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('Sim'),
+            onPressed: () async {
+              await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
+                if (mounted) {
+                  if (value.sucesso) {
+                    Modular.get<Server>().write(jsonEncode({
+                      'tipo': widget.tipo.nome,
+                    }));
+                  }
 
-                        Navigator.pop(context);
+                  Navigator.pop(context);
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
-                        );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
+                  );
 
-                        final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
-                        final newDuration = ConfigSistema.formatarHora(duration);
+                  final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
+                  final newDuration = ConfigSistema.formatarHora(duration);
 
-                        Impressao.comprovanteDeConsumo(
-                          // tipoImpressao: '2',
-                          // tipo: widget.tipo,
-                          // nomeCliente: dados!.nomeCliente!,
-                          tipodeentrega: dados!.tipodeentrega ?? '',
-                          valorentrega: dados!.valorentrega ?? '',
-                          nomeEmpresa: dados!.nomeEmpresa!,
-                          produtos: dados!.produtos!,
-                          nomelancamento: dados!.nomelancamento!,
-                          somaValorHistorico: dados!.somaValorHistorico!,
-                          celularEmpresa: dados!.celularEmpresa!,
-                          cnpjEmpresa: dados!.cnpjEmpresa!,
-                          enderecoEmpresa: dados!.enderecoEmpresa!,
-                          permanencia: newDuration,
-                          local: dados!.nome!,
-                          total: dados!.valorTotal!,
-                          numeroPedido: dados!.numeroPedido!,
-                        );
+                  Impressao.comprovanteDeConsumo(
+                    // tipoImpressao: '2',
+                    // tipo: widget.tipo,
+                    // nomeCliente: dados!.nomeCliente!,
+                    tipodeentrega: dados!.tipodeentrega ?? '',
+                    valorentrega: dados!.valorentrega ?? '',
+                    nomeEmpresa: dados!.nomeEmpresa!,
+                    produtos: dados!.produtos!,
+                    nomelancamento: dados!.nomelancamento!,
+                    somaValorHistorico: dados!.somaValorHistorico!,
+                    celularEmpresa: dados!.celularEmpresa!,
+                    cnpjEmpresa: dados!.cnpjEmpresa!,
+                    enderecoEmpresa: dados!.enderecoEmpresa!,
+                    permanencia: newDuration,
+                    local: dados!.nome!,
+                    total: dados!.valorTotal!,
+                    numeroPedido: dados!.numeroPedido!,
+                    nomeCliente: (dados!.nomeCliente == '' ? null : dados!.nomeCliente) ?? 'Sem Cliente',
+                  );
 
-                        if (widget.tipo == TipoCardapio.mesa) {
-                          provedorMesas.listarMesas('');
-                        } else if (widget.tipo == TipoCardapio.comanda) {
-                          provedorComanda.listarComandas('');
-                        }
+                  if (widget.tipo == TipoCardapio.mesa) {
+                    provedorMesas.listarMesas('');
+                  } else if (widget.tipo == TipoCardapio.comanda) {
+                    provedorComanda.listarComandas('');
+                  }
 
-                        await listarComandasPedidos();
-                      }
-                    });
-                  },
-                  child: const Text('Sim'),
-                ),
-              ],
-            ),
-          ],
+                  await listarComandasPedidos();
+                }
+              });
+            },
+          ),
+        ],
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: [
+              const Text(
+                'Deseja realmente fechar essa comanda?',
+                style: TextStyle(fontSize: 20),
+              ),
+            ],
+          ),
         ),
       ),
     );

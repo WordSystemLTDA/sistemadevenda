@@ -63,21 +63,23 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
                   item?.observacao = observacoesController.text;
                   item?.opcoesPacotesListaFinal = [
                     ...(item.opcoesPacotesListaFinal?.toList() ?? []).where((element) => element.id != 11),
-                    ModeloOpcoesPacotes(
-                      id: 11,
-                      titulo: 'Observação',
-                      tipo: 7,
-                      obrigatorio: false,
-                      dados: [
-                        ModeloDadosOpcoesPacotes(
-                          id: '0',
-                          nome: observacoesController.text,
-                          foto: '',
-                          estaSelecionado: false,
-                          excluir: false,
-                        ),
-                      ],
-                    ),
+                    if (observacoesController.text.isNotEmpty) ...[
+                      ModeloOpcoesPacotes(
+                        id: 11,
+                        titulo: 'Observação',
+                        tipo: 7,
+                        obrigatorio: false,
+                        dados: [
+                          ModeloDadosOpcoesPacotes(
+                            id: '0',
+                            nome: observacoesController.text,
+                            foto: '',
+                            estaSelecionado: false,
+                            excluir: false,
+                          ),
+                        ],
+                      ),
+                    ],
                   ];
                 });
                 Navigator.pop(context);

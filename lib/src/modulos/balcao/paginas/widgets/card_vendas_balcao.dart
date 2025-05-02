@@ -162,7 +162,7 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               tipoTela: TipoCardapio.balcao,
                               comanda: "Balcão ${item.id}",
                               numeroPedido: item.numeropedido,
-                              nomeCliente: item.nomecliente,
+                              nomeCliente: (item.nomecliente) == 'Sem Cliente' && (item.observacaoDoPedido ?? '').isNotEmpty ? (item.observacaoDoPedido ?? '') : (item.nomecliente),
                               nomeEmpresa: item.nomeEmpresa,
                               produtos: informacoes.produtos,
                               tipodeentrega: informacoes.informacoes.tipodeentrega,

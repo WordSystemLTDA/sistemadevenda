@@ -11,6 +11,7 @@ class ProvedorBalcao extends ChangeNotifier {
   List<ModeloVendasBalcao> dados = [];
   bool listando = false;
   bool temMaisParaCarregar = true;
+  String observacaoDoPedido = '';
 
   DateTimeRange _dataSelecionada = DateTimeRange(start: DateTime.now(), end: DateTime.now());
   DateTimeRange get dataSelecionada => _dataSelecionada;

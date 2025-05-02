@@ -72,6 +72,7 @@ class InformacoesRetornoModelo {
   final String valorentrega;
   final String dataAbertura;
   final String? motivoCancelamento;
+  final String? observacaoDoPedido;
 
   InformacoesRetornoModelo({
     required this.cliente,
@@ -144,6 +145,7 @@ class InformacoesRetornoModelo {
     required this.valorentrega,
     required this.dataAbertura,
     this.motivoCancelamento,
+    this.observacaoDoPedido,
   });
 
   Map<String, dynamic> toMap() {
@@ -218,6 +220,7 @@ class InformacoesRetornoModelo {
       'valorentrega': valorentrega,
       'dataAbertura': dataAbertura,
       'motivoCancelamento': motivoCancelamento,
+      'observacaoDoPedido': observacaoDoPedido,
     };
   }
 
@@ -293,6 +296,7 @@ class InformacoesRetornoModelo {
       valorentrega: map['valorentrega'] as String,
       dataAbertura: map['dataAbertura'] as String,
       motivoCancelamento: map['motivoCancelamento'] != null ? map['motivoCancelamento'] as String : null,
+      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
     );
   }
 
