@@ -17,6 +17,7 @@ class CardProduto extends StatefulWidget {
   final SearchController? searchController;
   final Modelowordprodutos item;
   final ModeloCategoria? categoria;
+  final bool finalizar;
 
   const CardProduto({
     super.key,
@@ -24,6 +25,7 @@ class CardProduto extends StatefulWidget {
     required this.estaPesquisando,
     required this.item,
     required this.categoria,
+    required this.finalizar,
   });
 
   @override
@@ -34,6 +36,44 @@ class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   // final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+
+  Widget retornoValorVendaProduto() {
+    var texto = '';
+
+    // if (provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).firstOrNull != null &&
+    //     provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).first.tamanhosPizza != null &&
+    //     provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).first.tamanhosPizza!.isNotEmpty &&
+    //     provedor.tamanhosPizza == null) {
+    //   texto = 'A partir ';
+    //   texto += (double.parse(itemProduto.valorVenda) * (widget.finalizar ? (itemProduto.quantidade ?? 1) : 1)).obterReal(2);
+    // } else {
+    if (widget.item.habilTipo == 'Pacote' && (widget.item.opcoesPacotesListaFinal != null && widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
+      var dadosPacotes = widget.item.opcoesPacotesListaFinal!.where((element) => element.id == 4).firstOrNull;
+
+      // se tiver tamanhos irá aparecer assim
+      if (dadosPacotes != null && (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
+        if ((dadosPacotes.dados!.first.valor == dadosPacotes.dados!.last.valor)) {
+          texto += double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
+        } else {
+          texto += "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
+        }
+      } else {
+        texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+      }
+    } else {
+      texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+    }
+    // }
+
+    if (widget.item.id == '563') {
+      print('VV --> ${widget.item.valorVenda}');
+    }
+
+    return Text(
+      texto,
+      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -334,10 +374,11 @@ class _CardProdutoState extends State<CardProduto> {
                                 width: MediaQuery.of(context).size.width / 1.5,
                                 child: Align(
                                   alignment: Alignment.bottomRight,
-                                  child: Text(
-                                    double.parse(item.valorVenda).obterReal(),
-                                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
-                                  ),
+                                  child: retornoValorVendaProduto(),
+                                  // child: Text(
+                                  //   double.parse(item.valorVenda).obterReal(),
+                                  //   style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                  // ),
                                 ),
                               ),
                             ] else ...[

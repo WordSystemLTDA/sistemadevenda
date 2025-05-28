@@ -10,8 +10,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 class TabCustom extends StatefulWidget {
   final String category;
   final ModeloCategoria categoria;
+  final bool finalizar;
 
-  const TabCustom({super.key, required this.category, required this.categoria});
+  const TabCustom({super.key, required this.category, required this.categoria, required this.finalizar});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
@@ -119,6 +120,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                               estaPesquisando: false,
                               item: item,
                               categoria: widget.categoria,
+                              finalizar: widget.finalizar,
                             );
                           },
                         );

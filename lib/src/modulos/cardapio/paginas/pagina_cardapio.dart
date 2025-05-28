@@ -75,6 +75,8 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   List<String> listaCategorias = [];
   int indexTabBar = 0;
 
+  bool finalizar = false;
+
   @override
   void initState() {
     super.initState();
@@ -249,6 +251,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                   return TabCustom(
                     category: e.id,
                     categoria: e,
+                    finalizar: finalizar,
                   );
                 })
               ],
