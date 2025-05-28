@@ -354,7 +354,7 @@ class _CardProdutoState extends State<CardProduto> {
                                     alignment: Alignment.bottomRight,
                                     child: Text(
                                       "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),
                                 ),
@@ -365,7 +365,7 @@ class _CardProdutoState extends State<CardProduto> {
                                     alignment: Alignment.bottomRight,
                                     child: Text(
                                       double.parse(item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor).obterReal(),
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),
                                 ),
@@ -382,7 +382,7 @@ class _CardProdutoState extends State<CardProduto> {
                                             item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
                                         ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                         : (double.tryParse(item.valorVenda) ?? 0).obterReal(),
-                                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
                                   // child: Text(
                                   //   double.parse(item.valorVenda).obterReal(),

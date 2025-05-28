@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 class Modelowordprodutos {
   String id;
+  String? hashprodutos;
   String? iditensvenda;
   String nome;
   String codigo;
@@ -54,6 +55,7 @@ class Modelowordprodutos {
   Modelowordprodutos({
     required this.id,
     this.iditensvenda,
+    this.hashprodutos,
     required this.nome,
     required this.codigo,
     required this.estoque,
@@ -98,6 +100,7 @@ class Modelowordprodutos {
     return <String, dynamic>{
       'id': id,
       'iditensvenda': iditensvenda,
+      'hashprodutos': hashprodutos,
       'nome': nome,
       'codigo': codigo,
       'estoque': estoque,
@@ -142,6 +145,7 @@ class Modelowordprodutos {
   factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
     return Modelowordprodutos(
       id: map['id'] as String,
+      hashprodutos: map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
       iditensvenda: map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,

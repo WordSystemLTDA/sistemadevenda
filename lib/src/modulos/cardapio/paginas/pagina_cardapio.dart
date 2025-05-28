@@ -1,5 +1,4 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'package:app/src/essencial/widgets/custom_physics_tabview.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -243,7 +242,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             length: provedor.categorias.length,
             child: TabBarView(
               controller: _tabController,
-              physics: const CustomTabBarViewScrollPhysics(),
+              // physics: const CustomTabBarViewScrollPhysics(),
               children: [
                 ...provedor.categorias.map((e) {
                   listaCategorias.add(e.id);
