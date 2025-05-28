@@ -73,7 +73,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                           },
                         ),
                       ],
-                      if (opcoesPacote.id == 1 || opcoesPacote.id == 4) ...[
+                      if (opcoesPacote.id == 1 || opcoesPacote.id == 4 || opcoesPacote.id == 11) ...[
                         Radio<bool>(
                           value: true,
                           groupValue: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).where((element) => element.id == item.id).isNotEmpty,
@@ -104,7 +104,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(item.nome, style: const TextStyle(fontSize: 15)),
-                          if (item.valor != null) ...[
+                          if (item.valor != null && double.parse(item.valor ?? '0') > 0) ...[
                             Text(
                               double.parse(item.valor ?? '0').obterReal(),
                               style: const TextStyle(fontSize: 15, color: Colors.green),

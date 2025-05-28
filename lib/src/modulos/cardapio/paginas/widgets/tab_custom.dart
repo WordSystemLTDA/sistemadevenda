@@ -23,11 +23,13 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   bool get wantKeepAlive => true;
   final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
 
+  final _scrollController = ScrollController();
+
   ValueNotifier<bool> carregando = ValueNotifier(true);
   Timer? _debounce;
 
-  void listarProdutos(categoria) async {
-    await provedor.listarProdutosPorCategoria(categoria);
+  void listarProdutos(categoria, {bool carregarMais = false}) async {
+    await provedor.listarProdutosPorCategoria(categoria, carregarMais: carregarMais);
     carregando.value = false;
   }
 
@@ -38,7 +40,21 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   @override
   void initState() {
     super.initState();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.maxScrollExtent == _scrollController.offset) {
+        provedor.paginas[widget.category] = (provedor.paginas[widget.category] ?? 1) + 1;
+        listarProdutos(widget.category, carregarMais: true);
+      }
+    });
     listarProdutos(widget.category);
+  }
+
+  @override
+  void dispose() {
+    provedor.paginas[widget.category] = 1;
+
+    super.dispose();
   }
 
   @override
@@ -46,7 +62,10 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
     super.build(context);
 
     return RefreshIndicator(
-      onRefresh: () async => listarProdutos(widget.category),
+      onRefresh: () async {
+        provedor.paginas[widget.category] = 1;
+        listarProdutos(widget.category);
+      },
       child: ListenableBuilder(
         listenable: provedor,
         builder: (context, _) {
@@ -107,6 +126,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                         );
                       } else {
                         return ListView.builder(
+                          controller: _scrollController,
                           shrinkWrap: true,
                           itemCount: provedor.produtos.length + 1,
                           itemBuilder: (context, index) {

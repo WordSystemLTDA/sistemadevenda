@@ -238,59 +238,59 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                               ],
                               Row(
                                 children: [
-                                  IconButton(
-                                    icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
-                                    onPressed: () {
-                                      if (widget.item.quantidade! <= 1) {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) {
-                                            return AlertDialog(
-                                              title: const Text('Excluir produto'),
-                                              content: const SingleChildScrollView(
-                                                child: ListBody(
-                                                  children: <Widget>[
-                                                    Text('Deseja realmente excluir esse item?'),
-                                                  ],
-                                                ),
-                                              ),
-                                              actions: <Widget>[
-                                                TextButton(
-                                                  child: const Text('Cancelar'),
-                                                  onPressed: () {
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                ),
-                                                TextButton(
-                                                  child: const Text('Excluir'),
-                                                  onPressed: () async {
-                                                    await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
-                                                      if (context.mounted) {
-                                                        carrinhoProvedor.listarComandasPedidos();
-                                                        Navigator.pop(context);
-                                                      }
+                                  // IconButton(
+                                  //   icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
+                                  //   onPressed: () {
+                                  //     if (widget.item.quantidade! <= 1) {
+                                  //       showDialog(
+                                  //         context: context,
+                                  //         builder: (context) {
+                                  //           return AlertDialog(
+                                  //             title: const Text('Excluir produto'),
+                                  //             content: const SingleChildScrollView(
+                                  //               child: ListBody(
+                                  //                 children: <Widget>[
+                                  //                   Text('Deseja realmente excluir esse item?'),
+                                  //                 ],
+                                  //               ),
+                                  //             ),
+                                  //             actions: <Widget>[
+                                  //               TextButton(
+                                  //                 child: const Text('Cancelar'),
+                                  //                 onPressed: () {
+                                  //                   Navigator.of(context).pop();
+                                  //                 },
+                                  //               ),
+                                  //               TextButton(
+                                  //                 child: const Text('Excluir'),
+                                  //                 onPressed: () async {
+                                  //                   await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
+                                  //                     if (context.mounted) {
+                                  //                       carrinhoProvedor.listarComandasPedidos();
+                                  //                       Navigator.pop(context);
+                                  //                     }
 
-                                                      if (sucesso) return;
+                                  //                     if (sucesso) return;
 
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                          content: Text('Ocorreu um erro'),
-                                                          showCloseIcon: true,
-                                                        ));
-                                                      }
-                                                    });
-                                                  },
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-                                      } else {
-                                        widget.setarQuantidade(false);
-                                      }
-                                    },
-                                  ),
+                                  //                     if (context.mounted) {
+                                  //                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                  //                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  //                         content: Text('Ocorreu um erro'),
+                                  //                         showCloseIcon: true,
+                                  //                       ));
+                                  //                     }
+                                  //                   });
+                                  //                 },
+                                  //               ),
+                                  //             ],
+                                  //           );
+                                  //         },
+                                  //       );
+                                  //     } else {
+                                  //       widget.setarQuantidade(false);
+                                  //     }
+                                  //   },
+                                  // ),
                                   const SizedBox(width: 10),
                                   SizedBox(
                                     width: 30,
@@ -300,13 +300,13 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                       style: const TextStyle(fontSize: 16),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  IconButton(
-                                    icon: const Icon(Icons.add_circle_outline_outlined),
-                                    onPressed: () {
-                                      widget.setarQuantidade(true);
-                                    },
-                                  ),
+                                  const SizedBox(width: 60),
+                                  // IconButton(
+                                  //   icon: const Icon(Icons.add_circle_outline_outlined),
+                                  //   onPressed: () {
+                                  //     widget.setarQuantidade(true);
+                                  //   },
+                                  // ),
                                 ],
                               ),
                             ],

@@ -132,6 +132,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       return;
     }
 
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 11) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([11], false, '0').isEmpty) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Selecione um sabor antes de continuar.'),
+        showCloseIcon: true,
+      ));
+
+      return;
+    }
+
     setState(() => carregando = !carregando);
 
     if (provedorCardapio.tamanhosPizza != null) {

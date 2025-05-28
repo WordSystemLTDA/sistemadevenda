@@ -7,6 +7,7 @@ class ProvedorProdutos extends ChangeNotifier {
 
   ProvedorProdutos(this._produtoService);
 
+  Map<String, int> paginas = {};
   List<Modelowordprodutos> _produtos = [];
   List<Modelowordprodutos> get produtos => _produtos;
   set produtos(List<Modelowordprodutos> value) {
@@ -19,19 +20,25 @@ class ProvedorProdutos extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> listarProdutosPorCategoria(String category) async {
-    final res = await _produtoService.listarPorCategoria(category);
+  Future<void> listarProdutosPorCategoria(String category, {bool carregarMais = false}) async {
+    if (paginas[category] == null) {
+      paginas[category] = 1;
+    }
+
+    final res = await _produtoService.listarPorCategoria(category, paginas[category] ?? 1);
     if (res.isEmpty) return;
 
-    produtos = res;
+    if (carregarMais) {
+      produtos = [...produtos, ...res];
+    } else {
+      produtos = res;
+    }
     notifyListeners();
   }
 
   Future<void> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
+    paginas[categoria] = 1;
     final res = await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
-    // if (res.isEmpty) return;
-
-    // print(res);
 
     produtos = res;
     notifyListeners();

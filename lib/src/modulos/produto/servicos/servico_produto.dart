@@ -15,11 +15,12 @@ class ServicoProduto {
   // late final empresa = usuarioProvider['empresa'];
   // late final idUsuario = usuarioProvider['id'];
 
-  Future<List<Modelowordprodutos>> listarPorCategoria(String categoria) async {
+  Future<List<Modelowordprodutos>> listarPorCategoria(String categoria, int pagina) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario');
+    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina');
+    // print(response.realUri);
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {

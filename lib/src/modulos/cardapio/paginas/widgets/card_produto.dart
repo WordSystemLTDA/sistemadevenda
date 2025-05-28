@@ -7,6 +7,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.d
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ class CardProduto extends StatefulWidget {
 
 class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  // final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+  final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
 
   Widget retornoValorVendaProduto() {
@@ -65,9 +66,9 @@ class _CardProdutoState extends State<CardProduto> {
     }
     // }
 
-    if (widget.item.id == '563') {
-      print('VV --> ${widget.item.valorVenda}');
-    }
+    // if (widget.item.id == '563') {
+    //   print('VV --> ${widget.item.valorVenda}');
+    // }
 
     return Text(
       texto,
@@ -374,7 +375,15 @@ class _CardProdutoState extends State<CardProduto> {
                                 width: MediaQuery.of(context).size.width / 1.5,
                                 child: Align(
                                   alignment: Alignment.bottomRight,
-                                  child: retornoValorVendaProduto(),
+                                  // child: retornoValorVendaProduto(),
+                                  child: Text(
+                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
+                                            _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
+                                            item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
+                                        ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
+                                        : (double.tryParse(item.valorVenda) ?? 0).obterReal(),
+                                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+                                  ),
                                   // child: Text(
                                   //   double.parse(item.valorVenda).obterReal(),
                                   //   style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),

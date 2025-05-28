@@ -97,6 +97,7 @@ class ServicoCardapio {
 
     try {
       var campos = {
+        // 'produtos': produtos.map((e) => e.toMap()).toList(),
         'produtos': produtos,
         "id_comanda_pedido": idComandaPedido,
         "id_mesa": idMesa,
@@ -105,7 +106,13 @@ class ServicoCardapio {
         'id_cliente': idcliente,
       };
 
+      // print(produtos[0].opcoesPacotesListaFinal!.where((e) => e.tipo == 2).map((e) => e.toMap()).toList());
+      // return (false, '');
+
       var response = await dio.cliente.post('mesas/inserir_produtos.php', data: jsonEncode(campos));
+
+      // print(response.data);
+      // return (false, '');
 
       var jsonData = response.data;
       bool sucesso = jsonData['sucesso'];
@@ -113,6 +120,8 @@ class ServicoCardapio {
 
       return (sucesso, mensagem);
     } on DioException catch (e) {
+      // print(e);
+
       if (e.response == null) {
         if (kDebugMode) {
           log('ERRO API', error: e.error);
