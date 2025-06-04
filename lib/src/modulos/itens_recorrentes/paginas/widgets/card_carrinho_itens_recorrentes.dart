@@ -1,7 +1,7 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 class CardCarrinhoItensRecorrentes extends StatefulWidget {
   final Modelowordprodutos item;
   final String idComanda;
-
+  final String idComandaPedido;
   final int index;
   final String idMesa;
   final dynamic value;
@@ -20,6 +20,7 @@ class CardCarrinhoItensRecorrentes extends StatefulWidget {
     required this.item,
     required this.index,
     required this.idComanda,
+    required this.idComandaPedido,
     required this.idMesa,
     required this.value,
     required this.setarQuantidade,
@@ -30,7 +31,8 @@ class CardCarrinhoItensRecorrentes extends StatefulWidget {
 }
 
 class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorrentes> with TickerProviderStateMixin {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  // final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
 
   late final AnimationController _controller;
   late final Animation<double> _animation;
@@ -191,22 +193,27 @@ class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorren
                                                 TextButton(
                                                   child: const Text('Excluir'),
                                                   onPressed: () async {
-                                                    await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index).then((sucesso) {
-                                                      if (context.mounted) {
-                                                        carrinhoProvedor.listarComandasPedidos();
-                                                        Navigator.pop(context);
-                                                      }
+                                                    await provedorItensRecorrentes.excluirItemCarrinho(widget.idComandaPedido, widget.index);
+                                                    if (context.mounted) {
+                                                      provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                                                      Navigator.pop(context);
+                                                    }
+                                                    // await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index).then((sucesso) {
+                                                    //   if (context.mounted) {
+                                                    //     carrinhoProvedor.listarComandasPedidos();
+                                                    //     Navigator.pop(context);
+                                                    //   }
 
-                                                      if (sucesso) return;
+                                                    //   if (sucesso) return;
 
-                                                      if (context.mounted) {
-                                                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                          content: Text('Ocorreu um erro'),
-                                                          showCloseIcon: true,
-                                                        ));
-                                                      }
-                                                    });
+                                                    //   if (context.mounted) {
+                                                    //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                                    //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                                    //       content: Text('Ocorreu um erro'),
+                                                    //       showCloseIcon: true,
+                                                    //     ));
+                                                    //   }
+                                                    // });
                                                   },
                                                 ),
                                               ],

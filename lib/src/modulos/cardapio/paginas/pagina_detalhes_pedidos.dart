@@ -7,10 +7,10 @@ import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_itens_recorrentes.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/itens_recorrentes/paginas/pagina_itens_recorrentes.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +48,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
   String idComanda = '0';
   String idComandaPedido = '0';
   String idMesa = '0';
+  String idCliente = '0';
 
   @override
   void initState() {
@@ -377,6 +378,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                 idComandaPedido: idComandaPedido,
                                 idMesa: idMesa,
                                 tipo: widget.tipo,
+                                idCliente: idCliente,
                               );
                             },
                           ));

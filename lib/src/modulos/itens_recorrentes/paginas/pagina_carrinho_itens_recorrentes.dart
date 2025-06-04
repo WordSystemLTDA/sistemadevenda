@@ -5,21 +5,28 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
-import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
+import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_carrinho_itens_recorrentes.dart';
+import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
+  final String idComanda;
+  final String idComandaPedido;
+  final String idMesa;
+  final String idCliente;
+
   const PaginaCarrinhoItensRecorrentes({
     super.key,
+    required this.idComanda,
+    required this.idComandaPedido,
+    required this.idMesa,
+    required this.idCliente,
   });
 
   @override
@@ -27,18 +34,19 @@ class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
 }
 
 class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensRecorrentes> with TickerProviderStateMixin {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  // final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  // final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   final ProvedorFinalizarPagamento provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
   final Server server = Modular.get<Server>();
 
   bool isLoading = false;
   Modeloworddadoscardapio? dados;
-  bool carregando = true;
+  bool carregando = false;
 
   @override
   void initState() {
@@ -47,37 +55,39 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
   }
 
   void listar() async {
-    await carrinhoProvedor.listarComandasPedidos();
-    await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
-      dados = value;
-    });
+    // await carrinhoProvedor.listarComandasPedidos();
+    // await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
+    //   dados = value;
+    // });
 
-    setState(() {
-      carregando = false;
-    });
+    // setState(() {
+    //   carregando = false;
+    // });
   }
 
-  void removerTodosItensCarrinho() async {
-    List<String> listaIdItemComanda = [];
-    for (int index = 0; index < carrinhoProvedor.itensCarrinho.listaComandosPedidos.length; index++) {
-      listaIdItemComanda.add(carrinhoProvedor.itensCarrinho.listaComandosPedidos[index].id);
-    }
+  Future<void> removerTodosItensCarrinho() async {
+    // aqui
+    await provedorItensRecorrentes.removerComandasPedidos(widget.idComandaPedido);
+    // List<String> listaIdItemComanda = [];
+    // for (int index = 0; index < carrinhoProvedor.itensCarrinho.listaComandosPedidos.length; index++) {
+    //   listaIdItemComanda.add(carrinhoProvedor.itensCarrinho.listaComandosPedidos[index].id);
+    // }
 
-    await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
-      if (mounted) {
-        carrinhoProvedor.listarComandasPedidos();
-      }
+    // await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
+    //   if (mounted) {
+    //     carrinhoProvedor.listarComandasPedidos();
+    //   }
 
-      if (sucesso) return;
+    //   if (sucesso) return;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Ocorreu um erro'),
-          showCloseIcon: true,
-        ));
-      }
-    });
+    //   if (mounted) {
+    //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    //       content: Text('Ocorreu um erro'),
+    //       showCloseIcon: true,
+    //     ));
+    //   }
+    // });
   }
 
   @override
@@ -85,14 +95,15 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
     double width = MediaQuery.of(context).size.width;
 
     return AnimatedBuilder(
-      animation: carrinhoProvedor,
+      animation: provedorItensRecorrentes,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
           title: const Text('Carrinho'),
+          // title: const Text('Carrinho Itens Recorrentes'),
           centerTitle: true,
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
-            if (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isNotEmpty) ...[
+            if (provedorItensRecorrentes.itensCarrinho.isNotEmpty) ...[
               IconButton(
                 onPressed: () {
                   showDialog(
@@ -117,8 +128,11 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           TextButton(
                             child: const Text('Excluir'),
                             onPressed: () async {
-                              removerTodosItensCarrinho();
-                              Navigator.pop(context);
+                              await removerTodosItensCarrinho();
+                              if (context.mounted) {
+                                provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                                Navigator.pop(context);
+                              }
                             },
                           ),
                         ],
@@ -132,7 +146,7 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: (carregando || carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty)
+        floatingActionButton: (carregando || provedorItensRecorrentes.itensCarrinho.isEmpty)
             ? null
             : FloatingActionButton.extended(
                 shape: const RoundedRectangleBorder(
@@ -141,25 +155,27 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                 onPressed: () async {
                   setState(() => isLoading = !isLoading);
 
-                  provedorFinalizarPagamento.idVenda = provedorCardapio.id;
-                  provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
+                  // provedorFinalizarPagamento.idVenda = provedorCardapio.id;
+                  // provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
 
-                  if (provedorCardapio.tipo == TipoCardapio.balcao) {
-                    setState(() => isLoading = !isLoading);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
-                        builder: (context) => const PaginaFinalizarAcrescimo(),
-                      ),
-                    );
-                  } else if (provedorCardapio.tipo == TipoCardapio.mesa) {
+                  // if (provedorCardapio.tipo == TipoCardapio.balcao) {
+                  //   setState(() => isLoading = !isLoading);
+                  //   Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
+                  //       builder: (context) => const PaginaFinalizarAcrescimo(),
+                  //     ),
+                  //   );
+                  // } else
+                  // if (provedorCardapio.tipo == TipoCardapio.mesa) {
+                  if (widget.idMesa != '0') {
                     await servicoCardapio
                         .inserirProdutosMesa(
-                      carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                      provedorCardapio.idMesa,
-                      provedorCardapio.id,
-                      provedorCardapio.idCliente,
+                      provedorItensRecorrentes.itensCarrinho,
+                      widget.idMesa,
+                      widget.idComandaPedido,
+                      widget.idCliente,
                     )
                         .then((resposta) {
                       var (sucesso, mensagem) = resposta;
@@ -173,16 +189,19 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
 
                         removerTodosItensCarrinho();
                         Impressao.comprovanteDePedido(
-                          tipodeentrega: provedorCardapio.tipodeentrega,
-                          tipoTela: provedorCardapio.tipo,
-                          comanda: dados!.nome!,
-                          numeroPedido: dados!.numeroPedido!,
-                          // nomeCliente: dados!.nomeCliente!,
+                          // TODO: tipodeentrega
+                          tipodeentrega: '',
+                          tipoTela: TipoCardapio.mesa,
+                          comanda: dados?.nome ?? '',
+                          numeroPedido: dados?.numeroPedido ?? '',
+                          // comanda: dados!.nome!,
+                          // numeroPedido: dados!.numeroPedido!,
                           nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
-                          nomeEmpresa: dados!.nomeEmpresa!,
-                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          nomeEmpresa: dados?.nomeEmpresa ?? '',
+                          // nomeEmpresa: dados!.nomeEmpresa!,
+                          produtos: provedorItensRecorrentes.itensCarrinho,
                           local: '',
                         );
 
@@ -206,11 +225,11 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                   } else {
                     await servicoCardapio
                         .inserirProdutosComanda(
-                      carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                      provedorCardapio.idMesa,
-                      provedorCardapio.id,
-                      provedorCardapio.idComanda,
-                      provedorCardapio.idCliente,
+                      provedorItensRecorrentes.itensCarrinho,
+                      widget.idMesa,
+                      widget.idComandaPedido,
+                      widget.idComanda,
+                      widget.idCliente,
                     )
                         .then((resposta) {
                       var (sucesso, mensagem) = resposta;
@@ -226,16 +245,20 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
 
                         removerTodosItensCarrinho();
                         Impressao.comprovanteDePedido(
-                          tipodeentrega: provedorCardapio.tipodeentrega,
-                          tipoTela: provedorCardapio.tipo,
-                          comanda: dados!.nome!,
-                          numeroPedido: dados!.numeroPedido!,
+                          // TODO: tipodeentrega
+                          tipodeentrega: '',
+                          tipoTela: TipoCardapio.comanda,
+                          comanda: dados?.nome ?? '',
+                          numeroPedido: dados?.numeroPedido ?? '',
+                          // comanda: dados!.nome!,
+                          // numeroPedido: dados!.numeroPedido!,
                           // nomeCliente: dados!.nomeCliente!,
                           nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
-                          nomeEmpresa: dados!.nomeEmpresa!,
-                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                          nomeEmpresa: dados?.nomeEmpresa ?? '',
+                          // nomeEmpresa: dados!.nomeEmpresa!,
+                          produtos: provedorItensRecorrentes.itensCarrinho,
                           local: '',
                         );
 
@@ -273,58 +296,68 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           children: [
                             const Text('Finalizar'),
                             const SizedBox(width: 10),
-                            Text(carrinhoProvedor.itensCarrinho.precoTotal.obterReal()),
+                            Text(provedorItensRecorrentes.precoTotal.obterReal()),
                           ],
                         ),
                       ),
               ),
         body: carregando
             ? const Center(child: CircularProgressIndicator())
-            : carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty
+            : provedorItensRecorrentes.itensCarrinho.isEmpty
                 ? ListView(
                     children: const [
                       SizedBox(height: 100, child: Center(child: Text('Não há itens na Comanda'))),
                     ],
                   )
                 : ListView.builder(
-                    itemCount: carrinhoProvedor.itensCarrinho.listaComandosPedidos.length,
+                    itemCount: provedorItensRecorrentes.itensCarrinho.length,
                     padding: const EdgeInsets.only(bottom: 150, left: 10, right: 10, top: 10),
                     itemBuilder: (context, index) {
-                      final item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[index];
+                      final item = provedorItensRecorrentes.itensCarrinho[index];
 
-                      return CardCarrinho(
+                      return CardCarrinhoItensRecorrentes(
                         item: item,
-                        idComanda: provedorCardapio.idComanda,
-                        idMesa: provedorCardapio.idMesa,
+                        idComanda: widget.idComanda,
+                        idComandaPedido: widget.idComandaPedido,
+                        idMesa: widget.idMesa,
                         index: index,
-                        value: carrinhoProvedor.itensCarrinho,
-                        setarQuantidade: (increase) {
+                        value: null,
+                        // value: carrinhoProvedor.itensCarrinho,
+                        setarQuantidade: (increase) async {
                           if (increase) {
-                            setState(() {
-                              item.quantidade = item.quantidade! + 1;
-                            });
+                            await provedorItensRecorrentes.setarItemCarrinho(widget.idComandaPedido, index, item.quantidade! + 1);
+                            if (context.mounted) {
+                              provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                            }
+                            // setState(() {
+                            //   item.quantidade = item.quantidade! + 1;
+                            // });
 
-                            double precoTotal = 0;
-                            carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                              precoTotal += double.parse(e.valorVenda) * e.quantidade!;
+                            // double precoTotal = 0;
+                            // carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
+                            //   precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                              // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                            }).toList();
+                            //   // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                            // }).toList();
 
-                            setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
+                            // setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
                           } else {
-                            setState(() {
-                              item.quantidade = item.quantidade! - 1;
-                            });
+                            await provedorItensRecorrentes.setarItemCarrinho(widget.idComandaPedido, index, item.quantidade! - 1);
+                            if (context.mounted) {
+                              provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                            }
+                            // setState(() {
+                            //   item.quantidade = item.quantidade! - 1;
+                            // });
 
-                            double precoTotal = 0;
-                            carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                              precoTotal += double.parse(e.valorVenda) * e.quantidade!;
+                            // double precoTotal = 0;
+                            // carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
+                            //   precoTotal += double.parse(e.valorVenda) * e.quantidade!;
 
-                              // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                            }).toList();
+                            //   // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
+                            // }).toList();
 
-                            setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
+                            // setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
                           }
                         },
                       );

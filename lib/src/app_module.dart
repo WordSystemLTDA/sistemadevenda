@@ -11,7 +11,6 @@ import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_itens_recorrentes.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
@@ -20,6 +19,8 @@ import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
+import 'package:app/src/modulos/itens_recorrentes/servicos/servicos_itens_recorrentes.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -66,6 +67,7 @@ class AppModule extends Module {
 
     // Itens Recorrentes
     i.addSingleton(ProvedorItensRecorrentes.new);
+    i.add(ServicosItensRecorrentes.new);
 
     // Cardapio
     i.add<ServicoCardapio>(ServicoCardapio.new);
