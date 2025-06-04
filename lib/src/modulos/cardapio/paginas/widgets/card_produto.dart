@@ -335,7 +335,7 @@ class _CardProdutoState extends State<CardProduto> {
                                   padding: const EdgeInsets.symmetric(vertical: 5),
                                   child: Text(
                                     // item.descricao.isEmpty ? 'Sem descrição' : item.descricao,
-                                    'Código: ${item.codigo}',
+                                    'Código aqui: ${item.codigo}',
                                     overflow: TextOverflow.fade,
                                     maxLines: 2,
                                     style: const TextStyle(

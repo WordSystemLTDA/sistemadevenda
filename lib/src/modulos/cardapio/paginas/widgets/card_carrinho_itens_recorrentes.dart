@@ -6,7 +6,7 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
-class CardCarrinho extends StatefulWidget {
+class CardCarrinhoItensRecorrentes extends StatefulWidget {
   final Modelowordprodutos item;
   final String idComanda;
 
@@ -15,7 +15,7 @@ class CardCarrinho extends StatefulWidget {
   final dynamic value;
   final Function(bool increase) setarQuantidade;
 
-  const CardCarrinho({
+  const CardCarrinhoItensRecorrentes({
     super.key,
     required this.item,
     required this.index,
@@ -26,10 +26,10 @@ class CardCarrinho extends StatefulWidget {
   });
 
   @override
-  State<CardCarrinho> createState() => _CardCarrinhoState();
+  State<CardCarrinhoItensRecorrentes> createState() => _CardCarrinhoItensRecorrentesState();
 }
 
-class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMixin {
+class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorrentes> with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   late final AnimationController _controller;

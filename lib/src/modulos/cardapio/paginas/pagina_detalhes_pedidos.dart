@@ -7,6 +7,7 @@ import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_itens_recorrentes.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -355,6 +356,37 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             Icon(Icons.add_circle_outline_outlined, size: 26, color: Colors.white),
                             SizedBox(width: 10),
                             Text('Adicionar', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: ElevatedButton(
+                        style: ButtonStyle(
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                          backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
+                        ),
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) {
+                              return PaginaItensRecorrentes(
+                                idComanda: idComanda,
+                                idComandaPedido: idComandaPedido,
+                                idMesa: idMesa,
+                                tipo: widget.tipo,
+                              );
+                            },
+                          ));
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_circle_outline_outlined, size: 26, color: Colors.white),
+                            SizedBox(width: 10),
+                            Text('Itens Recorrentes', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),

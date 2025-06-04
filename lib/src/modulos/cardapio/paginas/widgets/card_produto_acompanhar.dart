@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
-import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -147,7 +146,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 130,
+            height: 105,
             child: InkWell(
               onTap: () {
                 _expandOnChanged();
@@ -158,37 +157,54 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        SizedBox(height: 5),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Flexible(
                               child: Text(
-                                '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
+                                '${widget.item.nome} ',
+                                // '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
                                 // item.nome,
                                 maxLines: 1,
                                 style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 30),
-                            Text(
-                              ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              maxLines: 1,
+                            Row(
+                              children: [
+                                Text(
+                                  ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
                             ),
                           ],
                         ),
-                        Text("Código: ${item.codigo}"),
+                        SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Text("Código: ${item.codigo}"),
+                            Spacer(),
+                            const Text("Quant.:  ", style: TextStyle(fontSize: 13)),
+                            Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            SizedBox(width: 5),
+                          ],
+                        ),
+                        SizedBox(height: 10),
                         StreamBuilder<String>(
                           stream: tempoLancadoController.stream,
                           initialData: 'Carregando',
@@ -196,6 +212,12 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
                           },
                         ),
+                        // Row(
+                        //   children: [
+                        //     const Text("Quantidade:  ", style: TextStyle(fontSize: 13)),
+                        //     Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        //   ],
+                        // ),
                         if (item.tamanho != '' && item.tamanho != '0') Text(item.tamanho),
                         Padding(
                           padding: const EdgeInsets.only(top: 0.0),
@@ -203,36 +225,36 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               if (item.destinoDeImpressao != null && item.destinoDeImpressao!.nome.isNotEmpty) ...[
-                                IconButton(
-                                  onPressed: () {
-                                    if (widget.dados != null) {
-                                      final duration = DateTime.now().difference(DateTime.parse(widget.dados!.dataAbertura!));
-                                      final newDuration = ConfigSistema.formatarHora(duration);
+                                // IconButton(
+                                //   onPressed: () {
+                                //     if (widget.dados != null) {
+                                //       final duration = DateTime.now().difference(DateTime.parse(widget.dados!.dataAbertura!));
+                                //       final newDuration = ConfigSistema.formatarHora(duration);
 
-                                      Impressao.comprovanteDeConsumo(
-                                        // tipoImpressao: '2',
-                                        // tipo: widget.tipo,
-                                        // comanda: widget.dados!.nome!,
-                                        numeroPedido: widget.dados!.numeroPedido!,
-                                        // nomeCliente: widget.dados!.nomeCliente!,
-                                        nomeEmpresa: widget.dados!.nomeEmpresa!,
-                                        produtos: [item],
-                                        celularEmpresa: widget.dados!.celularEmpresa ?? '',
-                                        cnpjEmpresa: widget.dados!.cnpjEmpresa ?? '',
-                                        enderecoEmpresa: widget.dados!.enderecoEmpresa ?? '',
-                                        local: '',
-                                        nomelancamento: widget.dados!.nomelancamento ?? [],
-                                        permanencia: newDuration,
-                                        somaValorHistorico: widget.dados!.somaValorHistorico ?? '',
-                                        tipodeentrega: widget.dados!.tipodeentrega ?? '',
-                                        total: widget.dados!.valorTotal ?? '',
-                                        valorentrega: widget.dados!.valorentrega ?? '',
-                                        nomeCliente: (widget.dados!.nomeCliente == '' ? null : widget.dados!.nomeCliente) ?? 'Sem Cliente',
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(Icons.print_rounded),
-                                ),
+                                //       Impressao.comprovanteDeConsumo(
+                                //         // tipoImpressao: '2',
+                                //         // tipo: widget.tipo,
+                                //         // comanda: widget.dados!.nome!,
+                                //         numeroPedido: widget.dados!.numeroPedido!,
+                                //         // nomeCliente: widget.dados!.nomeCliente!,
+                                //         nomeEmpresa: widget.dados!.nomeEmpresa!,
+                                //         produtos: [item],
+                                //         celularEmpresa: widget.dados!.celularEmpresa ?? '',
+                                //         cnpjEmpresa: widget.dados!.cnpjEmpresa ?? '',
+                                //         enderecoEmpresa: widget.dados!.enderecoEmpresa ?? '',
+                                //         local: '',
+                                //         nomelancamento: widget.dados!.nomelancamento ?? [],
+                                //         permanencia: newDuration,
+                                //         somaValorHistorico: widget.dados!.somaValorHistorico ?? '',
+                                //         tipodeentrega: widget.dados!.tipodeentrega ?? '',
+                                //         total: widget.dados!.valorTotal ?? '',
+                                //         valorentrega: widget.dados!.valorentrega ?? '',
+                                //         nomeCliente: (widget.dados!.nomeCliente == '' ? null : widget.dados!.nomeCliente) ?? 'Sem Cliente',
+                                //       );
+                                //     }
+                                //   },
+                                //   icon: const Icon(Icons.print_rounded),
+                                // ),
                               ] else ...[
                                 const SizedBox(),
                               ],
@@ -291,16 +313,26 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                   //     }
                                   //   },
                                   // ),
-                                  const SizedBox(width: 10),
-                                  SizedBox(
-                                    width: 30,
-                                    child: Text(
-                                      widget.item.quantidade!.toStringAsFixed(0),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 60),
+                                  //
+                                  //
+                                  //
+                                  //
+                                  //
+                                  // const SizedBox(width: 10),
+                                  // SizedBox(
+                                  //   width: 30,
+                                  //   child: Text(
+                                  //     widget.item.quantidade!.toStringAsFixed(0),
+                                  //     textAlign: TextAlign.center,
+                                  //     style: const TextStyle(fontSize: 14),
+                                  //   ),
+                                  // ),
+                                  // const SizedBox(width: 60),
+                                  //
+                                  //
+                                  //
+                                  //
+                                  //
                                   // IconButton(
                                   //   icon: const Icon(Icons.add_circle_outline_outlined),
                                   //   onPressed: () {
@@ -314,27 +346,29 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                         ),
                       ],
                     ),
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: SizedBox(
-                        width: 20,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, anim) => RotationTransition(
-                            turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
-                            child: ScaleTransition(scale: anim, child: child),
+                    if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
+                      Positioned(
+                        top: 64,
+                        right: 5,
+                        // bottom: 0,
+                        child: SizedBox(
+                          width: 20,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, anim) => RotationTransition(
+                              turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                              child: ScaleTransition(scale: anim, child: child),
+                            ),
+                            child: _isExpanded
+                                ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
+                                : const Icon(
+                                    Icons.keyboard_arrow_up_outlined,
+                                    key: ValueKey('icon2'),
+                                  ),
                           ),
-                          child: _isExpanded
-                              ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
-                              : const Icon(
-                                  Icons.keyboard_arrow_up_outlined,
-                                  key: ValueKey('icon2'),
-                                ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -345,7 +379,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(height: 1),
+                if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
+                  const Divider(height: 1),
+                ],
                 ...(item.opcoesPacotesListaFinal ?? []).map((e) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +389,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       if (e.dados != null && e.dados!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
                           padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
@@ -379,7 +415,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                 ],
                                 Text(
                                   (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
-                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                                 ),
                               ],
                             );
@@ -388,7 +424,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       ] else if (e.produtos != null && e.produtos!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
                           padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
@@ -408,7 +444,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.cortesias.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Cortesias', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Cortesias', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     ListView.builder(
                 //       padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
@@ -426,7 +462,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //             ),
                 //             Text(
                 //               double.parse(cortesia.valor) == 0 ? 'Grátis' : double.parse(cortesia.valor).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //             ),
                 //           ],
                 //         );
@@ -436,7 +472,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.tamanhos.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Tamanho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Tamanho', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     Padding(
                 //       padding: const EdgeInsets.only(left: 10.0, top: 5, right: 10, bottom: 0),
@@ -446,7 +482,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //           Text(item.tamanhos.first.nome),
                 //           Text(
                 //             double.parse(item.tamanhos.first.valor).obterReal(),
-                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //             style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //           ),
                 //         ],
                 //       ),
@@ -455,7 +491,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.kits.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Combo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Combo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     ListView.builder(
                 //       padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
@@ -472,7 +508,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.acompanhamentos.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Acompanhamentos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Acompanhamentos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     ListView.builder(
                 //       padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
@@ -490,7 +526,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //             ),
                 //             Text(
                 //               double.parse(adicional.valor) == 0 ? 'Grátis' : double.parse(adicional.valor).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //             ),
                 //           ],
                 //         );
@@ -500,7 +536,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.adicionais.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Adicionais', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Adicionais', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     ListView.builder(
                 //       padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
@@ -518,7 +554,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //             ),
                 //             Text(
                 //               (double.parse(adicional.valor) * adicional.quantidade).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //             ),
                 //           ],
                 //         );
@@ -528,7 +564,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   if (item.itensRetiradas.isNotEmpty) ...[
                 //     const Padding(
                 //       padding: EdgeInsets.only(left: 10, top: 10),
-                //       child: Text('Itens Retiradas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //       child: Text('Itens Retiradas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //     ),
                 //     ListView.builder(
                 //       padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 0),
@@ -549,7 +585,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //   ],
                 //   const Padding(
                 //     padding: EdgeInsets.only(left: 10, top: 10),
-                //     child: Text('Valores', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                //     child: Text('Valores', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 //   ),
                 //   Padding(
                 //     padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 10),
@@ -561,7 +597,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //             const Text('Produto'),
                 //             Text(
                 //               "${item.quantidade! > 1 ? '${item.quantidade}x de' : ''} ${(double.parse(item.valorVenda) - double.parse(soma.valor) - double.parse(somaAcompanhamentos.valor) - double.parse(somaCortesias.valor)).obterReal()}",
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //             ),
                 //           ],
                 //         ),
@@ -572,7 +608,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //               const Text('Cortesias'),
                 //               Text(
                 //                 double.parse(somaCortesias.valor).obterReal(),
-                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //               ),
                 //             ],
                 //           ),
@@ -584,7 +620,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //               const Text('Adicionais'),
                 //               Text(
                 //                 "${item.quantidade! > 1 && double.parse(soma.valor) > 0 ? '${item.quantidade}x de' : ''} ${double.parse(soma.valor).obterReal()}",
-                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //               ),
                 //             ],
                 //           ),
@@ -596,7 +632,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //               const Text('Acompanhamentos'),
                 //               Text(
                 //                 double.parse(somaAcompanhamentos.valor).obterReal(),
-                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //                 style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //               ),
                 //             ],
                 //           ),
@@ -607,7 +643,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                 //             const Text('Total'),
                 //             Text(
                 //               ((double.parse(item.valorVenda)) * item.quantidade!).obterReal(),
-                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                //               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
                 //             ),
                 //           ],
                 //         ),
