@@ -29,57 +29,7 @@ class Impressao {
       element.quantidadeController = null;
     }
 
-    // var nomedopcLocal = '';
-
-    // nomedopcLocal = server.nomedopc;
-
-    // var produtosOutroPC = produtos.where((element) => element.destinoDeImpressao?.nomedopc != nomedopcLocal);
-    // var produtosNessePC = produtos.where((element) => element.destinoDeImpressao?.nomedopc == nomedopcLocal);
-
-    // if (client.connected && enviarDeVolta == true) {
-    //   if (produtosOutroPC.isNotEmpty) {
-    //     client.write(jsonEncode({
-    //       'tipo': tipoTela.nome,
-    //       'tipoImpressao': '1',
-    //       'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-    //       'produtos': produtosOutroPC.map((e) => e.toMap()).toList(),
-    //       'comanda': comanda,
-    //       'numeroPedido': numeroPedido,
-    //       'nomeCliente': nomeCliente,
-    //       'nomeEmpresa': nomeEmpresa,
-    //       'tipodeentrega': tipodeentrega,
-    //       'local': local,
-    //       'nomeUsuario': usuario.usuario?.nome ?? '',
-    //       'idEmpresa': usuario.usuario?.empresa ?? '0',
-    //       'idUsuario': usuario.usuario?.id ?? '1',
-    //       'enviarDeVolta': enviarDeVolta,
-    //     }));
-    //   }
-    // } else if (client.connected && enviarDeVolta == false) {
-    //   if (produtosNessePC.isNotEmpty) {
-    //     server.write(jsonEncode({
-    //       'tipo': tipoTela.nome,
-    //       'tipoImpressao': '1',
-    //       'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-    //       'produtos': produtosNessePC.map((e) => e.toMap()).toList(),
-    //       'comanda': comanda,
-    //       'numeroPedido': numeroPedido,
-    //       'nomeCliente': nomeCliente,
-    //       'nomeEmpresa': nomeEmpresa,
-    //       'tipodeentrega': tipodeentrega,
-    //       'local': local,
-    //       'nomeUsuario': usuario.usuario?.nome ?? '',
-    //       'idEmpresa': usuario.usuario?.empresa ?? '0',
-    //       'idUsuario': usuario.usuario?.id ?? '1',
-    //       'enviarDeVolta': enviarDeVolta,
-    //     }));
-    //   }
-    // }
-
     if (server.connected && enviarDeVolta == true) {
-      // Caso for servidor e a rede não estiver conectada
-      // if (server.connected && client.connected == false) {
-
       if (produtos.isNotEmpty) {
         server.write(jsonEncode({
           'tipo': tipoTela.nome,
@@ -98,24 +48,6 @@ class Impressao {
           'enviarDeVolta': enviarDeVolta,
         }));
       }
-      // else if (produtosNessePC.isNotEmpty) {
-      //   server.write(jsonEncode({
-      //     'tipo': tipoTela.nome,
-      //     'tipoImpressao': '1',
-      //     'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-      //     'produtos': produtosNessePC.map((e) => e.toMap()).toList(),
-      //     'comanda': comanda,
-      //     'numeroPedido': numeroPedido,
-      //     'nomeCliente': nomeCliente,
-      //     'nomeEmpresa': nomeEmpresa,
-      //     'tipodeentrega': tipodeentrega,
-      //     'local': local,
-      //     'nomeUsuario': usuario.usuario?.nome ?? '',
-      //     'idEmpresa': usuario.usuario?.empresa ?? '0',
-      //     'idUsuario': usuario.usuario?.id ?? '1',
-      //     'enviarDeVolta': enviarDeVolta,
-      //   }));
-      // }
     }
   }
 

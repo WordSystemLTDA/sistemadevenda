@@ -20,3 +20,4 @@
 - [x] Colocar versão do app no drawer
 - [x] Arrumar listagem Mesas em fechamento, está somente Ocupadas
 - [x] Arrumar conexão com o servidor fecha quando o celular desligar a tela
+- [ ] arrumar atualização
