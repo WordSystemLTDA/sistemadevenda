@@ -184,6 +184,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                   ));
                   return;
                 }
+                // print(item.habilTipo);
+                // return;
 
                 if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
                   if (widget.estaPesquisando) {
