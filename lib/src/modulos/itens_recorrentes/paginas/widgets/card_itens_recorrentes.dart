@@ -491,7 +491,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                   alignment: Alignment.bottomRight,
                                   // child: retornoValorVendaProduto(),
                                   child: Text(
-                                    ((double.tryParse(item.valorVenda) ?? 0) * (item.quantidade ?? 1)).obterReal(),
+                                    // ((double.tryParse(item.valorVenda) ?? 0) * (item.quantidade ?? 1)).obterReal(),
+                                    (double.tryParse(item.valorVenda) ?? 0).obterReal(),
                                     // (double.tryParse(item.valorVenda) ?? 0).obterReal(),
                                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
