@@ -16,11 +16,13 @@ import 'package:flutter_modular/flutter_modular.dart';
 class PaginaProduto extends StatefulWidget {
   final Modelowordprodutos produto;
   final double? valorVenda;
+  final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
 
   const PaginaProduto({
     super.key,
     required this.produto,
     this.valorVenda,
+    this.inserirEmItensRecorrentes,
   });
 
   @override
@@ -207,6 +209,12 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           ],
         ),
       );
+    }
+
+    if (widget.inserirEmItensRecorrentes != null) {
+      widget.inserirEmItensRecorrentes!(itemProduto!);
+      Navigator.pop(context);
+      return;
     }
 
     await carrinhoProvedor

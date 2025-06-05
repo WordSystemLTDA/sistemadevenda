@@ -190,7 +190,7 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> {
                   hintText: 'Pesquisar...',
                   prefixIcon: IconButton(
                     onPressed: () {
-                      // Navigator.pop(context);
+                      Navigator.pop(context);
                       // provedor.resetarTudo();
                     },
                     icon: const Icon(Icons.arrow_back),

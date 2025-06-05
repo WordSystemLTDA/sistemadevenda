@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -67,6 +69,10 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
 
+  Timer? _tickerTempoLancado;
+  // antiga animação card produto
+  StreamController<String> tempoLancadoController = StreamController<String>();
+
   Widget retornoValorVendaProduto() {
     // return SizedBox();
     var texto = '';
@@ -104,6 +110,31 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
       texto,
       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
     );
+  }
+
+  void _updateTimer() {
+    if (widget.item.dataLancado != null) {
+      final duration = DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
+      final newDuration = ConfigSistema.formatarHora(duration);
+
+      tempoLancadoController.add(newDuration);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTimer();
+    _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
+  }
+
+  @override
+  void dispose() {
+    if (_tickerTempoLancado != null) {
+      _tickerTempoLancado!.cancel();
+      tempoLancadoController.close();
+    }
+    super.dispose();
   }
 
   @override
@@ -161,7 +192,16 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
 
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) {
-                      return PaginaProduto(produto: item);
+                      return PaginaProduto(
+                        produto: item,
+                        inserirEmItensRecorrentes: (produto) {
+                          provedorItensRecorrentes.inserir(widget.idComandaPedido, produto).then((value) {
+                            if (value) {
+                              provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                            }
+                          });
+                        },
+                      );
                     },
                   ));
 
@@ -264,7 +304,16 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
 
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) {
-                    return PaginaProduto(produto: item);
+                    return PaginaProduto(
+                      produto: item,
+                      inserirEmItensRecorrentes: (produto) {
+                        provedorItensRecorrentes.inserir(widget.idComandaPedido, produto).then((value) {
+                          if (value) {
+                            provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                          }
+                        });
+                      },
+                    );
                   },
                 ));
               },
@@ -401,19 +450,14 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                 ),
                               ),
                             ),
-                            // Row(
-                            //   children: [
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //     // Fazer Item Lançado AQUI - - - &&&&&&&&&&&&& - - - Deixar último Item Lançado por Primeiro AQUI
-                            //   ],
-                            // ),
+                            // Deixar último Item Lançado por Primeiro AQUI
+                            StreamBuilder<String>(
+                              stream: tempoLancadoController.stream,
+                              initialData: 'Carregando',
+                              builder: (context, snapshot) {
+                                return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
+                              },
+                            ),
                             if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
                               if (provedorCardapio.tamanhosPizza == null) ...[
                                 SizedBox(
