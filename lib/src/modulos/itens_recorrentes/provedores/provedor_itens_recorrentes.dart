@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProvedorItensRecorrentes extends ChangeNotifier {
-  final ServicosItensComanda _servico;
+  final ServicosItensComanda servico;
   // final ServicoCardapio _servicoCardapio;
 
-  ProvedorItensRecorrentes(this._servico);
+  ProvedorItensRecorrentes(this.servico);
 
   // var itensCarrinho = ItensModeloComandao(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
   List<Modelowordprodutos> itensCarrinho = [];
@@ -76,8 +76,8 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
 
     List<ModeloItensRecorrentes> novosItensRecorrentes = [];
 
-    for (int index = 0; index < itensRecorrentes.length; index++) {
-      final item = itensRecorrentes[index];
+    for (int i = 0; i < itensRecorrentes.length; i++) {
+      final item = itensRecorrentes[i];
       var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
 
       if (itemF.idComandaPedido != idComandaPedido) {
@@ -107,8 +107,8 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
 
     List<ModeloItensRecorrentes> novosItensRecorrentes = [];
 
-    for (int index = 0; index < itensRecorrentes.length; index++) {
-      final item = itensRecorrentes[index];
+    for (int i = 0; i < itensRecorrentes.length; i++) {
+      final item = itensRecorrentes[i];
       var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
 
       if (itemF.idComandaPedido != idComandaPedido) {
@@ -203,7 +203,43 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
           idComandaPedido: itemF.idComandaPedido,
           produtos: [
             ...itemF.produtos,
-            produto,
+            Modelowordprodutos(
+              id: produto.id,
+              hashprodutos: produto.hashprodutos,
+              iditensvenda: produto.iditensvenda,
+              nome: produto.nome,
+              codigo: produto.codigo,
+              estoque: produto.estoque,
+              tamanho: produto.tamanho,
+              foto: produto.foto,
+              ativo: produto.ativo,
+              descricao: produto.descricao,
+              valorVenda: produto.valorVenda,
+              categoria: produto.categoria,
+              nomeCategoria: produto.nomeCategoria,
+              dataLancado: produto.dataLancado,
+              ativarEdQtd: produto.ativarEdQtd,
+              ativarCustoDeProducao: produto.ativarCustoDeProducao,
+              novo: produto.novo,
+              destinoDeImpressao: produto.destinoDeImpressao,
+              habilTipo: produto.habilTipo,
+              habilItensRetirada: produto.habilItensRetirada,
+              ativoLoja: produto.ativoLoja,
+              tamanhosPizza: produto.tamanhosPizza,
+              ingredientes: produto.ingredientes,
+              quantidade: 1,
+              quantidadePessoa: produto.quantidadePessoa,
+              tamanhoLista: produto.tamanhoLista,
+              valorTotalVendas: produto.valorTotalVendas,
+              observacao: produto.observacao,
+              quantidadeController: produto.quantidadeController,
+              acoes: produto.acoes,
+              valorRestoDivisao: produto.valorRestoDivisao,
+              opcoesPacotes: produto.opcoesPacotes,
+              opcoesPacotesListaFinal: produto.opcoesPacotesListaFinal,
+              descontoProduto: produto.descontoProduto,
+              habilsepardelivery: produto.habilsepardelivery,
+            ),
           ],
         ),
       );
@@ -257,25 +293,6 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
     final res = await prefs.setString('itens_recorrentes', json.encode(novosItensRecorrentes));
 
     return res;
-    // final res = await _servico.inserir(
-    //   produto,
-    //   tipo,
-    //   idMesa,
-    //   idComanda,
-    //   valor,
-    //   observacaoMesa,
-    //   idProduto,
-    //   nomeProduto,
-    //   quantidade,
-    //   observacao,
-    // );
-
-    // if (res) {
-    //   await listarComandasPedidos();
-    // }
-
-    // notifyListeners();
-    // return res;
   }
 
   // Future<bool> lancarPedido(idMesa, idComanda, String idComandaPedido, valorTotal, quantidade, observacao, listaIdProdutos) async {

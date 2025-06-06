@@ -198,22 +198,6 @@ class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorren
                                                       provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
                                                       Navigator.pop(context);
                                                     }
-                                                    // await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index).then((sucesso) {
-                                                    //   if (context.mounted) {
-                                                    //     carrinhoProvedor.listarComandasPedidos();
-                                                    //     Navigator.pop(context);
-                                                    //   }
-
-                                                    //   if (sucesso) return;
-
-                                                    //   if (context.mounted) {
-                                                    //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                                    //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                    //       content: Text('Ocorreu um erro'),
-                                                    //       showCloseIcon: true,
-                                                    //     ));
-                                                    //   }
-                                                    // });
                                                   },
                                                 ),
                                               ],

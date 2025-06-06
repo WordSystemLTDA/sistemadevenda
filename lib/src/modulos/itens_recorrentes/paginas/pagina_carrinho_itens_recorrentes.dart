@@ -329,35 +329,11 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                             if (context.mounted) {
                               provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
                             }
-                            // setState(() {
-                            //   item.quantidade = item.quantidade! + 1;
-                            // });
-
-                            // double precoTotal = 0;
-                            // carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                            //   precoTotal += double.parse(e.valorVenda) * e.quantidade!;
-
-                            //   // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                            // }).toList();
-
-                            // setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
                           } else {
                             await provedorItensRecorrentes.setarItemCarrinho(widget.idComandaPedido, index, item.quantidade! - 1);
                             if (context.mounted) {
                               provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
                             }
-                            // setState(() {
-                            //   item.quantidade = item.quantidade! - 1;
-                            // });
-
-                            // double precoTotal = 0;
-                            // carrinhoProvedor.itensCarrinho.listaComandosPedidos.map((e) {
-                            //   precoTotal += double.parse(e.valorVenda) * e.quantidade!;
-
-                            //   // e.adicionais.map((el) => precoTotal += double.parse(el.valor) * el.quantidade).toList();
-                            // }).toList();
-
-                            // setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
                           }
                         },
                       );
