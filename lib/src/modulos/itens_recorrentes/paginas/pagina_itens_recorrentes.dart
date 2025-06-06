@@ -80,68 +80,29 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> {
         // title: Text('Itens Recorrentes da $nomeTipo'),
         title: Text('Itens Recorrentes'),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: AnimatedBuilder(
         animation: provedorItensRecorrentes,
         builder: (context, _) {
-          return Stack(
-            children: [
-              // if (provedorItensRecorrentes.itensCarrinho.isNotEmpty) ...[
-              //   Align(
-              //     alignment: Alignment.bottomCenter,
-              //     child: SizedBox(
-              //       width: 170,
-              //       child: FloatingActionButton.extended(
-              //         heroTag: 'botao1',
-              //         onPressed: () async {
-              //           // if (!context.mounted) return;
-
-              //           // var item = provedor.saboresPizzaSelecionados[0];
-
-              //           // Navigator.of(context).push(MaterialPageRoute(
-              //           //   builder: (context) {
-              //           //     return PaginaSaborBordas(
-              //           //       produto: item,
-              //           //       valorVenda: provedor.calcularPrecoPizza(),
-              //           //     );
-              //           //   },
-              //           // ));
-              //         },
-              //         backgroundColor: Colors.green,
-              //         foregroundColor: Colors.white,
-              //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              //         label: Text('Avançar'),
-              //         // label: Text('Avançar ${provedor.calcularPrecoPizza().obterReal()}'),
-              //       ),
-              //     ),
-              //   ),
-              // ],
-              Positioned(
-                right: 25,
-                bottom: 0,
-                child: badges.Badge(
-                  badgeContent: Text(provedorItensRecorrentes.itensCarrinho.length.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
-                  position: badges.BadgePosition.topEnd(end: 0),
-                  child: FloatingActionButton(
-                    heroTag: 'botao2',
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return PaginaCarrinhoItensRecorrentes(
-                            idComanda: widget.idComanda ?? '0',
-                            idComandaPedido: widget.idComandaPedido ?? '0',
-                            idMesa: widget.idMesa ?? '0',
-                            idCliente: widget.idCliente ?? '0',
-                          );
-                        },
-                      ));
-                    },
-                    shape: const CircleBorder(),
-                    child: const Icon(Icons.shopping_cart),
-                  ),
-                ),
-              ),
-            ],
+          return badges.Badge(
+            badgeContent: Text(provedorItensRecorrentes.itensCarrinho.length.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
+            position: badges.BadgePosition.topEnd(end: 0),
+            child: FloatingActionButton(
+              heroTag: 'botao2',
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) {
+                    return PaginaCarrinhoItensRecorrentes(
+                      idComanda: widget.idComanda ?? '0',
+                      idComandaPedido: widget.idComandaPedido ?? '0',
+                      idMesa: widget.idMesa ?? '0',
+                      idCliente: widget.idCliente ?? '0',
+                    );
+                  },
+                ));
+              },
+              shape: const CircleBorder(),
+              child: const Icon(Icons.shopping_cart),
+            ),
           );
         },
       ),

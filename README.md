@@ -22,7 +22,7 @@
 - [x] Arrumar conexão com o servidor fecha quando o celular desligar a tela
 - [ ] arrumar atualização
 
-- [ ] Itens Recorrentes: Deixar ultimo lançado por cima
-- [ ] Itens Recorrentes: Resetar timer de item lançado
+- [x] Itens Recorrentes: Deixar ultimo lançado por cima
+- [x] Itens Recorrentes: Resetar timer de item lançado
 - [ ] Itens Recorrentes: Arrumar botoes Flutuantes
 - [ ] Cardápio: Erro na parte dos Pacotes
