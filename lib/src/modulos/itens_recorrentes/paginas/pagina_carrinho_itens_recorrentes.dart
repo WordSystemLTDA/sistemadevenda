@@ -259,7 +259,7 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           nomeEmpresa: dados?.nomeEmpresa ?? '',
                           // nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: provedorItensRecorrentes.itensCarrinho,
-                          local: '',
+                          local: dados?.nomeMesa ?? '',
                         );
 
                         if (context.mounted) {

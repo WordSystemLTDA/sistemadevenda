@@ -80,31 +80,81 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> {
         // title: Text('Itens Recorrentes da $nomeTipo'),
         title: Text('Itens Recorrentes'),
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: provedorItensRecorrentes,
-        builder: (context, _) {
-          return badges.Badge(
-            badgeContent: Text(provedorItensRecorrentes.itensCarrinho.length.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
-            position: badges.BadgePosition.topEnd(end: 0),
-            child: FloatingActionButton(
-              heroTag: 'botao2',
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 30.0),
+            child: FloatingActionButton.extended(
+              heroTag: 'botao1',
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) {
-                    return PaginaCarrinhoItensRecorrentes(
-                      idComanda: widget.idComanda ?? '0',
-                      idComandaPedido: widget.idComandaPedido ?? '0',
-                      idMesa: widget.idMesa ?? '0',
-                      idCliente: widget.idCliente ?? '0',
-                    );
-                  },
-                ));
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (dados!.status == 'Fechamento') {
+                    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text("Comanda está em status de Fechamento", textAlign: TextAlign.center),
+                      backgroundColor: Colors.red,
+                    ));
+                    return;
+                  }
+
+                  if (widget.tipo == TipoCardapio.comanda) {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return PaginaCardapio(
+                          tipo: TipoCardapio.comanda,
+                          idComanda: dados!.idComanda,
+                          idMesa: '0',
+                          idCliente: dados!.idCliente!,
+                          id: widget.idComandaPedido,
+                        );
+                      },
+                    ));
+                  } else if (widget.tipo == TipoCardapio.mesa) {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return PaginaCardapio(
+                          tipo: TipoCardapio.mesa,
+                          idComanda: '0',
+                          idMesa: widget.idMesa,
+                          idCliente: dados!.idCliente!,
+                          id: widget.idComandaPedido,
+                        );
+                      },
+                    ));
+                  }
+                });
               },
-              shape: const CircleBorder(),
-              child: const Icon(Icons.shopping_cart),
+              label: Text('Comprar outros Itens'),
             ),
-          );
-        },
+          ),
+          AnimatedBuilder(
+            animation: provedorItensRecorrentes,
+            builder: (context, _) {
+              return badges.Badge(
+                badgeContent: Text(provedorItensRecorrentes.itensCarrinho.length.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
+                position: badges.BadgePosition.topEnd(end: 0),
+                child: FloatingActionButton(
+                  heroTag: 'botao2',
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) {
+                        return PaginaCarrinhoItensRecorrentes(
+                          idComanda: widget.idComanda ?? '0',
+                          idComandaPedido: widget.idComandaPedido ?? '0',
+                          idMesa: widget.idMesa ?? '0',
+                          idCliente: widget.idCliente ?? '0',
+                        );
+                      },
+                    ));
+                  },
+                  shape: const CircleBorder(),
+                  child: const Icon(Icons.shopping_cart),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

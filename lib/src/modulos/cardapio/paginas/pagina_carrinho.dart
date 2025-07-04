@@ -236,7 +236,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                          local: '',
+                          local: dados?.nomeMesa ?? '',
                         );
 
                         if (context.mounted) {

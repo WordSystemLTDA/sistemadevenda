@@ -177,6 +177,7 @@ class Server extends ChangeNotifier {
         Impressao.comprovanteDePedido(
           produtos: dados.produtos ?? [],
           comanda: dados.comanda ?? '',
+          local: dados.local ?? '',
           numeroPedido: dados.numeroPedido ?? '',
           nomeCliente: (dados.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados.observacaoDoPedido ?? '').isNotEmpty
               ? (dados.observacaoDoPedido ?? '')

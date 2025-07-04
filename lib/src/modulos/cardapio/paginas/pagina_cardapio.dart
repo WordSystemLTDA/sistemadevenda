@@ -79,8 +79,10 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    setarCampos();
-    listarDados();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setarCampos();
+      listarDados();
+    });
   }
 
   @override
