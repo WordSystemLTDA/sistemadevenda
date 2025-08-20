@@ -107,7 +107,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
     final ConfigSharedPreferences config = ConfigSharedPreferences();
     var conexao = await config.getConexao();
 
-    await server.start(conexao!.servidor, conexao.porta).then((sucesso) {
+    await server.connect(conexao!.servidor, conexao.porta).then((sucesso) {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

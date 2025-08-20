@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1018595576477",
+    "project_id": "sistema-restaurante-6e60d",
+    "storage_bucket": "sistema-restaurante-6e60d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018595576477:android:828ab6f3d1ad0dafb9e274",
+        "android_client_info": {
+          "package_name": "br.com.bigchefgarcom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRmAsYRHIOg1J4VRZ3QerhbjCmzJm21MI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

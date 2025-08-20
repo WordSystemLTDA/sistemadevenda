@@ -300,10 +300,31 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       children: [
                         const Icon(Icons.person_outline_outlined, size: 30),
                         const SizedBox(width: 10),
-                        Text(
-                          dados!.nomeCliente!,
-                          style: const TextStyle(fontSize: 18),
-                        ),
+                        if ((dados!.nomeCliente ?? '').isEmpty && (dados!.observacaoDoPedido ?? '').isNotEmpty) ...[
+                          SizedBox(
+                            width: 180,
+                            child: Text(
+                              dados!.observacaoDoPedido != null && dados!.observacaoDoPedido!.isNotEmpty ? dados!.observacaoDoPedido! : 'Sem Cliente',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          SizedBox(
+                            width: 180,
+                            child: Text(
+                              dados!.nomeCliente != null && dados!.nomeCliente!.isNotEmpty ? dados!.nomeCliente! : 'Sem Cliente',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 50),

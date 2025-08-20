@@ -22,7 +22,7 @@ class Nfc {
     var conexao = await config.getConexao();
 
     if (server.connected == false) {
-      var sucessoConexao = await server.start(conexao!.servidor, conexao.porta);
+      var sucessoConexao = await server.connect(conexao!.servidor, conexao.porta);
 
       if (sucessoConexao == false) {
         return false;

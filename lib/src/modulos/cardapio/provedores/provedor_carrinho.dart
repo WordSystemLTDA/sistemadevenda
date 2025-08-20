@@ -15,9 +15,6 @@ class ProvedorCarrinho extends ChangeNotifier {
   var itensCarrinho = ItensModeloComandao(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
 
   Future<dynamic> listarComandasPedidos() async {
-    // final res = await _servicoCardapio.listarPorId(idComanda, TipoCardapio.comanda);
-
-    // if (res.produtos != null && res.produtos!.isEmpty) {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     // prefs.remove('carrinho');
     var carrinhoString = prefs.getString('carrinho');
@@ -43,26 +40,6 @@ class ProvedorCarrinho extends ChangeNotifier {
       precoTotal: precoTotal,
     );
     notifyListeners();
-    // } else {
-    //   List<Modelowordprodutos> listaItens = [];
-    //   num quantidadeTotal = 0;
-    //   double precoTotal = 0;
-
-    //   for (int index = 0; index < res.produtos!.length; index++) {
-    //     final item = res.produtos![index];
-
-    //     listaItens.add(item);
-    //     quantidadeTotal += item.quantidade ?? 1;
-    //     precoTotal += double.parse(item.valorVenda) * (item.quantidade ?? 1);
-    //   }
-
-    //   itensCarrinho = ItensModeloComandao(
-    //     listaComandosPedidos: listaItens,
-    //     quantidadeTotal: quantidadeTotal,
-    //     precoTotal: precoTotal,
-    //   );
-    //   notifyListeners();
-    // }
   }
 
   Future<bool> removerComandasPedidos() async {
@@ -118,6 +95,20 @@ class ProvedorCarrinho extends ChangeNotifier {
       nomeProduto,
       quantidade,
       observacao,
+    );
+
+    if (res) {
+      await listarComandasPedidos();
+    }
+
+    notifyListeners();
+    return res;
+  }
+
+  Future<bool> editar(Modelowordprodutos produto, int index) async {
+    final res = await _servico.editar(
+      produto,
+      index,
     );
 
     if (res) {

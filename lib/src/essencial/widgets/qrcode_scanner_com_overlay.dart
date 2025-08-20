@@ -101,7 +101,7 @@ class _BarcodeScannerWithOverlayState extends State<BarcodeScannerWithOverlay> {
                   });
                 }
               },
-              errorBuilder: (context, error, child) {
+              errorBuilder: (context, error) {
                 return ScannerErrorWidget(error: error);
               },
               // overlayBuilder: (context, constraints) {

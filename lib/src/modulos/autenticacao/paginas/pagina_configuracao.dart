@@ -96,7 +96,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   Future<void> conectarAoServidor(String ip, String porta) async {
     var server = Modular.get<Server>();
 
-    await server.start(ip, porta).then((sucesso) {
+    await server.connect(ip, porta).then((sucesso) {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();

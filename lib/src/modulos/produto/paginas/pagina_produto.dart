@@ -16,12 +16,16 @@ import 'package:flutter_modular/flutter_modular.dart';
 class PaginaProduto extends StatefulWidget {
   final Modelowordprodutos produto;
   final double? valorVenda;
+  final bool editar;
+  final int? indexProduto;
   final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
 
   const PaginaProduto({
     super.key,
     required this.produto,
     this.valorVenda,
+    this.editar = false,
+    this.indexProduto,
     this.inserirEmItensRecorrentes,
   });
 
@@ -42,7 +46,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   void initState() {
     super.initState();
 
-    listar();
+    if (widget.editar == false) {
+      listar();
+    } else {
+      itemProduto = widget.produto;
+      _provedorProduto.opcoesPacotesListaFinal = widget.produto.opcoesPacotesListaFinal ?? [];
+      _provedorProduto.valorVenda = double.parse(widget.produto.valorVenda);
+      _provedorProduto.valorVendaOriginal = double.parse(widget.produto.valorVenda);
+      _provedorProduto.calcularValorVenda(false, '0');
+    }
   }
 
   void listar() async {
@@ -217,39 +229,43 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       return;
     }
 
-    await carrinhoProvedor
-        .inserir(
-      itemProduto!,
-      provedorCardapio.tipo.nome,
-      mesa,
-      comanda,
-      valor,
-      observacaoMesa,
-      idProduto,
-      itemProduto!.nome,
-      itemProduto!.quantidade,
-      observacao,
-    )
-        .then((sucesso) {
-      if (sucesso) {
-        _provedorProduto.resetarTudo();
-        if (mounted) Navigator.pop(context);
-        if (widget.valorVenda != null) {
-          if (mounted) Navigator.pop(context);
-        }
-        return;
-      }
+    bool sucesso = false;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Ocorreu um erro'),
-          showCloseIcon: true,
-        ));
+    if (widget.editar) {
+      sucesso = await carrinhoProvedor.editar(itemProduto!, widget.indexProduto!);
+    } else {
+      sucesso = await carrinhoProvedor.inserir(
+        itemProduto!,
+        provedorCardapio.tipo.nome,
+        mesa,
+        comanda,
+        valor,
+        observacaoMesa,
+        idProduto,
+        itemProduto!.nome,
+        itemProduto!.quantidade,
+        observacao,
+      );
+    }
+
+    if (sucesso) {
+      _provedorProduto.resetarTudo();
+      if (mounted) Navigator.pop(context);
+      if (widget.valorVenda != null) {
+        if (mounted) Navigator.pop(context);
       }
-    }).whenComplete(() {
-      setState(() => carregando = !carregando);
-    });
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Ocorreu um erro'),
+        showCloseIcon: true,
+      ));
+    }
+
+    setState(() => carregando = !carregando);
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -277,6 +278,19 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                 if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
                   const Divider(height: 1),
                 ],
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) {
+                          return PaginaProduto(produto: item, editar: true, indexProduto: widget.index);
+                        },
+                      ));
+                    },
+                    child: Text('Editar Produto'),
+                  ),
+                ),
                 ...(item.opcoesPacotesListaFinal ?? []).map((e) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

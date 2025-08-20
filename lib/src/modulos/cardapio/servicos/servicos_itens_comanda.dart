@@ -50,40 +50,29 @@ class ServicosItensComanda {
     String nomeProduto,
     quantidade,
     observacao,
-    // List<AdicionaisModelo> listaAdicionais,
-    // List<AcompanhamentosModelo> listaAcompanhamentos,
-    // TamanhosModelo? tamanhoSelecionado,
   ) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    // await prefs.remove('carrinho');
     var carrinhoString = prefs.getString('carrinho');
     var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
 
-    // final idUsuario = usuarioProvedor.usuario!.id;
-    // final empresa = usuarioProvedor.usuario!.empresa;
-
     var salvarCarrinho = [
-      // {
-      //   'nome': nomeProduto,
-      //   'tipo': tipo,
-      //   'idMesa': idMesa,
-      //   'idComanda': idComanda,
-      //   'valor': valor,
-      //   'observacaoMesa': observacaoMesa,
-      //   'idProduto': idProduto,
-      //   'quantidade': quantidade,
-      //   'observacao': observacao,
-      //   'listaAdicionais': [...listaAdicionais.map((e) => e.toMap())],
-      //   'listaAcompanhamentos': [...listaAcompanhamentos.map((e) => e.toMap())],
-      //   'tamanhoSelecionado': tamanhoSelecionado != null ? tamanhoSelecionado.id : 0,
-      //   'idUsuario': idUsuario,
-      //   'empresa': empresa,
-      // },
       produto,
       ...carrinho,
     ];
 
     await prefs.setString('carrinho', jsonEncode(salvarCarrinho));
+
+    return true;
+  }
+
+  Future<bool> editar(Modelowordprodutos produto, int index) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    var carrinhoString = prefs.getString('carrinho');
+    var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
+
+    carrinho[index] = produto;
+
+    await prefs.setString('carrinho', jsonEncode(carrinho));
 
     return true;
   }
