@@ -152,7 +152,9 @@ class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorren
                                         return Padding(
                                           padding: MediaQuery.of(context).viewInsets,
                                           child: ModalEditarObservacao(
+                                            itensRecorrentes: true,
                                             idProduto: widget.item.id,
+                                            index: widget.index,
                                             observacao: widget.item.observacao ?? '',
                                           ),
                                         );

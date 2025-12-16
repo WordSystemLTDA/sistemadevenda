@@ -1,13 +1,16 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class ModalEditarObservacao extends StatefulWidget {
   final String idProduto;
   final String observacao;
-  const ModalEditarObservacao({super.key, required this.idProduto, required this.observacao});
+  final int index;
+  final bool? itensRecorrentes;
+  const ModalEditarObservacao({super.key, required this.idProduto, required this.observacao, required this.index, this.itensRecorrentes = false});
 
   @override
   State<ModalEditarObservacao> createState() => _ModalEditarObservacaoState();
@@ -15,6 +18,7 @@ class ModalEditarObservacao extends StatefulWidget {
 
 class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
 
   TextEditingController observacoesController = TextEditingController();
 
@@ -57,11 +61,41 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
                 )),
               ),
               onPressed: () {
-                var item = carrinhoProvedor.itensCarrinho.listaComandosPedidos.where((element) => element.id == widget.idProduto).firstOrNull;
+                if (widget.itensRecorrentes == true) {
+                  var item = provedorItensRecorrentes.itensCarrinho[widget.index];
+
+                  setState(() {
+                    item.observacao = observacoesController.text;
+                    item.opcoesPacotesListaFinal = [
+                      ...(item.opcoesPacotesListaFinal?.toList() ?? []).where((element) => element.id != 11),
+                      if (observacoesController.text.isNotEmpty) ...[
+                        ModeloOpcoesPacotes(
+                          id: 11,
+                          titulo: 'Observação',
+                          tipo: 7,
+                          obrigatorio: false,
+                          dados: [
+                            ModeloDadosOpcoesPacotes(
+                              id: '0',
+                              nome: observacoesController.text,
+                              foto: '',
+                              estaSelecionado: false,
+                              excluir: false,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ];
+                  });
+                  Navigator.pop(context);
+                  return;
+                }
+
+                var item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[widget.index];
 
                 setState(() {
-                  item?.observacao = observacoesController.text;
-                  item?.opcoesPacotesListaFinal = [
+                  item.observacao = observacoesController.text;
+                  item.opcoesPacotesListaFinal = [
                     ...(item.opcoesPacotesListaFinal?.toList() ?? []).where((element) => element.id != 11),
                     if (observacoesController.text.isNotEmpty) ...[
                       ModeloOpcoesPacotes(

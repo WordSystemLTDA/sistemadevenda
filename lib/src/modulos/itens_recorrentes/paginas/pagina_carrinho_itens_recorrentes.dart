@@ -198,7 +198,8 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           numeroPedido: dados?.numeroPedido ?? '',
                           // comanda: dados!.nome!,
                           // numeroPedido: dados!.numeroPedido!,
-                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados?.nomeEmpresa ?? '',
@@ -255,7 +256,8 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           // comanda: dados!.nome!,
                           // numeroPedido: dados!.numeroPedido!,
                           // nomeCliente: dados!.nomeCliente!,
-                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados?.nomeEmpresa ?? '',

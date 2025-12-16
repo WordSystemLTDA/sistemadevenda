@@ -178,7 +178,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                           comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
                           // nomeCliente: dados!.nomeCliente!,
-                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados!.nomeEmpresa!,
@@ -231,7 +232,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                           comanda: dados!.nome!,
                           numeroPedido: dados!.numeroPedido!,
                           // nomeCliente: dados!.nomeCliente!,
-                          nomeCliente: (dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (dados?.observacaoDoPedido ?? '').isNotEmpty
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
                               ? (dados?.observacaoDoPedido ?? '')
                               : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados!.nomeEmpresa!,

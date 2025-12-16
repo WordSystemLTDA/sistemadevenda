@@ -151,6 +151,7 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                         return Padding(
                                           padding: MediaQuery.of(context).viewInsets,
                                           child: ModalEditarObservacao(
+                                            index: widget.index,
                                             idProduto: widget.item.id,
                                             observacao: widget.item.observacao ?? '',
                                           ),

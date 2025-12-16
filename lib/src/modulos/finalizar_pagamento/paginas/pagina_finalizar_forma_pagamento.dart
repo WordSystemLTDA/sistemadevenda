@@ -201,7 +201,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           comanda: "Balcão $idvenda",
                           numeroPedido: vendaBalcao.numeropedido,
                           // nomeCliente: vendaBalcao.nomecliente,
-                          nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
+                          nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
                               ? (vendaBalcao.observacaoDoPedido ?? '')
                               : (vendaBalcao.nomecliente),
                           nomeEmpresa: vendaBalcao.nomeEmpresa,
