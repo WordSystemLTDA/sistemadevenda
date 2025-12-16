@@ -5,6 +5,8 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
@@ -34,8 +36,8 @@ class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
 }
 
 class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensRecorrentes> with TickerProviderStateMixin {
-  // final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  // final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
@@ -55,14 +57,14 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
   }
 
   void listar() async {
-    // await carrinhoProvedor.listarComandasPedidos();
-    // await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
-    //   dados = value;
-    // });
+    await carrinhoProvedor.listarComandasPedidos();
+    await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
+      dados = value;
+    });
 
-    // setState(() {
-    //   carregando = false;
-    // });
+    setState(() {
+      carregando = false;
+    });
   }
 
   Future<void> removerTodosItensCarrinho() async {
