@@ -5,6 +5,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:app/src/app_widget.dart';
+import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -173,7 +174,8 @@ class Server extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      // ... resto da sua lógica ...
+
+      AtualizacaoDeTela().call(dados);
     } catch (e) {
       log('erro em onData', error: e);
     }

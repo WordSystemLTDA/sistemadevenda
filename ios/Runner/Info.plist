@@ -70,5 +70,10 @@
 	<array>
 		<string>04CAA893C12A81</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
