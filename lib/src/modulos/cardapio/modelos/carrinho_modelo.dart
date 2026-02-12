@@ -52,7 +52,8 @@ class CarrinhoModelo {
       'quantidade': quantidade,
       'estaExpandido': estaExpandido,
       'listaAdicionais': listaAdicionais.map((x) => x.toMap()).toList(),
-      'listaAcompanhamentos': listaAcompanhamentos.map((x) => x.toMap()).toList(),
+      'listaAcompanhamentos':
+          listaAcompanhamentos.map((x) => x.toMap()).toList(),
       'tamanhoSelecionado': tamanhoSelecionado,
       'tipo': tipo,
       'idMesa': idMesa,
@@ -79,7 +80,8 @@ class CarrinhoModelo {
         ),
       ),
       listaAcompanhamentos: List<AcompanhamentosModelo>.from(
-        (map['listaAcompanhamentos'] as List<dynamic>).map<AcompanhamentosModelo>(
+        (map['listaAcompanhamentos'] as List<dynamic>)
+            .map<AcompanhamentosModelo>(
           (x) => AcompanhamentosModelo.fromMap(x as Map<String, dynamic>),
         ),
       ),
@@ -87,9 +89,12 @@ class CarrinhoModelo {
       tipo: map['tipo'] != null ? map['tipo'] as String : null,
       idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
       idComanda: map['idComanda'] != null ? map['idComanda'] as String : null,
-      observacaoMesa: map['observacaoMesa'] != null ? map['observacaoMesa'] as String : null,
+      observacaoMesa: map['observacaoMesa'] != null
+          ? map['observacaoMesa'] as String
+          : null,
       idProduto: map['idProduto'] != null ? map['idProduto'] as String : null,
-      observacao: map['observacao'] != null ? map['observacao'] as String : null,
+      observacao:
+          map['observacao'] != null ? map['observacao'] as String : null,
       idUsuario: map['idUsuario'] != null ? map['idUsuario'] as String : null,
       empresa: map['empresa'] != null ? map['empresa'] as String : null,
     );
@@ -97,5 +102,6 @@ class CarrinhoModelo {
 
   String toJson() => json.encode(toMap());
 
-  factory CarrinhoModelo.fromJson(String source) => CarrinhoModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory CarrinhoModelo.fromJson(String source) =>
+      CarrinhoModelo.fromMap(json.decode(source) as Map<String, dynamic>);
 }

@@ -11,7 +11,8 @@ class ServicosCategoria {
   Future<List<ModeloCategoria>> listar() async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('categorias/listar.php?empresa=$empresa');
+    final response =
+        await dio.cliente.get('categorias/listar.php?empresa=$empresa');
 
     if (response.statusCode == 200) {
       return List<ModeloCategoria>.from(

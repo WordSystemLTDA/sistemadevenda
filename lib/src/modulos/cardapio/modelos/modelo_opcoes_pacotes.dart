@@ -44,7 +44,8 @@ class ModeloOpcoesPacotes {
       dados: map['dados'] != null
           ? List<ModeloDadosOpcoesPacotes>.from(
               (map['dados'] as List<dynamic>).map<ModeloDadosOpcoesPacotes?>(
-                (x) => ModeloDadosOpcoesPacotes.fromMap(x as Map<String, dynamic>),
+                (x) =>
+                    ModeloDadosOpcoesPacotes.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,
@@ -67,5 +68,6 @@ class ModeloOpcoesPacotes {
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloOpcoesPacotes.fromJson(String source) => ModeloOpcoesPacotes.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloOpcoesPacotes.fromJson(String source) =>
+      ModeloOpcoesPacotes.fromMap(json.decode(source) as Map<String, dynamic>);
 }

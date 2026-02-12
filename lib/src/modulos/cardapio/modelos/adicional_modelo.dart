@@ -33,5 +33,6 @@ class AdicionalModelo {
 
   String toJson() => json.encode(toMap());
 
-  factory AdicionalModelo.fromJson(String source) => AdicionalModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory AdicionalModelo.fromJson(String source) =>
+      AdicionalModelo.fromMap(json.decode(source) as Map<String, dynamic>);
 }

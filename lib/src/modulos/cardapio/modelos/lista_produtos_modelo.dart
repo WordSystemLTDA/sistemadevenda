@@ -22,7 +22,8 @@ class ListaProdutosModelo {
     return ListaProdutosModelo(
       categoria: map['categoria'] as String,
       listaProdutos: List<Modelowordprodutos>.from(
-        (map['listaProdutos'] as List<Modelowordprodutos>).map<Modelowordprodutos>(
+        (map['listaProdutos'] as List<Modelowordprodutos>)
+            .map<Modelowordprodutos>(
           (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
         ),
       ),
@@ -31,5 +32,6 @@ class ListaProdutosModelo {
 
   String toJson() => json.encode(toMap());
 
-  factory ListaProdutosModelo.fromJson(String source) => ListaProdutosModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ListaProdutosModelo.fromJson(String source) =>
+      ListaProdutosModelo.fromMap(json.decode(source) as Map<String, dynamic>);
 }

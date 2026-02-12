@@ -7,7 +7,11 @@ class ModeloTamanhosPizza {
   final String quantpedacos;
   final String saboreslimite;
 
-  ModeloTamanhosPizza({required this.id, required this.nomedotamanho, required this.quantpedacos, required this.saboreslimite});
+  ModeloTamanhosPizza(
+      {required this.id,
+      required this.nomedotamanho,
+      required this.quantpedacos,
+      required this.saboreslimite});
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -29,5 +33,6 @@ class ModeloTamanhosPizza {
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloTamanhosPizza.fromJson(String source) => ModeloTamanhosPizza.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloTamanhosPizza.fromJson(String source) =>
+      ModeloTamanhosPizza.fromMap(json.decode(source) as Map<String, dynamic>);
 }

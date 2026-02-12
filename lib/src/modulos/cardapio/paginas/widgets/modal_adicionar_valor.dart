@@ -26,7 +26,9 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
+                    borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(10),
+                        topRight: Radius.circular(10)),
                     color: Theme.of(context).scaffoldBackgroundColor,
                   ),
                   child: GestureDetector(
@@ -45,20 +47,28 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
                             const SizedBox(height: 20),
                             const Padding(
                               padding: EdgeInsets.only(left: 10.0),
-                              child: Text('Adicionar Valor no Item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              child: Text('Adicionar Valor no Item',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
                             ),
                             const Divider(),
                             const SizedBox(height: 20),
                             SizedBox(
                               height: 50,
                               child: TextField(
-                                decoration: const InputDecoration(label: Text('Novo valor')),
+                                decoration: const InputDecoration(
+                                    label: Text('Novo valor')),
                                 controller: _valorController,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
                                 autofocus: true,
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                  FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                                  FilteringTextInputFormatter.deny(',',
+                                      replacementString: '.'),
+                                  FilteringTextInputFormatter.allow(
+                                      RegExp(r'(^\d*\.?\d{0,2})')),
                                 ],
                               ),
                             ),
@@ -75,9 +85,15 @@ class _ModalAdicionarValorState extends State<ModalAdicionarValor> {
                                 const SizedBox(width: 10),
                                 ElevatedButton(
                                   onPressed: () {
-                                    if ((double.tryParse(_valorController.text) ?? 0) <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                        content: Text('Valor deve ser maior que Zero!', textAlign: TextAlign.center),
+                                    if ((double.tryParse(
+                                                _valorController.text) ??
+                                            0) <=
+                                        0) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                        content: Text(
+                                            'Valor deve ser maior que Zero!',
+                                            textAlign: TextAlign.center),
                                         backgroundColor: Colors.red,
                                         behavior: SnackBarBehavior.floating,
                                       ));

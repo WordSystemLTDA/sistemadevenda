@@ -54,14 +54,16 @@ class _BuscarProdutosState extends State<BuscarProdutos> {
                 ),
               ),
               onChanged: (value) async {
-                provedor.listarProdutosPorNome(value, widget.categoria!.id, widget.idcliente);
+                provedor.listarProdutosPorNome(
+                    value, widget.categoria!.id, widget.idcliente);
               },
               // onTap: () => _searchController.openView(),
             ),
           ),
         );
       },
-      suggestionsBuilder: (BuildContext context, SearchController controller) async {
+      suggestionsBuilder:
+          (BuildContext context, SearchController controller) async {
         if (widget.categoria == null) return [];
 
         // final keyword = controller.value.text;

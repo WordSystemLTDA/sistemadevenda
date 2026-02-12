@@ -29,13 +29,20 @@ class _ListaBordasState extends State<ListaBordas> {
                 padding: const EdgeInsets.only(left: 6.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(int.parse(provedor.configBigchef!.saborlimitedeborda), (index) {
+                  children: List.generate(
+                      int.parse(provedor.configBigchef!.saborlimitedeborda),
+                      (index) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 5),
                       child: FittedBox(
                         fit: BoxFit.fitWidth,
                         child: Badge(
-                          label: (index + 1) == provedor.limiteSaborBordaSelecionado ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                          label: (index + 1) ==
+                                  provedor.limiteSaborBordaSelecionado
+                              ? const Icon(Icons.check,
+                                  color: Colors.white, size: 14)
+                              : null,
                           backgroundColor: Colors.green,
                           alignment: const Alignment(1, -1),
                           padding: const EdgeInsets.only(bottom: 2, top: 2),
@@ -44,30 +51,53 @@ class _ListaBordasState extends State<ListaBordas> {
                             width: 180,
                             height: 70,
                             decoration: BoxDecoration(
-                              border: Border.all(color: (index + 1) == provedor.limiteSaborBordaSelecionado ? Colors.green : Colors.grey),
+                              border: Border.all(
+                                  color: (index + 1) ==
+                                          provedor.limiteSaborBordaSelecionado
+                                      ? Colors.green
+                                      : Colors.grey),
                               borderRadius: BorderRadius.circular(3),
                             ),
                             child: InkWell(
                               onTap: () {
-                                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                                ScaffoldMessenger.of(context)
+                                    .removeCurrentSnackBar();
 
-                                if (provedor.limiteSaborBordaSelecionado == (index + 1)) {
+                                if (provedor.limiteSaborBordaSelecionado ==
+                                    (index + 1)) {
                                   provedor.limiteSaborBordaSelecionado = 0;
-                                  var listaF = provedorProduto.opcoesPacotesListaFinal;
-                                  listaF.where((element) => element.id == 6).firstOrNull?.dados = [];
+                                  var listaF =
+                                      provedorProduto.opcoesPacotesListaFinal;
+                                  listaF
+                                      .where((element) => element.id == 6)
+                                      .firstOrNull
+                                      ?.dados = [];
 
-                                  provedorProduto.opcoesPacotesListaFinal = listaF;
+                                  provedorProduto.opcoesPacotesListaFinal =
+                                      listaF;
                                 } else {
-                                  provedor.limiteSaborBordaSelecionado = (index + 1);
+                                  provedor.limiteSaborBordaSelecionado =
+                                      (index + 1);
                                 }
 
                                 // print((widget.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados?.length ?? 0));
 
-                                if ((provedorProduto.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados?.length ?? 0) > (index + 1)) {
-                                  var listaF = provedorProduto.opcoesPacotesListaFinal;
-                                  listaF.where((element) => element.id == 6).firstOrNull?.dados = [];
+                                if ((provedorProduto.opcoesPacotesListaFinal
+                                            .where((element) => element.id == 6)
+                                            .firstOrNull
+                                            ?.dados
+                                            ?.length ??
+                                        0) >
+                                    (index + 1)) {
+                                  var listaF =
+                                      provedorProduto.opcoesPacotesListaFinal;
+                                  listaF
+                                      .where((element) => element.id == 6)
+                                      .firstOrNull
+                                      ?.dados = [];
 
-                                  provedorProduto.opcoesPacotesListaFinal = listaF;
+                                  provedorProduto.opcoesPacotesListaFinal =
+                                      listaF;
                                 }
                               },
                               child: Row(
@@ -90,12 +120,32 @@ class _ListaBordasState extends State<ListaBordas> {
                                                 5: Colors.yellow,
                                               };
 
-                                              if ((index + 1) == provedor.limiteSaborBordaSelecionado &&
-                                                  (index2 + 1) <= (provedorProduto.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados ?? []).length) {
-                                                return {'x': '', 'y': 10, 'color': cores[index2 + 1]};
+                                              if ((index + 1) ==
+                                                      provedor
+                                                          .limiteSaborBordaSelecionado &&
+                                                  (index2 + 1) <=
+                                                      (provedorProduto
+                                                                  .opcoesPacotesListaFinal
+                                                                  .where((element) =>
+                                                                      element
+                                                                          .id ==
+                                                                      6)
+                                                                  .firstOrNull
+                                                                  ?.dados ??
+                                                              [])
+                                                          .length) {
+                                                return {
+                                                  'x': '',
+                                                  'y': 10,
+                                                  'color': cores[index2 + 1]
+                                                };
                                               }
 
-                                              return {'x': '', 'y': 10, 'color': Colors.transparent};
+                                              return {
+                                                'x': '',
+                                                'y': 10,
+                                                'color': Colors.transparent
+                                              };
                                             },
                                           ),
                                           explode: false,
@@ -105,20 +155,33 @@ class _ListaBordasState extends State<ListaBordas> {
                                           cornerStyle: CornerStyle.bothCurve,
                                           startAngle: 90,
                                           endAngle: 90,
-                                          strokeColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                          strokeColor:
+                                              Theme.of(context).brightness ==
+                                                      Brightness.dark
+                                                  ? Colors.white
+                                                  : Colors.black,
                                           strokeWidth: 0.5,
-                                          pointColorMapper: (data, index) => data['color'],
-                                          xValueMapper: (data, _) => data['x'] as String,
+                                          pointColorMapper: (data, index) =>
+                                              data['color'],
+                                          xValueMapper: (data, _) =>
+                                              data['x'] as String,
                                           yValueMapper: (data, _) => data['y'],
                                         ),
                                       ],
                                     ),
                                   ),
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(provedor.tamanhosPizza?.nomedotamanho ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                      Text(
+                                          provedor.tamanhosPizza
+                                                  ?.nomedotamanho ??
+                                              '',
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold)),
                                       Text(
                                         "${index + 1 > 1 ? 'até ' : ''}${index + 1} ${index + 1 > 1 ? 'sabores' : 'sabor'}",
                                         style: const TextStyle(fontSize: 10),

@@ -20,12 +20,14 @@ class ProvedorProdutos extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> listarProdutosPorCategoria(String category, {bool carregarMais = false}) async {
+  Future<void> listarProdutosPorCategoria(String category,
+      {bool carregarMais = false}) async {
     if (paginas[category] == null) {
       paginas[category] = 1;
     }
 
-    final res = await _produtoService.listarPorCategoria(category, paginas[category] ?? 1);
+    final res = await _produtoService.listarPorCategoria(
+        category, paginas[category] ?? 1);
     if (res.isEmpty) return;
 
     if (carregarMais) {
@@ -36,9 +38,11 @@ class ProvedorProdutos extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> listarProdutosPorNome(String pesquisa, String categoria, String idcliente) async {
+  Future<void> listarProdutosPorNome(
+      String pesquisa, String categoria, String idcliente) async {
     paginas[categoria] = 1;
-    final res = await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
+    final res =
+        await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
 
     produtos = res;
     notifyListeners();

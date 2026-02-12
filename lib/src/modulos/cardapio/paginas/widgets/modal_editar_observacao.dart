@@ -10,7 +10,12 @@ class ModalEditarObservacao extends StatefulWidget {
   final String observacao;
   final int index;
   final bool? itensRecorrentes;
-  const ModalEditarObservacao({super.key, required this.idProduto, required this.observacao, required this.index, this.itensRecorrentes = false});
+  const ModalEditarObservacao(
+      {super.key,
+      required this.idProduto,
+      required this.observacao,
+      required this.index,
+      this.itensRecorrentes = false});
 
   @override
   State<ModalEditarObservacao> createState() => _ModalEditarObservacaoState();
@@ -18,7 +23,8 @@ class ModalEditarObservacao extends StatefulWidget {
 
 class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
+  final ProvedorItensRecorrentes provedorItensRecorrentes =
+      Modular.get<ProvedorItensRecorrentes>();
 
   TextEditingController observacoesController = TextEditingController();
 
@@ -62,12 +68,14 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
               ),
               onPressed: () {
                 if (widget.itensRecorrentes == true) {
-                  var item = provedorItensRecorrentes.itensCarrinho[widget.index];
+                  var item =
+                      provedorItensRecorrentes.itensCarrinho[widget.index];
 
                   setState(() {
                     item.observacao = observacoesController.text;
                     item.opcoesPacotesListaFinal = [
-                      ...(item.opcoesPacotesListaFinal?.toList() ?? []).where((element) => element.id != 11),
+                      ...(item.opcoesPacotesListaFinal?.toList() ?? [])
+                          .where((element) => element.id != 11),
                       if (observacoesController.text.isNotEmpty) ...[
                         ModeloOpcoesPacotes(
                           id: 11,
@@ -91,12 +99,14 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
                   return;
                 }
 
-                var item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[widget.index];
+                var item = carrinhoProvedor
+                    .itensCarrinho.listaComandosPedidos[widget.index];
 
                 setState(() {
                   item.observacao = observacoesController.text;
                   item.opcoesPacotesListaFinal = [
-                    ...(item.opcoesPacotesListaFinal?.toList() ?? []).where((element) => element.id != 11),
+                    ...(item.opcoesPacotesListaFinal?.toList() ?? [])
+                        .where((element) => element.id != 11),
                     if (observacoesController.text.isNotEmpty) ...[
                       ModeloOpcoesPacotes(
                         id: 11,

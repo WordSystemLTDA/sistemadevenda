@@ -48,9 +48,15 @@ class ModeloDadosOpcoesPacotes {
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
       foto: map['foto'] != null ? map['foto'] as String : null,
-      quantimaximaselecao: map['quantimaximaselecao'] != null ? map['quantimaximaselecao'] as String : null,
-      habilsepardelivery: map['habilsepardelivery'] != null ? map['habilsepardelivery'] as String : null,
-      estaSelecionado: map['estaSelecionado'] != null ? map['estaSelecionado'] as bool : null,
+      quantimaximaselecao: map['quantimaximaselecao'] != null
+          ? map['quantimaximaselecao'] as String
+          : null,
+      habilsepardelivery: map['habilsepardelivery'] != null
+          ? map['habilsepardelivery'] as String
+          : null,
+      estaSelecionado: map['estaSelecionado'] != null
+          ? map['estaSelecionado'] as bool
+          : null,
       excluir: map['excluir'] != null ? map['excluir'] as bool : null,
       quantidade: map['quantidade'] != null ? map['quantidade'] as int : null,
     );
@@ -58,5 +64,7 @@ class ModeloDadosOpcoesPacotes {
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloDadosOpcoesPacotes.fromJson(String source) => ModeloDadosOpcoesPacotes.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloDadosOpcoesPacotes.fromJson(String source) =>
+      ModeloDadosOpcoesPacotes.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

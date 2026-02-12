@@ -67,7 +67,8 @@ class ProvedorCardapio extends ChangeNotifier {
   }
 
   List<Modelowordprodutos> _saboresPizzaSelecionados = [];
-  List<Modelowordprodutos> get saboresPizzaSelecionados => _saboresPizzaSelecionados;
+  List<Modelowordprodutos> get saboresPizzaSelecionados =>
+      _saboresPizzaSelecionados;
   set saboresPizzaSelecionados(List<Modelowordprodutos> value) {
     _saboresPizzaSelecionados = value;
     notifyListeners();
@@ -115,13 +116,17 @@ class ProvedorCardapio extends ChangeNotifier {
   }
 
   double calcularPrecoPizza() {
-    var modelovalortamanhopizza = usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
+    var modelovalortamanhopizza =
+        usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
 
     if (modelovalortamanhopizza == 'media') {
-      var somaDosProdutosSelecionados = double.parse(saboresPizzaSelecionados.fold(
+      var somaDosProdutosSelecionados =
+          double.parse(saboresPizzaSelecionados.fold(
         '0',
         (previousValue, element) {
-          return (double.parse(previousValue) + double.parse(element.valorVenda)).toStringAsFixed(2);
+          return (double.parse(previousValue) +
+                  double.parse(element.valorVenda))
+              .toStringAsFixed(2);
         },
       ));
 
@@ -129,7 +134,9 @@ class ProvedorCardapio extends ChangeNotifier {
 
       return media;
     } else if (modelovalortamanhopizza == 'maior') {
-      return saboresPizzaSelecionados.map((e) => double.parse(e.valorVenda)).reduce(math.max);
+      return saboresPizzaSelecionados
+          .map((e) => double.parse(e.valorVenda))
+          .reduce(math.max);
     }
 
     return 0;

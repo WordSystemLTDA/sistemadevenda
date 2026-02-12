@@ -136,7 +136,8 @@ class Modelowordprodutos {
       'habilItensRetirada': habilItensRetirada,
       'valorRestoDivisao': valorRestoDivisao,
       'opcoesPacotes': opcoesPacotes?.map((x) => x.toMap()).toList(),
-      'opcoesPacotesListaFinal': opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
+      'opcoesPacotesListaFinal':
+          opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
       'descontoProduto': descontoProduto?.toMap(),
       'habilsepardelivery': habilsepardelivery,
     };
@@ -145,8 +146,10 @@ class Modelowordprodutos {
   factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
     return Modelowordprodutos(
       id: map['id'] as String,
-      hashprodutos: map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
-      iditensvenda: map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
+      hashprodutos:
+          map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
+      iditensvenda:
+          map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
       estoque: map['estoque'] as String,
@@ -157,13 +160,23 @@ class Modelowordprodutos {
       valorVenda: map['valorVenda'] as String,
       categoria: map['categoria'] as String,
       nomeCategoria: map['nomeCategoria'] as String,
-      dataLancado: map['dataLancado'] != null ? map['dataLancado'] as String : null,
-      habilsepardelivery: map['habilsepardelivery'] != null ? map['habilsepardelivery'] as String : null,
-      ativarCustoDeProducao: map['ativarCustoDeProducao'] != null ? map['ativarCustoDeProducao'] as String : null,
+      dataLancado:
+          map['dataLancado'] != null ? map['dataLancado'] as String : null,
+      habilsepardelivery: map['habilsepardelivery'] != null
+          ? map['habilsepardelivery'] as String
+          : null,
+      ativarCustoDeProducao: map['ativarCustoDeProducao'] != null
+          ? map['ativarCustoDeProducao'] as String
+          : null,
       novo: map['novo'] != null ? map['novo'] as bool : null,
-      destinoDeImpressao: map['destinoDeImpressao'] != null ? ModeloDestinoImpressao.fromMap(map['destinoDeImpressao'] as Map<String, dynamic>) : null,
+      destinoDeImpressao: map['destinoDeImpressao'] != null
+          ? ModeloDestinoImpressao.fromMap(
+              map['destinoDeImpressao'] as Map<String, dynamic>)
+          : null,
       habilTipo: map['habilTipo'] as String,
-      habilItensRetirada: map['habilItensRetirada'] != null ? map['habilItensRetirada'] as String : null,
+      habilItensRetirada: map['habilItensRetirada'] != null
+          ? map['habilItensRetirada'] as String
+          : null,
       ativoLoja: map['ativoLoja'] != null ? map['ativoLoja'] as String : null,
       // cortesias: List<Modelowordcortesiasproduto>.from(
       //   (map['cortesias'] as List<dynamic>).map<Modelowordcortesiasproduto>(
@@ -196,8 +209,10 @@ class Modelowordprodutos {
       //   ),
       // ),
       ingredientes: List<Modelowordingredientesproduto>.from(
-        (map['ingredientes'] as List<dynamic>).map<Modelowordingredientesproduto>(
-          (x) => Modelowordingredientesproduto.fromMap(x as Map<String, dynamic>),
+        (map['ingredientes'] as List<dynamic>)
+            .map<Modelowordingredientesproduto>(
+          (x) =>
+              Modelowordingredientesproduto.fromMap(x as Map<String, dynamic>),
         ),
       ),
       quantidade: map['quantidade'] != null
@@ -205,13 +220,23 @@ class Modelowordprodutos {
               ? (double.tryParse(map['quantidade'].toString()) ?? 0)
               : (double.tryParse(map['quantidade']) ?? 0)
           : null,
-      quantidadePessoa: map['quantidadePessoa'] != null ? map['quantidadePessoa'] as int : null,
-      tamanhoLista: map['tamanhoLista'] != null ? map['tamanhoLista'] as int : null,
-      valorTotalVendas: map['valorTotalVendas'] != null ? map['valorTotalVendas'] as String : null,
-      observacao: map['observacao'] != null ? map['observacao'] as String : null,
-      quantidadeController: map['quantidadeController'] != null ? map['quantidadeController'] as TextEditingController : null,
+      quantidadePessoa: map['quantidadePessoa'] != null
+          ? map['quantidadePessoa'] as int
+          : null,
+      tamanhoLista:
+          map['tamanhoLista'] != null ? map['tamanhoLista'] as int : null,
+      valorTotalVendas: map['valorTotalVendas'] != null
+          ? map['valorTotalVendas'] as String
+          : null,
+      observacao:
+          map['observacao'] != null ? map['observacao'] as String : null,
+      quantidadeController: map['quantidadeController'] != null
+          ? map['quantidadeController'] as TextEditingController
+          : null,
       acoes: map['acoes'] != null ? map['acoes'] as Widget : null,
-      valorRestoDivisao: map['valorRestoDivisao'] != null ? map['valorRestoDivisao'] as String : null,
+      valorRestoDivisao: map['valorRestoDivisao'] != null
+          ? map['valorRestoDivisao'] as String
+          : null,
       opcoesPacotes: map['opcoesPacotes'] != null
           ? List<ModeloOpcoesPacotes>.from(
               (map['opcoesPacotes'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
@@ -221,25 +246,32 @@ class Modelowordprodutos {
           : null,
       opcoesPacotesListaFinal: map['opcoesPacotesListaFinal'] != null
           ? List<ModeloOpcoesPacotes>.from(
-              (map['opcoesPacotesListaFinal'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
+              (map['opcoesPacotesListaFinal'] as List<dynamic>)
+                  .map<ModeloOpcoesPacotes?>(
                 (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,
       tamanhosPizza: map['tamanhosPizza'] != null
           ? List<Modelowordtamanhosproduto>.from(
-              (map['tamanhosPizza'] as List<dynamic>).map<Modelowordtamanhosproduto?>(
-                (x) => Modelowordtamanhosproduto.fromMap(x as Map<String, dynamic>),
+              (map['tamanhosPizza'] as List<dynamic>)
+                  .map<Modelowordtamanhosproduto?>(
+                (x) => Modelowordtamanhosproduto.fromMap(
+                    x as Map<String, dynamic>),
               ),
             )
           : null,
-      descontoProduto: map['descontoProduto'] != null ? ModeloDescontoProduto.fromMap(map['descontoProduto'] as Map<String, dynamic>) : null,
+      descontoProduto: map['descontoProduto'] != null
+          ? ModeloDescontoProduto.fromMap(
+              map['descontoProduto'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory Modelowordprodutos.fromJson(String source) => Modelowordprodutos.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modelowordprodutos.fromJson(String source) =>
+      Modelowordprodutos.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
   bool operator ==(covariant Modelowordprodutos other) {

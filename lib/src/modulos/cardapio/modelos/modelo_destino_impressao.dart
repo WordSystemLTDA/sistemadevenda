@@ -31,12 +31,15 @@ class ModeloDestinoImpressao {
       nome: map['nome'] as String,
       nomeDaImpressora: map['nomeDaImpressora'] as String,
       tamanhoDoPapel: map['tamanhoDoPapel'] as String,
-      avancoPapel: map['avancoPapel'] != null ? map['avancoPapel'] as String : null,
+      avancoPapel:
+          map['avancoPapel'] != null ? map['avancoPapel'] as String : null,
       nomedopc: map['nomedopc'] != null ? map['nomedopc'] as String : null,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloDestinoImpressao.fromJson(String source) => ModeloDestinoImpressao.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloDestinoImpressao.fromJson(String source) =>
+      ModeloDestinoImpressao.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

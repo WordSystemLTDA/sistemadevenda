@@ -46,5 +46,7 @@ class Modelowordadicionaisproduto {
 
   String toJson() => json.encode(toMap());
 
-  factory Modelowordadicionaisproduto.fromJson(String source) => Modelowordadicionaisproduto.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modelowordadicionaisproduto.fromJson(String source) =>
+      Modelowordadicionaisproduto.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

@@ -139,6 +139,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                   borderRadius: BorderRadius.all(Radius.circular(5)),
                 ),
                 onPressed: () async {
+                  if (isLoading) return;
+
                   setState(() => isLoading = !isLoading);
 
                   provedorFinalizarPagamento.idVenda = provedorCardapio.id;

@@ -35,7 +35,9 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> {
   }
 
   void listarComandasPedidos() async {
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim').then((value) {
+    await servicoCardapio
+        .listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim')
+        .then((value) {
       setState(() {
         dados = value;
       });

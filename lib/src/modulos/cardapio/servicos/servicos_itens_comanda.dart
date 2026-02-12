@@ -12,7 +12,8 @@ class ServicosItensComanda {
   final UsuarioProvedor usuarioProvedor;
   ServicosItensComanda(this.dio, this.usuarioProvedor);
 
-  Future<List<dynamic>> listarComandasPedidos(String idComanda, String idMesa) async {
+  Future<List<dynamic>> listarComandasPedidos(
+      String idComanda, String idMesa) async {
     final comanda = idComanda.isEmpty ? 0 : idComanda;
     final mesa = idMesa.isEmpty ? 0 : idMesa;
 
@@ -77,7 +78,8 @@ class ServicosItensComanda {
     return true;
   }
 
-  Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos) async {
+  Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade,
+      observacao, listaIdProdutos) async {
     const url = 'pedidos/lancar_pedido.php';
 
     final idUsuario = usuarioProvedor.usuario!.id;

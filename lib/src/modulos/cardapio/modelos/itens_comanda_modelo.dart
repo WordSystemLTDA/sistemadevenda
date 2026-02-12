@@ -15,7 +15,8 @@ class ItensModeloComandao {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'listaComandosPedidos': listaComandosPedidos.map((x) => x.toMap()).toList(),
+      'listaComandosPedidos':
+          listaComandosPedidos.map((x) => x.toMap()).toList(),
       'quantidadeTotal': quantidadeTotal,
       'precoTotal': precoTotal,
     };
@@ -35,5 +36,6 @@ class ItensModeloComandao {
 
   String toJson() => json.encode(toMap());
 
-  factory ItensModeloComandao.fromJson(String source) => ItensModeloComandao.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ItensModeloComandao.fromJson(String source) =>
+      ItensModeloComandao.fromMap(json.decode(source) as Map<String, dynamic>);
 }

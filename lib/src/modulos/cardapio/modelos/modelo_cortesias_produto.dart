@@ -46,5 +46,7 @@ class Modelowordcortesiasproduto {
 
   String toJson() => json.encode(toMap());
 
-  factory Modelowordcortesiasproduto.fromJson(String source) => Modelowordcortesiasproduto.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modelowordcortesiasproduto.fromJson(String source) =>
+      Modelowordcortesiasproduto.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

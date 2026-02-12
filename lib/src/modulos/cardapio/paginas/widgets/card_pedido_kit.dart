@@ -16,7 +16,8 @@ class CardPedidoKit extends StatefulWidget {
   State<CardPedidoKit> createState() => _CardPedidoKitState();
 }
 
-class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateMixin {
+class _CardPedidoKitState extends State<CardPedidoKit>
+    with TickerProviderStateMixin {
   // control the state of the animation
   late final AnimationController _controller;
 
@@ -118,7 +119,9 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                               const SizedBox(width: 30),
                               Text(
                                 // ((double.parse(item.valorVenda) + (widget.somarValores ? double.parse(soma.valor) : 0)) * item.quantidade!).obterReal(),
-                                (double.parse(item.valorVenda) * item.quantidade!).obterReal(),
+                                (double.parse(item.valorVenda) *
+                                        item.quantidade!)
+                                    .obterReal(),
                                 maxLines: 1,
                                 style: TextStyle(
                                   fontSize: 14,
@@ -139,13 +142,19 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                         width: 20,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
-                          transitionBuilder: (child, anim) => RotationTransition(
-                            turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                          transitionBuilder: (child, anim) =>
+                              RotationTransition(
+                            turns: child.key == const ValueKey('icon1')
+                                ? Tween<double>(begin: 0.75, end: 1)
+                                    .animate(anim)
+                                : Tween<double>(begin: 1, end: 1).animate(anim),
                             child: ScaleTransition(scale: anim, child: child),
                           ),
                           child: _isExpanded
-                              ? const Icon(Icons.keyboard_arrow_up_outlined, key: ValueKey('icon2'))
-                              : const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1')),
+                              ? const Icon(Icons.keyboard_arrow_up_outlined,
+                                  key: ValueKey('icon2'))
+                              : const Icon(Icons.keyboard_arrow_down_outlined,
+                                  key: ValueKey('icon1')),
                         ),
                       ),
                     ),
@@ -166,11 +175,14 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(left: 10, top: 10),
-                        child: Text(e.titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: Text(e.titulo,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                       if (e.dados != null) ...[
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.dados!.length,
@@ -185,8 +197,13 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                                   style: const TextStyle(fontSize: 15),
                                 ),
                                 Text(
-                                  (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
-                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 16),
+                                  (double.parse(dado.valor ?? '0') *
+                                          (dado.quantidade ?? 1))
+                                      .obterReal(),
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontSize: 16),
                                 ),
                               ],
                             );
@@ -194,14 +211,16 @@ class _CardPedidoKitState extends State<CardPedidoKit> with TickerProviderStateM
                         ),
                       ] else if (e.produtos != null) ...[
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.produtos!.length,
                           itemBuilder: (context, index) {
                             final produto = e.produtos![index];
 
-                            return CardPedidoKit(item: produto, somarValores: false);
+                            return CardPedidoKit(
+                                item: produto, somarValores: false);
                           },
                         ),
                       ],

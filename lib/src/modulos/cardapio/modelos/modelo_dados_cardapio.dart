@@ -120,11 +120,17 @@ class Modeloworddadoscardapio {
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
       nome: map['nome'] != null ? map['nome'] as String : null,
       status: map['status'] != null ? map['status'] as String : null,
-      dataAbertura: map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
-      dataFechamento: map['dataFechamento'] != null ? map['dataFechamento'] as String : null,
-      dataUltimoProdutoInserido: map['dataUltimoProdutoInserido'] != null ? map['dataUltimoProdutoInserido'] as String : null,
+      dataAbertura:
+          map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
+      dataFechamento: map['dataFechamento'] != null
+          ? map['dataFechamento'] as String
+          : null,
+      dataUltimoProdutoInserido: map['dataUltimoProdutoInserido'] != null
+          ? map['dataUltimoProdutoInserido'] as String
+          : null,
       idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
-      nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
+      nomeCliente:
+          map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
       produtos: map['produtos'] != null
           ? List<Modelowordprodutos>.from(
               (map['produtos'] as List<dynamic>).map<Modelowordprodutos?>(
@@ -132,39 +138,68 @@ class Modeloworddadoscardapio {
               ),
             )
           : null,
-      valorTotal: map['valorTotal'] != null ? map['valorTotal'] as String : null,
-      numeroPedido: map['numeroPedido'] != null ? map['numeroPedido'] as String : null,
-      celularCliente: map['celularCliente'] != null ? map['celularCliente'] as String : null,
-      enderecoCliente: map['enderecoCliente'] != null ? map['enderecoCliente'] as String : null,
-      numeroCliente: map['numeroCliente'] != null ? map['numeroCliente'] as String : null,
-      complementoCliente: map['complementoCliente'] != null ? map['complementoCliente'] as String : null,
-      cidadeCliente: map['cidadeCliente'] != null ? map['cidadeCliente'] as String : null,
-      bairroCliente: map['bairroCliente'] != null ? map['bairroCliente'] as String : null,
-      taxaBairroCliente: map['taxaBairroCliente'] != null ? map['taxaBairroCliente'] as String : null,
-      somaValorHistorico: map['somaValorHistorico'] != null ? map['somaValorHistorico'] as String : null,
-      celularEmpresa: map['celularEmpresa'] != null ? map['celularEmpresa'] as String : null,
-      cnpjEmpresa: map['cnpjEmpresa'] != null ? map['cnpjEmpresa'] as String : null,
-      enderecoEmpresa: map['enderecoEmpresa'] != null ? map['enderecoEmpresa'] as String : null,
-      nomeEmpresa: map['nomeEmpresa'] != null ? map['nomeEmpresa'] as String : null,
+      valorTotal:
+          map['valorTotal'] != null ? map['valorTotal'] as String : null,
+      numeroPedido:
+          map['numeroPedido'] != null ? map['numeroPedido'] as String : null,
+      celularCliente: map['celularCliente'] != null
+          ? map['celularCliente'] as String
+          : null,
+      enderecoCliente: map['enderecoCliente'] != null
+          ? map['enderecoCliente'] as String
+          : null,
+      numeroCliente:
+          map['numeroCliente'] != null ? map['numeroCliente'] as String : null,
+      complementoCliente: map['complementoCliente'] != null
+          ? map['complementoCliente'] as String
+          : null,
+      cidadeCliente:
+          map['cidadeCliente'] != null ? map['cidadeCliente'] as String : null,
+      bairroCliente:
+          map['bairroCliente'] != null ? map['bairroCliente'] as String : null,
+      taxaBairroCliente: map['taxaBairroCliente'] != null
+          ? map['taxaBairroCliente'] as String
+          : null,
+      somaValorHistorico: map['somaValorHistorico'] != null
+          ? map['somaValorHistorico'] as String
+          : null,
+      celularEmpresa: map['celularEmpresa'] != null
+          ? map['celularEmpresa'] as String
+          : null,
+      cnpjEmpresa:
+          map['cnpjEmpresa'] != null ? map['cnpjEmpresa'] as String : null,
+      enderecoEmpresa: map['enderecoEmpresa'] != null
+          ? map['enderecoEmpresa'] as String
+          : null,
+      nomeEmpresa:
+          map['nomeEmpresa'] != null ? map['nomeEmpresa'] as String : null,
       nomelancamento: map['nomelancamento'] != null
           ? List<ModeloNomeLancamento>.from(
-              (map['nomelancamento'] as List<dynamic>).map<ModeloNomeLancamento?>(
+              (map['nomelancamento'] as List<dynamic>)
+                  .map<ModeloNomeLancamento?>(
                 (x) => ModeloNomeLancamento.fromMap(x as Map<String, dynamic>),
               ),
             )
           : null,
       idComanda: map['idComanda'] != null ? map['idComanda'] as String : null,
       idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
-      idDelivery: map['idDelivery'] != null ? map['idDelivery'] as String : null,
+      idDelivery:
+          map['idDelivery'] != null ? map['idDelivery'] as String : null,
       idBalcao: map['idBalcao'] != null ? map['idBalcao'] as String : null,
-      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
+      observacaoDoPedido: map['observacaoDoPedido'] != null
+          ? map['observacaoDoPedido'] as String
+          : null,
       nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
-      tipodeentrega: map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
-      valorentrega: map['valorentrega'] != null ? map['valorentrega'] as String : null,
+      tipodeentrega:
+          map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
+      valorentrega:
+          map['valorentrega'] != null ? map['valorentrega'] as String : null,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory Modeloworddadoscardapio.fromJson(String source) => Modeloworddadoscardapio.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modeloworddadoscardapio.fromJson(String source) =>
+      Modeloworddadoscardapio.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

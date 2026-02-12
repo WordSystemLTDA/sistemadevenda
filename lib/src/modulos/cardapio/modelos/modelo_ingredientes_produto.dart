@@ -30,5 +30,7 @@ class Modelowordingredientesproduto {
 
   String toJson() => json.encode(toMap());
 
-  factory Modelowordingredientesproduto.fromJson(String source) => Modelowordingredientesproduto.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory Modelowordingredientesproduto.fromJson(String source) =>
+      Modelowordingredientesproduto.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

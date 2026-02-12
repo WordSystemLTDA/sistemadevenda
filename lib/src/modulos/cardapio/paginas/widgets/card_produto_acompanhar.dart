@@ -36,7 +36,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
   State<CardProdutoAcompanhar> createState() => _CardProdutoAcompanharState();
 }
 
-class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with TickerProviderStateMixin {
+class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
+    with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
   late final AnimationController _controller;
@@ -60,13 +61,15 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
     );
     _sizeTween = Tween(begin: 0, end: 1);
     _updateTimer();
-    _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
+    _tickerTempoLancado ??=
+        Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
     super.initState();
   }
 
   void _updateTimer() {
     if (widget.item.dataLancado != null) {
-      final duration = DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
+      final duration =
+          DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
       final newDuration = ConfigSistema.formatarHora(duration);
 
       tempoLancadoController.add(newDuration);
@@ -181,11 +184,14 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             Row(
                               children: [
                                 Text(
-                                  ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
+                                  ((double.parse(widget.item.valorVenda)) *
+                                          widget.item.quantidade!.toInt())
+                                      .obterReal(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
                                   maxLines: 1,
                                 ),
@@ -199,8 +205,11 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                           children: [
                             Text("Código: ${item.codigo}"),
                             Spacer(),
-                            const Text("Quant.:  ", style: TextStyle(fontSize: 13)),
-                            Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            const Text("Quant.:  ",
+                                style: TextStyle(fontSize: 13)),
+                            Text(widget.item.quantidade!.toStringAsFixed(0),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold)),
                             SizedBox(width: 5),
                           ],
                         ),
@@ -209,7 +218,8 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                           stream: tempoLancadoController.stream,
                           initialData: 'Carregando',
                           builder: (context, snapshot) {
-                            return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
+                            return Text("Item lançado há: ${snapshot.data!}",
+                                style: const TextStyle(fontSize: 13));
                           },
                         ),
                         // Row(
@@ -218,13 +228,15 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                         //     Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         //   ],
                         // ),
-                        if (item.tamanho != '' && item.tamanho != '0') Text(item.tamanho),
+                        if (item.tamanho != '' && item.tamanho != '0')
+                          Text(item.tamanho),
                         Padding(
                           padding: const EdgeInsets.only(top: 0.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (item.destinoDeImpressao != null && item.destinoDeImpressao!.nome.isNotEmpty) ...[
+                              if (item.destinoDeImpressao != null &&
+                                  item.destinoDeImpressao!.nome.isNotEmpty) ...[
                                 // IconButton(
                                 //   onPressed: () {
                                 //     if (widget.dados != null) {
@@ -355,12 +367,18 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                           width: 20,
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, anim) => RotationTransition(
-                              turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                            transitionBuilder: (child, anim) =>
+                                RotationTransition(
+                              turns: child.key == const ValueKey('icon1')
+                                  ? Tween<double>(begin: 0.75, end: 1)
+                                      .animate(anim)
+                                  : Tween<double>(begin: 1, end: 1)
+                                      .animate(anim),
                               child: ScaleTransition(scale: anim, child: child),
                             ),
                             child: _isExpanded
-                                ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
+                                ? const Icon(Icons.keyboard_arrow_down_outlined,
+                                    key: ValueKey('icon1'))
                                 : const Icon(
                                     Icons.keyboard_arrow_up_outlined,
                                     key: ValueKey('icon2'),
@@ -389,10 +407,13 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       if (e.dados != null && e.dados!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.dados!.length,
@@ -414,27 +435,37 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                                   ),
                                 ],
                                 Text(
-                                  (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
-                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
+                                  (double.parse(dado.valor ?? '0') *
+                                          (dado.quantidade ?? 1))
+                                      .obterReal(),
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontSize: 14),
                                 ),
                               ],
                             );
                           },
                         ),
-                      ] else if (e.produtos != null && e.produtos!.isNotEmpty) ...[
+                      ] else if (e.produtos != null &&
+                          e.produtos!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.produtos!.length,
                           itemBuilder: (context, index) {
                             final produto = e.produtos![index];
 
-                            return CardPedidoKit(item: produto, somarValores: false);
+                            return CardPedidoKit(
+                                item: produto, somarValores: false);
                           },
                         ),
                       ],

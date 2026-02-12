@@ -69,7 +69,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
       carregando = true;
     });
 
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não', codigoQrcode: widget.codigoQrcode).then((value) {
+    await servicoCardapio
+        .listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não',
+            codigoQrcode: widget.codigoQrcode)
+        .then((value) {
       dados = value;
       idComanda = value.idComanda ?? '0';
       idComandaPedido = value.id ?? '0';
@@ -102,7 +105,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
           TextButton(
             child: const Text('Sim'),
             onPressed: () async {
-              await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
+              await servicoCardapio
+                  .fecharAbrirComanda(idComandaPedido, 'Fechamento')
+                  .then((value) async {
                 if (mounted) {
                   if (value.sucesso) {
                     Modular.get<Server>().write(jsonEncode({
@@ -113,10 +118,14 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                   Navigator.pop(context);
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
+                    SnackBar(
+                        content: Text(value.mensagem),
+                        backgroundColor:
+                            value.sucesso ? Colors.green : Colors.red),
                   );
 
-                  final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
+                  final duration = DateTime.now()
+                      .difference(DateTime.parse(dados!.dataAbertura!));
                   final newDuration = ConfigSistema.formatarHora(duration);
 
                   Impressao.comprovanteDeConsumo(
@@ -136,7 +145,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                     local: dados!.nome!,
                     total: dados!.valorTotal!,
                     numeroPedido: dados!.numeroPedido!,
-                    nomeCliente: (dados!.nomeCliente == '' ? null : dados!.nomeCliente) ?? 'Sem Cliente',
+                    nomeCliente: (dados!.nomeCliente == ''
+                            ? null
+                            : dados!.nomeCliente) ??
+                        'Sem Cliente',
                   );
 
                   if (widget.tipo == TipoCardapio.mesa) {
@@ -192,7 +204,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                 const SizedBox(width: 10),
                 TextButton(
                   onPressed: () async {
-                    servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
+                    servicoCardapio
+                        .fecharAbrirComanda(idComandaPedido, 'Andamento')
+                        .then((value) {
                       if (context.mounted) {
                         if (value.sucesso) {
                           Modular.get<Server>().write(jsonEncode({
@@ -202,7 +216,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
 
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(value.mensagem), backgroundColor: value.sucesso ? Colors.green : Colors.red),
+                          SnackBar(
+                              content: Text(value.mensagem),
+                              backgroundColor:
+                                  value.sucesso ? Colors.green : Colors.red),
                         );
 
                         if (widget.tipo == TipoCardapio.mesa) {
@@ -300,11 +317,15 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       children: [
                         const Icon(Icons.person_outline_outlined, size: 30),
                         const SizedBox(width: 10),
-                        if ((dados!.nomeCliente ?? '').isEmpty && (dados!.observacaoDoPedido ?? '').isNotEmpty) ...[
+                        if ((dados!.nomeCliente ?? '').isEmpty &&
+                            (dados!.observacaoDoPedido ?? '').isNotEmpty) ...[
                           SizedBox(
                             width: 180,
                             child: Text(
-                              dados!.observacaoDoPedido != null && dados!.observacaoDoPedido!.isNotEmpty ? dados!.observacaoDoPedido! : 'Sem Cliente',
+                              dados!.observacaoDoPedido != null &&
+                                      dados!.observacaoDoPedido!.isNotEmpty
+                                  ? dados!.observacaoDoPedido!
+                                  : 'Sem Cliente',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -316,7 +337,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                           SizedBox(
                             width: 180,
                             child: Text(
-                              dados!.nomeCliente != null && dados!.nomeCliente!.isNotEmpty ? dados!.nomeCliente! : 'Sem Cliente',
+                              dados!.nomeCliente != null &&
+                                      dados!.nomeCliente!.isNotEmpty
+                                  ? dados!.nomeCliente!
+                                  : 'Sem Cliente',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -333,14 +357,20 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       height: 60,
                       child: ElevatedButton(
                         style: ButtonStyle(
-                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                          backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10))),
+                          backgroundColor: WidgetStatePropertyAll(
+                              Theme.of(context).colorScheme.inversePrimary),
                         ),
                         onPressed: () {
                           if (dados!.status == 'Fechamento') {
-                            ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text("Comanda está em status de Fechamento", textAlign: TextAlign.center),
+                            ScaffoldMessenger.of(context)
+                                .removeCurrentSnackBar();
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text(
+                                  "Comanda está em status de Fechamento",
+                                  textAlign: TextAlign.center),
                               backgroundColor: Colors.red,
                             ));
                             return;
@@ -375,9 +405,14 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_circle_outline_outlined, size: 26, color: Colors.white),
+                            Icon(Icons.add_circle_outline_outlined,
+                                size: 26, color: Colors.white),
                             SizedBox(width: 10),
-                            Text('Adicionar', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700)),
+                            Text('Adicionar',
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -388,8 +423,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       height: 60,
                       child: ElevatedButton(
                         style: ButtonStyle(
-                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                          backgroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.inversePrimary),
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10))),
+                          backgroundColor: WidgetStatePropertyAll(
+                              Theme.of(context).colorScheme.inversePrimary),
                         ),
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
@@ -407,9 +444,14 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.add_circle_outline_outlined, size: 26, color: Colors.white),
+                            Icon(Icons.add_circle_outline_outlined,
+                                size: 26, color: Colors.white),
                             SizedBox(width: 10),
-                            Text('Itens Recorrentes', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700)),
+                            Text('Itens Recorrentes',
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -420,7 +462,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       height: 60,
                       child: ElevatedButton(
                         style: ButtonStyle(
-                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10))),
                         ),
                         onPressed: () {
                           Navigator.push(context, MaterialPageRoute(
@@ -451,14 +494,19 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       child: ElevatedButton(
                         style: ButtonStyle(
                           shape: WidgetStatePropertyAll(
-                            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
                         ),
                         onPressed: () {
                           if (dados!.status == 'Fechamento') {
-                            ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text("Comanda está em status de Fechamento", textAlign: TextAlign.center),
+                            ScaffoldMessenger.of(context)
+                                .removeCurrentSnackBar();
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(
+                              content: Text(
+                                  "Comanda está em status de Fechamento",
+                                  textAlign: TextAlign.center),
                               backgroundColor: Colors.red,
                             ));
                             return;
@@ -482,7 +530,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                           children: [
                             const Icon(Icons.edit, size: 26),
                             const SizedBox(width: 10),
-                            Text('Editar $nomeTipo', style: const TextStyle(fontSize: 18)),
+                            Text('Editar $nomeTipo',
+                                style: const TextStyle(fontSize: 18)),
                           ],
                         ),
                       ),
@@ -493,7 +542,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(60), topRight: Radius.circular(60)),
+                  borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(60),
+                      topRight: Radius.circular(60)),
                   color: Theme.of(context).colorScheme.inversePrimary,
                   // gradient: LinearGradient(
                   //   colors: [
@@ -509,11 +560,15 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                       padding: const EdgeInsets.only(top: 20),
                       child: Text(
                         'Conta',
-                        style: TextStyle(fontSize: 26, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                            fontSize: 26,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w700),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(left: 30, right: 30, bottom: 30, top: 20),
+                      padding: const EdgeInsets.only(
+                          left: 30, right: 30, bottom: 30, top: 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -530,19 +585,39 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                         height: 60,
                                         child: ElevatedButton(
                                           style: ButtonStyle(
-                                            shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                            backgroundColor: WidgetStatePropertyAll(dados!.status == 'Fechamento' ? const Color.fromARGB(255, 190, 190, 190) : null),
-                                            foregroundColor: WidgetStatePropertyAll(dados!.status == 'Fechamento' ? const Color.fromARGB(255, 112, 110, 110) : null),
+                                            shape: WidgetStatePropertyAll(
+                                                RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10))),
+                                            backgroundColor:
+                                                WidgetStatePropertyAll(
+                                                    dados!.status ==
+                                                            'Fechamento'
+                                                        ? const Color.fromARGB(
+                                                            255, 190, 190, 190)
+                                                        : null),
+                                            foregroundColor:
+                                                WidgetStatePropertyAll(
+                                                    dados!.status ==
+                                                            'Fechamento'
+                                                        ? const Color.fromARGB(
+                                                            255, 112, 110, 110)
+                                                        : null),
                                           ),
                                           onPressed: () {
                                             fechar();
                                           },
                                           child: const Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
-                                              Icon(Icons.print_outlined, size: 26),
+                                              Icon(Icons.print_outlined,
+                                                  size: 26),
                                               SizedBox(width: 10),
-                                              Text('Fechar', style: TextStyle(fontSize: 18)),
+                                              Text('Fechar',
+                                                  style:
+                                                      TextStyle(fontSize: 18)),
                                             ],
                                           ),
                                         ),
@@ -554,19 +629,37 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                         height: 60,
                                         child: ElevatedButton(
                                           style: ButtonStyle(
-                                            shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                            backgroundColor: WidgetStatePropertyAll(dados!.status == 'Andamento' ? const Color.fromARGB(255, 190, 190, 190) : null),
-                                            foregroundColor: WidgetStatePropertyAll(dados!.status == 'Andamento' ? const Color.fromARGB(255, 112, 110, 110) : null),
+                                            shape: WidgetStatePropertyAll(
+                                                RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10))),
+                                            backgroundColor:
+                                                WidgetStatePropertyAll(
+                                                    dados!.status == 'Andamento'
+                                                        ? const Color.fromARGB(
+                                                            255, 190, 190, 190)
+                                                        : null),
+                                            foregroundColor:
+                                                WidgetStatePropertyAll(
+                                                    dados!.status == 'Andamento'
+                                                        ? const Color.fromARGB(
+                                                            255, 112, 110, 110)
+                                                        : null),
                                           ),
                                           onPressed: () {
                                             abrir();
                                           },
                                           child: const Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
-                                              Icon(Icons.folder_zip_outlined, size: 26),
+                                              Icon(Icons.folder_zip_outlined,
+                                                  size: 26),
                                               SizedBox(width: 10),
-                                              Text('Abrir', style: TextStyle(fontSize: 18)),
+                                              Text('Abrir',
+                                                  style:
+                                                      TextStyle(fontSize: 18)),
                                             ],
                                           ),
                                         ),
@@ -582,17 +675,26 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                                   Icon(
                                     Icons.timelapse_outlined,
                                     size: 24,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
                                   const SizedBox(width: 10),
                                   Row(
                                     children: [
                                       Text(
                                         'Tempo Aberto: ',
-                                        style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.primary),
+                                        style: TextStyle(
+                                            fontSize: 18,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary),
                                       ),
                                       TempoAberto(
-                                        textStyle: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.primary),
+                                        textStyle: TextStyle(
+                                            fontSize: 18,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary),
                                       ),
                                     ],
                                   ),
@@ -606,11 +708,19 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> {
                             children: [
                               Text(
                                 'Total:',
-                                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.primary),
+                                style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
                               ),
                               Text(
                                 double.parse(dados!.valorTotal!).obterReal(),
-                                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.primary),
+                                style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
                               ),
                             ],
                           ),
