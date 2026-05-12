@@ -146,15 +146,13 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                   onTap: () {
                                     showModalBottomSheet(
                                       isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
                                       context: context,
                                       builder: (context) {
-                                        return Padding(
-                                          padding: MediaQuery.of(context).viewInsets,
-                                          child: ModalEditarObservacao(
-                                            index: widget.index,
-                                            idProduto: widget.item.id,
-                                            observacao: widget.item.observacao ?? '',
-                                          ),
+                                        return ModalEditarObservacao(
+                                          index: widget.index,
+                                          idProduto: widget.item.id,
+                                          observacao: widget.item.observacao ?? '',
                                         );
                                       },
                                     );

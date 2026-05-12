@@ -300,7 +300,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
             ),
             // backgroundColor: Colors.white,
             floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+            floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
             floatingActionButton: FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () {
                 inserirNoCarrinho();
               },
@@ -374,9 +376,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             const Text("Preço", style: TextStyle(fontSize: 18)),
                             Text(
-                              (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
-                                      _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
-                                      itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null)
+                              (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null && itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null)
                                   ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                   : (_provedorProduto.valorVenda).obterReal(),
                               style: const TextStyle(color: Colors.green, fontSize: 18),

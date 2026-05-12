@@ -44,6 +44,7 @@ class _PaginaPreCadastroState extends State<PaginaPreCadastro> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () {
           if (_razaoSocialController.text.isEmpty) {
             ScaffoldMessenger.of(context).removeCurrentSnackBar();

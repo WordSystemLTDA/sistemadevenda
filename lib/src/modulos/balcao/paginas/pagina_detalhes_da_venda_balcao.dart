@@ -50,6 +50,7 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButtonLocation: ExpandableFab.location,
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: Stack(
         // mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -213,9 +214,7 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         comanda: "Balcão ${widget.idVenda}",
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         // nomeCliente: informacoes!.informacoes.nomeCliente,
-                        nomeCliente: (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (informacoes?.informacoes.observacaoDoPedido ?? '').isNotEmpty
-                            ? (informacoes?.informacoes.observacaoDoPedido ?? '')
-                            : (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente'),
+                        nomeCliente: (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (informacoes?.informacoes.observacaoDoPedido ?? '').isNotEmpty ? (informacoes?.informacoes.observacaoDoPedido ?? '') : (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente'),
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
@@ -440,8 +439,7 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                   children: [
                                     TextSpan(
-                                      text:
-                                          '${informacoes?.informacoes.enderecoenderecocliente}, ${informacoes?.informacoes.nomebairro}, ${informacoes?.informacoes.nomecidade} - ${informacoes?.informacoes.nomeestado} ${informacoes?.informacoes.cependerecocliente}.',
+                                      text: '${informacoes?.informacoes.enderecoenderecocliente}, ${informacoes?.informacoes.nomebairro}, ${informacoes?.informacoes.nomecidade} - ${informacoes?.informacoes.nomeestado} ${informacoes?.informacoes.cependerecocliente}.',
                                       style: const TextStyle(fontWeight: FontWeight.normal),
                                     ),
                                   ],

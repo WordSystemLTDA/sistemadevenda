@@ -87,6 +87,7 @@ class PaginaListaMesasState extends State<PaginaListaMesas> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
           showModalBottomSheet(
             context: context,

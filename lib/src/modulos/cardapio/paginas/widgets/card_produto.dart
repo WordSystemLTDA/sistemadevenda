@@ -288,6 +288,7 @@ class _CardProdutoState extends State<CardProduto> {
                     ),
                   ],
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       item.foto.isEmpty
                           ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
@@ -307,143 +308,94 @@ class _CardProdutoState extends State<CardProduto> {
                                 imageUrl: item.foto,
                               ),
                             ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Align(
-                              alignment: Alignment.topLeft,
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width / 1.6,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${item.nome} ${item.tamanho}",
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 17),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 5),
                                 child: Text(
-                                  "${item.nome} ${item.tamanho}",
+                                  'Código aqui: ${item.codigo}',
+                                  overflow: TextOverflow.fade,
                                   maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 17,
+                                    color: Color.fromARGB(255, 111, 111, 111),
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width / 1.6,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 5),
-                                  child: Text(
-                                    // item.descricao.isEmpty ? 'Sem descrição' : item.descricao,
-                                    'Código aqui: ${item.codigo}',
-                                    overflow: TextOverflow.fade,
-                                    maxLines: 2,
-                                    style: const TextStyle(
-                                      color: Color.fromARGB(255, 111, 111, 111),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
-                              if (provedorCardapio.tamanhosPizza == null) ...[
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 1.5,
-                                  child: Align(
+                              const SizedBox(height: 4),
+                              if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
+                                if (provedorCardapio.tamanhosPizza == null) ...[
+                                  Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
                                       "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
                                       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),
-                                ),
-                              ] else if (item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) ...[
-                                SizedBox(
-                                  width: MediaQuery.of(context).size.width / 1.5,
-                                  child: Align(
+                                ] else if (item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) ...[
+                                  Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
                                       double.parse(item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor).obterReal(),
                                       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ] else if (item.descontoProduto == null) ...[
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width / 1.5,
-                                child: Align(
+                                ],
+                              ] else if (item.descontoProduto == null) ...[
+                                Align(
                                   alignment: Alignment.bottomRight,
-                                  // child: retornoValorVendaProduto(),
                                   child: Text(
-                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
-                                            _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
-                                            item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
+                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null && item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
                                         ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                         : (double.tryParse(item.valorVenda) ?? 0).obterReal(),
                                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
-                                  // child: Text(
-                                  //   double.parse(item.valorVenda).obterReal(),
-                                  //   style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
-                                  // ),
                                 ),
-                              ),
-                            ] else ...[
-                              SizedBox(
-                                width: constraints.maxWidth / 1.5,
-                                child: Align(
+                              ] else ...[
+                                Align(
                                   alignment: Alignment.bottomRight,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
+                                  child: Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    alignment: WrapAlignment.end,
+                                    spacing: 4,
                                     children: [
-                                      SizedBox(
-                                        height: 12,
-                                        child: Text(
-                                          (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
-                                          style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+                                      Text(
+                                        (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
+                                        style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+                                      ),
+                                      const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+                                      Text(
+                                        double.parse(item.valorVenda).obterReal(),
+                                        style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.deepOrange,
+                                          borderRadius: BorderRadius.circular(30),
                                         ),
-                                      ),
-                                      const SizedBox(
-                                        height: 15,
-                                        child: Text(' por ', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
-                                      ),
-                                      SizedBox(
-                                        height: 21,
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                         child: Text(
-                                          double.parse(item.valorVenda).obterReal(),
-                                          style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 3),
-                                      SizedBox(
-                                        height: 12,
-                                        child: Align(
-                                          alignment: Alignment.topCenter,
-                                          child: Container(
-                                            height: 10,
-                                            decoration: BoxDecoration(
-                                              color: Colors.deepOrange,
-                                              borderRadius: BorderRadius.circular(30),
-                                            ),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 5),
-                                              child: Text(
-                                                '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
-                                                // '-10%',
-                                                style: const TextStyle(fontSize: 7, color: Colors.white),
-                                              ),
-                                            ),
-                                          ),
+                                          '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
+                                          style: const TextStyle(fontSize: 8, color: Colors.white),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ],

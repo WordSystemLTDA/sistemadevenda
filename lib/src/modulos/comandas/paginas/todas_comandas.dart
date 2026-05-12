@@ -88,6 +88,7 @@ class _TodasComandasState extends State<TodasComandas> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
           showModalBottomSheet(
             context: context,

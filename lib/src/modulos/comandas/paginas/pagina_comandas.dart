@@ -173,51 +173,59 @@ class _PaginaComandasState extends State<PaginaComandas> {
 
   @override
   void dispose() {
-    // FlutterNfcKit.finish();
-
-    if (_timer != null) {
-      _timer!.cancel();
-    }
-    if (debounce != null) {
-      debounce?.cancel();
-    }
-    if (_debounce != null) {
-      _debounce?.cancel();
-    }
+    if (_timer != null) _timer!.cancel();
+    if (debounce != null) debounce?.cancel();
+    if (_debounce != null) _debounce?.cancel();
     super.dispose();
+  }
+
+  int _totalGeral() {
+    return provedor.comandas.fold(0, (p, e) => p + (e.comandas?.length ?? 0));
+  }
+
+  int _totalOcupadas() {
+    return provedor.comandas.where((g) => (g.comandas ?? []).any((c) => c.comandaOcupada == true)).fold(0, (p, e) => p + ((e.comandas ?? []).where((c) => c.comandaOcupada).length));
+  }
+
+  int _totalLivres() {
+    return provedor.comandas.where((g) => (g.comandas ?? []).any((c) => c.comandaOcupada == false)).fold(0, (p, e) => p + ((e.comandas ?? []).where((c) => !c.comandaOcupada).length));
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corFundo = isDark ? const Color(0xFF111827) : const Color(0xFFF6F7F9);
+
     return Scaffold(
+      backgroundColor: corFundo,
       appBar: AppBar(
-        title: const Text('Comandas'),
+        title: const Text('Comandas', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 0,
         actions: [
           MenuAnchor(
+            style: MenuStyle(
+              backgroundColor: WidgetStatePropertyAll(isDark ? const Color(0xFF1F2937) : Colors.white),
+              elevation: const WidgetStatePropertyAll(6),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
             builder: (BuildContext context, MenuController controller, Widget? child) {
               return IconButton(
-                onPressed: () {
-                  if (controller.isOpen) {
-                    controller.close();
-                  } else {
-                    controller.open();
-                  }
-                },
+                onPressed: () => controller.isOpen ? controller.close() : controller.open(),
                 icon: const Icon(Icons.more_horiz),
               );
             },
             menuChildren: [
               MenuItemButton(
+                leadingIcon: const Icon(Icons.list_alt_rounded, size: 20, color: Color(0xFF3B82F6)),
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (context) => const TodasComandas()));
                 },
-                child: const Row(
-                  children: [
-                    SizedBox(width: 20),
-                    Text('Comandas'),
-                    SizedBox(width: 20),
-                  ],
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text('Todas as comandas'),
                 ),
               ),
             ],
@@ -227,330 +235,367 @@ class _PaginaComandasState extends State<PaginaComandas> {
       body: ListenableBuilder(
         listenable: provedor,
         builder: (context, child) {
-          return RefreshIndicator(
-            onRefresh: () async => listarComandas(),
-            child: Visibility(
-              visible: isLoading == false,
-              replacement: const Center(child: CircularProgressIndicator()),
-              child: Stack(
-                children: [
-                  DefaultTabController(
-                    length: (provedor.comandas.isNotEmpty ? (provedor.comandas.length + 1) : 1) -
-                        (provedor.comandas
-                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty)
-                                .isNotEmpty
-                            ? 1
-                            : 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TabBar(
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            tabAlignment: TabAlignment.fill,
-                            labelPadding: const EdgeInsets.only(right: 10, left: 10),
-                            // isScrollable: true,
-                            tabs: [
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Todos (${provedor.comandas.fold(0, (previousValue, element) => previousValue + (element.comandas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Ocupadas (${provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.comandas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Livres (${provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.comandas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final tabsLength = (provedor.comandas.isNotEmpty ? (provedor.comandas.length + 1) : 1) - (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty).isNotEmpty ? 1 : 0);
+
+          return DefaultTabController(
+            length: tabsLength,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CabecalhoBusca(
+                  pesquisaController: pesquisaController,
+                  onChanged: (_) => setState(() {}),
+                  onAbrirModalCodigo: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      showDragHandle: false,
+                      builder: (context) {
+                        return GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const ModalDigitarCodigo(tipo: TipoCardapio.comanda),
+                        );
+                      },
+                    );
+                  },
+                  onAbrirScanner: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return const BarcodeScannerWithOverlay(tipo: TipoCardapio.comanda);
+                      },
+                    ));
+                  },
+                  onNfc: configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel ? () async => await nfc() : null,
+                ),
+                _BarraAbas(
+                  total: _totalGeral(),
+                  ocupadas: _totalOcupadas(),
+                  livres: _totalLivres(),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _ListaTab(
+                        onRefresh: () async => listarComandas(),
+                        child: _conteudoLista(
+                          modo: _ModoLista.todas,
+                          pesquisa: pesquisaController.text,
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 10, right: 10, top: 15),
-                                child: SizedBox(
-                                  height: 40,
-                                  child: TextField(
-                                    controller: pesquisaController,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(
-                                        borderSide: BorderSide(color: Colors.grey[700]!),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      hintText: 'Pesquisa',
-                                      prefixIcon: const Icon(Icons.search),
-                                      contentPadding: const EdgeInsets.all(0),
-                                    ),
-                                    onChanged: (textoPesquisa) async {
-                                      setState(() {});
-                                      // if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-                                      // _debounce = Timer(const Duration(milliseconds: 500), () {
-                                      //   if (textoPesquisa.isNotEmpty) {
-                                      //     if (debounce?.isActive ?? false) {
-                                      //       debounce!.cancel();
-                                      //     }
-
-                                      //     debounce = Timer(const Duration(milliseconds: 200), () async {
-                                      //       provedor.listarComandas(textoPesquisa);
-                                      //     });
-                                      //   } else {
-                                      //     provedor.listarComandas('');
-                                      //   }
-                                      // });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  showDragHandle: false,
-                                  builder: (context) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: const ModalDigitarCodigo(
-                                        tipo: TipoCardapio.comanda,
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 15, top: 15),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[700]!),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(Icons.add_task),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) {
-                                    return const BarcodeScannerWithOverlay(tipo: TipoCardapio.comanda);
-                                  },
-                                ));
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 15, top: 15),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[700]!),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(Icons.qr_code_scanner_outlined),
-                                ),
-                              ),
-                            ),
-                            if (configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel)
-                              GestureDetector(
-                                onTap: () async {
-                                  await nfc();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 15, top: 15),
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey[700]!),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Icon(Icons.nfc_outlined),
-                                  ),
-                                ),
-                              ),
-                          ],
+                      ),
+                      _ListaTab(
+                        onRefresh: () async => listarComandas(),
+                        child: _conteudoLista(
+                          modo: _ModoLista.ocupadas,
+                          pesquisa: pesquisaController.text,
                         ),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarComandas();
-                                },
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: ListView.builder(
-                                        shrinkWrap: true,
-                                        padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                        itemCount: provedor.comandas.length,
-                                        itemBuilder: (context, index) {
-                                          final item = provedor.comandas[index];
-
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                              ListView.builder(
-                                                physics: const NeverScrollableScrollPhysics(),
-                                                shrinkWrap: true,
-                                                scrollDirection: Axis.vertical,
-                                                itemCount: (item.comandas ?? [])
-                                                    .where((element) =>
-                                                        (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                        (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                        (element.nome).toLowerCase().contains(pesquisaController.text))
-                                                    .length,
-                                                padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                itemBuilder: (_, index) {
-                                                  var itemComanda = (item.comandas ?? [])
-                                                      .where((element) =>
-                                                          (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                          (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                          (element.nome).toLowerCase().contains(pesquisaController.text))
-                                                      .toList()[index];
-
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(bottom: 10),
-                                                    child: CardComanda(itemComanda: itemComanda),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).isNotEmpty)
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarComandas();
-                                },
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: ListView.builder(
-                                        shrinkWrap: true,
-                                        padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                        itemCount:
-                                            provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty).length,
-                                        itemBuilder: (context, index) {
-                                          final item = provedor.comandas
-                                              .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == true).isNotEmpty)
-                                              .toList()[index];
-
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                              ListView.builder(
-                                                physics: const NeverScrollableScrollPhysics(),
-                                                shrinkWrap: true,
-                                                scrollDirection: Axis.vertical,
-                                                itemCount: item.comandas?.length ?? 0,
-                                                padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                itemBuilder: (_, index) {
-                                                  var itemComanda = item.comandas![index];
-
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(bottom: 10),
-                                                    child: CardComanda(itemComanda: itemComanda),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // if (provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).isNotEmpty)
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarComandas();
-                                },
-                                child: Column(
-                                  children: [
-                                    ...provedor.comandas.where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty).map((e) {
-                                      return Expanded(
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          shrinkWrap: true,
-                                          itemCount: provedor.comandas
-                                              .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                              .toList()
-                                              .length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.comandas
-                                                .where((element) => (element.comandas ?? []).where((element2) => element2.comandaOcupada == false).isNotEmpty)
-                                                .toList()[index];
-
-                                            return ListView.builder(
-                                              physics: const NeverScrollableScrollPhysics(),
-                                              shrinkWrap: true,
-                                              scrollDirection: Axis.vertical,
-                                              itemCount: item.comandas!.length,
-                                              padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                              itemBuilder: (_, index) {
-                                                var itemComanda = item.comandas![index];
-
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 10),
-                                                  child: CardComanda(itemComanda: itemComanda),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      _ListaTab(
+                        onRefresh: () async => listarComandas(),
+                        child: _conteudoLista(
+                          modo: _ModoLista.livres,
+                          pesquisa: pesquisaController.text,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _conteudoLista({required _ModoLista modo, required String pesquisa}) {
+    final pesquisaLower = pesquisa.toLowerCase();
+
+    final gruposBase = provedor.comandas.where((g) {
+      if (modo == _ModoLista.ocupadas) {
+        return (g.comandas ?? []).any((c) => c.comandaOcupada == true);
+      } else if (modo == _ModoLista.livres) {
+        return (g.comandas ?? []).any((c) => c.comandaOcupada == false);
+      }
+      return true;
+    }).toList();
+
+    final grupos = gruposBase
+        .map((g) {
+          final filtradas = (g.comandas ?? []).where((c) {
+            if (modo == _ModoLista.ocupadas && !c.comandaOcupada) return false;
+            if (modo == _ModoLista.livres && c.comandaOcupada) return false;
+            if (pesquisaLower.isEmpty) return true;
+            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) || (c.obs ?? '').toLowerCase().contains(pesquisaLower) || c.nome.toLowerCase().contains(pesquisaLower);
+          }).toList();
+          return (titulo: g.titulo, itens: filtradas);
+        })
+        .where((g) => g.itens.isNotEmpty)
+        .toList();
+
+    if (grupos.isEmpty) {
+      return const _EstadoVazio(
+        icone: Icons.inbox_outlined,
+        titulo: 'Nada por aqui',
+        subtitulo: 'Nenhuma comanda encontrada com os filtros atuais.',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      itemCount: grupos.length,
+      itemBuilder: (context, index) {
+        final grupo = grupos[index];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
+            const SizedBox(height: 6),
+            ListView.separated(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: grupo.itens.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => CardComanda(itemComanda: grupo.itens[i]),
+            ),
+            const SizedBox(height: 14),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _ModoLista { todas, ocupadas, livres }
+
+class _CabecalhoBusca extends StatelessWidget {
+  final TextEditingController pesquisaController;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onAbrirModalCodigo;
+  final VoidCallback onAbrirScanner;
+  final VoidCallback? onNfc;
+
+  const _CabecalhoBusca({
+    required this.pesquisaController,
+    required this.onChanged,
+    required this.onAbrirModalCodigo,
+    required this.onAbrirScanner,
+    this.onNfc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corCampo = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final corBorda = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE5E7EB);
+    final corIcone = isDark ? Colors.grey[300] : const Color(0xFF374151);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: corCampo,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: corBorda),
+              ),
+              child: TextField(
+                controller: pesquisaController,
+                onChanged: onChanged,
+                textAlignVertical: TextAlignVertical.center,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Buscar por nome, cliente ou observação',
+                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  prefixIcon: Icon(Icons.search_rounded, size: 20, color: corIcone),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.keyboard_alt_outlined,
+            cor: const Color(0xFF6366F1),
+            tooltip: 'Digitar código',
+            onTap: onAbrirModalCodigo,
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.qr_code_scanner_rounded,
+            cor: const Color(0xFF3B82F6),
+            tooltip: 'Escanear QR Code',
+            onTap: onAbrirScanner,
+          ),
+          if (onNfc != null) ...[
+            const SizedBox(width: 8),
+            _BotaoAcao(
+              icone: Icons.nfc_rounded,
+              cor: const Color(0xFF10B981),
+              tooltip: 'Ler tag NFC',
+              onTap: onNfc!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BotaoAcao extends StatelessWidget {
+  final IconData icone;
+  final Color cor;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _BotaoAcao({
+    required this.icone,
+    required this.cor,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icone, color: cor, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BarraAbas extends StatelessWidget {
+  final int total;
+  final int ocupadas;
+  final int livres;
+  const _BarraAbas({required this.total, required this.ocupadas, required this.livres});
+
+  @override
+  Widget build(BuildContext context) {
+    return TabBar(
+      tabs: [
+        Tab(text: 'Todas · $total'),
+        Tab(text: 'Ocupadas · $ocupadas'),
+        Tab(text: 'Livres · $livres'),
+      ],
+    );
+  }
+}
+
+class _ListaTab extends StatelessWidget {
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  const _ListaTab({required this.onRefresh, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: child,
+    );
+  }
+}
+
+class _CabecalhoSecao extends StatelessWidget {
+  final String titulo;
+  final int quantidade;
+  const _CabecalhoSecao({required this.titulo, required this.quantidade});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cor = isDark ? Colors.grey[300] : const Color(0xFF374151);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 2),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            titulo,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: cor,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$quantidade',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey[300] : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EstadoVazio extends StatelessWidget {
+  final IconData icone;
+  final String titulo;
+  final String subtitulo;
+  const _EstadoVazio({required this.icone, required this.titulo, required this.subtitulo});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 60),
+        Icon(icone, size: 56, color: Colors.grey[400]),
+        const SizedBox(height: 12),
+        Text(
+          titulo,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitulo,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+      ],
     );
   }
 }

@@ -169,49 +169,59 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
   @override
   void dispose() {
-    if (_timer != null) {
-      _timer!.cancel();
-    }
-    if (debounce != null) {
-      debounce?.cancel();
-    }
-    if (_debounce != null) {
-      _debounce?.cancel();
-    }
+    if (_timer != null) _timer!.cancel();
+    if (debounce != null) debounce?.cancel();
+    if (_debounce != null) _debounce?.cancel();
     super.dispose();
+  }
+
+  int _totalGeral() {
+    return provedor.mesas.fold(0, (p, e) => p + (e.mesas?.length ?? 0));
+  }
+
+  int _totalOcupadas() {
+    return provedor.mesas.where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == true)).fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => c.mesaOcupada).length));
+  }
+
+  int _totalLivres() {
+    return provedor.mesas.where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == false)).fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => !c.mesaOcupada).length));
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corFundo = isDark ? const Color(0xFF111827) : const Color(0xFFF6F7F9);
+
     return Scaffold(
+      backgroundColor: corFundo,
       appBar: AppBar(
-        title: const Text('Mesas'),
+        title: const Text('Mesas', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 0,
         actions: [
           MenuAnchor(
+            style: MenuStyle(
+              backgroundColor: WidgetStatePropertyAll(isDark ? const Color(0xFF1F2937) : Colors.white),
+              elevation: const WidgetStatePropertyAll(6),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
             builder: (BuildContext context, MenuController controller, Widget? child) {
               return IconButton(
-                onPressed: () {
-                  if (controller.isOpen) {
-                    controller.close();
-                  } else {
-                    controller.open();
-                  }
-                },
+                onPressed: () => controller.isOpen ? controller.close() : controller.open(),
                 icon: const Icon(Icons.more_horiz),
               );
             },
             menuChildren: [
               MenuItemButton(
+                leadingIcon: const Icon(Icons.table_restaurant_outlined, size: 20, color: Color(0xFF3B82F6)),
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (context) => const PaginaListaMesas()));
                 },
-                child: const Row(
-                  children: [
-                    SizedBox(width: 20),
-                    Text('Mesas'),
-                    SizedBox(width: 20),
-                  ],
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Text('Todas as mesas'),
                 ),
               ),
             ],
@@ -221,327 +231,358 @@ class _PaginaMesasState extends State<PaginaMesas> {
       body: ListenableBuilder(
         listenable: provedor,
         builder: (context, child) {
-          return RefreshIndicator(
-            onRefresh: () async => listarMesas(),
-            child: Visibility(
-              visible: isLoading == false,
-              replacement: const Center(child: CircularProgressIndicator()),
-              child: Stack(
-                children: [
-                  DefaultTabController(
-                    // length: provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1,
-                    length: (provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1) -
-                        (provedor.mesas
-                                .where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty)
-                                .isNotEmpty
-                            ? 1
-                            : 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TabBar(
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            tabAlignment: TabAlignment.fill,
-                            labelPadding: const EdgeInsets.only(right: 10, left: 10),
-                            // isScrollable: true,
-                            tabs: [
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Todos (${provedor.mesas.fold(0, (previousValue, element) => previousValue + (element.mesas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Ocupadas (${provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.mesas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 40,
-                                child: Tab(
-                                  child: Text(
-                                    "Livres (${provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == false).isNotEmpty).fold(0, (previousValue, element) => previousValue + (element.mesas?.length ?? 0))})",
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 10, right: 10, top: 15),
-                                child: SizedBox(
-                                  height: 40,
-                                  child: TextField(
-                                    controller: pesquisaController,
-                                    decoration: InputDecoration(
-                                      border: OutlineInputBorder(
-                                        borderSide: BorderSide(color: Colors.grey[700]!),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      hintText: 'Pesquisa',
-                                      prefixIcon: const Icon(Icons.search),
-                                      contentPadding: const EdgeInsets.all(0),
-                                    ),
-                                    onChanged: (textoPesquisa) async {
-                                      setState(() {});
-                                      // if (_debounce?.isActive ?? false) _debounce!.cancel();
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                                      // _debounce = Timer(const Duration(milliseconds: 500), () {
-                                      //   if (textoPesquisa.isNotEmpty) {
-                                      //     if (debounce?.isActive ?? false) {
-                                      //       debounce!.cancel();
-                                      //     }
+          final tabsLength = (provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1) - (provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty).isNotEmpty ? 1 : 0);
 
-                                      //     debounce = Timer(const Duration(milliseconds: 200), () async {
-                                      //       provedor.listarMesas(textoPesquisa);
-                                      //     });
-                                      //   } else {
-                                      //     provedor.listarMesas('');
-                                      //   }
-                                      // });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  showDragHandle: false,
-                                  builder: (context) {
-                                    return GestureDetector(
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: const ModalDigitarCodigo(
-                                        tipo: TipoCardapio.mesa,
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 15, top: 15),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[700]!),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(Icons.add_task),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (context) {
-                                    return const BarcodeScannerWithOverlay(tipo: TipoCardapio.mesa);
-                                  },
-                                ));
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 15, top: 15),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey[700]!),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Icon(Icons.qr_code_scanner_outlined),
-                                ),
-                              ),
-                            ),
-                            if (configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel)
-                              GestureDetector(
-                                onTap: () async {
-                                  await nfc();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 15, top: 15),
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey[700]!),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Icon(Icons.nfc_outlined),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              // 1 TAB
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarMesas();
-                                },
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: ListView.builder(
-                                        shrinkWrap: true,
-                                        padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                        itemCount: provedor.mesas.length,
-                                        itemBuilder: (context, index) {
-                                          final item = provedor.mesas[index];
-
-                                          return Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(item.titulo, style: const TextStyle(fontSize: 16)),
-                                              ListView.builder(
-                                                physics: const NeverScrollableScrollPhysics(),
-                                                shrinkWrap: true,
-                                                scrollDirection: Axis.vertical,
-                                                itemCount: (item.mesas ?? [])
-                                                    .where((element) =>
-                                                        (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                        (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                        (element.nome).toLowerCase().contains(pesquisaController.text))
-                                                    .length,
-                                                padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                                itemBuilder: (_, index) {
-                                                  var itemMesa = (item.mesas ?? [])
-                                                      .where((element) =>
-                                                          (element.nomeCliente ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                          (element.obs ?? '').toLowerCase().contains(pesquisaController.text) ||
-                                                          (element.nome).toLowerCase().contains(pesquisaController.text))
-                                                      .toList()[index];
-
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(bottom: 10),
-                                                    child: CardMesaOcupada(item: itemMesa),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // 2 TAB
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarMesas();
-                                },
-                                child: Column(
-                                  children: [
-                                    ...provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true).isNotEmpty).map((e) {
-                                      return Expanded(
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          shrinkWrap: true,
-                                          itemCount: provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true).isNotEmpty).length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.mesas
-                                                .where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true).isNotEmpty)
-                                                .toList()[index];
-
-                                            return ListView.builder(
-                                              physics: const NeverScrollableScrollPhysics(),
-                                              shrinkWrap: true,
-                                              scrollDirection: Axis.vertical,
-                                              itemCount: item.mesas!.length,
-                                              padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                              itemBuilder: (_, index) {
-                                                var itemMesa = item.mesas![index];
-
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 10),
-                                                  child: CardMesaOcupada(item: itemMesa),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                              // 3 TAB
-                              RefreshIndicator(
-                                onRefresh: () async {
-                                  listarMesas();
-                                },
-                                child: Column(
-                                  children: [
-                                    ...provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == false).isNotEmpty).map((e) {
-                                      return Expanded(
-                                        child: ListView.builder(
-                                          padding: const EdgeInsets.only(right: 10, left: 10, top: 10),
-                                          shrinkWrap: true,
-                                          itemCount: provedor.mesas
-                                              .where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == false).isNotEmpty)
-                                              .toList()
-                                              .length,
-                                          itemBuilder: (context, index) {
-                                            final item = provedor.mesas
-                                                .where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == false).isNotEmpty)
-                                                .toList()[index];
-
-                                            return ListView.builder(
-                                              physics: const NeverScrollableScrollPhysics(),
-                                              shrinkWrap: true,
-                                              scrollDirection: Axis.vertical,
-                                              itemCount: item.mesas!.length,
-                                              padding: const EdgeInsets.only(top: 5, bottom: 10),
-                                              itemBuilder: (_, index) {
-                                                var itemMesa = item.mesas![index];
-
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 10),
-                                                  child: CardMesaOcupada(item: itemMesa),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+          return DefaultTabController(
+            length: tabsLength,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CabecalhoBusca(
+                  pesquisaController: pesquisaController,
+                  onChanged: (_) => setState(() {}),
+                  onAbrirModalCodigo: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      showDragHandle: false,
+                      builder: (context) {
+                        return GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const ModalDigitarCodigo(tipo: TipoCardapio.mesa),
+                        );
+                      },
+                    );
+                  },
+                  onAbrirScanner: () {
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) {
+                        return const BarcodeScannerWithOverlay(tipo: TipoCardapio.mesa);
+                      },
+                    ));
+                  },
+                  onNfc: configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel ? () async => await nfc() : null,
+                ),
+                _BarraAbas(
+                  total: _totalGeral(),
+                  ocupadas: _totalOcupadas(),
+                  livres: _totalLivres(),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _ListaTab(
+                        onRefresh: () async => listarMesas(),
+                        child: _conteudoLista(modo: _ModoLista.todas, pesquisa: pesquisaController.text),
+                      ),
+                      _ListaTab(
+                        onRefresh: () async => listarMesas(),
+                        child: _conteudoLista(modo: _ModoLista.ocupadas, pesquisa: pesquisaController.text),
+                      ),
+                      _ListaTab(
+                        onRefresh: () async => listarMesas(),
+                        child: _conteudoLista(modo: _ModoLista.livres, pesquisa: pesquisaController.text),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _conteudoLista({required _ModoLista modo, required String pesquisa}) {
+    final pesquisaLower = pesquisa.toLowerCase();
+
+    final gruposBase = provedor.mesas.where((g) {
+      if (modo == _ModoLista.ocupadas) {
+        return (g.mesas ?? []).any((c) => c.mesaOcupada == true);
+      } else if (modo == _ModoLista.livres) {
+        return (g.mesas ?? []).any((c) => c.mesaOcupada == false);
+      }
+      return true;
+    }).toList();
+
+    final grupos = gruposBase
+        .map((g) {
+          final filtradas = (g.mesas ?? []).where((c) {
+            if (modo == _ModoLista.ocupadas && !c.mesaOcupada) return false;
+            if (modo == _ModoLista.livres && c.mesaOcupada) return false;
+            if (pesquisaLower.isEmpty) return true;
+            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) || (c.obs ?? '').toLowerCase().contains(pesquisaLower) || c.nome.toLowerCase().contains(pesquisaLower);
+          }).toList();
+          return (titulo: g.titulo, itens: filtradas);
+        })
+        .where((g) => g.itens.isNotEmpty)
+        .toList();
+
+    if (grupos.isEmpty) {
+      return const _EstadoVazio(
+        icone: Icons.table_restaurant_outlined,
+        titulo: 'Nada por aqui',
+        subtitulo: 'Nenhuma mesa encontrada com os filtros atuais.',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+      itemCount: grupos.length,
+      itemBuilder: (context, index) {
+        final grupo = grupos[index];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
+            const SizedBox(height: 6),
+            ListView.separated(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: grupo.itens.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => CardMesaOcupada(item: grupo.itens[i]),
+            ),
+            const SizedBox(height: 14),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _ModoLista { todas, ocupadas, livres }
+
+class _CabecalhoBusca extends StatelessWidget {
+  final TextEditingController pesquisaController;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onAbrirModalCodigo;
+  final VoidCallback onAbrirScanner;
+  final VoidCallback? onNfc;
+
+  const _CabecalhoBusca({
+    required this.pesquisaController,
+    required this.onChanged,
+    required this.onAbrirModalCodigo,
+    required this.onAbrirScanner,
+    this.onNfc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final corCampo = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final corBorda = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE5E7EB);
+    final corIcone = isDark ? Colors.grey[300] : const Color(0xFF374151);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: corCampo,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: corBorda),
+              ),
+              child: TextField(
+                controller: pesquisaController,
+                onChanged: onChanged,
+                textAlignVertical: TextAlignVertical.center,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Buscar por nome, cliente ou observação',
+                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  prefixIcon: Icon(Icons.search_rounded, size: 20, color: corIcone),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.keyboard_alt_outlined,
+            cor: const Color(0xFF6366F1),
+            tooltip: 'Digitar código',
+            onTap: onAbrirModalCodigo,
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.qr_code_scanner_rounded,
+            cor: const Color(0xFF3B82F6),
+            tooltip: 'Escanear QR Code',
+            onTap: onAbrirScanner,
+          ),
+          if (onNfc != null) ...[
+            const SizedBox(width: 8),
+            _BotaoAcao(
+              icone: Icons.nfc_rounded,
+              cor: const Color(0xFF10B981),
+              tooltip: 'Ler tag NFC',
+              onTap: onNfc!,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BotaoAcao extends StatelessWidget {
+  final IconData icone;
+  final Color cor;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _BotaoAcao({
+    required this.icone,
+    required this.cor,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icone, color: cor, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BarraAbas extends StatelessWidget {
+  final int total;
+  final int ocupadas;
+  final int livres;
+  const _BarraAbas({required this.total, required this.ocupadas, required this.livres});
+
+  @override
+  Widget build(BuildContext context) {
+    return TabBar(
+      tabs: [
+        Tab(text: 'Todas · $total'),
+        Tab(text: 'Ocupadas · $ocupadas'),
+        Tab(text: 'Livres · $livres'),
+      ],
+    );
+  }
+}
+
+class _ListaTab extends StatelessWidget {
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  const _ListaTab({required this.onRefresh, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: child,
+    );
+  }
+}
+
+class _CabecalhoSecao extends StatelessWidget {
+  final String titulo;
+  final int quantidade;
+  const _CabecalhoSecao({required this.titulo, required this.quantidade});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cor = isDark ? Colors.grey[300] : const Color(0xFF374151);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 2),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            titulo,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: cor,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$quantidade',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey[300] : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EstadoVazio extends StatelessWidget {
+  final IconData icone;
+  final String titulo;
+  final String subtitulo;
+  const _EstadoVazio({required this.icone, required this.titulo, required this.subtitulo});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 60),
+        Icon(icone, size: 56, color: Colors.grey[400]),
+        const SizedBox(height: 12),
+        Text(
+          titulo,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitulo,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+      ],
     );
   }
 }

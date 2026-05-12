@@ -119,10 +119,12 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
       ),
       // resizeToAvoidBottomInset: false,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: ValueListenableBuilder(
           valueListenable: finalizando,
           builder: (context, finalizandoValue, _) {
             return FloatingActionButton.extended(
+              heroTag: null,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(5)),
               ),
@@ -201,9 +203,7 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           comanda: "Balcão $idvenda",
                           numeroPedido: vendaBalcao.numeropedido,
                           // nomeCliente: vendaBalcao.nomecliente,
-                          nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
-                              ? (vendaBalcao.observacaoDoPedido ?? '')
-                              : (vendaBalcao.nomecliente),
+                          nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty ? (vendaBalcao.observacaoDoPedido ?? '') : (vendaBalcao.nomecliente),
                           nomeEmpresa: vendaBalcao.nomeEmpresa,
                           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
                           tipodeentrega: vendaBalcao.idtipodeentrega,

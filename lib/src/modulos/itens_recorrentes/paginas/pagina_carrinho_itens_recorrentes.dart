@@ -148,9 +148,11 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
         floatingActionButton: (carregando || provedorItensRecorrentes.itensCarrinho.isEmpty)
             ? null
             : FloatingActionButton.extended(
+                heroTag: null,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.all(Radius.circular(5)),
                 ),
@@ -198,10 +200,7 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           numeroPedido: dados?.numeroPedido ?? '',
                           // comanda: dados!.nome!,
                           // numeroPedido: dados!.numeroPedido!,
-                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
-                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
-                              ? (dados?.observacaoDoPedido ?? '')
-                              : (dados?.nomeCliente ?? 'Sem Cliente'),
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') && (dados?.observacaoDoPedido ?? '').isNotEmpty ? (dados?.observacaoDoPedido ?? '') : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados?.nomeEmpresa ?? '',
                           // nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: provedorItensRecorrentes.itensCarrinho,
@@ -256,10 +255,7 @@ class _PaginaCarrinhoItensRecorrentesState extends State<PaginaCarrinhoItensReco
                           // comanda: dados!.nome!,
                           // numeroPedido: dados!.numeroPedido!,
                           // nomeCliente: dados!.nomeCliente!,
-                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
-                                  (dados?.observacaoDoPedido ?? '').isNotEmpty
-                              ? (dados?.observacaoDoPedido ?? '')
-                              : (dados?.nomeCliente ?? 'Sem Cliente'),
+                          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') && (dados?.observacaoDoPedido ?? '').isNotEmpty ? (dados?.observacaoDoPedido ?? '') : (dados?.nomeCliente ?? 'Sem Cliente'),
                           nomeEmpresa: dados?.nomeEmpresa ?? '',
                           // nomeEmpresa: dados!.nomeEmpresa!,
                           produtos: provedorItensRecorrentes.itensCarrinho,

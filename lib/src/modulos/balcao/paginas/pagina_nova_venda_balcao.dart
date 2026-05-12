@@ -60,9 +60,11 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: SizedBox(
         width: 150,
         child: FloatingActionButton.extended(
+          heroTag: null,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
           onPressed: () {
             abrir();

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/pagina_carrinho_itens_recorrentes.dart';
@@ -30,29 +31,57 @@ class PaginaItensRecorrentes extends StatefulWidget {
   State<PaginaItensRecorrentes> createState() => _PaginaItensRecorrentesState();
 }
 
-class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> {
+class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with WidgetsBindingObserver {
   final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
   final ServicosItensRecorrentes servicosItensRecorrentes = Modular.get<ServicosItensRecorrentes>();
+  final Server _server = Modular.get<Server>();
 
   final TextEditingController _pesquisaController = TextEditingController();
 
   Modeloworddadoscardapio? dados;
+  // ignore: unused_field
   Timer? _debounce;
+  bool _carregando = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _server.addListener(_aoReceberEventoSocket);
+    listarComandasPedidos();
+  }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _server.removeListener(_aoReceberEventoSocket);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && mounted) {
+      listarComandasPedidos();
+    }
+  }
+
+  void _aoReceberEventoSocket() {
+    if (!mounted || _carregando) return;
     listarComandasPedidos();
   }
 
   void listarComandasPedidos() async {
+    if (_carregando) return;
+    _carregando = true;
     provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido ?? '0');
     await servicosItensRecorrentes.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim').then((value) {
+      if (!mounted) return;
       setState(() {
         dados = value;
       });
     });
+    _carregando = false;
   }
 
   @override
@@ -80,6 +109,7 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> {
         // title: Text('Itens Recorrentes da $nomeTipo'),
         title: Text('Itens Recorrentes'),
       ),
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

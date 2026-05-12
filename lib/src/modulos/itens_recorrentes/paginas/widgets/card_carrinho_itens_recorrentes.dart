@@ -147,16 +147,14 @@ class _CardCarrinhoItensRecorrentesState extends State<CardCarrinhoItensRecorren
                                   onTap: () {
                                     showModalBottomSheet(
                                       isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
                                       context: context,
                                       builder: (context) {
-                                        return Padding(
-                                          padding: MediaQuery.of(context).viewInsets,
-                                          child: ModalEditarObservacao(
-                                            itensRecorrentes: true,
-                                            idProduto: widget.item.id,
-                                            index: widget.index,
-                                            observacao: widget.item.observacao ?? '',
-                                          ),
+                                        return ModalEditarObservacao(
+                                          itensRecorrentes: true,
+                                          idProduto: widget.item.id,
+                                          index: widget.index,
+                                          observacao: widget.item.observacao ?? '',
                                         );
                                       },
                                     );

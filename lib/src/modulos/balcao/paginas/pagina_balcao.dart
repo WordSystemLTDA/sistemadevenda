@@ -59,6 +59,7 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
           Navigator.push(context, MaterialPageRoute(
             builder: (context) {

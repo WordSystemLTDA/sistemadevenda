@@ -46,6 +46,7 @@ class _PaginaListarVendasState extends State<PaginaListarVendas> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(

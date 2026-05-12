@@ -11,6 +11,11 @@ class ModeloRetornoSocket {
   final String? nomeConexao;
   final String? idUsuario;
   final String? tipoImpressao;
+  final String? tipoResposta;
+  final String? statusResposta;
+  final String? mensagemErro;
+  final String? referenciaImpressaoOrigem;
+  final String? idRequisicao;
   final bool? ocupado;
 
   final String? numeroPedido;
@@ -49,6 +54,11 @@ class ModeloRetornoSocket {
     this.nomeConexao,
     this.idUsuario,
     this.tipoImpressao,
+    this.tipoResposta,
+    this.statusResposta,
+    this.mensagemErro,
+    this.referenciaImpressaoOrigem,
+    this.idRequisicao,
     this.ocupado,
     this.numeroPedido,
     this.nomeCliente,
@@ -87,6 +97,11 @@ class ModeloRetornoSocket {
       'nomeConexao': nomeConexao,
       'idUsuario': idUsuario,
       'tipoImpressao': tipoImpressao,
+      'tipoResposta': tipoResposta,
+      'statusResposta': statusResposta,
+      'mensagemErro': mensagemErro,
+      'referenciaImpressaoOrigem': referenciaImpressaoOrigem,
+      'idRequisicao': idRequisicao,
       'ocupado': ocupado,
       'numeroPedido': numeroPedido,
       'nomeCliente': nomeCliente,
@@ -126,6 +141,11 @@ class ModeloRetornoSocket {
       nomeConexao: map['nomeConexao'] != null ? map['nomeConexao'] as String : null,
       idUsuario: map['idUsuario'] != null ? map['idUsuario'] as String : null,
       tipoImpressao: map['tipoImpressao'] != null ? map['tipoImpressao'] as String : null,
+      tipoResposta: map['tipoResposta'] != null ? map['tipoResposta'] as String : null,
+      statusResposta: map['statusResposta'] != null ? map['statusResposta'] as String : null,
+      mensagemErro: map['mensagemErro'] != null ? map['mensagemErro'] as String : null,
+      referenciaImpressaoOrigem: map['referenciaImpressaoOrigem'] != null ? map['referenciaImpressaoOrigem'] as String : null,
+      idRequisicao: map['idRequisicao'] != null ? map['idRequisicao'] as String : null,
       ocupado: map['ocupado'] != null ? map['ocupado'] as bool : null,
       numeroPedido: map['numeroPedido'] != null ? map['numeroPedido'] as String : null,
       nomeCliente: map['nomeCliente'] != null ? map['nomeCliente'] as String : null,

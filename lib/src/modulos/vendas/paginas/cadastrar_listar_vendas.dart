@@ -164,6 +164,7 @@ class _CadastrarListarVendasState extends State<CadastrarListarVendas> with Tick
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => inserir(),
         label: const Text('Adicionar Item'),
       ),

@@ -71,6 +71,7 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
           resizeToAvoidBottomInset: false,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
           floatingActionButton: FloatingActionButton.extended(
+            heroTag: null,
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(5)),
             ),

@@ -9,6 +9,37 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class Impressao {
+  static int _sequencialRequisicao = 0;
+
+  static String _gerarIdentificadorRequisicao() {
+    _sequencialRequisicao++;
+    return '${DateTime.now().microsecondsSinceEpoch}_$_sequencialRequisicao';
+  }
+
+  static String _normalizarNomeComputadorDestino(String? nomeComputadorDestino) {
+    return (nomeComputadorDestino ?? '').trim();
+  }
+
+  static Map<String, List<Modelowordprodutos>> _agruparProdutosPorComputadorDestino(
+    List<Modelowordprodutos> produtos,
+  ) {
+    final Map<String, List<Modelowordprodutos>> grupos = <String, List<Modelowordprodutos>>{};
+
+    for (final Modelowordprodutos produto in produtos) {
+      final String nomeComputadorDestino = _normalizarNomeComputadorDestino(
+        produto.destinoDeImpressao?.nomedopc,
+      );
+
+      if (nomeComputadorDestino.isEmpty) {
+        continue;
+      }
+
+      grupos.putIfAbsent(nomeComputadorDestino, () => <Modelowordprodutos>[]).add(produto);
+    }
+
+    return grupos;
+  }
+
   static Future<void> comprovanteDePedido({
     List<Modelowordprodutos> produtos = const [],
     String comanda = 'Sem Comanda',
@@ -29,25 +60,50 @@ class Impressao {
       element.quantidadeController = null;
     }
 
-    if (server.connected && enviarDeVolta == true) {
-      if (produtos.isNotEmpty) {
-        server.write(jsonEncode({
-          'tipo': tipoTela.nome,
-          'tipoImpressao': '1',
-          'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-          'produtos': produtos.map((e) => e.toMap()).toList(),
-          'comanda': comanda,
-          'numeroPedido': numeroPedido,
-          'nomeCliente': nomeCliente,
-          'nomeEmpresa': nomeEmpresa,
-          'tipodeentrega': tipodeentrega,
-          'local': local,
-          'nomeUsuario': usuario.usuario?.nome ?? '',
-          'idEmpresa': usuario.usuario?.empresa ?? '0',
-          'idUsuario': usuario.usuario?.id ?? '1',
-          'enviarDeVolta': enviarDeVolta,
-        }));
+    if (enviarDeVolta == true && produtos.isNotEmpty) {
+      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
+
+      if (grupos.isNotEmpty) {
+        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
+          server.write(jsonEncode({
+            'idRequisicao': _gerarIdentificadorRequisicao(),
+            'tipo': tipoTela.nome,
+            'tipoImpressao': '1',
+            'nomedopc': grupo.key,
+            'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+            'produtos': grupo.value.map((e) => e.toMap()).toList(),
+            'comanda': comanda,
+            'numeroPedido': numeroPedido,
+            'nomeCliente': nomeCliente,
+            'nomeEmpresa': nomeEmpresa,
+            'tipodeentrega': tipodeentrega,
+            'local': local,
+            'nomeUsuario': usuario.usuario?.nome ?? '',
+            'idEmpresa': usuario.usuario?.empresa ?? '0',
+            'idUsuario': usuario.usuario?.id ?? '1',
+            'enviarDeVolta': enviarDeVolta,
+          }));
+        }
+        return;
       }
+
+      server.write(jsonEncode({
+        'idRequisicao': _gerarIdentificadorRequisicao(),
+        'tipo': tipoTela.nome,
+        'tipoImpressao': '1',
+        'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'comanda': comanda,
+        'numeroPedido': numeroPedido,
+        'nomeCliente': nomeCliente,
+        'nomeEmpresa': nomeEmpresa,
+        'tipodeentrega': tipodeentrega,
+        'local': local,
+        'nomeUsuario': usuario.usuario?.nome ?? '',
+        'idEmpresa': usuario.usuario?.empresa ?? '0',
+        'idUsuario': usuario.usuario?.id ?? '1',
+        'enviarDeVolta': enviarDeVolta,
+      }));
     }
   }
 
@@ -59,12 +115,17 @@ class Impressao {
     var server = Modular.get<Server>();
     var usuario = Modular.get<UsuarioProvedor>();
 
-    if (server.connected) {
+    if (destinoDeImpressao != null || idVenda.isNotEmpty) {
       server.write(jsonEncode({
+        'idRequisicao': _gerarIdentificadorRequisicao(),
         'tipoImpressao': '4',
+        'nomedopc': destinoDeImpressao?.nomedopc ?? '',
         'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-        'destinoDeImpressao': destinoDeImpressao,
-        'idVenda': idVenda,
+        'destinoDeImpressao': destinoDeImpressao?.toMap(),
+        'nomeDaImpressora': destinoDeImpressao?.nomeDaImpressora ?? '',
+        'tamanhoDoPapel': destinoDeImpressao?.tamanhoDoPapel ?? '',
+        'avancoPapel': destinoDeImpressao?.avancoPapel ?? '',
+        'id': idVenda,
         'tipo': tipo,
         'nomeUsuario': usuario.usuario?.nome ?? '',
         'idEmpresa': usuario.usuario?.empresa ?? '0',
@@ -139,38 +200,76 @@ class Impressao {
       element.quantidadeController = null;
     }
 
-    if (server.connected && enviarDeVolta == true) {
-      if (produtos.isNotEmpty) {
-        server.write(jsonEncode({
-          'tipo': TipoCardapio.delivery.nome,
-          'tipoImpressao': '3',
-          'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-          'produtos': produtos.map((e) => e.toMap()).toList(),
-          'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
-          'somaValorHistorico': somaValorHistorico,
-          'celularEmpresa': celularEmpresa,
-          'cnpjEmpresa': cnpjEmpresa,
-          'enderecoEmpresa': enderecoEmpresa,
-          'nomeEmpresa': nomeEmpresa,
-          'total': total,
-          'permanencia': permanencia,
-          'valorentrega': valorentrega,
-          'numeroPedido': numeroPedido,
-          'tipodeentrega': tipodeentrega,
-          'nomeCliente': nomeCliente,
-          'celularCliente': celularCliente,
-          'enderecoCliente': enderecoCliente,
-          'valortroco': valortroco,
-          'numeroCliente': numeroCliente,
-          'bairroCliente': bairroCliente,
-          'complementoCliente': complementoCliente,
-          'cidadeCliente': cidadeCliente,
-          'nomeUsuario': usuario.usuario?.nome ?? '',
-          'idEmpresa': usuario.usuario?.empresa ?? '0',
-          'idUsuario': usuario.usuario?.id ?? '1',
-          'enviarDeVolta': enviarDeVolta,
-        }));
+    if (enviarDeVolta == true && produtos.isNotEmpty) {
+      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
+
+      if (grupos.isNotEmpty) {
+        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
+          server.write(jsonEncode({
+            'idRequisicao': _gerarIdentificadorRequisicao(),
+            'tipo': TipoCardapio.delivery.nome,
+            'tipoImpressao': '3',
+            'nomedopc': grupo.key,
+            'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+            'produtos': grupo.value.map((e) => e.toMap()).toList(),
+            'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+            'somaValorHistorico': somaValorHistorico,
+            'celularEmpresa': celularEmpresa,
+            'cnpjEmpresa': cnpjEmpresa,
+            'enderecoEmpresa': enderecoEmpresa,
+            'nomeEmpresa': nomeEmpresa,
+            'total': total,
+            'permanencia': permanencia,
+            'valorentrega': valorentrega,
+            'numeroPedido': numeroPedido,
+            'tipodeentrega': tipodeentrega,
+            'nomeCliente': nomeCliente,
+            'celularCliente': celularCliente,
+            'enderecoCliente': enderecoCliente,
+            'valortroco': valortroco,
+            'numeroCliente': numeroCliente,
+            'bairroCliente': bairroCliente,
+            'complementoCliente': complementoCliente,
+            'cidadeCliente': cidadeCliente,
+            'nomeUsuario': usuario.usuario?.nome ?? '',
+            'idEmpresa': usuario.usuario?.empresa ?? '0',
+            'idUsuario': usuario.usuario?.id ?? '1',
+            'enviarDeVolta': enviarDeVolta,
+          }));
+        }
+        return;
       }
+
+      server.write(jsonEncode({
+        'idRequisicao': _gerarIdentificadorRequisicao(),
+        'tipo': TipoCardapio.delivery.nome,
+        'tipoImpressao': '3',
+        'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+        'somaValorHistorico': somaValorHistorico,
+        'celularEmpresa': celularEmpresa,
+        'cnpjEmpresa': cnpjEmpresa,
+        'enderecoEmpresa': enderecoEmpresa,
+        'nomeEmpresa': nomeEmpresa,
+        'total': total,
+        'permanencia': permanencia,
+        'valorentrega': valorentrega,
+        'numeroPedido': numeroPedido,
+        'tipodeentrega': tipodeentrega,
+        'nomeCliente': nomeCliente,
+        'celularCliente': celularCliente,
+        'enderecoCliente': enderecoCliente,
+        'valortroco': valortroco,
+        'numeroCliente': numeroCliente,
+        'bairroCliente': bairroCliente,
+        'complementoCliente': complementoCliente,
+        'cidadeCliente': cidadeCliente,
+        'nomeUsuario': usuario.usuario?.nome ?? '',
+        'idEmpresa': usuario.usuario?.empresa ?? '0',
+        'idUsuario': usuario.usuario?.id ?? '1',
+        'enviarDeVolta': enviarDeVolta,
+      }));
     }
   }
 
@@ -199,32 +298,64 @@ class Impressao {
       element.quantidadeController = null;
     }
 
-    if (server.connected && enviarDeVolta == true) {
-      if (produtos.isNotEmpty) {
-        server.write(jsonEncode({
-          'tipo': TipoCardapio.delivery.nome,
-          'tipoImpressao': '2',
-          'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-          'produtos': produtos.map((e) => e.toMap()).toList(),
-          'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
-          'somaValorHistorico': somaValorHistorico,
-          'celularEmpresa': celularEmpresa,
-          'cnpjEmpresa': cnpjEmpresa,
-          'enderecoEmpresa': enderecoEmpresa,
-          'nomeEmpresa': nomeEmpresa,
-          'numeroPedido': numeroPedido,
-          'total': total,
-          'local': local,
-          'permanencia': permanencia,
-          'valorentrega': valorentrega,
-          'tipodeentrega': tipodeentrega,
-          'nomeUsuario': usuario.usuario?.nome ?? '',
-          'idEmpresa': usuario.usuario?.empresa ?? '0',
-          'idUsuario': usuario.usuario?.id ?? '1',
-          'nomeCliente': nomeCliente,
-          'enviarDeVolta': enviarDeVolta,
-        }));
+    if (enviarDeVolta == true && produtos.isNotEmpty) {
+      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
+
+      if (grupos.isNotEmpty) {
+        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
+          server.write(jsonEncode({
+            'idRequisicao': _gerarIdentificadorRequisicao(),
+            'tipo': TipoCardapio.delivery.nome,
+            'tipoImpressao': '2',
+            'nomedopc': grupo.key,
+            'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+            'produtos': grupo.value.map((e) => e.toMap()).toList(),
+            'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+            'somaValorHistorico': somaValorHistorico,
+            'celularEmpresa': celularEmpresa,
+            'cnpjEmpresa': cnpjEmpresa,
+            'enderecoEmpresa': enderecoEmpresa,
+            'nomeEmpresa': nomeEmpresa,
+            'numeroPedido': numeroPedido,
+            'total': total,
+            'local': local,
+            'permanencia': permanencia,
+            'valorentrega': valorentrega,
+            'tipodeentrega': tipodeentrega,
+            'nomeUsuario': usuario.usuario?.nome ?? '',
+            'idEmpresa': usuario.usuario?.empresa ?? '0',
+            'idUsuario': usuario.usuario?.id ?? '1',
+            'nomeCliente': nomeCliente,
+            'enviarDeVolta': enviarDeVolta,
+          }));
+        }
+        return;
       }
+
+      server.write(jsonEncode({
+        'idRequisicao': _gerarIdentificadorRequisicao(),
+        'tipo': TipoCardapio.delivery.nome,
+        'tipoImpressao': '2',
+        'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+        'somaValorHistorico': somaValorHistorico,
+        'celularEmpresa': celularEmpresa,
+        'cnpjEmpresa': cnpjEmpresa,
+        'enderecoEmpresa': enderecoEmpresa,
+        'nomeEmpresa': nomeEmpresa,
+        'numeroPedido': numeroPedido,
+        'total': total,
+        'local': local,
+        'permanencia': permanencia,
+        'valorentrega': valorentrega,
+        'tipodeentrega': tipodeentrega,
+        'nomeUsuario': usuario.usuario?.nome ?? '',
+        'idEmpresa': usuario.usuario?.empresa ?? '0',
+        'idUsuario': usuario.usuario?.id ?? '1',
+        'nomeCliente': nomeCliente,
+        'enviarDeVolta': enviarDeVolta,
+      }));
     }
   }
 }

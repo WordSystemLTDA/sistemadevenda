@@ -73,7 +73,6 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   TabController? _tabController;
   List<String> listaCategorias = [];
   int indexTabBar = 0;
-
   bool finalizar = false;
 
   @override
@@ -88,37 +87,18 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   @override
   void dispose() {
     super.dispose();
-    if (_tabController != null) {
-      _tabController!.dispose();
-    }
+    _tabController?.dispose();
   }
 
   void listarDados() async {
     await provedor.listarCategorias().then((value) {
-      _tabController = TabController(
-        initialIndex: indexTabBar,
-        length: value.length,
-        vsync: this,
-      );
-
+      _tabController = TabController(initialIndex: indexTabBar, length: value.length, vsync: this);
       _tabController!.addListener(() {
         provedor.tamanhosPizza = null;
         provedor.saboresPizzaSelecionados = [];
-        setState(() {
-          indexTabBar = _tabController!.index;
-        });
+        setState(() => indexTabBar = _tabController!.index);
       });
     });
-
-    // await provedor
-    //         .listarDados(false, widget.argumentos.id, widget.argumentos.tipo, finalizar, widget.argumentos.tipodeentrega!, produtosNovos: widget.argumentos.produtosNovos)
-    //         .then((value) async {
-    //       if (widget.argumentos.finalizar == false) {
-    //         provedor.listarProdutos(provedor.categoriaSelecionada, finalizar: finalizar);
-    //       }
-    //       _updateTimer();
-    //     });
-
     await carrinhoProvedor.listarComandasPedidos();
     await provedor.listarConfigBigChef();
   }
@@ -134,105 +114,121 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return AnimatedBuilder(
       animation: provedor,
       builder: (context, _) {
+        final temCategorias = _tabController != null && provedor.categorias.isNotEmpty;
         return Scaffold(
+          backgroundColor: cs.surface,
           appBar: AppBar(
-            automaticallyImplyLeading: false,
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(0.0),
-              child: Column(
-                children: [
-                  // BuscarProdutos(
-                  //   categoria: provedor.categorias.isEmpty ? null : provedor.categorias[indexTabBar],
-                  //   idcliente: '0',
-                  // ),
-
-                  const SizedBox(height: 5),
-                  Visibility(
-                    visible: _tabController != null,
-                    replacement: const SizedBox(
-                      height: 48,
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: LinearProgressIndicator(),
-                      ),
-                    ),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: TabBar(
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        controller: _tabController,
-                        tabAlignment: TabAlignment.start,
-                        isScrollable: true,
-                        tabs: [
-                          ...provedor.categorias.map((e) => Tab(
-                                  child: Text(
-                                e.nomeCategoria.toUpperCase(),
-                                style: const TextStyle(fontSize: 16),
-                              )))
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            backgroundColor: cs.inversePrimary,
+            elevation: 0,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.restaurant_menu_rounded, color: cs.onPrimaryContainer, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Cardápio', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.1)),
+                    Text(widget.tipo.nome, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ],
             ),
+            bottom: !temCategorias
+                ? const PreferredSize(
+                    preferredSize: Size.fromHeight(48),
+                    child: SizedBox(height: 48, child: Align(alignment: Alignment.bottomCenter, child: LinearProgressIndicator())),
+                  )
+                : TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    tabs: [
+                      ...provedor.categorias.map((e) => Tab(text: e.nomeCategoria)),
+                    ],
+                  ),
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
           floatingActionButton: AnimatedBuilder(
             animation: carrinhoProvedor,
             builder: (context, _) {
+              final temPizza = provedor.tamanhosPizza != null && provedor.saboresPizzaSelecionados.isNotEmpty;
               return Stack(
                 children: [
-                  if (provedor.tamanhosPizza != null && provedor.saboresPizzaSelecionados.isNotEmpty) ...[
+                  if (temPizza)
                     Align(
                       alignment: Alignment.bottomCenter,
-                      child: SizedBox(
-                        width: 170,
-                        child: FloatingActionButton.extended(
-                          heroTag: 'botao1',
-                          onPressed: () async {
-                            if (!context.mounted) return;
-
-                            var item = provedor.saboresPizzaSelecionados[0];
-
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) {
-                                return PaginaSaborBordas(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: SizedBox(
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              if (!context.mounted) return;
+                              final item = provedor.saboresPizzaSelecionados[0];
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => PaginaSaborBordas(
                                   produto: item,
                                   valorVenda: provedor.calcularPrecoPizza(),
-                                );
-                              },
-                            ));
-                          },
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          label: Text('Avançar ${provedor.calcularPrecoPizza().obterReal()}'),
+                                ),
+                              ));
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cs.tertiary,
+                              foregroundColor: cs.onTertiary,
+                              padding: const EdgeInsets.symmetric(horizontal: 22),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 3,
+                            ),
+                            icon: const Icon(Icons.local_pizza_outlined, size: 20),
+                            label: Text(
+                              'Avançar ${provedor.calcularPrecoPizza().obterReal()}',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ],
                   Positioned(
-                    right: 25,
-                    bottom: 0,
+                    right: 18,
+                    bottom: 4,
                     child: badges.Badge(
-                      badgeContent: Text(carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
-                      position: badges.BadgePosition.topEnd(end: 0),
-                      child: FloatingActionButton(
-                        heroTag: 'botao2',
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) {
-                              return const PaginaCarrinho();
-                            },
-                          ));
-                        },
-                        shape: const CircleBorder(),
-                        child: const Icon(Icons.shopping_cart),
+                      badgeContent: Text(
+                        carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0),
+                        style: TextStyle(color: cs.onError, fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                      badgeStyle: badges.BadgeStyle(
+                        badgeColor: cs.error,
+                        padding: const EdgeInsets.all(6),
+                        elevation: 2,
+                      ),
+                      position: badges.BadgePosition.topEnd(end: -2, top: -2),
+                      child: SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: FloatingActionButton(
+                          heroTag: null,
+                          backgroundColor: cs.primary,
+                          foregroundColor: cs.onPrimary,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          onPressed: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) => const PaginaCarrinho(),
+                            ));
+                          },
+                          child: const Icon(Icons.shopping_cart_outlined, size: 22),
+                        ),
                       ),
                     ),
                   ),
@@ -240,24 +236,20 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
               );
             },
           ),
-          body: DefaultTabController(
-            length: provedor.categorias.length,
-            child: TabBarView(
-              controller: _tabController,
-              // physics: const CustomTabBarViewScrollPhysics(),
-              children: [
-                ...provedor.categorias.map((e) {
-                  listaCategorias.add(e.id);
-
-                  return TabCustom(
-                    category: e.id,
-                    categoria: e,
-                    finalizar: finalizar,
-                  );
-                })
-              ],
-            ),
-          ),
+          body: !temCategorias
+              ? const SizedBox.shrink()
+              : DefaultTabController(
+                  length: provedor.categorias.length,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      ...provedor.categorias.map((e) {
+                        listaCategorias.add(e.id);
+                        return TabCustom(category: e.id, categoria: e, finalizar: finalizar);
+                      }),
+                    ],
+                  ),
+                ),
         );
       },
     );

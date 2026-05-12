@@ -3,6 +3,8 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
+import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 // import 'package:app/src/managers/push_notification_manager.dart';
@@ -75,7 +77,7 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver> with Widget
     switch (state) {
       case AppLifecycleState.resumed:
         log("App em primeiro plano (global). Conectando...");
-        _conectarAoServidor();
+        _conectarEAtualizar();
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
@@ -96,6 +98,33 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver> with Widget
       await server.connect(conexao.servidor, conexao.porta);
     } else {
       log("Dados de conexão não encontrados.");
+    }
+  }
+
+  /// Ao voltar do background, reconecta o socket e força a atualização das
+  /// telas principais (mesas, comandas e balcão), pois enquanto o app estava
+  /// em segundo plano nenhuma mensagem do WebSocket foi recebida.
+  Future<void> _conectarEAtualizar() async {
+    await _conectarAoServidor();
+    _atualizarTelasPrincipais();
+  }
+
+  void _atualizarTelasPrincipais() {
+    final atualizador = AtualizacaoDeTela();
+    try {
+      atualizador.call(ModeloRetornoSocket(tipo: 'Mesa'));
+    } catch (e) {
+      log('Falha ao atualizar mesas no resume: $e');
+    }
+    try {
+      atualizador.call(ModeloRetornoSocket(tipo: 'Comanda'));
+    } catch (e) {
+      log('Falha ao atualizar comandas no resume: $e');
+    }
+    try {
+      atualizador.call(ModeloRetornoSocket(tipo: 'Balcão'));
+    } catch (e) {
+      log('Falha ao atualizar balcão no resume: $e');
     }
   }
 

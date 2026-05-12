@@ -82,6 +82,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         onPressed: () {
           Navigator.push(
