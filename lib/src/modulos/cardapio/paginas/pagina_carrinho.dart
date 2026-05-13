@@ -53,9 +53,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
   }
 
   void removerTodosItensCarrinho() async {
-    await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
-      if (mounted) carrinhoProvedor.listarComandasPedidos();
-      if (sucesso) return;
+    final sucesso = await carrinhoProvedor.removerComandasPedidos();
+
+    if (!sucesso) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,7 +68,13 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
           ),
         );
       }
-    });
+      return;
+    }
+
+    await carrinhoProvedor.listarComandasPedidos();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _confirmarLimpar() async {
@@ -315,6 +321,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         idMesa: provedorCardapio.idMesa,
                         index: index,
                         value: carrinhoProvedor.itensCarrinho,
+                        aoExcluirItem: () => setState(() {}),
                         setarQuantidade: (increase) {
                           setState(() {
                             item.quantidade = item.quantidade! + (increase ? 1 : -1);

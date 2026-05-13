@@ -15,6 +15,7 @@ class CardCarrinho extends StatefulWidget {
   final String idMesa;
   final dynamic value;
   final Function(bool increase) setarQuantidade;
+  final VoidCallback aoExcluirItem;
 
   const CardCarrinho({
     super.key,
@@ -24,6 +25,7 @@ class CardCarrinho extends StatefulWidget {
     required this.idMesa,
     required this.value,
     required this.setarQuantidade,
+    required this.aoExcluirItem,
   });
 
   @override
@@ -191,14 +193,9 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                 TextButton(
                                                   child: const Text('Excluir'),
                                                   onPressed: () async {
-                                                    await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index).then((sucesso) {
-                                                      if (context.mounted) {
-                                                        carrinhoProvedor.listarComandasPedidos();
-                                                        Navigator.pop(context);
-                                                      }
+                                                    final sucesso = await carrinhoProvedor.excluirItemCarrinho(item.id, widget.index);
 
-                                                      if (sucesso) return;
-
+                                                    if (!sucesso) {
                                                       if (context.mounted) {
                                                         ScaffoldMessenger.of(context).hideCurrentSnackBar();
                                                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -206,7 +203,15 @@ class _CardCarrinhoState extends State<CardCarrinho> with TickerProviderStateMix
                                                           showCloseIcon: true,
                                                         ));
                                                       }
-                                                    });
+                                                      return;
+                                                    }
+
+                                                    await carrinhoProvedor.listarComandasPedidos();
+                                                    widget.aoExcluirItem();
+
+                                                    if (context.mounted) {
+                                                      Navigator.pop(context);
+                                                    }
                                                   },
                                                 ),
                                               ],
