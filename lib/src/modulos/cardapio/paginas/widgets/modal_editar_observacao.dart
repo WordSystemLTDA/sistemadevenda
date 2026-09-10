@@ -162,7 +162,7 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
                         children: [
                           Text(
                             'Observação do item',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface),
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: cs.onSurface),
                           ),
                           const SizedBox(height: 2),
                           Text(

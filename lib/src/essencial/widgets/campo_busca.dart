@@ -32,10 +32,14 @@ class CampoBusca extends StatelessWidget {
           fillColor: cs.surface,
           isDense: true,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          prefixIconConstraints:
+              const BoxConstraints.tightFor(width: 44, height: 44),
+          suffixIconConstraints:
+              const BoxConstraints.tightFor(width: 44, height: 44),
           prefixIcon: const Icon(Icons.search_rounded, size: 22),
           suffixIcon: value.text.isEmpty
-              ? const SizedBox(width: 48, height: 48)
+              ? const SizedBox(width: 44, height: 44)
               : IconButton(
                   tooltip: 'Limpar busca',
                   icon: const Icon(Icons.close_rounded, size: 20),

@@ -341,7 +341,7 @@ class _CardProdutoState extends State<CardProduto> {
                                       "${item.nome} ${item.tamanho}".trim(),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                                     ),
                                   ),
                                   if (selecionado) ...[

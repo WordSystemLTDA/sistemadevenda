@@ -423,7 +423,7 @@ class _BotaoFinalizar extends StatelessWidget {
                       ),
                       child: Text(
                         total.obterReal(),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.2),
                       ),
                     ),
                   ],

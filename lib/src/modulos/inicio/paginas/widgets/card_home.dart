@@ -34,7 +34,7 @@ class CardHome extends StatelessWidget {
           ),
           Row(
             children: [
-              Expanded(child: Text(nome, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600))),
+              Expanded(child: Text(nome, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500))),
               const SizedBox(width: 4),
               Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurfaceVariant),
             ],

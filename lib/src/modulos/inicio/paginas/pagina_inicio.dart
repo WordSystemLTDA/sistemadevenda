@@ -167,7 +167,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                       alignment: Alignment.centerLeft,
                       child: Text(
                         context.read<UsuarioProvedor>().usuario!.nomeEmpresa!,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
                       ),
                     ),
                   ),

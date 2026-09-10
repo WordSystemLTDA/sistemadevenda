@@ -394,45 +394,40 @@ class _CabecalhoBusca extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: LayoutBuilder(builder: (context, constraints) {
-        final larguraAcoes = onNfc == null ? 104.0 : 156.0;
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: constraints.maxWidth < 480 ? constraints.maxWidth : constraints.maxWidth - larguraAcoes,
-              child: CampoBusca(
-                controller: pesquisaController,
-                hintText: 'Buscar mesa ou cliente',
-                onChanged: onChanged,
-              ),
+      child: Row(
+        children: [
+          Expanded(
+            child: CampoBusca(
+              controller: pesquisaController,
+              hintText: 'Buscar mesa ou cliente',
+              onChanged: onChanged,
             ),
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.keyboard_alt_outlined,
+            cor: const Color(0xFF6366F1),
+            tooltip: 'Digitar código',
+            onTap: onAbrirModalCodigo,
+          ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.qr_code_scanner_rounded,
+            cor: const Color(0xFF3B82F6),
+            tooltip: 'Escanear QR Code',
+            onTap: onAbrirScanner,
+          ),
+          if (onNfc != null) ...[
+            const SizedBox(width: 8),
             _BotaoAcao(
-              icone: Icons.keyboard_alt_outlined,
-              cor: const Color(0xFF6366F1),
-              tooltip: 'Digitar código',
-              onTap: onAbrirModalCodigo,
+              icone: Icons.nfc_rounded,
+              cor: const Color(0xFF10B981),
+              tooltip: 'Ler tag NFC',
+              onTap: onNfc!,
             ),
-            _BotaoAcao(
-              icone: Icons.qr_code_scanner_rounded,
-              cor: const Color(0xFF3B82F6),
-              tooltip: 'Escanear QR Code',
-              onTap: onAbrirScanner,
-            ),
-            if (onNfc != null) ...[
-              _BotaoAcao(
-                icone: Icons.nfc_rounded,
-                cor: const Color(0xFF10B981),
-                tooltip: 'Ler tag NFC',
-                onTap: onNfc!,
-              ),
-            ],
           ],
-        );
-      }),
+        ],
+      ),
     );
   }
 }
@@ -490,7 +485,7 @@ class _BarraAbas extends StatelessWidget {
   }
 
   Tab _aba(String nome, int quantidade) => Tab(
-        height: 52,
+        height: 56,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

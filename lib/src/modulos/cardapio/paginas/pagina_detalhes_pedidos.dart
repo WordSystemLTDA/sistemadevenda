@@ -518,7 +518,7 @@ class _CabecalhoComanda extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               nome,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0.1, color: cs.onSurface),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: cs.onSurface),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -675,7 +675,7 @@ class _CardAcao extends StatelessWidget {
                 titulo,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.1, color: cs.onSurface),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: cs.onSurface),
               ),
               const SizedBox(height: 2),
               Text(
@@ -741,7 +741,7 @@ class _PainelConta extends StatelessWidget {
                     double.parse(total).obterReal(),
                     style: const TextStyle(
                       fontSize: 32,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: _corAndamento,
                       letterSpacing: -0.5,
                     ),
@@ -829,7 +829,7 @@ class _BotaoConta extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: corConteudo, letterSpacing: 0.2),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: corConteudo, letterSpacing: 0.2),
               ),
             ],
           ),

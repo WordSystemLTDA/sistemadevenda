@@ -100,7 +100,7 @@ class BotaoAcaoPedido extends StatelessWidget {
                               total,
                               style: TextStyle(
                                   color: corTexto,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 16),
                             ),
                           ),

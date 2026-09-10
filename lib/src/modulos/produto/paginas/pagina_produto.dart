@@ -350,7 +350,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                   Expanded(
                     child: Text(
                       "${itemProduto!.nome}${itemProduto!.tamanho.isNotEmpty ? ' ${itemProduto!.tamanho}' : ''}",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -624,7 +624,7 @@ class _HeroProduto extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.green.shade700,
                           fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -710,7 +710,7 @@ class _StepperQuantidade extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 quantidade.toString(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -811,7 +811,7 @@ class _SecaoCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     titulo,
-                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (contagem != null) ...[

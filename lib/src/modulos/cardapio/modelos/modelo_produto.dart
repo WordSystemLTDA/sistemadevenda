@@ -151,8 +151,7 @@ class Modelowordprodutos {
       id: map['id'] as String,
       hashprodutos:
           map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
-      iditensvenda:
-          map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
+      iditensvenda: (map['iditensvenda'] ?? map['id_itens_venda'])?.toString(),
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
       imprimirCodigoProdutoPreparo:
