@@ -244,26 +244,20 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   Widget _buildBotaoDetalhesPizza(BuildContext context) {
     final cor = Theme.of(context).colorScheme.primary;
 
-    return InkWell(
-      onTap: () {
+    return IconButton(
+      key: const Key('botao_detalhes_pizza_recorrente'),
+      tooltip: _detalhesPizzaAbertos ? 'Ocultar detalhes' : 'Mostrar detalhes',
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 34, height: 30),
+      padding: EdgeInsets.zero,
+      color: cor,
+      iconSize: 24,
+      icon: Icon(_detalhesPizzaAbertos ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+      onPressed: () {
         setState(() {
           _detalhesPizzaAbertos = !_detalhesPizzaAbertos;
         });
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_detalhesPizzaAbertos ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: cor, size: 22),
-            const SizedBox(width: 6),
-            Text(
-              _detalhesPizzaAbertos ? 'Ocultar detalhes' : 'Ver detalhes da pizza',
-              style: TextStyle(color: cor, fontWeight: FontWeight.w700, fontSize: 14),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -602,6 +596,11 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                       ),
                                     ),
                                   ],
+                                  if (ehPizzaRecorrente)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: _buildBotaoDetalhesPizza(context),
+                                    ),
                                 ],
                               ),
                             ),
@@ -627,14 +626,20 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                   //   ),
                   // ],
                   if (ehPizzaRecorrente) ...[
-                    const Divider(height: 1),
                     AnimatedSize(
                       duration: const Duration(milliseconds: 180),
                       curve: Curves.easeOutCubic,
                       alignment: Alignment.topCenter,
-                      child: _detalhesPizzaAbertos ? _buildDetalhesPizza(context, item) : const SizedBox(width: double.infinity),
+                      child: _detalhesPizzaAbertos
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Divider(height: 1),
+                                _buildDetalhesPizza(context, item),
+                              ],
+                            )
+                          : const SizedBox(width: double.infinity),
                     ),
-                    _buildBotaoDetalhesPizza(context),
                   ],
                 ],
               ),

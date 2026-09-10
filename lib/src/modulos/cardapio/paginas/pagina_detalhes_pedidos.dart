@@ -740,7 +740,7 @@ class _PainelConta extends StatelessWidget {
                   Text(
                     double.parse(total).obterReal(),
                     style: const TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.w600,
                       color: _corAndamento,
                       letterSpacing: -0.5,

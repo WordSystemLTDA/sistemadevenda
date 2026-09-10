@@ -163,10 +163,11 @@ class _PaginaInicioState extends State<PaginaInicio> {
                 if (context.read<UsuarioProvedor>().usuario?.nomeEmpresa?.isNotEmpty ?? false)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: double.infinity,
                       child: Text(
                         context.read<UsuarioProvedor>().usuario!.nomeEmpresa!,
+                        textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
                       ),
                     ),

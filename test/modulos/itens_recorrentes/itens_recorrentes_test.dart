@@ -84,14 +84,16 @@ void main() {
     ));
 
     expect(find.text('Pizza de Queijos'), findsOneWidget);
-    expect(find.text('Ver detalhes da pizza'), findsOneWidget);
+    expect(find.text('Detalhes'), findsNothing);
+    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
     expect(find.text('Tamanho Pizza'), findsNothing);
     expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
 
-    await tester.tap(find.text('Ver detalhes da pizza'));
+    await tester.tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
     await tester.pumpAndSettle();
 
     expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+    expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
     expect(find.text('Tamanho Pizza'), findsOneWidget);
     expect(find.text('G'), findsOneWidget);
     expect(find.text('(1/3) Mussarela'), findsOneWidget);
@@ -107,16 +109,17 @@ void main() {
     expect(find.text('Cebola'), findsOneWidget);
     expect(find.text('Observação'), findsOneWidget);
     expect(find.text('Sem cebola e cortar bem assada'), findsOneWidget);
-    expect(find.text('Ocultar detalhes'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Ocultar detalhes'));
+    await tester.ensureVisible(
+        find.byKey(const Key('botao_detalhes_pizza_recorrente')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Ocultar detalhes'));
+    await tester.tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
     await tester.pumpAndSettle();
 
     expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
     expect(find.text('Tamanho Pizza'), findsNothing);
-    expect(find.text('Ver detalhes da pizza'), findsOneWidget);
+    expect(find.text('Detalhes'), findsNothing);
+    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
 
     await tester.tap(find.text('Pizza de Queijos'));
     await tester.pumpAndSettle();

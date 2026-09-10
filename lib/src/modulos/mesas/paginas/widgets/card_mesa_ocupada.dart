@@ -240,7 +240,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: 0.1,
                             ),
                           ),
@@ -421,7 +421,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                               double.parse(item.valor ?? '0').obterReal(),
                               style: TextStyle(
                                 fontSize: 15,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 color: corStatus,
                                 letterSpacing: 0.2,
                               ),
