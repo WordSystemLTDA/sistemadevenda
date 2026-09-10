@@ -184,12 +184,23 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
     );
   }
 
+  String _identificacaoClientePedido() {
+    final nomeCliente = dados?.nomeCliente?.trim() ?? '';
+    final observacao = dados?.observacaoDoPedido?.trim() ?? '';
+    final semCliente = nomeCliente.isEmpty || nomeCliente.toLowerCase() == 'sem cliente';
+
+    if (semCliente && observacao.isNotEmpty) return observacao;
+    if (semCliente) return 'Sem Cliente';
+    return nomeCliente;
+  }
+
   Widget _buildHeaderInfo(BuildContext context) {
     if (dados == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final emFechamento = dados!.status == 'Fechamento';
+    final identificacaoCliente = _identificacaoClientePedido();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -242,7 +253,7 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          dados!.nomeCliente ?? 'Sem cliente',
+                          identificacaoCliente,
                           style: TextStyle(
                             fontSize: 12.5,
                             color: cs.onSurface.withValues(alpha: 0.7),

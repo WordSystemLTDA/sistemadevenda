@@ -261,6 +261,63 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
     );
   }
 
+  Widget _buildValorResumo(BuildContext context, Modelowordprodutos item) {
+    if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) {
+      if (provedorCardapio.tamanhosPizza == null) {
+        return Text(
+          "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
+          textAlign: TextAlign.right,
+          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+        );
+      }
+
+      final tamanhoSelecionado = item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull;
+      if (tamanhoSelecionado == null) return const SizedBox.shrink();
+
+      return Text(
+        double.parse(tamanhoSelecionado.valor).obterReal(),
+        textAlign: TextAlign.right,
+        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+      );
+    }
+
+    if (item.descontoProduto == null) {
+      return Text(
+        (double.tryParse(item.valorVenda) ?? 0).obterReal(),
+        textAlign: TextAlign.right,
+        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+      );
+    }
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      alignment: WrapAlignment.end,
+      spacing: 4,
+      children: [
+        Text(
+          (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
+          style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+        ),
+        const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+        Text(
+          double.parse(item.valorVenda).obterReal(),
+          style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.deepOrange,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+          child: Text(
+            '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
+            style: const TextStyle(fontSize: 8, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
@@ -534,73 +591,23 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                       return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
                                     },
                                   ),
-                                  const SizedBox(height: 4),
-                                  if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
-                                    if (provedorCardapio.tamanhosPizza == null) ...[
-                                      Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Text(
-                                          "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
-                                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
-                                        ),
-                                      ),
-                                    ] else if (item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull !=
-                                        null) ...[
-                                      Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Text(
-                                          double.parse(item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor)
-                                              .obterReal(),
-                                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
-                                        ),
-                                      ),
-                                    ],
-                                  ] else if (item.descontoProduto == null) ...[
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Text(
-                                        (double.tryParse(item.valorVenda) ?? 0).obterReal(),
-                                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Wrap(
-                                        crossAxisAlignment: WrapCrossAlignment.center,
-                                        alignment: WrapAlignment.end,
-                                        spacing: 4,
-                                        children: [
-                                          Text(
-                                            (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
-                                            style: const TextStyle(
-                                                fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
-                                          ),
-                                          const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
-                                          Text(
-                                            double.parse(item.valorVenda).obterReal(),
-                                            style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
-                                          ),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.deepOrange,
-                                              borderRadius: BorderRadius.circular(30),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                            child: Text(
-                                              '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
-                                              style: const TextStyle(fontSize: 8, color: Colors.white),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minWidth: 70, maxWidth: 132),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (ehPizzaRecorrente) ...[
+                                    _buildBotaoDetalhesPizza(context),
+                                    const SizedBox(height: 8),
                                   ],
-                                  if (ehPizzaRecorrente)
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: _buildBotaoDetalhesPizza(context),
-                                    ),
+                                  _buildValorResumo(context, item),
                                 ],
                               ),
                             ),
