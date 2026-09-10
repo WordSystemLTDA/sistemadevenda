@@ -6,6 +6,7 @@ import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +64,16 @@ class ProvedorCardapio extends ChangeNotifier {
   ModeloTamanhosPizza? get tamanhosPizza => _tamanhosPizza;
   set tamanhosPizza(ModeloTamanhosPizza? value) {
     _tamanhosPizza = value;
+    if (value == null) {
+      _saboresPizzaSelecionados = [];
+    } else {
+      _saboresPizzaSelecionados = _saboresPizzaSelecionados
+          .where((produto) => tamanhoPizzaDoProduto(produto) != null)
+          .toList();
+      if (_saboresPizzaSelecionados.length > int.parse(value.saboreslimite)) {
+        _saboresPizzaSelecionados = [];
+      }
+    }
     notifyListeners();
   }
 
@@ -105,6 +116,21 @@ class ProvedorCardapio extends ChangeNotifier {
 
   Future<List<ModeloCategoria>> listarCategorias() async {
     final res = await _categoriaService.listar();
+    final todos = res.where((categoria) => categoria.id == '0').firstOrNull;
+    if (todos != null) {
+      final tamanhos = <String, ModeloTamanhosPizza>{};
+      for (final categoria in res) {
+        if (categoria.id == '0' ||
+            (int.tryParse(categoria.quantidadeProdutos) ?? 0) == 0) {
+          continue;
+        }
+        for (final tamanho
+            in categoria.tamanhosPizza ?? <ModeloTamanhosPizza>[]) {
+          tamanhos.putIfAbsent(tamanho.id, () => tamanho);
+        }
+      }
+      todos.tamanhosPizza = tamanhos.values.toList();
+    }
     categorias = res;
     notifyListeners();
     return res;
@@ -115,28 +141,49 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
+  Modelowordtamanhosproduto? tamanhoPizzaDoProduto(Modelowordprodutos produto) {
+    return produto.tamanhosPizza
+        ?.where((tamanho) => tamanho.id == _tamanhosPizza?.id)
+        .firstOrNull;
+  }
+
+  String valorSaborPizza(Modelowordprodutos produto) {
+    return tamanhoPizzaDoProduto(produto)?.valor ?? produto.valorVenda;
+  }
+
+  void selecionarSaborPizza(Modelowordprodutos produto) {
+    if (_saboresPizzaSelecionados.any((sabor) => sabor.id == produto.id)) {
+      saboresPizzaSelecionados = _saboresPizzaSelecionados
+          .where((sabor) => sabor.id != produto.id)
+          .toList();
+      return;
+    }
+
+    if (tamanhoPizzaDoProduto(produto) == null ||
+        _saboresPizzaSelecionados.length >=
+            int.parse(_tamanhosPizza!.saboreslimite)) {
+      return;
+    }
+
+    saboresPizzaSelecionados = [..._saboresPizzaSelecionados, produto];
+  }
+
   double calcularPrecoPizza() {
+    if (tamanhosPizza == null || saboresPizzaSelecionados.isEmpty) {
+      return 0;
+    }
+
     var modelovalortamanhopizza =
         usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
 
+    final valores = saboresPizzaSelecionados
+        .map((produto) => double.parse(valorSaborPizza(produto)));
+
     if (modelovalortamanhopizza == 'media') {
-      var somaDosProdutosSelecionados =
-          double.parse(saboresPizzaSelecionados.fold(
-        '0',
-        (previousValue, element) {
-          return (double.parse(previousValue) +
-                  double.parse(element.valorVenda))
-              .toStringAsFixed(2);
-        },
-      ));
-
-      var media = somaDosProdutosSelecionados / saboresPizzaSelecionados.length;
-
-      return media;
+      final soma = valores.fold(0.0, (total, valor) => total + valor);
+      return soma / saboresPizzaSelecionados.length;
     } else if (modelovalortamanhopizza == 'maior') {
-      return saboresPizzaSelecionados
-          .map((e) => double.parse(e.valorVenda))
-          .reduce(math.max);
+      return valores.reduce(math.max);
     }
 
     return 0;

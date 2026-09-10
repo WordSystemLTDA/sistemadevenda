@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/lista_bordas.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -86,6 +87,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
         return PaginaProduto(
           produto: widget.produto,
           valorVenda: widget.valorVenda,
+          montagemPizza: true,
         );
       },
     ));
@@ -125,13 +127,17 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                 title: Text("${itemProduto!.nome} ${itemProduto!.tamanho}"),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
               ),
-              floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-              floatingActionButton: FloatingActionButton.extended(
-                heroTag: '123021903901',
-                label: carregando ? const CircularProgressIndicator() : Text('Avançar ${_provedorProduto.valorVenda.obterReal()}'),
-                onPressed: () {
-                  avancar();
-                },
+              bottomNavigationBar: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                  child: BotaoAcaoPedido(
+                    rotulo: 'Avançar',
+                    total: _provedorProduto.valorVenda.obterReal(),
+                    carregando: carregando,
+                    onPressed: avancar,
+                  ),
+                ),
               ),
               body: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 100),

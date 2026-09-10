@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -56,10 +57,6 @@ class Impressao {
     // var client = Modular.get<Client>();
     var usuario = Modular.get<UsuarioProvedor>();
 
-    for (var element in produtos) {
-      element.quantidadeController = null;
-    }
-
     if (enviarDeVolta == true && produtos.isNotEmpty) {
       final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
 
@@ -71,7 +68,7 @@ class Impressao {
             'tipoImpressao': '1',
             'nomedopc': grupo.key,
             'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-            'produtos': grupo.value.map((e) => e.toMap()).toList(),
+            'produtos': grupo.value.map(DadosImpressaoPreparo.produto).toList(),
             'comanda': comanda,
             'numeroPedido': numeroPedido,
             'nomeCliente': nomeCliente,
@@ -92,7 +89,7 @@ class Impressao {
         'tipo': tipoTela.nome,
         'tipoImpressao': '1',
         'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-        'produtos': produtos.map((e) => e.toMap()).toList(),
+        'produtos': produtos.map(DadosImpressaoPreparo.produto).toList(),
         'comanda': comanda,
         'numeroPedido': numeroPedido,
         'nomeCliente': nomeCliente,

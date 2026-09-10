@@ -1,0 +1,488 @@
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/modelos/modelo_configuracoes.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+ModeloTamanhosPizza tamanho(String id, {int limite = 3}) => ModeloTamanhosPizza(
+      id: id,
+      nomedotamanho: id,
+      quantpedacos: '8',
+      saboreslimite: '$limite',
+    );
+
+Modelowordprodutos sabor(String id, String categoria, String valorGrande) =>
+    Modelowordprodutos(
+      id: id,
+      nome: id,
+      codigo: id,
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: '0',
+      categoria: categoria,
+      nomeCategoria: categoria,
+      habilTipo: 'Pizza',
+      ingredientes: [],
+      tamanhosPizza: [
+        for (final id in ['P', 'G'])
+          Modelowordtamanhosproduto(
+            id: id,
+            nome: id,
+            valor: id == 'P' ? '30' : valorGrande,
+            foto: '',
+            estaSelecionado: false,
+            excluir: false,
+          ),
+      ],
+    );
+
+class ConfiguracoesTeste extends Fake implements Modelowordconfiguracoes {
+  ConfiguracoesTeste(this.modelovalortamanhopizza);
+
+  @override
+  final String modelovalortamanhopizza;
+}
+
+class CategoriasTeste extends Fake implements ServicosCategoria {
+  final categorias = [
+    ModeloCategoria(
+      id: '0',
+      nomeCategoria: 'Todos',
+      quantidadeProdutos: '4',
+      tamanhosPizza: [],
+    ),
+    for (final nome in ['Queijos', 'Calabresa', 'Doces'])
+      ModeloCategoria(
+        id: nome,
+        nomeCategoria: nome,
+        quantidadeProdutos: '1',
+        tamanhosPizza: [tamanho('P', limite: 1), tamanho('G')],
+      ),
+    ModeloCategoria(
+      id: 'Bebidas',
+      nomeCategoria: 'Bebidas',
+      quantidadeProdutos: '1',
+      tamanhosPizza: [],
+    ),
+  ];
+
+  @override
+  Future<List<ModeloCategoria>> listar() async => categorias;
+}
+
+class ProdutosTeste extends Fake implements ServicoProduto {
+  final consultasPorId = <(String, String)>[];
+  final consultasPorNome = <String>[];
+  final consultasPorCategoria = <(String, int)>[];
+  final produtos = [
+    sabor('Mussarela', 'Queijos', '50'),
+    sabor('Calabresa especial', 'Calabresa', '70'),
+    sabor('Chocolate', 'Doces', '90'),
+  ];
+
+  @override
+  Future<List<Modelowordprodutos>> listarPorCategoria(
+      String categoria, int pagina) async {
+    consultasPorCategoria.add((categoria, pagina));
+    if (pagina > 1) return [];
+    return produtos
+        .where((produto) => categoria == '0' || produto.categoria == categoria)
+        .toList();
+  }
+
+  @override
+  Future<List<Modelowordprodutos>> listarPorNome(
+      String pesquisa, String categoria, String idcliente) async {
+    consultasPorNome.add(pesquisa);
+    final termo = pesquisa.toLowerCase();
+    return produtos
+        .where((produto) =>
+            (categoria == '0' || produto.categoria == categoria) &&
+            (produto.nome.toLowerCase().contains(termo) ||
+                produto.codigo.toLowerCase().contains(termo)))
+        .map((produto) =>
+            Modelowordprodutos.fromMap(produto.toMap())..tamanhosPizza = [])
+        .toList();
+  }
+
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+    consultasPorId.add((id, tamanho));
+    return Modelowordprodutos.fromMap(
+        produtos.firstWhere((p) => p.id == id).toMap())
+      ..opcoesPacotes = [];
+  }
+}
+
+class DioClienteTeste extends Fake implements DioCliente {}
+
+class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
+  @override
+  Future<ModeloConfigBigchef?> listar() async => null;
+}
+
+class ModuloTeste extends Module {
+  ModuloTeste(this.cardapio, this.usuario, this.produtos);
+
+  final ProvedorCardapio cardapio;
+  final UsuarioProvedor usuario;
+  final ProdutosTeste produtos;
+
+  @override
+  void binds(Injector i) {
+    i.addInstance<ProvedorCardapio>(cardapio);
+    i.addInstance<ProvedorCarrinho>(
+        ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario)));
+    i.addInstance<ProvedorProduto>(ProvedorProduto(cardapio, usuario));
+    i.add<ProvedorProdutos>(() => ProvedorProdutos(produtos));
+    i.addInstance<ServicoProduto>(produtos);
+    i.addInstance<ServicoConfigBigchef>(ConfigBigchefTeste());
+    i.addInstance<Server>(Server());
+  }
+}
+
+void main() {
+  late ProvedorCardapio cardapio;
+  late UsuarioProvedor usuario;
+  late ProdutosTeste produtos;
+  late CategoriasTeste categorias;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(configuracoes: ConfiguracoesTeste('media')));
+    categorias = CategoriasTeste();
+    cardapio = ProvedorCardapio(categorias, usuario);
+    produtos = ProdutosTeste();
+  });
+
+  tearDown(() {
+    cardapio.dispose();
+    usuario.dispose();
+  });
+
+  Future<void> trocarCategoria(WidgetTester tester, String nome) async {
+    final aba = find.widgetWithText(Tab, nome);
+    await tester.ensureVisible(aba);
+    await tester.tap(aba);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tocarTamanho(WidgetTester tester, String nome) async {
+    final opcao = find.descendant(
+      of: find.byType(ListaTamanhosPizza),
+      matching: find.text(nome),
+    );
+    await tester.ensureVisible(opcao);
+    await tester.tap(opcao);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tocarProduto(WidgetTester tester, String nome) async {
+    final card = find.byWidgetPredicate(
+        (widget) => widget is CardProduto && widget.item.nome == nome);
+    await tester.ensureVisible(card);
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+  }
+
+  test('Todos reune tamanhos sem duplicar categorias com o mesmo vinculo',
+      () async {
+    final res = await cardapio.listarCategorias();
+    expect(res.first.tamanhosPizza!.map((e) => e.id), ['P', 'G']);
+  });
+
+  test('Todos ignora categorias vazias e preserva tamanhos de grupos distintos',
+      () async {
+    categorias.categorias.addAll([
+      ModeloCategoria(
+        id: 'Vazia',
+        nomeCategoria: 'Vazia',
+        quantidadeProdutos: '0',
+        tamanhosPizza: [tamanho('GG')],
+      ),
+      ModeloCategoria(
+        id: 'OutroGrupo',
+        nomeCategoria: 'OutroGrupo',
+        quantidadeProdutos: '1',
+        tamanhosPizza: [tamanho('Familia')],
+      ),
+    ]);
+    final res = await cardapio.listarCategorias();
+    expect(res.first.tamanhosPizza!.map((e) => e.id), ['P', 'G', 'Familia']);
+  });
+
+  test('Todos nao mostra tamanhos quando nao ha produtos de pizza', () async {
+    for (final categoria in categorias.categorias.skip(1)) {
+      if (categoria.tamanhosPizza!.isNotEmpty) {
+        categoria.quantidadeProdutos = '0';
+      }
+    }
+    final res = await cardapio.listarCategorias();
+    expect(res.first.tamanhosPizza, isEmpty);
+  });
+
+  test('pesquisa completa pizza sem cache buscando a categoria real', () async {
+    final provedor = ProvedorProdutos(produtos);
+
+    await provedor.listarProdutosPorNome('Calabresa', '0', '0');
+
+    expect(provedor.produtos, hasLength(1));
+    expect(provedor.produtos.single.id, 'Calabresa especial');
+    expect(
+      provedor.produtos.single.tamanhosPizza!.map((tamanho) => tamanho.valor),
+      ['30', '70'],
+    );
+    expect(produtos.consultasPorCategoria, [('Calabresa', 1)]);
+  });
+
+  for (final largura in [320.0, 393.0, 800.0]) {
+    testWidgets('monta pizza em Todos e avanca ate o carrinho em $largura',
+        (tester) async {
+      tester.view.physicalSize = Size(largura, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+      produtos.produtos.add(sabor('Agua', 'Bebidas', '10')
+        ..tamanhosPizza = []
+        ..habilTipo = ''
+        ..valorVenda = '10');
+
+      await tester.pumpWidget(
+          const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+      await tester.pumpAndSettle();
+      expect(find.byType(ListaTamanhosPizza), findsOneWidget);
+      expect(cardapio.categorias.first.tamanhosPizza, hasLength(2));
+      await tocarTamanho(tester, 'G');
+      await tocarProduto(tester, 'Mussarela');
+      await trocarCategoria(tester, 'Calabresa');
+      await tocarProduto(tester, 'Calabresa especial');
+      await trocarCategoria(tester, 'Todos');
+      expect(cardapio.tamanhosPizza?.id, 'G');
+      expect(cardapio.saboresPizzaSelecionados, hasLength(2));
+      await tocarProduto(tester, 'Chocolate');
+      await tocarProduto(tester, 'Agua');
+      expect(cardapio.saboresPizzaSelecionados, hasLength(3));
+      expect(cardapio.calcularPrecoPizza(), 70);
+      final carrinho = Modular.get<ProvedorCarrinho>();
+      expect(carrinho.itensCarrinho.listaComandosPedidos.single.nome, 'Agua');
+      expect(find.byType(SnackBar), findsNothing);
+
+      final botao = find.byType(BotaoAcaoPedido);
+      final rectAvancar = tester.getRect(botao);
+      final rectCarrinho = tester.getRect(find.byType(FloatingActionButton));
+      expect(rectAvancar.overlaps(rectCarrinho), isFalse);
+      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar');
+      await tester.tap(botao);
+      await tester.pumpAndSettle();
+      expect(find.byType(PaginaSaborBordas), findsOneWidget);
+      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar');
+      await tester.tap(botao);
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .widget<PaginaProduto>(find.byType(PaginaProduto))
+              .montagemPizza,
+          isTrue);
+      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo,
+          'Adicionar ao carrinho');
+      await tester.tap(botao);
+      await tester.pumpAndSettle();
+      final pizza = carrinho.itensCarrinho.listaComandosPedidos
+          .firstWhere((p) => p.id == 'Mussarela');
+      expect(pizza.valorVenda, '70.00');
+      expect(pizza.opcoesPacotesListaFinal!.firstWhere((o) => o.id == 10).dados,
+          hasLength(3));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('produto comum com opcoes nao herda a pizza em montagem',
+      (tester) async {
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    final bebida = sabor('Bebida com opcoes', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..habilTipo = 'Pacote'
+      ..valorVenda = '10';
+    produtos.produtos.add(bebida);
+    cardapio.tamanhosPizza = tamanho('G');
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+    await tester.pumpWidget(MaterialApp(home: PaginaProduto(produto: bebida)));
+    await tester.pumpAndSettle();
+    expect(produtos.consultasPorId.single, ('Bebida com opcoes', '0'));
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    final item = Modular.get<ProvedorCarrinho>()
+        .itensCarrinho
+        .listaComandosPedidos
+        .single;
+    expect(item.opcoesPacotesListaFinal!.where((o) => o.id == 9 || o.id == 10),
+        isEmpty);
+    expect(item.valorVenda, '10.00');
+    expect(cardapio.saboresPizzaSelecionados, hasLength(1));
+    expect(cardapio.tamanhosPizza?.id, 'G');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('pesquisa reaproveita tamanhos da listagem ja carregada',
+      (tester) async {
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+
+    await tester.pumpWidget(
+        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpAndSettle();
+
+    await tocarTamanho(tester, 'G');
+    await tester.enterText(find.byType(TextField), 'Muss');
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(produtos.consultasPorNome, ['Muss']);
+    expect(find.textContaining(r'50,00'), findsOneWidget);
+    await tocarProduto(tester, 'Mussarela');
+    expect(cardapio.saboresPizzaSelecionados.map((produto) => produto.id),
+        ['Mussarela']);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final largura in [393.0, 800.0]) {
+    testWidgets('mantem pizza ao trocar categorias em tela de $largura',
+        (tester) async {
+      tester.view.physicalSize = Size(largura, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+
+      await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(tipo: TipoCardapio.comanda),
+      ));
+      await tester.pumpAndSettle();
+
+      await trocarCategoria(tester, 'Queijos');
+      await tocarTamanho(tester, 'G');
+      await tester.tap(find.byType(CardProduto));
+      await tester.pumpAndSettle();
+
+      await trocarCategoria(tester, 'Calabresa');
+      expect(cardapio.tamanhosPizza?.id, 'G');
+      expect(cardapio.saboresPizzaSelecionados.map((e) => e.id), ['Mussarela']);
+      expect(find.textContaining('70,00'), findsOneWidget);
+      await tester.tap(find.byType(CardProduto));
+      await tester.pumpAndSettle();
+
+      await trocarCategoria(tester, 'Doces');
+      await tester.tap(find.byType(CardProduto));
+      await tester.pumpAndSettle();
+      expect(cardapio.saboresPizzaSelecionados, hasLength(3));
+      expect(cardapio.calcularPrecoPizza(), 70);
+      expect(find.textContaining(r'70,00'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+
+      await trocarCategoria(tester, 'Queijos');
+      expect(find.byIcon(Icons.check), findsOneWidget);
+      await tester.tap(find.byType(CardProduto));
+      await tester.pumpAndSettle();
+      expect(cardapio.saboresPizzaSelecionados, hasLength(2));
+      expect(cardapio.calcularPrecoPizza(), 80);
+
+      await tocarTamanho(tester, 'G');
+      expect(cardapio.tamanhosPizza, isNull);
+      expect(cardapio.saboresPizzaSelecionados, isEmpty);
+
+      await tocarTamanho(tester, 'G');
+      await tester.tap(find.byType(CardProduto));
+      await tester.pumpAndSettle();
+      await trocarCategoria(tester, 'Bebidas');
+      expect(cardapio.tamanhosPizza, isNull);
+      expect(cardapio.saboresPizzaSelecionados, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  test('limita sabores entre categorias e permite desmarcar no limite', () {
+    cardapio.tamanhosPizza = tamanho('G', limite: 2);
+    for (final produto in produtos.produtos) {
+      cardapio.selecionarSaborPizza(produto);
+    }
+    expect(cardapio.saboresPizzaSelecionados, hasLength(2));
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+    cardapio.selecionarSaborPizza(produtos.produtos.last);
+    expect(cardapio.saboresPizzaSelecionados.map((e) => e.id),
+        ['Calabresa especial', 'Chocolate']);
+  });
+
+  for (final regra in ['media', 'maior']) {
+    test('recalcula $regra pelo tamanho sem depender dos cards visiveis', () {
+      usuario
+          .setUsuario(UsuarioModelo(configuracoes: ConfiguracoesTeste(regra)));
+      cardapio.tamanhosPizza = tamanho('G');
+      cardapio.selecionarSaborPizza(produtos.produtos[0]);
+      cardapio.selecionarSaborPizza(produtos.produtos[1]);
+      expect(cardapio.calcularPrecoPizza(), regra == 'media' ? 60 : 70);
+
+      cardapio.tamanhosPizza = tamanho('P');
+      expect(cardapio.saboresPizzaSelecionados, hasLength(2));
+      expect(cardapio.calcularPrecoPizza(), 30);
+      expect(cardapio.valorSaborPizza(produtos.produtos[0]), '30');
+      expect(produtos.produtos[0].valorVenda, '0');
+    });
+  }
+
+  test('limpa sabores ao escolher tamanho com limite menor', () {
+    cardapio.tamanhosPizza = tamanho('G');
+    cardapio.selecionarSaborPizza(produtos.produtos[0]);
+    cardapio.selecionarSaborPizza(produtos.produtos[1]);
+    cardapio.tamanhosPizza = tamanho('P', limite: 1);
+    expect(cardapio.saboresPizzaSelecionados, isEmpty);
+    expect(cardapio.calcularPrecoPizza(), 0);
+  });
+
+  test('nao mistura produtos sem o tamanho escolhido na pizza', () {
+    cardapio.tamanhosPizza = tamanho('G');
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+    final incompativel = sabor('Outro sabor', 'Outra categoria', '100')
+      ..tamanhosPizza = [];
+    cardapio.selecionarSaborPizza(incompativel);
+    expect(cardapio.saboresPizzaSelecionados, [produtos.produtos.first]);
+
+    cardapio.tamanhosPizza = tamanho('Familia');
+    expect(cardapio.saboresPizzaSelecionados, isEmpty);
+  });
+}

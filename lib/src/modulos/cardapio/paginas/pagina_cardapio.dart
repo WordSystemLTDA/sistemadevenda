@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -94,9 +95,13 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
     await provedor.listarCategorias().then((value) {
       _tabController = TabController(initialIndex: indexTabBar, length: value.length, vsync: this);
       _tabController!.addListener(() {
-        provedor.tamanhosPizza = null;
-        provedor.saboresPizzaSelecionados = [];
-        setState(() => indexTabBar = _tabController!.index);
+        if (indexTabBar != _tabController!.index) {
+          final categoria = provedor.categorias[_tabController!.index];
+          if (categoria.tamanhosPizza?.isEmpty ?? true) {
+            provedor.tamanhosPizza = null;
+          }
+          setState(() => indexTabBar = _tabController!.index);
+        }
       });
     });
     await carrinhoProvedor.listarComandasPedidos();
@@ -104,6 +109,7 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
   }
 
   void setarCampos() {
+    provedor.tamanhosPizza = null;
     provedor.tipo = widget.tipo;
     provedor.idComanda = widget.idComanda ?? '0';
     provedor.idMesa = widget.idMesa ?? '0';
@@ -157,22 +163,21 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                     ],
                   ),
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-          floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-          floatingActionButton: AnimatedBuilder(
+          bottomNavigationBar: AnimatedBuilder(
             animation: carrinhoProvedor,
             builder: (context, _) {
               final temPizza = provedor.tamanhosPizza != null && provedor.saboresPizzaSelecionados.isNotEmpty;
-              return Stack(
-                children: [
-                  if (temPizza)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: SizedBox(
-                          height: 52,
-                          child: FilledButton.icon(
+              return SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                  child: Row(
+                    children: [
+                      if (temPizza) ...[
+                        Expanded(
+                          child: BotaoAcaoPedido(
+                            rotulo: 'Avançar',
+                            total: provedor.calcularPrecoPizza().obterReal(),
                             onPressed: () {
                               if (!context.mounted) return;
                               final item = provedor.saboresPizzaSelecionados[0];
@@ -183,56 +188,44 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                                 ),
                               ));
                             },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: cs.tertiary,
-                              foregroundColor: cs.onTertiary,
-                              padding: const EdgeInsets.symmetric(horizontal: 22),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              elevation: 3,
-                            ),
-                            icon: const Icon(Icons.local_pizza_outlined, size: 20),
-                            label: Text(
-                              'Avançar ${provedor.calcularPrecoPizza().obterReal()}',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.2),
-                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ] else
+                        const Spacer(),
+                      badges.Badge(
+                        badgeContent: Text(
+                          carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0),
+                          style: TextStyle(color: cs.onError, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                        badgeStyle: badges.BadgeStyle(
+                          badgeColor: cs.error,
+                          padding: const EdgeInsets.all(6),
+                          elevation: 2,
+                        ),
+                        position: badges.BadgePosition.topEnd(end: -2, top: -2),
+                        child: SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: FloatingActionButton(
+                            heroTag: null,
+                            tooltip: 'Carrinho',
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => const PaginaCarrinho(),
+                              ));
+                            },
+                            child: const Icon(Icons.shopping_cart_outlined, size: 22),
                           ),
                         ),
                       ),
-                    ),
-                  Positioned(
-                    right: 18,
-                    bottom: 4,
-                    child: badges.Badge(
-                      badgeContent: Text(
-                        carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0),
-                        style: TextStyle(color: cs.onError, fontSize: 11, fontWeight: FontWeight.w700),
-                      ),
-                      badgeStyle: badges.BadgeStyle(
-                        badgeColor: cs.error,
-                        padding: const EdgeInsets.all(6),
-                        elevation: 2,
-                      ),
-                      position: badges.BadgePosition.topEnd(end: -2, top: -2),
-                      child: SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: FloatingActionButton(
-                          heroTag: null,
-                          backgroundColor: cs.primary,
-                          foregroundColor: cs.onPrimary,
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => const PaginaCarrinho(),
-                            ));
-                          },
-                          child: const Icon(Icons.shopping_cart_outlined, size: 22),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               );
             },
           ),

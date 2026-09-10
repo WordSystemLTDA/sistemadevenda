@@ -5,6 +5,7 @@ class ModeloDadosOpcoesPacotes {
   final String id;
   final String nome;
   final String? codigo;
+  final String imprimirCodigoProdutoPreparo;
   final String? valor;
   final String? foto;
   final String? quantimaximaselecao;
@@ -17,6 +18,7 @@ class ModeloDadosOpcoesPacotes {
     required this.id,
     required this.nome,
     this.codigo,
+    this.imprimirCodigoProdutoPreparo = 'Não',
     this.valor,
     this.foto,
     this.quantimaximaselecao,
@@ -31,6 +33,7 @@ class ModeloDadosOpcoesPacotes {
       'id': id,
       'nome': nome,
       'codigo': codigo,
+      'imprimirCodigoProdutoPreparo': imprimirCodigoProdutoPreparo,
       'valor': valor,
       'foto': foto,
       'quantimaximaselecao': quantimaximaselecao,
@@ -46,6 +49,8 @@ class ModeloDadosOpcoesPacotes {
       id: map['id'] as String,
       nome: map['nome'] as String,
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
+      imprimirCodigoProdutoPreparo:
+          map['imprimirCodigoProdutoPreparo'] as String? ?? 'Não',
       valor: map['valor'] != null ? map['valor'] as String : null,
       foto: map['foto'] != null ? map['foto'] as String : null,
       quantimaximaselecao: map['quantimaximaselecao'] != null

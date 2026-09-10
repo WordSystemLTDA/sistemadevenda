@@ -12,13 +12,18 @@ class TabCustom extends StatefulWidget {
   final ModeloCategoria categoria;
   final bool finalizar;
 
-  const TabCustom({super.key, required this.category, required this.categoria, required this.finalizar});
+  const TabCustom(
+      {super.key,
+      required this.category,
+      required this.categoria,
+      required this.finalizar});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
 }
 
-class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixin {
+class _TabCustomState extends State<TabCustom>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
   final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
@@ -28,12 +33,13 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   ValueNotifier<bool> carregando = ValueNotifier(true);
   Timer? _debounce;
 
-  void listarProdutos(categoria, {bool carregarMais = false}) async {
-    await provedor.listarProdutosPorCategoria(categoria, carregarMais: carregarMais);
+  void listarProdutos(String categoria, {bool carregarMais = false}) async {
+    await provedor.listarProdutosPorCategoria(categoria,
+        carregarMais: carregarMais);
     carregando.value = false;
   }
 
-  void pesquisarProdutos(categoria) {
+  void pesquisarProdutos(String categoria) {
     listarProdutos(categoria);
   }
 
@@ -42,8 +48,10 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
     super.initState();
 
     _scrollController.addListener(() {
-      if (_scrollController.position.maxScrollExtent == _scrollController.offset) {
-        provedor.paginas[widget.category] = (provedor.paginas[widget.category] ?? 1) + 1;
+      if (_scrollController.position.maxScrollExtent ==
+          _scrollController.offset) {
+        provedor.paginas[widget.category] =
+            (provedor.paginas[widget.category] ?? 1) + 1;
         listarProdutos(widget.category, carregarMais: true);
       }
     });
@@ -72,7 +80,8 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: SizedBox(
                   height: 40,
                   child: TextField(
@@ -97,19 +106,22 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
 
                       _debounce = Timer(const Duration(milliseconds: 500), () {
                         if (value.isEmpty) {
-                          provedor.listarProdutosPorNome('', widget.category, '0');
+                          provedor.paginas[widget.category] = 1;
+                          listarProdutos(widget.category);
 
                           return;
                         }
 
-                        provedor.listarProdutosPorNome(value, widget.category, '0');
+                        provedor.listarProdutosPorNome(
+                            value, widget.category, '0');
                       });
                     },
                     // onTap: () => _searchController.openView(),
                   ),
                 ),
               ),
-              if (widget.categoria.tamanhosPizza != null && widget.categoria.tamanhosPizza!.isNotEmpty) ...[
+              if (widget.categoria.tamanhosPizza != null &&
+                  widget.categoria.tamanhosPizza!.isNotEmpty) ...[
                 ListaTamanhosPizza(categoria: widget.categoria),
               ],
               Expanded(
@@ -119,10 +131,15 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                     if (valueCarregando == true) {
                       return const Center(child: CircularProgressIndicator());
                     } else {
-                      if (provedor.produtos.isEmpty && valueCarregando == false) {
+                      if (provedor.produtos.isEmpty &&
+                          valueCarregando == false) {
                         return ListView(
                           shrinkWrap: true,
-                          children: const [SizedBox(height: 100, child: Center(child: Text('Não há Itens')))],
+                          children: const [
+                            SizedBox(
+                                height: 100,
+                                child: Center(child: Text('Não há Itens')))
+                          ],
                         );
                       } else {
                         return ListView.builder(
@@ -131,7 +148,9 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                           itemCount: provedor.produtos.length + 1,
                           itemBuilder: (context, index) {
                             if (index == provedor.produtos.length) {
-                              return const SizedBox(height: 80, child: Center(child: Text('Fim da Lista')));
+                              return const SizedBox(
+                                  height: 80,
+                                  child: Center(child: Text('Fim da Lista')));
                             }
 
                             final item = provedor.produtos[index];

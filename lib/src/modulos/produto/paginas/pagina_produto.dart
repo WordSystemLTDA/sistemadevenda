@@ -6,6 +6,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -18,6 +19,7 @@ class PaginaProduto extends StatefulWidget {
   final Modelowordprodutos produto;
   final double? valorVenda;
   final bool editar;
+  final bool montagemPizza;
   final int? indexProduto;
   final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
 
@@ -26,6 +28,7 @@ class PaginaProduto extends StatefulWidget {
     required this.produto,
     this.valorVenda,
     this.editar = false,
+    this.montagemPizza = false,
     this.indexProduto,
     this.inserirEmItensRecorrentes,
   });
@@ -78,7 +81,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     var inicioServico = Modular.get<ServicoProduto>();
-    await inicioServico.listarPorId(widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0').then((value) {
+    final idTamanhoPizza = widget.montagemPizza ? provedorCardapio.tamanhosPizza?.id ?? '0' : '0';
+    await inicioServico.listarPorId(widget.produto.id, idTamanhoPizza).then((value) {
       itemProduto = value;
       if (value != null) {
         if (widget.valorVenda == null) {
@@ -171,7 +175,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
     setState(() => carregando = !carregando);
 
-    if (provedorCardapio.tamanhosPizza != null) {
+    if (widget.montagemPizza && provedorCardapio.tamanhosPizza != null) {
       _provedorProduto.opcoesPacotesListaFinal.insert(
         0,
         ModeloOpcoesPacotes(
@@ -198,7 +202,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                 .map((e) => ModeloDadosOpcoesPacotes(
                       id: e.id,
                       nome: e.nome,
-                      valor: ((double.tryParse(e.valorVenda) ?? 0) / provedorCardapio.saboresPizzaSelecionados.length).toStringAsFixed(2),
+                      codigo: e.codigo,
+                      imprimirCodigoProdutoPreparo: e.imprimirCodigoProdutoPreparo,
+                      valor: ((double.tryParse(provedorCardapio.valorSaborPizza(e)) ?? 0) / provedorCardapio.saboresPizzaSelecionados.length).toStringAsFixed(2),
                       quantimaximaselecao: '1/${provedorCardapio.saboresPizzaSelecionados.length}',
                     ))
                 .toList()),
@@ -351,12 +357,18 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                 ],
               ),
             ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-            floatingActionButton: _BotaoFinalizar(
-              carregando: carregando,
-              quantidade: _provedorProduto.quantidade,
-              total: total,
-              onPressed: inserirNoCarrinho,
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                child: BotaoAcaoPedido(
+                  rotulo: 'Adicionar ao carrinho',
+                  carregando: carregando,
+                  quantidade: _provedorProduto.quantidade,
+                  total: total,
+                  onPressed: inserirNoCarrinho,
+                ),
+              ),
             ),
             body: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 140),
@@ -843,109 +855,6 @@ class _SecaoCard extends StatelessWidget {
           ),
           child,
         ],
-      ),
-    );
-  }
-}
-
-class _BotaoFinalizar extends StatelessWidget {
-  final bool carregando;
-  final int quantidade;
-  final String total;
-  final VoidCallback onPressed;
-
-  const _BotaoFinalizar({
-    required this.carregando,
-    required this.quantidade,
-    required this.total,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: carregando ? null : onPressed,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: carregando
-                  ? const Center(
-                      child: SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      ),
-                    )
-                  : Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${quantidade}x',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Adicionar ao carrinho',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          total,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
-                      ],
-                    ),
-            ),
-          ),
-        ),
       ),
     );
   }

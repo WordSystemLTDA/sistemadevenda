@@ -98,13 +98,17 @@ class _CardProdutoState extends State<CardProduto> {
   Widget build(BuildContext context) {
     var item = widget.item;
 
-    if (provedorCardapio.tamanhosPizza != null && item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) {
-      item.valorVenda = item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor;
-    }
-
     return ListenableBuilder(
       listenable: provedorCardapio,
       builder: (context, snapshot) {
+        final categoriaProduto = provedorCardapio.categorias
+                .where((categoria) => categoria.id == item.categoria)
+                .firstOrNull ??
+            (widget.categoria?.id == item.categoria ? widget.categoria : null);
+        final temTamanhosPizza = (item.tamanhosPizza?.isNotEmpty ?? false) ||
+            (categoriaProduto?.tamanhosPizza?.isNotEmpty ?? false);
+        final tamanhoSelecionado = provedorCardapio.tamanhoPizzaDoProduto(item);
+
         return LayoutBuilder(builder: (context, constraints) {
           return Card(
             clipBehavior: Clip.hardEdge,
@@ -117,25 +121,19 @@ class _CardProdutoState extends State<CardProduto> {
                 var comanda = idComanda.isEmpty ? 0 : idComanda;
                 var mesa = idMesa.isEmpty ? 0 : idMesa;
 
-                if (provedorCardapio.tamanhosPizza != null) {
-                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == item.id).isNotEmpty) {
-                    provedorCardapio.saboresPizzaSelecionados.removeWhere((element) => element.id == item.id);
-                    var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados.where((element) => element.id != item.id)];
-                    provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
-                  } else {
-                    if (provedorCardapio.saboresPizzaSelecionados.length < int.parse(provedorCardapio.tamanhosPizza!.saboreslimite)) {
-                      var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados, item];
-                      provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
-                    }
-                  }
-
+                if (temTamanhosPizza && tamanhoSelecionado != null) {
+                  provedorCardapio.selecionarSaborPizza(item);
                   return;
                 }
 
-                if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty && provedorCardapio.tamanhosPizza == null) {
+                if (temTamanhosPizza &&
+                    (provedorCardapio.tamanhosPizza != null ||
+                        (widget.categoria?.tamanhosPizza?.isNotEmpty ?? false))) {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Selecione um Tamanho'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(provedorCardapio.tamanhosPizza == null
+                        ? 'Selecione um Tamanho'
+                        : 'Selecione um tamanho disponível para este sabor.'),
                     backgroundColor: Colors.red,
                   ));
                   return;
@@ -189,6 +187,7 @@ class _CardProdutoState extends State<CardProduto> {
                     id: item.id,
                     nome: item.nome,
                     codigo: item.codigo,
+                    imprimirCodigoProdutoPreparo: item.imprimirCodigoProdutoPreparo,
                     estoque: item.estoque,
                     tamanho: item.tamanho,
                     foto: item.foto,
@@ -355,20 +354,20 @@ class _CardProdutoState extends State<CardProduto> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) ...[
-                                if (provedorCardapio.tamanhosPizza == null) ...[
+                              if (temTamanhosPizza) ...[
+                                if (tamanhoSelecionado == null) ...[
                                   Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
-                                      "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
+                                      "A partir de ${double.parse(item.tamanhosPizza?.firstOrNull?.valor ?? item.valorVenda).obterReal()}",
                                       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),
-                                ] else if (item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) ...[
+                                ] else ...[
                                   Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
-                                      double.parse(item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor).obterReal(),
+                                      double.parse(tamanhoSelecionado.valor).obterReal(),
                                       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                   ),

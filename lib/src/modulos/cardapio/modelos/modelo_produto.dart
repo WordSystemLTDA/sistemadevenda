@@ -14,6 +14,7 @@ class Modelowordprodutos {
   String? iditensvenda;
   String nome;
   String codigo;
+  String imprimirCodigoProdutoPreparo;
   String estoque;
   String tamanho;
   String foto;
@@ -58,6 +59,7 @@ class Modelowordprodutos {
     this.hashprodutos,
     required this.nome,
     required this.codigo,
+    this.imprimirCodigoProdutoPreparo = 'Não',
     required this.estoque,
     required this.tamanho,
     required this.foto,
@@ -103,6 +105,7 @@ class Modelowordprodutos {
       'hashprodutos': hashprodutos,
       'nome': nome,
       'codigo': codigo,
+      'imprimirCodigoProdutoPreparo': imprimirCodigoProdutoPreparo,
       'estoque': estoque,
       'tamanho': tamanho,
       'foto': foto,
@@ -152,6 +155,8 @@ class Modelowordprodutos {
           map['iditensvenda'] != null ? map['iditensvenda'] as String : null,
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
+      imprimirCodigoProdutoPreparo:
+          map['imprimirCodigoProdutoPreparo'] as String? ?? 'Não',
       estoque: map['estoque'] as String,
       tamanho: map['tamanho'] as String,
       foto: map['foto'] as String,
@@ -280,6 +285,7 @@ class Modelowordprodutos {
     return other.id == id &&
         other.nome == nome &&
         other.codigo == codigo &&
+        other.imprimirCodigoProdutoPreparo == imprimirCodigoProdutoPreparo &&
         other.estoque == estoque &&
         other.tamanho == tamanho &&
         other.foto == foto &&
@@ -313,6 +319,7 @@ class Modelowordprodutos {
     return id.hashCode ^
         nome.hashCode ^
         codigo.hashCode ^
+        imprimirCodigoProdutoPreparo.hashCode ^
         estoque.hashCode ^
         tamanho.hashCode ^
         foto.hashCode ^

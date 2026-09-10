@@ -42,15 +42,10 @@ class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
                   onTap: () {
-                    if (provedorCardapio.tamanhosPizza == e) {
+                    if (provedorCardapio.tamanhosPizza?.id == e.id) {
                       provedorCardapio.tamanhosPizza = null;
-                      provedorCardapio.saboresPizzaSelecionados = [];
                     } else {
                       provedorCardapio.tamanhosPizza = e;
-                    }
-                    if (provedorCardapio.saboresPizzaSelecionados.length >
-                        int.parse(e.saboreslimite)) {
-                      provedorCardapio.saboresPizzaSelecionados = [];
                     }
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -126,26 +121,35 @@ class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
                             ],
                           ),
                         ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              e.nomedotamanho,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    e.nomedotamanho,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${e.quantpedacos} Pedaços',
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                  Text(
+                                    '${int.parse(e.saboreslimite) > 1 ? 'até ' : ''}${int.parse(e.saboreslimite)} ${int.parse(e.saboreslimite) > 1 ? 'sabores' : 'sabor'}',
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                ],
                               ),
                             ),
-                            Text(
-                              '${e.quantpedacos} Pedaços',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                            Text(
-                              '${int.parse(e.saboreslimite) > 1 ? 'até ' : ''}${int.parse(e.saboreslimite)} ${int.parse(e.saboreslimite) > 1 ? 'sabores' : 'sabor'}',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
