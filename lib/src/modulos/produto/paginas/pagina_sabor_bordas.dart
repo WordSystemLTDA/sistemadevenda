@@ -50,10 +50,16 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     }
 
     var inicioServico = Modular.get<ServicoProduto>();
-    await inicioServico.listarPorId(widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0').then((value) {
+    await inicioServico
+        .listarPorId(
+            widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0')
+        .then((value) {
       itemProduto = value;
       if (value != null) {
-        _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
+        _provedorProduto.opcoesPacotesListaFinal = [
+          for (var elm in value.opcoesPacotes!)
+            ModeloOpcoesPacotes.fromMap(elm.toMap())
+        ].map((e) {
           // se for acompanhamentos retorna todos
           if (e.id == 5) {
             return e;
@@ -61,7 +67,9 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
           // se for cortesia
           if (e.id == 1) {
-            e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
+            e.dados = e.dados!
+                .where((element) => element.estaSelecionado == true)
+                .toList();
             return e;
           }
 
@@ -82,6 +90,21 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
   }
 
   void avancar() async {
+    final opcaoBorda = _provedorProduto.opcoesPacotesListaFinal
+        .where((opcao) => opcao.id == 6)
+        .firstOrNull;
+    final temBordaSelecionada = opcaoBorda?.dados?.isNotEmpty ?? false;
+
+    if (temBordaSelecionada &&
+        _provedorProduto.bordaPrecisaSelecionarQuantidade(opcaoBorda!)) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Selecione a quantidade de sabores da borda primeiro.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) {
         return PaginaProduto(
@@ -151,7 +174,8 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                           child: Column(
                             children: [
                               Padding(
-                                padding: const EdgeInsets.only(left: 0, top: 10, bottom: 10),
+                                padding: const EdgeInsets.only(
+                                    left: 0, top: 10, bottom: 10),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -165,15 +189,21 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                   ],
                                 ),
                               ),
-                              if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) ...[
+                              if (int.parse(provedorCardapio
+                                          .configBigchef!.saborlimitedeborda) >
+                                      0 &&
+                                  opcoesPacote.id == 6) ...[
                                 // SÓ APARECE QUANDO TEM BORDAS
                                 const ListaBordas(),
                               ],
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length,
-                                padding: const EdgeInsets.only(left: 14, right: 14, top: 20, bottom: 10),
+                                itemCount: opcoesPacote.id == 2
+                                    ? opcoesPacote.produtos!.length
+                                    : opcoesPacote.dados!.length,
+                                padding: const EdgeInsets.only(
+                                    left: 14, right: 14, top: 20, bottom: 10),
                                 itemBuilder: (context, index) {
                                   var item = opcoesPacote.dados![index];
 

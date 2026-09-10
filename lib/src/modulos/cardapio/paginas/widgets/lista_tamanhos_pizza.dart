@@ -26,19 +26,22 @@ class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
         children: widget.categoria.tamanhosPizza!.map((e) {
           final selected = provedorCardapio.tamanhosPizza?.id == e.id;
           return Padding(
-            padding: const EdgeInsets.only(right: 12, bottom: 8, top: 4),
+            padding: const EdgeInsets.only(right: 12, bottom: 8, top: 6),
             child: Badge(
               label: selected
-                  ? Icon(Icons.check_rounded, color: colorScheme.onPrimary, size: 14)
+                  ? Icon(Icons.check_rounded,
+                      color: colorScheme.onPrimary, size: 14)
                   : null,
               backgroundColor: colorScheme.primary,
-              alignment: const Alignment(1, -1),
+              alignment: AlignmentDirectional.topEnd,
+              offset: const Offset(-10, 4),
               padding: const EdgeInsets.all(4),
               smallSize: 0,
               child: Material(
                 color: selected
                     ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                    : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    : colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
                   onTap: () {
@@ -86,10 +89,13 @@ class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
                                       4: Colors.orange,
                                       5: Colors.yellow,
                                     };
-                                    if (e.id == provedorCardapio.tamanhosPizza?.id &&
+                                    if (e.id ==
+                                            provedorCardapio
+                                                .tamanhosPizza?.id &&
                                         (index2 + 1) <=
                                             provedorCardapio
-                                                .saboresPizzaSelecionados.length) {
+                                                .saboresPizzaSelecionados
+                                                .length) {
                                       return {
                                         'x': '',
                                         'y': 10,

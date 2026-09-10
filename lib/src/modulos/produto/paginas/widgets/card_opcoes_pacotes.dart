@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -27,6 +29,25 @@ class CardOpcoesPacotes extends StatefulWidget {
 class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
 
+  void _selecionarItem(BuildContext context) {
+    if (_provedorProduto
+        .bordaPrecisaSelecionarQuantidade(widget.opcoesPacote)) {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Selecione a quantidade de sabores da borda primeiro.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    _provedorProduto.selecionarItem(
+      widget.item,
+      widget.opcoesPacote,
+      widget.kit,
+      widget.idProduto,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
@@ -37,17 +58,22 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
       child: Stack(
         children: [
           Card(
-            color: Theme.of(context).brightness == Brightness.dark ? const Color.fromARGB(255, 50, 50, 50) : null,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color.fromARGB(255, 50, 50, 50)
+                : null,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
             margin: EdgeInsets.zero,
             child: InkWell(
-              onTap: () => _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit, widget.idProduto),
+              onTap: () => _selecionarItem(context),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      if (item.foto != null && item.foto!.isNotEmpty && opcoesPacote.id == 7) ...[
+                      if (item.foto != null &&
+                          item.foto!.isNotEmpty &&
+                          opcoesPacote.id == 7) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8.0),
                           child: CachedNetworkImage(
@@ -60,25 +86,38 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                               width: 70,
                               child: Center(child: CircularProgressIndicator()),
                             ),
-                            errorWidget: (context, url, error) => const Icon(Icons.error),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error),
                             imageUrl: item.foto!,
                           ),
                         ),
                       ],
-                      if (opcoesPacote.id == 8 || opcoesPacote.id == 5 || opcoesPacote.id == 6) ...[
+                      if (opcoesPacote.id == 8 ||
+                          opcoesPacote.id == 5 ||
+                          opcoesPacote.id == 6) ...[
                         Checkbox(
-                          value: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).where((element) => element.id == item.id).isNotEmpty,
+                          value: _provedorProduto
+                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
+                                  widget.idProduto)
+                              .where((element) => element.id == item.id)
+                              .isNotEmpty,
                           onChanged: (bool? value) {
-                            _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit, widget.idProduto);
+                            _selecionarItem(context);
                           },
                         ),
                       ],
-                      if (opcoesPacote.id == 1 || opcoesPacote.id == 4 || opcoesPacote.id == 11) ...[
+                      if (opcoesPacote.id == 1 ||
+                          opcoesPacote.id == 4 ||
+                          opcoesPacote.id == 11) ...[
                         Radio<bool>(
                           value: true,
-                          groupValue: _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).where((element) => element.id == item.id).isNotEmpty,
+                          groupValue: _provedorProduto
+                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
+                                  widget.idProduto)
+                              .where((element) => element.id == item.id)
+                              .isNotEmpty,
                           onChanged: (bool? value) {
-                            _provedorProduto.selecionarItem(item, opcoesPacote, widget.kit, widget.idProduto);
+                            _selecionarItem(context);
 
                             // if (sucesso == false) {
                             //   ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -104,10 +143,12 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(item.nome, style: const TextStyle(fontSize: 15)),
-                          if (item.valor != null && double.parse(item.valor ?? '0') > 0) ...[
+                          if (item.valor != null &&
+                              double.parse(item.valor ?? '0') > 0) ...[
                             Text(
                               double.parse(item.valor ?? '0').obterReal(),
-                              style: const TextStyle(fontSize: 15, color: Colors.green),
+                              style: const TextStyle(
+                                  fontSize: 15, color: Colors.green),
                             ),
                           ],
                         ],
@@ -115,46 +156,82 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                     ],
                   ),
                   if (opcoesPacote.id == 7 &&
-                      _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).where((element) => element.id == item.id).isNotEmpty) ...[
+                      _provedorProduto
+                          .retornarDadosPorID(
+                              [opcoesPacote.id], widget.kit, widget.idProduto)
+                          .where((element) => element.id == item.id)
+                          .isNotEmpty) ...[
                     Row(
                       children: [
                         IconButton(
                           onPressed: () {
-                            if (_provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade! >
+                            if (_provedorProduto
+                                    .retornarDadosPorID([opcoesPacote.id],
+                                        widget.kit, widget.idProduto)
+                                    .firstWhere(
+                                        (element) => element.id == item.id)
+                                    .quantidade! >
                                 1) {
                               setState(() {
-                                _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade =
-                                    _provedorProduto
-                                            .retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto)
-                                            .firstWhere((element) => element.id == item.id)
-                                            .quantidade! -
-                                        1;
+                                _provedorProduto
+                                    .retornarDadosPorID([opcoesPacote.id],
+                                        widget.kit, widget.idProduto)
+                                    .firstWhere(
+                                        (element) => element.id == item.id)
+                                    .quantidade = _provedorProduto
+                                        .retornarDadosPorID([opcoesPacote.id],
+                                            widget.kit, widget.idProduto)
+                                        .firstWhere(
+                                            (element) => element.id == item.id)
+                                        .quantidade! -
+                                    1;
                               });
-                              _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
+                              _provedorProduto.calcularValorVenda(
+                                  widget.kit, widget.idProduto);
                             }
                           },
                           icon: Icon(
                             Icons.remove_circle_outline,
                             size: 30,
-                            color:
-                                _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade == 1
-                                    ? Colors.grey
-                                    : Colors.red,
+                            color: _provedorProduto
+                                        .retornarDadosPorID([opcoesPacote.id],
+                                            widget.kit, widget.idProduto)
+                                        .firstWhere(
+                                            (element) => element.id == item.id)
+                                        .quantidade ==
+                                    1
+                                ? Colors.grey
+                                : Colors.red,
                           ),
                         ),
                         Text(
-                          _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade.toString(),
+                          _provedorProduto
+                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
+                                  widget.idProduto)
+                              .firstWhere((element) => element.id == item.id)
+                              .quantidade
+                              .toString(),
                           style: const TextStyle(fontSize: 20),
                         ),
                         IconButton(
                           onPressed: () {
                             setState(() {
-                              _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade =
-                                  _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).firstWhere((element) => element.id == item.id).quantidade! +
-                                      1;
+                              _provedorProduto
+                                  .retornarDadosPorID([opcoesPacote.id],
+                                      widget.kit, widget.idProduto)
+                                  .firstWhere(
+                                      (element) => element.id == item.id)
+                                  .quantidade = _provedorProduto
+                                      .retornarDadosPorID([opcoesPacote.id],
+                                          widget.kit, widget.idProduto)
+                                      .firstWhere(
+                                          (element) => element.id == item.id)
+                                      .quantidade! +
+                                  1;
                             });
 
-                            _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
+                            _provedorProduto.calcularValorVenda(
+                                widget.kit, widget.idProduto);
                           },
                           icon: const Icon(
                             Icons.add_circle_outline,
@@ -171,7 +248,11 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
           ),
           if (opcoesPacote.id == 7 &&
               _provedorProduto.opcoesPacotesListaFinal.isNotEmpty &&
-              _provedorProduto.retornarDadosPorID([opcoesPacote.id], widget.kit, widget.idProduto).where((element) => element.id == item.id).isNotEmpty) ...[
+              _provedorProduto
+                  .retornarDadosPorID(
+                      [opcoesPacote.id], widget.kit, widget.idProduto)
+                  .where((element) => element.id == item.id)
+                  .isNotEmpty) ...[
             const Positioned(
               top: -10,
               left: -10,

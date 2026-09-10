@@ -5,7 +5,9 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
@@ -21,6 +23,7 @@ import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -32,6 +35,28 @@ ModeloTamanhosPizza tamanho(String id, {int limite = 3}) => ModeloTamanhosPizza(
       nomedotamanho: id,
       quantpedacos: '8',
       saboreslimite: '$limite',
+    );
+
+ModeloConfigBigchef configBigchef({String saborlimitedeborda = '2'}) =>
+    ModeloConfigBigchef(
+      abrircomandadireto: 'Não',
+      abrirmesadireto: 'Não',
+      agrupamentodeitenscomanda: 'Não',
+      agrupamentodeitensmesa: 'Não',
+      agrupamentodeitensbalcao: 'Não',
+      agrupamentodeitensdelivery: 'Não',
+      obrigarjustifcancelarpedido: 'Não',
+      mostrarnomeempresapreparo: 'Não',
+      mostrarnomeclientepreparo: 'Não',
+      tamanhofontepreparoaltura: '1',
+      tamanhofontepreparolargura: '1',
+      formacobrancaentregadelivery: '',
+      valordaentrega: '0',
+      agrupamentodeitenscomprovconsumo: 'Não',
+      agrupamentodeitenscomproventregador: 'Não',
+      valordiferenca: '0',
+      saborlimitedeborda: saborlimitedeborda,
+      autenticarcomtag: 'Não',
     );
 
 Modelowordprodutos sabor(String id, String categoria, String valorGrande) =>
@@ -375,6 +400,121 @@ void main() {
     expect(cardapio.saboresPizzaSelecionados.map((produto) => produto.id),
         ['Mussarela']);
     expect(find.byType(SnackBar), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('check do tamanho selecionado fica dentro da lista visivel',
+      (tester) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+
+    await tester.pumpWidget(
+        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpAndSettle();
+    await tocarTamanho(tester, 'G');
+
+    final listaRect = tester.getRect(find.byType(ListaTamanhosPizza));
+    final checkRect = tester.getRect(find.descendant(
+      of: find.byType(ListaTamanhosPizza),
+      matching: find.byIcon(Icons.check_rounded),
+    ));
+
+    expect(checkRect.top, greaterThanOrEqualTo(listaRect.top));
+    expect(checkRect.right, lessThanOrEqualTo(listaRect.right));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  test('nao seleciona borda antes da quantidade de sabores', () {
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    final provedorProduto = ProvedorProduto(cardapio, usuario);
+    final cheddar = ModeloDadosOpcoesPacotes(
+      id: 'Cheddar',
+      nome: 'Cheddar',
+      valor: '12',
+    );
+    final opcaoDisponivel = ModeloOpcoesPacotes(
+      id: 6,
+      titulo: 'Selecione as Bordas',
+      obrigatorio: false,
+      tipo: 4,
+      dados: [cheddar],
+    );
+    final opcaoFinal = ModeloOpcoesPacotes(
+      id: 6,
+      titulo: 'Selecione as Bordas',
+      obrigatorio: false,
+      tipo: 4,
+      dados: [],
+    );
+    provedorProduto.opcoesPacotesListaFinal = [opcaoFinal];
+
+    provedorProduto.selecionarItem(cheddar, opcaoDisponivel, false, '0');
+
+    expect(provedorProduto.retornarDadosPorID([6], false, '0'), isEmpty);
+    expect(cheddar.estaSelecionado, isNull);
+
+    cardapio.limiteSaborBordaSelecionado = 1;
+    provedorProduto.selecionarItem(cheddar, opcaoDisponivel, false, '0');
+    expect(provedorProduto.retornarDadosPorID([6], false, '0'), [cheddar]);
+  });
+
+  testWidgets('card de borda avisa quando quantidade nao foi selecionada',
+      (tester) async {
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    final provedorProduto = Modular.get<ProvedorProduto>();
+    final cheddar = ModeloDadosOpcoesPacotes(
+      id: 'Cheddar',
+      nome: 'Cheddar',
+      valor: '12',
+    );
+    final opcaoDisponivel = ModeloOpcoesPacotes(
+      id: 6,
+      titulo: 'Selecione as Bordas',
+      obrigatorio: false,
+      tipo: 4,
+      dados: [cheddar],
+    );
+    provedorProduto.opcoesPacotesListaFinal = [
+      ModeloOpcoesPacotes(
+        id: 6,
+        titulo: 'Selecione as Bordas',
+        obrigatorio: false,
+        tipo: 4,
+        dados: [],
+      )
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardOpcoesPacotes(
+          opcoesPacote: opcaoDisponivel,
+          item: cheddar,
+          kit: false,
+          idProduto: '0',
+        ),
+      ),
+    ));
+
+    await tester.tap(find.text('Cheddar'));
+    await tester.pump();
+
+    expect(find.text('Selecione a quantidade de sabores da borda primeiro.'),
+        findsOneWidget);
+    expect(provedorProduto.retornarDadosPorID([6], false, '0'), isEmpty);
+
+    cardapio.limiteSaborBordaSelecionado = 1;
+    await tester.tap(find.text('Cheddar'));
+    await tester.pump();
+
+    expect(provedorProduto.retornarDadosPorID([6], false, '0'), [cheddar]);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

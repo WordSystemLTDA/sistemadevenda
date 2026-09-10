@@ -15,7 +15,8 @@ class ProvedorProduto extends ChangeNotifier {
   ProvedorProduto(this.provedorCardapio, this.usuarioProvedor);
 
   List<ModeloOpcoesPacotes> _opcoesPacotesListaFinal = [];
-  List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal => _opcoesPacotesListaFinal;
+  List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal =>
+      _opcoesPacotesListaFinal;
   set opcoesPacotesListaFinal(List<ModeloOpcoesPacotes> value) {
     _opcoesPacotesListaFinal = value;
     notifyListeners();
@@ -55,7 +56,8 @@ class ProvedorProduto extends ChangeNotifier {
               e1.opcoesPacotes?.map((e2) {
                 for (var element22 in e2.dados!) {
                   if (element22.quantidade != null) {
-                    soma += double.parse(element22.valor ?? '0') * (element22.quantidade ?? 0);
+                    soma += double.parse(element22.valor ?? '0') *
+                        (element22.quantidade ?? 0);
                   } else {
                     soma += double.parse(element22.valor ?? '0');
                   }
@@ -71,7 +73,8 @@ class ProvedorProduto extends ChangeNotifier {
           } else if (element.dados != null) {
             for (var element2 in element.dados!) {
               if (element2.quantidade != null) {
-                soma += double.parse(element2.valor ?? '0') * (element2.quantidade ?? 0);
+                soma += double.parse(element2.valor ?? '0') *
+                    (element2.quantidade ?? 0);
               } else {
                 soma += double.parse(element2.valor ?? '0');
               }
@@ -81,8 +84,18 @@ class ProvedorProduto extends ChangeNotifier {
       }
     }
 
-    var valorTamanho = retornarDadosPorID([4], kit, idProduto).firstOrNull == null ? 0 : double.tryParse(retornarDadosPorID([4], kit, idProduto).firstOrNull?.valor ?? '0') ?? 0;
-    var valorFinal = (retornarDadosPorID([4], kit, idProduto).firstOrNull != null ? valorTamanho : valorVendaOriginal) + soma;
+    var valorTamanho = retornarDadosPorID([4], kit, idProduto).firstOrNull ==
+            null
+        ? 0
+        : double.tryParse(
+                retornarDadosPorID([4], kit, idProduto).firstOrNull?.valor ??
+                    '0') ??
+            0;
+    var valorFinal =
+        (retornarDadosPorID([4], kit, idProduto).firstOrNull != null
+                ? valorTamanho
+                : valorVendaOriginal) +
+            soma;
 
     valorVenda = double.parse(valorFinal.toStringAsFixed(2));
     notifyListeners();
@@ -98,15 +111,23 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ModeloDadosOpcoesPacotes> retornarDadosPorID(List<int> ids, bool kit, String idProduto) {
+  List<ModeloDadosOpcoesPacotes> retornarDadosPorID(
+      List<int> ids, bool kit, String idProduto) {
     if (kit) {
-      var listaOpcoesPacote = opcoesPacotesListaFinal.where((element) => element.id == 2).firstOrNull;
+      var listaOpcoesPacote = opcoesPacotesListaFinal
+          .where((element) => element.id == 2)
+          .firstOrNull;
       List<ModeloDadosOpcoesPacotes> dadosF = [];
 
       if (listaOpcoesPacote != null) {
         for (var element in listaOpcoesPacote.produtos!) {
           if (element.id == idProduto) {
-            dadosF = element.opcoesPacotes?.where((element) => ids.every((element2) => element2 == element.id)).firstOrNull?.dados ?? [];
+            dadosF = element.opcoesPacotes
+                    ?.where((element) =>
+                        ids.every((element2) => element2 == element.id))
+                    .firstOrNull
+                    ?.dados ??
+                [];
           }
         }
       }
@@ -114,11 +135,30 @@ class ProvedorProduto extends ChangeNotifier {
       return dadosF;
     }
 
-    return opcoesPacotesListaFinal.where((element) => ids.every((element2) => element2 == element.id)).firstOrNull?.dados ?? [];
+    return opcoesPacotesListaFinal
+            .where((element) => ids.every((element2) => element2 == element.id))
+            .firstOrNull
+            ?.dados ??
+        [];
   }
 
-  void selecionarItem(ModeloDadosOpcoesPacotes item, ModeloOpcoesPacotes opcoesPacote, bool kit, String idProduto) {
+  bool bordaPrecisaSelecionarQuantidade(ModeloOpcoesPacotes opcoesPacote) {
+    final limiteConfigurado = int.tryParse(
+            provedorCardapio.configBigchef?.saborlimitedeborda ?? '0') ??
+        0;
+
+    return limiteConfigurado > 0 &&
+        opcoesPacote.id == 6 &&
+        provedorCardapio.limiteSaborBordaSelecionado <= 0;
+  }
+
+  void selecionarItem(ModeloDadosOpcoesPacotes item,
+      ModeloOpcoesPacotes opcoesPacote, bool kit, String idProduto) {
     var dadosID = retornarDadosPorID([opcoesPacote.id], kit, idProduto);
+
+    if (bordaPrecisaSelecionarQuantidade(opcoesPacote)) {
+      return;
+    }
 
     item.estaSelecionado = true;
 
@@ -129,7 +169,10 @@ class ProvedorProduto extends ChangeNotifier {
       } else {
         if (num.parse(item.quantimaximaselecao ?? '1') == 1) {
           if (dadosID.length == num.parse(item.quantimaximaselecao ?? '1')) {
-            opcoesPacotesListaFinal.where((element) => element.tipo == 6).firstOrNull?.dados = [];
+            opcoesPacotesListaFinal
+                .where((element) => element.tipo == 6)
+                .firstOrNull
+                ?.dados = [];
             dadosID.add(item);
           } else {
             dadosID.add(item);
@@ -154,7 +197,10 @@ class ProvedorProduto extends ChangeNotifier {
 
     // TAMANHO
     if (opcoesPacote.tipo == 1) {
-      opcoesPacotesListaFinal.where((element) => element.id == opcoesPacote.id).firstOrNull?.dados = [item];
+      opcoesPacotesListaFinal
+          .where((element) => element.id == opcoesPacote.id)
+          .firstOrNull
+          ?.dados = [item];
 
       calcularValorVenda(kit, idProduto);
 
@@ -162,7 +208,8 @@ class ProvedorProduto extends ChangeNotifier {
     }
 
     // SABOR BORDA
-    if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 && opcoesPacote.id == 6) {
+    if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 &&
+        opcoesPacote.id == 6) {
       if (dadosID.length == provedorCardapio.limiteSaborBordaSelecionado) {
         if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
           dadosID.removeWhere((element) => element.id == item.id);
@@ -195,21 +242,36 @@ class ProvedorProduto extends ChangeNotifier {
   }
 
   double calcularPrecoBorda() {
-    var modelovalortamanhopizza = usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
+    var modelovalortamanhopizza =
+        usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
+    final bordasSelecionadas = opcoesPacotesListaFinal
+            .where((element) => element.id == 6)
+            .firstOrNull
+            ?.dados ??
+        [];
+    final limiteSelecionado = provedorCardapio.limiteSaborBordaSelecionado;
+
+    if (limiteSelecionado <= 0 || bordasSelecionadas.isEmpty) {
+      return 0;
+    }
 
     if (modelovalortamanhopizza == 'media') {
-      var somaDosProdutosSelecionados = double.parse((opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados ?? []).fold(
+      var somaDosProdutosSelecionados = double.parse(bordasSelecionadas.fold(
         '0',
         (previousValue, element) {
-          return (double.parse(previousValue) + double.parse(element.valor ?? '0')).toStringAsFixed(2);
+          return (double.parse(previousValue) +
+                  double.parse(element.valor ?? '0'))
+              .toStringAsFixed(2);
         },
       ));
 
-      var media = somaDosProdutosSelecionados / provedorCardapio.limiteSaborBordaSelecionado;
+      var media = somaDosProdutosSelecionados / limiteSelecionado;
 
       return media;
     } else if (modelovalortamanhopizza == 'maior') {
-      return (opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados ?? []).map((e) => double.parse(e.valor ?? '0')).reduce(math.max);
+      return bordasSelecionadas
+          .map((e) => double.parse(e.valor ?? '0'))
+          .reduce(math.max);
     }
 
     return 0;
