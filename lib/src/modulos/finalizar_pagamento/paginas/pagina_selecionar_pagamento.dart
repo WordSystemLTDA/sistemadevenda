@@ -76,157 +76,336 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
       appBar: AppBar(
-        title: const Text('Selecione a forma de pagamento'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: cs.inversePrimary,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.payments_outlined, size: 18, color: cs.onPrimaryContainer),
+            ),
+            const SizedBox(width: 10),
+            const Text('Forma de Pagamento', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PaginaFinalizarFormaPagamento(
-                totalReceber: widget.totalReceber,
-                desconto: widget.desconto,
-                acrescimo: widget.acrescimo,
-                descontoPercentual: widget.descontoPercentual,
-                totalPedido: widget.totalPedido,
-                pagamentoselecionado: pagamentoSelecionado,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Container(
+          width: double.infinity,
+          height: 58,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PaginaFinalizarFormaPagamento(
+                      totalReceber: widget.totalReceber,
+                      desconto: widget.desconto,
+                      acrescimo: widget.acrescimo,
+                      descontoPercentual: widget.descontoPercentual,
+                      totalPedido: widget.totalPedido,
+                      pagamentoselecionado: pagamentoSelecionado,
+                    ),
+                  ),
+                );
+              },
+              child: const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Avançar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                  ],
+                ),
               ),
             ),
-          );
-        },
-        label: SizedBox(
-          width: MediaQuery.of(context).size.width - 70,
-          child: const Text('Avançar', textAlign: TextAlign.center),
+          ),
         ),
       ),
       body: Visibility(
         visible: carregando == false,
         replacement: const Center(child: CircularProgressIndicator()),
-        child: Stack(
-          children: [
-            // Positioned(
-            //   bottom: 120,
-            //   right: 20,
-            //   left: 20,
-            //   child: Row(
-            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //     children: [
-            //       const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
-            //       Text(
-            //         widget.totalReceber.obterReal(),
-            //         style: const TextStyle(
-            //           fontSize: 15,
-            //           fontWeight: FontWeight.w600,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          SearchAnchor(
-                            builder: (BuildContext context, SearchController controller) {
-                              return IconButton(
-                                onPressed: () {
-                                  controller.openView();
-                                },
-                                icon: const Icon(Icons.menu),
-                              );
-                            },
-                            suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                              final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
-                              return [
-                                ...res.map(
-                                  (e) => Card(
-                                    elevation: 3.0,
-                                    margin: const EdgeInsets.all(5.0),
-                                    child: InkWell(
-                                      onTap: () {},
-                                      borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                      child: ListTile(
-                                        leading: const Icon(Icons.person_2_outlined),
-                                        title: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(e.pagamento),
-                                            Text("Valor ${double.parse(e.valor).obterReal()}"),
-                                            Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
-                                          ],
-                                        ),
-                                        subtitle: Text('ID: ${e.id}'),
-                                      ),
-                                    ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hero A pagar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.55)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    SearchAnchor(
+                      builder: (BuildContext context, SearchController controller) {
+                        return IconButton.filledTonal(
+                          onPressed: () => controller.openView(),
+                          icon: const Icon(Icons.history_rounded, size: 18),
+                          tooltip: 'Histórico de pagamentos',
+                        );
+                      },
+                      suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                        final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                        return [
+                          ...res.map(
+                            (e) => Card(
+                              elevation: 3.0,
+                              margin: const EdgeInsets.all(5.0),
+                              child: InkWell(
+                                onTap: () {},
+                                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                child: ListTile(
+                                  leading: const Icon(Icons.person_2_outlined),
+                                  title: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(e.pagamento),
+                                      Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                      Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                    ],
                                   ),
+                                  subtitle: Text('ID: ${e.id}'),
                                 ),
-                              ];
-                            },
+                              ),
+                            ),
                           ),
-                          const Text('A pagar: ', style: TextStyle(fontSize: 25)),
+                        ];
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'A PAGAR',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.4,
+                              color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.totalReceber.obterReal(),
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onPrimaryContainer,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
                         ],
                       ),
-                      // const Spacer(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Icon(Icons.credit_card_rounded, size: 18, color: cs.primary),
+                  const SizedBox(width: 8),
+                  const Text('Selecione o método', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: GridView.builder(
+                  itemCount: bancos.length,
+                  padding: EdgeInsets.zero,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 2.4,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = bancos[index];
+                    final selecionado = pagamentoSelecionado == item.id;
+                    return _BancoCard(
+                      banco: item,
+                      selecionado: selecionado,
+                      onTap: () => setState(() => pagamentoSelecionado = item.id),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BancoCard extends StatelessWidget {
+  final BancoPixModelo banco;
+  final bool selecionado;
+  final VoidCallback onTap;
+
+  const _BancoCard({
+    required this.banco,
+    required this.selecionado,
+    required this.onTap,
+  });
+
+  IconData _iconePorId(String id) {
+    switch (id) {
+      case '1':
+        return Icons.attach_money_rounded;
+      case '2':
+        return Icons.receipt_long_rounded;
+      case '3':
+        return Icons.credit_card_rounded;
+      case '4':
+        return Icons.credit_score_rounded;
+      case '5':
+        return Icons.pix_rounded;
+      default:
+        return Icons.account_balance_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        gradient: selecionado
+            ? LinearGradient(
+                colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: selecionado ? null : (isDark ? const Color(0xFF1F2937) : Colors.white),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selecionado ? Colors.transparent : (isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.15)),
+        ),
+        boxShadow: selecionado
+            ? [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.30),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: selecionado ? Colors.white.withValues(alpha: 0.18) : cs.primaryContainer.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _iconePorId(banco.id),
+                    size: 22,
+                    color: selecionado ? Colors.white : cs.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        widget.totalReceber.obterReal(),
-                        style: const TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w600,
+                        '#${banco.id}',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                          color: selecionado ? Colors.white.withValues(alpha: 0.8) : cs.onSurface.withValues(alpha: 0.55),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        banco.nome,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: selecionado ? Colors.white : cs.onSurface,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: bancos.length,
-                    padding: const EdgeInsets.only(left: 20, right: 20),
-                    itemBuilder: (context, index) {
-                      var item = bancos[index];
-
-                      return SizedBox(
-                        width: 130,
-                        height: 78,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 13.0),
-                          child: ElevatedButton(
-                            style: ButtonStyle(
-                              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(5))),
-                              backgroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.green) : null,
-                              foregroundColor: pagamentoSelecionado == item.id ? const WidgetStatePropertyAll(Colors.white) : null,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                pagamentoSelecionado = item.id;
-                              });
-                            },
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.attach_money_outlined),
-                                Text('[${item.id}] ${item.nome}'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                ),
+                if (selecionado) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

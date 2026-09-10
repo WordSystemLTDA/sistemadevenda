@@ -52,49 +52,97 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     double width = 1000;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
       appBar: AppBar(
-        title: const Text("Nova Venda Balcão"),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: cs.inversePrimary,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.add_shopping_cart_rounded, size: 18, color: cs.onPrimaryContainer),
+            ),
+            const SizedBox(width: 10),
+            const Text('Nova Venda Balcão', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-      floatingActionButton: SizedBox(
-        width: 150,
-        child: FloatingActionButton.extended(
-          heroTag: null,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-          onPressed: () {
-            abrir();
-          },
-          label: const Text('Abrir'),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => abrir(),
+              child: const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 20),
+                    SizedBox(width: 10),
+                    Text(
+                      'Abrir Cardápio',
+                      style: TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
       body: SizedBox(
         width: width,
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
           child: LayoutBuilder(
-            builder: (context, constraints) => Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
+            builder: (context, constraints) => ListView(
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Cliente', style: TextStyle(fontSize: 18)),
+                    _buildLabelSecao(context, Icons.person_outline_rounded, 'Cliente'),
                     SearchAnchor(
                       builder: (BuildContext context, SearchController controller) {
                         return TextField(
                           controller: clienteController,
                           readOnly: true,
-                          decoration: InputDecoration(
-                            border: const UnderlineInputBorder(),
-                            // isDense: true,
-                            hintText: 'Selecione o Cliente',
-                            suffixIcon: IconButton(
+                          style: const TextStyle(fontSize: 14),
+                          decoration: _decoracaoCampo(
+                            context,
+                            hint: 'Selecione o Cliente',
+                            prefixIcon: Icons.person_search_rounded,
+                            sufixo: IconButton(
                               onPressed: () {
                                 Navigator.of(context).push(MaterialPageRoute(
                                   builder: (context) {
@@ -102,7 +150,8 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                                   },
                                 ));
                               },
-                              icon: const Icon(Icons.add),
+                              icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                              splashRadius: 20,
                             ),
                           ),
                           onTap: () => controller.openView(),
@@ -151,17 +200,18 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Endereço de Entrega', style: TextStyle(fontSize: 18)),
+                    _buildLabelSecao(context, Icons.location_on_outlined, 'Endereço de Entrega'),
                     SearchAnchor(
                       builder: (BuildContext context, SearchController controller) {
                         return TextField(
                           controller: enderecoController,
                           readOnly: true,
-                          decoration: InputDecoration(
-                            border: const UnderlineInputBorder(),
-                            // isDense: true,
-                            hintText: 'Selecione um Endereço',
-                            suffixIcon: IconButton(
+                          style: const TextStyle(fontSize: 14),
+                          decoration: _decoracaoCampo(
+                            context,
+                            hint: 'Selecione um Endereço',
+                            prefixIcon: Icons.location_on_outlined,
+                            sufixo: IconButton(
                               onPressed: () {
                                 Navigator.of(context).push(MaterialPageRoute(
                                   builder: (context) {
@@ -169,7 +219,8 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                                   },
                                 ));
                               },
-                              icon: const Icon(Icons.add),
+                              icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                              splashRadius: 20,
                             ),
                           ),
                           onTap: () => controller.openView(),
@@ -209,13 +260,29 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tipo de Entrega', style: TextStyle(fontSize: 18)),
+                    _buildLabelSecao(context, Icons.delivery_dining_outlined, 'Tipo de Entrega'),
                     DropdownMenu(
                       width: (constraints.maxWidth),
                       hintText: 'Selecione um Tipo de Entrega',
                       initialSelection: tipoentrega,
-                      inputDecorationTheme: const InputDecorationTheme(
-                        border: UnderlineInputBorder(),
+                      textStyle: const TextStyle(fontSize: 14),
+                      inputDecorationTheme: InputDecorationTheme(
+                        isDense: true,
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: cs.primary, width: 1.4),
+                        ),
                       ),
                       dropdownMenuEntries: const [
                         DropdownMenuEntry(value: '3', label: 'Consumir no Local'),
@@ -236,14 +303,15 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Observação', style: TextStyle(fontSize: 18)),
+                    _buildLabelSecao(context, Icons.sticky_note_2_outlined, 'Observação'),
                     TextField(
                       controller: obsController,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _decoracaoCampo(
+                        context,
+                        hint: 'Adicione uma observação para o pedido...',
                       ),
-                      // titulo: const Text('Observação'),
                     ),
                   ],
                 ),
@@ -251,6 +319,57 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLabelSecao(BuildContext context, IconData icone, String texto) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, top: 4),
+      child: Row(
+        children: [
+          Icon(icone, size: 18, color: cs.primary),
+          const SizedBox(width: 8),
+          Text(
+            texto,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _decoracaoCampo(
+    BuildContext context, {
+    String? hint,
+    IconData? prefixIcon,
+    Widget? sufixo,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(fontSize: 13.5, color: cs.onSurface.withValues(alpha: 0.5)),
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 18, color: cs.onSurface.withValues(alpha: 0.6)) : null,
+      suffixIcon: sufixo,
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.primary, width: 1.4),
       ),
     );
   }

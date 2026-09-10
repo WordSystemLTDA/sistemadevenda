@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/essencial/widgets/badge_valor_oculto.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
@@ -95,6 +97,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
       idComandaPedido = value.id ?? '0';
       idMesa = value.idMesa ?? '0';
     });
+
+    if (!mounted) return;
+
     setState(() => carregando = false);
     if (widget.abrirModalFecharDireto == true) fechar();
   }
@@ -731,23 +736,30 @@ class _PainelConta extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  double.parse(total).obterReal(),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: _corAndamento,
-                    letterSpacing: -0.5,
+                if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+                  Text(
+                    double.parse(total).obterReal(),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: _corAndamento,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    'total',
-                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      'total',
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
+                ] else ...[
+                  BadgeValorOculto(
+                    compact: false,
+                    label: 'Valor total oculto',
+                  ),
+                ]
               ],
             ),
             const SizedBox(height: 16),

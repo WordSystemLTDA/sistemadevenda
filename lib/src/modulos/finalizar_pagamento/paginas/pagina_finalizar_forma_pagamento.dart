@@ -111,168 +111,223 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
       appBar: AppBar(
-        title: const Text('Método de Pagamento'),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: cs.inversePrimary,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.point_of_sale_outlined, size: 18, color: cs.onPrimaryContainer),
+            ),
+            const SizedBox(width: 10),
+            const Text('Método de Pagamento', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
       // resizeToAvoidBottomInset: false,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: ValueListenableBuilder(
           valueListenable: finalizando,
           builder: (context, finalizandoValue, _) {
-            return FloatingActionButton.extended(
-              heroTag: null,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(5)),
-              ),
-              backgroundColor: _dinheiroController.text.isEmpty ? const Color.fromARGB(255, 237, 232, 246) : null,
-              onPressed: () async {
-                if (widget.pagamentoselecionado == '2') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PaginaParcelamento(
-                        idVenda: provedor.idVenda,
-                        valor: double.tryParse(_dinheiroController.text) ?? 0,
-                        valorFalta: (_desconto * -1).toStringAsFixed(2),
-                        valorTroco: _desconto.abs().toStringAsFixed(2),
-                        // dinheiro: _dinheiroController.text,
-                        // promissoria: _promissoriaController.text,
-                        // cartaoDebito: _cartaoDebitoController.text,
-                        // cartaoCredito: _cartaoCreditoController.text,
-                        acrescimo: widget.acrescimo,
-                        desconto: widget.desconto.toStringAsFixed(2),
-                        descontoPercentual: widget.descontoPercentual,
-                        totalPedido: widget.totalPedido,
-                        totalReceber: widget.totalReceber.toStringAsFixed(2),
-                        pagamentoselecionado: widget.pagamentoselecionado,
+            final habilitado = _dinheiroController.text.isNotEmpty;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                width: double.infinity,
+                height: 58,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: habilitado ? [cs.primary, cs.primary.withValues(alpha: 0.85)] : [Colors.grey.shade400, Colors.grey.shade500],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: habilitado
+                      ? [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.35),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () async {
+                      if (widget.pagamentoselecionado == '2') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PaginaParcelamento(
+                              idVenda: provedor.idVenda,
+                              valor: double.tryParse(_dinheiroController.text) ?? 0,
+                              valorFalta: (_desconto * -1).toStringAsFixed(2),
+                              valorTroco: _desconto.abs().toStringAsFixed(2),
+                              // dinheiro: _dinheiroController.text,
+                              // promissoria: _promissoriaController.text,
+                              // cartaoDebito: _cartaoDebitoController.text,
+                              // cartaoCredito: _cartaoCreditoController.text,
+                              acrescimo: widget.acrescimo,
+                              desconto: widget.desconto.toStringAsFixed(2),
+                              descontoPercentual: widget.descontoPercentual,
+                              totalPedido: widget.totalPedido,
+                              totalReceber: widget.totalReceber.toStringAsFixed(2),
+                              pagamentoselecionado: widget.pagamentoselecionado,
+                            ),
+                          ),
+                        );
+                      } else {
+                        if (finalizandoValue == true) return;
+
+                        finalizando.value = true;
+
+                        var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
+                              provedor.idVenda,
+                              provedorCardapio.idComanda,
+                              provedorCardapio.idMesa,
+                              provedorCardapio.idCliente,
+                              _dinheiroController.text, // valorLancamento,
+                              widget.totalReceber.toStringAsFixed(2), // valorOriginal,
+                              int.parse(widget.pagamentoselecionado),
+                              0, // quantidadePessoas,
+                              widget.totalReceber.toStringAsFixed(2), // subTotal,
+                              dataOriginal, // dataLancamento,
+                              '0', // parcelas
+                              [], // parcelasLista
+                              provedorCardapio.tipo,
+                              _desconto.abs().toStringAsFixed(2), // valortroco,
+                              '0', // TODO: fazer delivery (valorentrega)
+                              carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
+                              false, // novo,
+                              provedorCardapio.tipodeentrega,
+                              carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                              widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
+                              provedorBalcao.observacaoDoPedido,
+                            );
+
+                        if (sucesso) {
+                          provedorBalcao.observacaoDoPedido = '';
+
+                          if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
+                            var provedorBalcao = Modular.get<ProvedorBalcao>();
+                            var servico = Modular.get<ServicoBalcao>();
+                            await provedorBalcao.listar();
+
+                            var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
+
+                            if (vendaBalcao != null) {
+                              server.write(jsonEncode({
+                                'tipo': TipoCardapio.balcao.nome,
+                                'nomeConexao': usuarioProvedor.usuario!.nome,
+                              }));
+
+                              await Impressao.comprovanteDePedido(
+                                local: '',
+                                tipoTela: provedorCardapio.tipo,
+                                comanda: "Balcão $idvenda",
+                                numeroPedido: vendaBalcao.numeropedido,
+                                // nomeCliente: vendaBalcao.nomecliente,
+                                nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty ? (vendaBalcao.observacaoDoPedido ?? '') : (vendaBalcao.nomecliente),
+                                nomeEmpresa: vendaBalcao.nomeEmpresa,
+                                produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                                tipodeentrega: vendaBalcao.idtipodeentrega,
+                              );
+
+                              var informacoes = await servico.listarPorId(idvenda);
+                              var parcelas = await servico.listarFinanceiroVenda(idvenda);
+
+                              final duration = DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
+                              final newDuration = ConfigSistema.formatarHora(duration);
+
+                              Impressao.comprovanteDeConsumo(
+                                valorentrega: informacoes.informacoes.valorentrega,
+                                nomeEmpresa: vendaBalcao.nomeEmpresa,
+                                produtos: informacoes.produtos,
+                                nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                                  return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                                })),
+                                somaValorHistorico: informacoes.informacoes.subtotal,
+                                cnpjEmpresa: informacoes.informacoes.docempresa,
+                                celularEmpresa: informacoes.informacoes.celularcliente,
+                                enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+                                permanencia: newDuration,
+                                local: '',
+                                total: informacoes.informacoes.subtotal,
+                                numeroPedido: informacoes.informacoes.numerodopedido,
+                                tipodeentrega: informacoes.informacoes.tipodeentrega,
+                                nomeCliente: (informacoes.informacoes.nomeCliente == '' ? null : informacoes.informacoes.nomeCliente) ?? 'Sem Cliente',
+                              );
+                            }
+
+                            carrinhoProvedor.removerComandasPedidos();
+
+                            if (context.mounted) {
+                              Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+                            }
+                          } else {
+                            if (context.mounted) {
+                              provedor.idVenda = idvenda;
+                              provedor.valor = widget.totalReceber - double.parse(_dinheiroController.text);
+
+                              Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+                            }
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(mensagem),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ));
+                        }
+
+                        finalizando.value = false;
+                      }
+                    },
+                    child: Center(
+                      child: Visibility(
+                        visible: finalizandoValue == false,
+                        replacement: const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              widget.pagamentoselecionado == '2' ? Icons.arrow_forward_rounded : Icons.check_circle_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.pagamentoselecionado == '2' ? 'Ir para Parcelamento' : 'Finalizar',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  );
-                } else {
-                  if (finalizandoValue == true) return;
-
-                  finalizando.value = true;
-
-                  var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
-                        provedor.idVenda,
-                        provedorCardapio.idComanda,
-                        provedorCardapio.idMesa,
-                        provedorCardapio.idCliente,
-                        _dinheiroController.text, // valorLancamento,
-                        widget.totalReceber.toStringAsFixed(2), // valorOriginal,
-                        int.parse(widget.pagamentoselecionado),
-                        0, // quantidadePessoas,
-                        widget.totalReceber.toStringAsFixed(2), // subTotal,
-                        dataOriginal, // dataLancamento,
-                        '0', // parcelas
-                        [], // parcelasLista
-                        provedorCardapio.tipo,
-                        _desconto.abs().toStringAsFixed(2), // valortroco,
-                        '0', // TODO: fazer delivery (valorentrega)
-                        carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
-                        false, // novo,
-                        provedorCardapio.tipodeentrega,
-                        carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                        widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
-                        provedorBalcao.observacaoDoPedido,
-                      );
-
-                  if (sucesso) {
-                    provedorBalcao.observacaoDoPedido = '';
-
-                    if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
-                      var provedorBalcao = Modular.get<ProvedorBalcao>();
-                      var servico = Modular.get<ServicoBalcao>();
-                      await provedorBalcao.listar();
-
-                      var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
-
-                      if (vendaBalcao != null) {
-                        server.write(jsonEncode({
-                          'tipo': TipoCardapio.balcao.nome,
-                          'nomeConexao': usuarioProvedor.usuario!.nome,
-                        }));
-
-                        await Impressao.comprovanteDePedido(
-                          local: '',
-                          tipoTela: provedorCardapio.tipo,
-                          comanda: "Balcão $idvenda",
-                          numeroPedido: vendaBalcao.numeropedido,
-                          // nomeCliente: vendaBalcao.nomecliente,
-                          nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty ? (vendaBalcao.observacaoDoPedido ?? '') : (vendaBalcao.nomecliente),
-                          nomeEmpresa: vendaBalcao.nomeEmpresa,
-                          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                          tipodeentrega: vendaBalcao.idtipodeentrega,
-                        );
-
-                        var informacoes = await servico.listarPorId(idvenda);
-                        var parcelas = await servico.listarFinanceiroVenda(idvenda);
-
-                        final duration = DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
-                        final newDuration = ConfigSistema.formatarHora(duration);
-
-                        Impressao.comprovanteDeConsumo(
-                          valorentrega: informacoes.informacoes.valorentrega,
-                          nomeEmpresa: vendaBalcao.nomeEmpresa,
-                          produtos: informacoes.produtos,
-                          nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                            return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
-                          })),
-                          somaValorHistorico: informacoes.informacoes.subtotal,
-                          cnpjEmpresa: informacoes.informacoes.docempresa,
-                          celularEmpresa: informacoes.informacoes.celularcliente,
-                          enderecoEmpresa: informacoes.informacoes.enderecoempresa,
-                          permanencia: newDuration,
-                          local: '',
-                          total: informacoes.informacoes.subtotal,
-                          numeroPedido: informacoes.informacoes.numerodopedido,
-                          tipodeentrega: informacoes.informacoes.tipodeentrega,
-                          nomeCliente: (informacoes.informacoes.nomeCliente == '' ? null : informacoes.informacoes.nomeCliente) ?? 'Sem Cliente',
-                        );
-                      }
-
-                      carrinhoProvedor.removerComandasPedidos();
-
-                      if (context.mounted) {
-                        Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
-                      }
-                    } else {
-                      if (context.mounted) {
-                        provedor.idVenda = idvenda;
-                        provedor.valor = widget.totalReceber - double.parse(_dinheiroController.text);
-
-                        Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
-                      }
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(mensagem),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ));
-                  }
-
-                  finalizando.value = false;
-                }
-              },
-              label: SizedBox(
-                width: MediaQuery.of(context).size.width - 70,
-                child: Visibility(
-                  visible: finalizandoValue == false,
-                  replacement: const Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                  child: Text(
-                    widget.pagamentoselecionado == '2' ? 'Ir para Parcelamento' : 'Finalizar',
-                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -285,31 +340,139 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
             : Stack(
                 children: [
                   Positioned(
-                    bottom: 100,
-                    left: 18,
-                    right: 18,
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    bottom: 115,
+                    left: 14,
+                    right: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.fact_check_outlined, size: 16, color: cs.onSurface.withValues(alpha: 0.7)),
+                              const SizedBox(width: 6),
+                              const Text('Total Registrado', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          Text(
+                            _totalRegistrado.obterReal(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ListView(
+                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 200),
+                    children: [
+                      // Hero "A pagar"
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.55)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.primary.withValues(alpha: 0.12),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
                           children: [
-                            const Text('Total Registrado ', style: TextStyle(fontSize: 15)),
-                            Text(
-                              _totalRegistrado.obterReal(),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                            SearchAnchor(
+                              builder: (BuildContext context, SearchController controller) {
+                                return IconButton.filledTonal(
+                                  onPressed: () => controller.openView(),
+                                  icon: const Icon(Icons.history_rounded, size: 18),
+                                  tooltip: 'Histórico de pagamentos',
+                                );
+                              },
+                              suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                                final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                                return [
+                                  ...res.map(
+                                    (e) => Card(
+                                      elevation: 3.0,
+                                      margin: const EdgeInsets.all(5.0),
+                                      child: InkWell(
+                                        onTap: () {},
+                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                        child: ListTile(
+                                          leading: const Icon(Icons.person_2_outlined),
+                                          title: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(e.pagamento),
+                                              Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                              Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                            ],
+                                          ),
+                                          subtitle: Text('ID: ${e.id}'),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ];
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'A PAGAR',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.4,
+                                      color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    widget.totalReceber.obterReal(),
+                                    style: TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w800,
+                                      color: cs.onPrimaryContainer,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  ListView(
-                    padding: const EdgeInsets.only(right: 10, left: 10),
-                    children: [
-                      const SizedBox(height: 15),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Icon(Icons.attach_money_rounded, size: 18, color: cs.primary),
+                          const SizedBox(width: 8),
+                          const Text('Valor a receber', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       const Column(
                         children: [
                           // InformacoesApp.getLogoEscuraApp(context, width: 200, height: 100),
@@ -465,111 +628,84 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         ],
                       ),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              SearchAnchor(
-                                builder: (BuildContext context, SearchController controller) {
-                                  return IconButton(
-                                    onPressed: () {
-                                      controller.openView();
-                                    },
-                                    icon: const Icon(Icons.menu),
-                                  );
-                                },
-                                suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                                  final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
-                                  return [
-                                    ...res.map(
-                                      (e) => Card(
-                                        elevation: 3.0,
-                                        margin: const EdgeInsets.all(5.0),
-                                        child: InkWell(
-                                          onTap: () {},
-                                          borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                          child: ListTile(
-                                            leading: const Icon(Icons.person_2_outlined),
-                                            title: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(e.pagamento),
-                                                Text("Valor ${double.parse(e.valor).obterReal()}"),
-                                                Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
-                                              ],
-                                            ),
-                                            subtitle: Text('ID: ${e.id}'),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ];
-                                },
-                              ),
-                              const Text('A pagar: ', style: TextStyle(fontSize: 25)),
-                            ],
-                          ),
-                          // const Spacer(),
-                          Text(
-                            widget.totalReceber.obterReal(),
-                            style: const TextStyle(
-                              fontSize: 25,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Text('Valor a receber', style: TextStyle(fontSize: 18)),
-                      const SizedBox(height: 3),
-                      Row(
                         children: [
                           Expanded(
-                            child: SizedBox(
-                              height: 80,
-                              child: TextField(
-                                maxLines: 3,
-                                controller: _dinheiroController,
-                                focusNode: focusNode,
-                                style: const TextStyle(fontSize: 35),
-                                decoration: InputDecoration(
-                                  border: const OutlineInputBorder(),
-                                  prefixText: 'R\$  ',
-                                  suffixIcon: IconButton(
-                                    onPressed: () {
-                                      _dinheiroController.clear();
-                                      calcular();
-                                    },
-                                    icon: const Icon(Icons.close),
-                                  ),
-                                ),
-                                onChanged: (_) => calcular(),
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                  FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
-                                ],
+                            child: TextField(
+                              controller: _dinheiroController,
+                              focusNode: focusNode,
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: cs.primary,
+                                letterSpacing: -0.3,
                               ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(color: cs.primary, width: 1.6),
+                                ),
+                                prefixText: 'R\$  ',
+                                prefixStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface.withValues(alpha: 0.55)),
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    _dinheiroController.clear();
+                                    calcular();
+                                  },
+                                  icon: const Icon(Icons.close_rounded, size: 20),
+                                  splashRadius: 20,
+                                ),
+                              ),
+                              onChanged: (_) => calcular(),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.deny(',', replacementString: '.'),
+                                FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       if (_desconto > 0) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Troco: ', style: TextStyle(fontSize: 25)),
-                            // const Spacer(),
-                            Text(
-                              'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
-                              style: const TextStyle(
-                                fontSize: 25,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w600,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: isDark ? 0.18 : 0.10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.35)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.savings_outlined, color: Colors.green[700], size: 22),
+                                  const SizedBox(width: 8),
+                                  const Text('Troco', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                ],
                               ),
-                            ),
-                          ],
+                              Text(
+                                'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  color: Colors.green[700],
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         InkWell(
                           onTap: () {

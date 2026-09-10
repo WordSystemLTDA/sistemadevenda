@@ -54,6 +54,10 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListenableBuilder(
       listenable: provedor,
       builder: (context, snapshot) {
@@ -63,45 +67,89 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
         }
 
         return Scaffold(
+          backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
           appBar: AppBar(
-            title: const Text('Acréscimo e Decontos'),
-            centerTitle: true,
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            backgroundColor: cs.inversePrimary,
+            elevation: 0,
+            centerTitle: false,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.percent_rounded, size: 18, color: cs.onPrimaryContainer),
+                ),
+                const SizedBox(width: 10),
+                const Text('Acréscimo e Descontos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
           resizeToAvoidBottomInset: false,
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: FloatingActionButton.extended(
-            heroTag: null,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(5)),
-            ),
-            backgroundColor: _totalReceber > 0 ? null : const Color.fromARGB(255, 237, 232, 246),
-            onPressed: _totalReceber > 0
-                ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaginaSelecionarPagamento(
-                          totalReceber: _totalReceber,
-                          desconto: _desconto,
-                          acrescimo: _acrescimoController.text,
-                          descontoPercentual: _descontoController.text,
-                          totalPedido: _totalPedidoController.text,
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _totalReceber > 0 ? [cs.primary, cs.primary.withValues(alpha: 0.85)] : [Colors.grey.shade400, Colors.grey.shade500],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: _totalReceber > 0
+                    ? [
+                        BoxShadow(
+                          color: cs.primary.withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
                         ),
-                      ),
-                    );
-                  }
-                : () {
-                    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Total a Receber não pode ser Negativo', textAlign: TextAlign.center),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ));
-                  },
-            label: SizedBox(
-              width: MediaQuery.of(context).size.width - 70,
-              child: const Text('Avançar', textAlign: TextAlign.center),
+                      ]
+                    : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _totalReceber > 0
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PaginaSelecionarPagamento(
+                                totalReceber: _totalReceber,
+                                desconto: _desconto,
+                                acrescimo: _acrescimoController.text,
+                                descontoPercentual: _descontoController.text,
+                                totalPedido: _totalPedidoController.text,
+                              ),
+                            ),
+                          );
+                        }
+                      : () {
+                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Total a Receber não pode ser Negativo', textAlign: TextAlign.center),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ));
+                        },
+                  child: const Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Avançar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           body: GestureDetector(
@@ -109,106 +157,183 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
             child: Stack(
               children: [
                 Positioned(
-                  bottom: 120,
-                  right: 20,
-                  left: 20,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total a Receber ', style: TextStyle(fontSize: 15)),
-                      Text(
-                        _totalReceber.obterReal(),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  bottom: 115,
+                  right: 14,
+                  left: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
                       ),
-                    ],
-                  ),
-                ),
-                ListView(
-                  padding: const EdgeInsets.only(right: 10, left: 10),
-                  children: [
-                    Row(
+                    ),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
-                            SearchAnchor(
-                              builder: (BuildContext context, SearchController controller) {
-                                return IconButton(
-                                  onPressed: () {
-                                    controller.openView();
-                                  },
-                                  icon: const Icon(Icons.menu),
-                                );
-                              },
-                              suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                                final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
-                                return [
-                                  ...res.map(
-                                    (e) => Card(
-                                      elevation: 3.0,
-                                      margin: const EdgeInsets.all(5.0),
-                                      child: InkWell(
-                                        onTap: () {},
-                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
-                                        child: ListTile(
-                                          leading: const Icon(Icons.person_2_outlined),
-                                          title: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(e.pagamento),
-                                              Text("Valor ${double.parse(e.valor).obterReal()}"),
-                                              Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
-                                            ],
-                                          ),
-                                          subtitle: Text('ID: ${e.id}'),
+                            Icon(Icons.account_balance_wallet_outlined, size: 16, color: cs.onSurface.withValues(alpha: 0.7)),
+                            const SizedBox(width: 6),
+                            const Text('Total a Receber', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        Text(
+                          _totalReceber.obterReal(),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                ListView(
+                  padding: const EdgeInsets.only(right: 12, left: 12, top: 12, bottom: 190),
+                  children: [
+                    // Hero "A pagar"
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.55)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.12),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          SearchAnchor(
+                            builder: (BuildContext context, SearchController controller) {
+                              return IconButton.filledTonal(
+                                onPressed: () => controller.openView(),
+                                icon: const Icon(Icons.history_rounded, size: 18),
+                                tooltip: 'Histórico de pagamentos',
+                              );
+                            },
+                            suggestionsBuilder: (BuildContext context, SearchController controller) async {
+                              final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                              return [
+                                ...res.map(
+                                  (e) => Card(
+                                    elevation: 3.0,
+                                    margin: const EdgeInsets.all(5.0),
+                                    child: InkWell(
+                                      onTap: () {},
+                                      borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                      child: ListTile(
+                                        leading: const Icon(Icons.person_2_outlined),
+                                        title: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(e.pagamento),
+                                            Text("Valor ${double.parse(e.valor).obterReal()}"),
+                                            Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                          ],
                                         ),
+                                        subtitle: Text('ID: ${e.id}'),
                                       ),
                                     ),
                                   ),
-                                ];
+                                ),
+                              ];
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'A PAGAR',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.4,
+                                    color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _totalReceber.obterReal(),
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w800,
+                                    color: cs.onPrimaryContainer,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Icon(Icons.local_offer_outlined, size: 18, color: cs.primary),
+                        const SizedBox(width: 8),
+                        const Text('Aplicar desconto ou acréscimo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Você pode dar desconto em percentual ou valor.',
+                      style: TextStyle(fontSize: 12.5, color: cs.onSurface.withValues(alpha: 0.6)),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _totalPedidoController,
+                            readOnly: true,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            decoration: _decoracaoCampo(
+                              context,
+                              rotulo: 'Total do Pedido',
+                              icone: Icons.receipt_long_outlined,
+                              prefixo: 'R\$  ',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _acrescimoController,
+                            decoration: _decoracaoCampo(
+                              context,
+                              rotulo: 'Acréscimo (Valor)',
+                              icone: Icons.add_circle_outline_rounded,
+                              prefixo: 'R\$  ',
+                              onLimpar: () {
+                                _acrescimoController.clear();
+                                calcular();
                               },
                             ),
-                            const Text('A pagar: ', style: TextStyle(fontSize: 25)),
-                          ],
-                        ),
-                        // const Spacer(),
-                        Text(
-                          _totalReceber.obterReal(),
-                          style: const TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    const Column(
-                      children: [
-                        // InformacoesApp.getLogoEscuraApp(context, width: 200, height: 100),
-                        SizedBox(height: 18),
-                        Text('Desconto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 20),
-                        Text('Você pode dar desconto em percentual\nou até mesmo em Valor.', style: TextStyle(fontSize: 15), textAlign: TextAlign.center),
-                      ],
-                    ),
-                    const SizedBox(height: 40),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: TextField(
-                              controller: _totalPedidoController,
-                              readOnly: true,
-                              decoration: const InputDecoration(
-                                label: Text('Total do Pedido'),
-                                border: OutlineInputBorder(),
-                                prefixText: 'R\$  ',
-                              ),
-                            ),
+                            onChanged: (_) => calcular(),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(',', replacementString: '.'),
+                              FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                            ],
                           ),
                         ),
                       ],
@@ -217,29 +342,24 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                     Row(
                       children: [
                         Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: TextField(
-                              controller: _acrescimoController,
-                              decoration: InputDecoration(
-                                label: const Text('Acréscimo (Valor)'),
-                                border: const OutlineInputBorder(),
-                                prefixText: 'R\$  ',
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    _acrescimoController.clear();
-                                    calcular();
-                                  },
-                                  icon: const Icon(Icons.close),
-                                ),
-                              ),
-                              onChanged: (_) => calcular(),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
-                              ],
+                          child: TextField(
+                            controller: _descontoController,
+                            decoration: _decoracaoCampo(
+                              context,
+                              rotulo: 'Desconto (%)',
+                              icone: Icons.percent_rounded,
+                              prefixo: '%  ',
+                              onLimpar: () {
+                                _descontoController.clear();
+                                calcular();
+                              },
                             ),
+                            onChanged: (_) => calcular(),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(',', replacementString: '.'),
+                              FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                            ],
                           ),
                         ),
                       ],
@@ -248,60 +368,24 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                     Row(
                       children: [
                         Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: TextField(
-                              controller: _descontoController,
-                              decoration: InputDecoration(
-                                label: const Text('Desconto (%)'),
-                                border: const OutlineInputBorder(),
-                                prefixText: '%  ',
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    _descontoController.clear();
-                                    calcular();
-                                  },
-                                  icon: const Icon(Icons.close),
-                                ),
-                              ),
-                              onChanged: (_) => calcular(),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
-                              ],
+                          child: TextField(
+                            controller: _descontoValorController,
+                            decoration: _decoracaoCampo(
+                              context,
+                              rotulo: 'Desconto (Valor)',
+                              icone: Icons.remove_circle_outline_rounded,
+                              prefixo: 'R\$  ',
+                              onLimpar: () {
+                                _descontoValorController.clear();
+                                calcular();
+                              },
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: TextField(
-                              controller: _descontoValorController,
-                              decoration: InputDecoration(
-                                label: const Text('Desconto (Valor)'),
-                                border: const OutlineInputBorder(),
-                                prefixText: 'R\$  ',
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    _descontoValorController.clear();
-                                    calcular();
-                                  },
-                                  icon: const Icon(Icons.close),
-                                ),
-                              ),
-                              onChanged: (_) => calcular(),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
-                              ],
-                            ),
+                            onChanged: (_) => calcular(),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(',', replacementString: '.'),
+                              FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                            ],
                           ),
                         ),
                       ],
@@ -314,6 +398,49 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
           ),
         );
       },
+    );
+  }
+
+  InputDecoration _decoracaoCampo(
+    BuildContext context, {
+    required String rotulo,
+    required IconData icone,
+    String? prefixo,
+    VoidCallback? onLimpar,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InputDecoration(
+      labelText: rotulo,
+      labelStyle: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.7)),
+      prefixIcon: Icon(icone, size: 18, color: cs.primary),
+      prefixText: prefixo,
+      prefixStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface.withValues(alpha: 0.7)),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: cs.primary, width: 1.4),
+      ),
+      suffixIcon: onLimpar != null
+          ? IconButton(
+              onPressed: onLimpar,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              splashRadius: 18,
+            )
+          : null,
     );
   }
 }

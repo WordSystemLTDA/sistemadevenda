@@ -86,212 +86,459 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
 
   @override
   Widget build(BuildContext context) {
-    var nomeTipo = widget.idComandaPedido != null
-        ? 'Comanda'
-        : widget.idMesa != null
-            ? 'Mesa'
-            : '';
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     if (dados == null) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          // title: Text('Itens Recorrentes da $nomeTipo'),
-          title: Text('Itens Recorrentes'),
-        ),
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+        appBar: _buildAppBar(context),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    final termo = _pesquisaController.text.toLowerCase();
+    final produtosFiltrados = dados!.produtos!.where((e) {
+      return e.nome.toLowerCase().contains(termo) || e.codigo.toLowerCase().contains(termo);
+    }).toList();
+
+    final totalProdutos = dados!.produtos!.length;
+    final emFechamento = dados!.status == 'Fechamento';
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // title: Text('Itens Recorrentes da $nomeTipo'),
-        title: Text('Itens Recorrentes'),
-      ),
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+      appBar: _buildAppBar(context),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-      floatingActionButton: Row(
+      floatingActionButton: _buildFloatingActions(context, emFechamento),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderInfo(context),
+          _buildCampoPesquisa(context),
+          if (produtosFiltrados.isEmpty)
+            Expanded(child: _buildEstadoVazio(context, termo.isEmpty))
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 140, top: 4),
+                itemCount: produtosFiltrados.length,
+                itemBuilder: (context, index) {
+                  final item = produtosFiltrados[index];
+                  return CardItensRecorrentes(
+                    estaPesquisando: false,
+                    searchController: null,
+                    item: item,
+                    categoria: null,
+                    finalizar: true,
+                    idComanda: widget.idComanda ?? '0',
+                    idMesa: widget.idMesa ?? '0',
+                    idComandaPedido: widget.idComandaPedido ?? '0',
+                  );
+                },
+              ),
+            ),
+          // contador discreto
+          if (produtosFiltrados.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 16, 24),
+              child: Text(
+                '${produtosFiltrados.length} de $totalProdutos itens',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return AppBar(
+      backgroundColor: cs.inversePrimary,
+      elevation: 0,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.repeat_rounded, size: 18, color: cs.onPrimaryContainer),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Itens Recorrentes',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderInfo(BuildContext context) {
+    if (dados == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final emFechamento = dados!.status == 'Fechamento';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                widget.tipo == TipoCardapio.mesa ? Icons.table_restaurant_rounded : Icons.receipt_long_rounded,
+                color: cs.onPrimaryContainer,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dados!.nome ?? '',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 13, color: cs.onSurface.withValues(alpha: 0.55)),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          dados!.nomeCliente ?? 'Sem cliente',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: cs.onSurface.withValues(alpha: 0.7),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (emFechamento)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Fechamento',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampoPesquisa(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface.withValues(alpha: 0.75)),
+              tooltip: 'Voltar',
+            ),
+            Expanded(
+              child: TextField(
+                controller: _pesquisaController,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: 'Pesquisar produtos ou código...',
+                  hintStyle: TextStyle(
+                    fontSize: 13.5,
+                    color: cs.onSurface.withValues(alpha: 0.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                onChanged: (value) {
+                  setState(() {});
+                },
+              ),
+            ),
+            if (_pesquisaController.text.isNotEmpty)
+              IconButton(
+                onPressed: () {
+                  _pesquisaController.clear();
+                  setState(() {});
+                },
+                icon: Icon(Icons.close_rounded, size: 20, color: cs.onSurface.withValues(alpha: 0.6)),
+                tooltip: 'Limpar',
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(Icons.search_rounded, color: cs.onSurface.withValues(alpha: 0.45)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEstadoVazio(BuildContext context, bool semBusca) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              semBusca ? Icons.inventory_2_outlined : Icons.search_off_rounded,
+              size: 44,
+              color: cs.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            semBusca ? 'Nenhum item recorrente' : 'Nenhum resultado',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            semBusca ? 'Compre itens para que apareçam aqui' : 'Tente buscar com outro termo',
+            style: TextStyle(
+              fontSize: 13,
+              color: cs.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActions(BuildContext context, bool emFechamento) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, right: 12),
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 30.0),
-            child: FloatingActionButton.extended(
-              heroTag: 'botao1',
-              onPressed: () {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (dados!.status == 'Fechamento') {
+          // Botão comprar outros itens com gradiente
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.30),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  if (emFechamento) {
                     ScaffoldMessenger.of(context).removeCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text("Comanda está em status de Fechamento", textAlign: TextAlign.center),
+                      content: Text('Comanda está em status de Fechamento', textAlign: TextAlign.center),
                       backgroundColor: Colors.red,
                     ));
                     return;
                   }
 
                   if (widget.tipo == TipoCardapio.comanda) {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) {
-                        return PaginaCardapio(
-                          tipo: TipoCardapio.comanda,
-                          idComanda: dados!.idComanda,
-                          idMesa: '0',
-                          idCliente: dados!.idCliente!,
-                          id: widget.idComandaPedido,
-                        );
-                      },
-                    ));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaginaCardapio(
+                            tipo: TipoCardapio.comanda,
+                            idComanda: dados!.idComanda,
+                            idMesa: '0',
+                            idCliente: dados!.idCliente!,
+                            id: widget.idComandaPedido,
+                          ),
+                        ));
                   } else if (widget.tipo == TipoCardapio.mesa) {
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) {
-                        return PaginaCardapio(
-                          tipo: TipoCardapio.mesa,
-                          idComanda: '0',
-                          idMesa: widget.idMesa,
-                          idCliente: dados!.idCliente!,
-                          id: widget.idComandaPedido,
-                        );
-                      },
-                    ));
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PaginaCardapio(
+                            tipo: TipoCardapio.mesa,
+                            idComanda: '0',
+                            idMesa: widget.idMesa,
+                            idCliente: dados!.idCliente!,
+                            id: widget.idComandaPedido,
+                          ),
+                        ));
                   }
-                });
-              },
-              label: Text('Comprar outros Itens'),
-            ),
-          ),
-          AnimatedBuilder(
-            animation: provedorItensRecorrentes,
-            builder: (context, _) {
-              return badges.Badge(
-                badgeContent: Text(provedorItensRecorrentes.itensCarrinho.length.toStringAsFixed(0), style: const TextStyle(color: Colors.white)),
-                position: badges.BadgePosition.topEnd(end: 0),
-                child: FloatingActionButton(
-                  heroTag: 'botao2',
-                  onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) {
-                        return PaginaCarrinhoItensRecorrentes(
-                          idComanda: widget.idComanda ?? '0',
-                          idComandaPedido: widget.idComandaPedido ?? '0',
-                          idMesa: widget.idMesa ?? '0',
-                          idCliente: widget.idCliente ?? '0',
-                        );
-                      },
-                    ));
-                  },
-                  shape: const CircleBorder(),
-                  child: const Icon(Icons.shopping_cart),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Padding(
-          //   padding: const EdgeInsets.all(20.0),
-          //   child: Column(
-          //     crossAxisAlignment: CrossAxisAlignment.start,
-          //     children: [
-          //       Row(
-          //         children: [
-          //           const Icon(Icons.topic_outlined, size: 30),
-          //           const SizedBox(width: 10),
-          //           Text(dados!.nome!, style: const TextStyle(fontSize: 18)),
-          //         ],
-          //       ),
-          //       Row(
-          //         children: [
-          //           const Icon(Icons.person_outline_outlined, size: 30),
-          //           const SizedBox(width: 10),
-          //           Text(
-          //             dados!.nomeCliente!,
-          //             style: const TextStyle(fontSize: 18),
-          //           ),
-          //         ],
-          //       ),
-          //     ],
-          //   ),
-          // ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: SizedBox(
-              height: 40,
-              child: TextField(
-                controller: _pesquisaController,
-                // readOnly: true,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[700]!),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  contentPadding: const EdgeInsets.all(0),
-                  hintText: 'Pesquisar...',
-                  prefixIcon: IconButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // provedor.resetarTudo();
-                    },
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                ),
-                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                onChanged: (value) async {
-                  setState(() => _pesquisaController.text = value);
-                  // if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-                  // _debounce = Timer(const Duration(milliseconds: 500), () {
-                  //   if (value.isEmpty) {
-                  //     provedor.listarProdutosPorNome('', widget.category, '0');
-
-                  //     return;
-                  //   }
-
-                  //   provedor.listarProdutosPorNome(value, widget.category, '0');
-                  // });
                 },
-                // onTap: () => _searchController.openView(),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 10),
+                      Text(
+                        'Comprar outros itens',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              shrinkWrap: true,
-              // padding: const EdgeInsets.all(10),
-              itemCount: dados!.produtos!.where((e) {
-                return e.nome.toLowerCase().contains(_pesquisaController.text.toLowerCase()) || e.codigo.toLowerCase().contains(_pesquisaController.text.toLowerCase());
-              }).length,
-              itemBuilder: (context, index) {
-                var item = dados!.produtos!.where((e) {
-                  return e.nome.toLowerCase().contains(_pesquisaController.text.toLowerCase()) || e.codigo.toLowerCase().contains(_pesquisaController.text.toLowerCase());
-                }).toList()[index];
-                //   provedorItensRecorrentes
-
-                // return SizedBox();
-                return CardItensRecorrentes(
-                  estaPesquisando: false,
-                  searchController: null,
-                  item: item,
-                  categoria: null,
-                  finalizar: true,
-                  idComanda: widget.idComanda ?? '0',
-                  idMesa: widget.idMesa ?? '0',
-                  idComandaPedido: widget.idComandaPedido ?? '0',
-                );
-                // return CardItensRecorrentes(
-                //   item: item,
-                //   dados: dados,
-                //   idComanda: widget.idComanda ?? '0',
-                //   idComandaPedido: widget.idComandaPedido ?? '0',
-                //   idMesa: widget.idMesa ?? '0',
-                //   setarQuantidade: (increase) {},
-                //   value: '',
-                //   tipo: widget.tipo,
-                // );
-              },
-            ),
+          // Carrinho com badge
+          AnimatedBuilder(
+            animation: provedorItensRecorrentes,
+            builder: (context, _) {
+              final qtd = provedorItensRecorrentes.itensCarrinho.length;
+              return badges.Badge(
+                showBadge: qtd > 0,
+                badgeContent: Text(
+                  qtd.toString(),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                ),
+                badgeStyle: const badges.BadgeStyle(
+                  badgeColor: Colors.red,
+                  padding: EdgeInsets.all(6),
+                ),
+                position: badges.BadgePosition.topEnd(top: -4, end: -4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withValues(alpha: 0.30),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => PaginaCarrinhoItensRecorrentes(
+                            idComanda: widget.idComanda ?? '0',
+                            idComandaPedido: widget.idComandaPedido ?? '0',
+                            idMesa: widget.idMesa ?? '0',
+                            idCliente: widget.idCliente ?? '0',
+                          ),
+                        ));
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Icon(
+                          Icons.shopping_cart_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
@@ -37,6 +38,23 @@ class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  String _baseHostImagens = 'https://bigchef.com.br';
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarBaseHostImagens();
+  }
+
+  Future<void> _carregarBaseHostImagens() async {
+    final baseHost = await UrlImagem.obterBaseHostImagens();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _baseHostImagens = baseHost;
+    });
+  }
 
   Widget retornoValorVendaProduto() {
     var texto = '';
@@ -305,7 +323,10 @@ class _CardProdutoState extends State<CardProduto> {
                                   child: Center(child: CircularProgressIndicator()),
                                 ),
                                 errorWidget: (context, url, error) => const Icon(Icons.error),
-                                imageUrl: item.foto,
+                                imageUrl: UrlImagem.montarUrlImagem(
+                                  foto: item.foto,
+                                  baseHost: _baseHostImagens,
+                                ),
                               ),
                             ),
                       Expanded(

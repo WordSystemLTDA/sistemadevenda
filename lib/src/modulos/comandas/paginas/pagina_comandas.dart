@@ -345,24 +345,27 @@ class _PaginaComandasState extends State<PaginaComandas> {
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       itemCount: grupos.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 15),
       itemBuilder: (context, index) {
         final grupo = grupos[index];
         return Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             ListView.separated(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
+              padding: EdgeInsets.zero,
               itemCount: grupo.itens.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (_, i) => CardComanda(itemComanda: grupo.itens[i]),
             ),
-            const SizedBox(height: 14),
+            // const SizedBox(height: 14),
           ],
         );
       },
@@ -526,7 +529,7 @@ class _CabecalhoSecao extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cor = isDark ? Colors.grey[300] : const Color(0xFF374151);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 2),
+      padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
       child: Row(
         children: [
           Container(

@@ -1,4 +1,6 @@
+import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/widgets/badge_valor_oculto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -354,17 +356,19 @@ class _ResumoChips extends StatelessWidget {
             valor: totalItens.toString(),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: _Chip(
-            cs: cs,
-            icone: Icons.payments_outlined,
-            rotulo: 'Total parcial',
-            valor: valorTotal.obterReal(),
-            destaque: true,
+        if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _Chip(
+              cs: cs,
+              icone: Icons.payments_outlined,
+              rotulo: 'Total parcial',
+              valor: valorTotal.obterReal(),
+              destaque: true,
+            ),
           ),
-        ),
+        ]
       ],
     );
   }
@@ -470,10 +474,17 @@ class _RodapeTotal extends StatelessWidget {
                   style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  valorTotal.obterReal(),
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cs.primary, letterSpacing: 0.2),
-                ),
+                if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+                  Text(
+                    valorTotal.obterReal(),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cs.primary, letterSpacing: 0.2),
+                  ),
+                ] else ...[
+                  BadgeValorOculto(
+                    compact: false,
+                    label: 'Valor total oculto',
+                  ),
+                ],
               ],
             ),
           ],

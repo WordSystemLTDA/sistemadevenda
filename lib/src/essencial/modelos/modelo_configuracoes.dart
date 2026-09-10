@@ -36,6 +36,7 @@ class Modelowordconfiguracoes {
   final String? modelovalortamanhopizza;
   final String? modaladdmesa;
   final String? modaladdcomanda;
+  final String? habilitarVerValorTotalNoApp;
 
   Modelowordconfiguracoes({
     required this.empresa,
@@ -72,6 +73,7 @@ class Modelowordconfiguracoes {
     this.modelovalortamanhopizza,
     this.modaladdmesa,
     this.modaladdcomanda,
+    this.habilitarVerValorTotalNoApp,
   });
 
   Map<String, dynamic> toMap() {
@@ -110,6 +112,7 @@ class Modelowordconfiguracoes {
       'modelovalortamanhopizza': modelovalortamanhopizza,
       'modaladdmesa': modaladdmesa,
       'modaladdcomanda': modaladdcomanda,
+      'habilitarVerValorTotalNoApp': habilitarVerValorTotalNoApp,
     };
   }
 
@@ -149,6 +152,7 @@ class Modelowordconfiguracoes {
       modelovalortamanhopizza: map['modelovalortamanhopizza'] != null ? map['modelovalortamanhopizza'] as String : null,
       modaladdmesa: map['modaladdmesa'] != null ? map['modaladdmesa'] as String : null,
       modaladdcomanda: map['modaladdcomanda'] != null ? map['modaladdcomanda'] as String : null,
+      habilitarVerValorTotalNoApp: map['habilitarVerValorTotalNoApp'] != null ? map['habilitarVerValorTotalNoApp'] as String : null,
     );
   }
 

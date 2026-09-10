@@ -26,15 +26,37 @@ class _CardComandaState extends State<CardComanda> {
   StreamController<String> dataUltimoPedidoLancadoController = StreamController<String>.broadcast();
 
   void _updateTimer() {
-    if (widget.itemComanda.dataAbertura != null) {
-      final duration = DateTime.now().difference(DateTime.parse(widget.itemComanda.dataAbertura!));
-      tempoLancadoController.add(ConfigSistema.formatarHora(duration));
-
-      if (DateTime.tryParse(widget.itemComanda.dataultimopedido ?? '') != null) {
-        final durationPedido = DateTime.now().difference(DateTime.parse(widget.itemComanda.dataultimopedido!));
-        dataUltimoPedidoLancadoController.add(ConfigSistema.formatarHora(durationPedido));
-      }
+    final dataAbertura = DateTime.tryParse(widget.itemComanda.dataAbertura ?? '');
+    if (dataAbertura == null) {
+      tempoLancadoController.add('...');
+      dataUltimoPedidoLancadoController.add('...');
+      return;
     }
+
+    final duration = DateTime.now().difference(dataAbertura);
+    tempoLancadoController.add(ConfigSistema.formatarHora(duration));
+
+    final dataUltimoPedido = DateTime.tryParse(widget.itemComanda.dataultimopedido ?? '');
+    if (dataUltimoPedido != null) {
+      final durationPedido = DateTime.now().difference(dataUltimoPedido);
+      dataUltimoPedidoLancadoController.add(ConfigSistema.formatarHora(durationPedido));
+    } else {
+      dataUltimoPedidoLancadoController.add('...');
+    }
+  }
+
+  void _iniciarAtualizacaoTempo() {
+    _updateTimer();
+    _tickerTempoLancado?.cancel();
+    _tickerTempoLancado = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateTimer(),
+    );
+  }
+
+  void _pararAtualizacaoTempo() {
+    _tickerTempoLancado?.cancel();
+    _tickerTempoLancado = null;
   }
 
   @override
@@ -42,18 +64,37 @@ class _CardComandaState extends State<CardComanda> {
     super.initState();
 
     if (widget.itemComanda.comandaOcupada) {
+      _iniciarAtualizacaoTempo();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CardComanda oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final ocupadaAnterior = oldWidget.itemComanda.comandaOcupada;
+    final ocupadaAtual = widget.itemComanda.comandaOcupada;
+
+    if (ocupadaAtual && !ocupadaAnterior) {
+      _iniciarAtualizacaoTempo();
+      return;
+    }
+
+    if (!ocupadaAtual && ocupadaAnterior) {
+      _pararAtualizacaoTempo();
+      return;
+    }
+
+    if (ocupadaAtual && (oldWidget.itemComanda.dataAbertura != widget.itemComanda.dataAbertura || oldWidget.itemComanda.dataultimopedido != widget.itemComanda.dataultimopedido)) {
       _updateTimer();
-      _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
     }
   }
 
   @override
   void dispose() {
-    if (_tickerTempoLancado != null) {
-      _tickerTempoLancado!.cancel();
-      tempoLancadoController.close();
-      dataUltimoPedidoLancadoController.close();
-    }
+    _pararAtualizacaoTempo();
+    tempoLancadoController.close();
+    dataUltimoPedidoLancadoController.close();
     super.dispose();
   }
 
@@ -184,7 +225,7 @@ class _CardComandaState extends State<CardComanda> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                padding: const EdgeInsets.fromLTRB(14, 4, 8, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -204,6 +245,30 @@ class _CardComandaState extends State<CardComanda> {
                             ),
                           ),
                         ),
+                        if (item.codigo.isNotEmpty && !ocupada) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3B82F6).withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.qr_code, size: 12, color: Color(0xFF3B82F6)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Código: ${item.codigo}",
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF3B82F6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (item.idComandaPedido != null) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -276,19 +341,49 @@ class _CardComandaState extends State<CardComanda> {
                       ),
                     ],
                     if (ocupada) ...[
-                      const SizedBox(height: 10),
-                      _LinhaInfo(
-                        icone: Icons.person_outline_rounded,
-                        texto: () {
-                          if ((item.nomeCliente ?? '').isEmpty && (item.obs ?? '').isNotEmpty) {
-                            return item.obs!;
-                          }
-                          if ((item.nomeCliente ?? '').isNotEmpty) return item.nomeCliente!;
-                          return 'Sem cliente';
-                        }(),
-                        textoCor: isDark ? Colors.grey[100] : const Color(0xFF111827),
-                        bold: true,
-                        corIcone: corSubtle,
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _LinhaInfo(
+                              icone: Icons.person_outline_rounded,
+                              texto: () {
+                                if ((item.nomeCliente ?? '').isEmpty && (item.obs ?? '').isNotEmpty) {
+                                  return item.obs!;
+                                }
+                                if ((item.nomeCliente ?? '').isNotEmpty) return item.nomeCliente!;
+                                return 'Sem cliente';
+                              }(),
+                              textoCor: isDark ? Colors.grey[100] : const Color(0xFF111827),
+                              bold: true,
+                              corIcone: corSubtle,
+                            ),
+                          ),
+                          if (item.codigo.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6).withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.qr_code, size: 12, color: Color(0xFF3B82F6)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Código: ${item.codigo}",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF3B82F6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -352,15 +447,19 @@ class _CardComandaState extends State<CardComanda> {
                               },
                             ),
                           ),
-                          Text(
-                            double.parse(item.valor ?? '0').obterReal(),
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: corStatus,
-                              letterSpacing: 0.2,
+                          if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+                            Text(
+                              double.parse(item.valor ?? '0').obterReal(),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: corStatus,
+                                letterSpacing: 0.2,
+                              ),
                             ),
-                          ),
+                          ] else ...[
+                            // const BadgeValorOculto(compact: true),
+                          ],
                         ],
                       ),
                     ],
