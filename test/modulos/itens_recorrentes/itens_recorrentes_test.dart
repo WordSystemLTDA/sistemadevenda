@@ -68,20 +68,30 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: CardItensRecorrentes(
-          estaPesquisando: false,
-          searchController: null,
-          item: pizza,
-          categoria: null,
-          finalizar: true,
-          idComanda: '3',
-          idMesa: '0',
-          idComandaPedido: '10673',
+        body: SingleChildScrollView(
+          child: CardItensRecorrentes(
+            estaPesquisando: false,
+            searchController: null,
+            item: pizza,
+            categoria: null,
+            finalizar: true,
+            idComanda: '3',
+            idMesa: '0',
+            idComandaPedido: '10673',
+          ),
         ),
       ),
     ));
 
     expect(find.text('Pizza de Queijos'), findsOneWidget);
+    expect(find.text('Ver detalhes da pizza'), findsOneWidget);
+    expect(find.text('Tamanho Pizza'), findsNothing);
+    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+
+    await tester.tap(find.text('Ver detalhes da pizza'));
+    await tester.pumpAndSettle();
+
+    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
     expect(find.text('Tamanho Pizza'), findsOneWidget);
     expect(find.text('G'), findsOneWidget);
     expect(find.text('(1/3) Mussarela'), findsOneWidget);
@@ -97,8 +107,18 @@ void main() {
     expect(find.text('Cebola'), findsOneWidget);
     expect(find.text('Observação'), findsOneWidget);
     expect(find.text('Sem cebola e cortar bem assada'), findsOneWidget);
+    expect(find.text('Ocultar detalhes'), findsOneWidget);
 
-    await tester.tap(find.byType(CardItensRecorrentes));
+    await tester.ensureVisible(find.text('Ocultar detalhes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ocultar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+    expect(find.text('Tamanho Pizza'), findsNothing);
+    expect(find.text('Ver detalhes da pizza'), findsOneWidget);
+
+    await tester.tap(find.text('Pizza de Queijos'));
     await tester.pumpAndSettle();
 
     expect(modulo.provedorItensRecorrentes.itensCarrinho, hasLength(1));

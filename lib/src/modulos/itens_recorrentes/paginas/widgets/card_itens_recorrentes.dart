@@ -73,6 +73,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   Timer? _tickerTempoLancado;
   // antiga animação card produto
   StreamController<String> tempoLancadoController = StreamController<String>();
+  bool _detalhesPizzaAbertos = false;
 
   Widget retornoValorVendaProduto() {
     // return SizedBox();
@@ -236,6 +237,32 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildBotaoDetalhesPizza(BuildContext context) {
+    final cor = Theme.of(context).colorScheme.primary;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _detalhesPizzaAbertos = !_detalhesPizzaAbertos;
+        });
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(_detalhesPizzaAbertos ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: cor, size: 22),
+            const SizedBox(width: 6),
+            Text(
+              _detalhesPizzaAbertos ? 'Ocultar detalhes' : 'Ver detalhes da pizza',
+              style: TextStyle(color: cor, fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -601,7 +628,13 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                   // ],
                   if (ehPizzaRecorrente) ...[
                     const Divider(height: 1),
-                    _buildDetalhesPizza(context, item),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _detalhesPizzaAbertos ? _buildDetalhesPizza(context, item) : const SizedBox(width: double.infinity),
+                    ),
+                    _buildBotaoDetalhesPizza(context),
                   ],
                 ],
               ),

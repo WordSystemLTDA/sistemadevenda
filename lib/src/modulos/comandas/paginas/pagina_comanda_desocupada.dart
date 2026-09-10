@@ -444,7 +444,7 @@ class _HeroCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: cs.onSurface,
                     letterSpacing: 0.1,
                   ),
@@ -474,7 +474,7 @@ class _LabelCampo extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           texto,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onSurface, letterSpacing: 0.1),
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface, letterSpacing: 0.1),
         ),
         if (opcional) ...[
           const SizedBox(width: 6),

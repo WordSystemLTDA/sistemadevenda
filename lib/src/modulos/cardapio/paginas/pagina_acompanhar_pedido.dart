@@ -198,7 +198,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
             children: [
               Text(
                 'Detalhes da $_nomeTipo',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.1),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.1),
               ),
               Text(
                 'Acompanhamento do pedido',
@@ -304,7 +304,7 @@ class _HeroCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: cs.onPrimaryContainer,
                     letterSpacing: 0.1,
                   ),
@@ -424,7 +424,7 @@ class _Chip extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: destaque ? cs.onSecondaryContainer : cs.onSurface,
                   ),
                 ),
@@ -477,7 +477,7 @@ class _RodapeTotal extends StatelessWidget {
                 if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
                   Text(
                     valorTotal.obterReal(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: cs.primary, letterSpacing: 0.2),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: cs.primary, letterSpacing: 0.2),
                   ),
                 ] else ...[
                   BadgeValorOculto(
