@@ -11,9 +11,12 @@ class ProvedorComanda extends ChangeNotifier {
 
   List<ModeloComandas> comandas = [];
   List<ModeloComanda> comandasLista = [];
+  int _consulta = 0;
 
   Future<List<ModeloComandas>> listarComandas(String pesquisa) async {
+    final consulta = ++_consulta;
     final res = await _servico.listar(pesquisa);
+    if (consulta != _consulta) return res;
     comandas = res;
 
     notifyListeners();

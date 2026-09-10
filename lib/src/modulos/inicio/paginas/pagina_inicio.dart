@@ -38,10 +38,20 @@ class _PaginaInicioState extends State<PaginaInicio> {
     listarDadosAtualizacoes();
   }
 
-  void listarDados() async {
+  Future<void> listarDados() async {
     setState(() => isLoading = true);
-    await listarDadosConfigBigChef();
-    setState(() => isLoading = false);
+    try {
+      await listarDadosConfigBigChef();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Não foi possível atualizar as configurações.'),
+        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarDados),
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+    if (!mounted) return;
     await conectarAoServidor();
   }
 
@@ -55,8 +65,9 @@ class _PaginaInicioState extends State<PaginaInicio> {
     }
   }
 
-  void verificarAtualizacao(context, ConfigModelo versoes) async {
+  void verificarAtualizacao(BuildContext context, ConfigModelo versoes) async {
     if (await FuncoesGlobais.appPrecisaAtualizar(versoes.versaoAppAndroid, versoes.versaoAppIos)) {
+      if (!context.mounted) return;
       showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -85,6 +96,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                       }
                     }
                   } catch (e) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).removeCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Não foi possível abrir o LINK, entre em contato com o suporte.'),
@@ -129,13 +141,15 @@ class _PaginaInicioState extends State<PaginaInicio> {
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
 
-    final double itemHeight = (size.height - 40) / 4;
-    final double itemWidth = size.width / 2;
+    final escala = MediaQuery.textScalerOf(context);
+    final umaColuna = size.width < 360 || escala.scale(17) > 24;
+    final itemHeight = 130.0 + escala.scale(17) * 2;
 
     return ListenableBuilder(
       listenable: context.read<UsuarioProvedor>(),
       builder: (context, snapshot) {
         return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
           drawer: const DrawerCustomizado(),
           appBar: AppBar(
             title: const Text('Início'),
@@ -146,18 +160,29 @@ class _PaginaInicioState extends State<PaginaInicio> {
             replacement: const Center(child: CircularProgressIndicator()),
             child: Column(
               children: [
+                if (context.read<UsuarioProvedor>().usuario?.nomeEmpresa?.isNotEmpty ?? false)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        context.read<UsuarioProvedor>().usuario!.nomeEmpresa!,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(16),
                     child: GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      shrinkWrap: true,
-                      childAspectRatio: (itemWidth / itemHeight),
+                      crossAxisCount: umaColuna ? 1 : (size.width >= 700 ? 3 : 2),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      mainAxisExtent: itemHeight,
                       children: [
                         CardHome(
                           nome: 'Mesas',
+                          cor: const Color(0xFF168575),
                           icone: const Icon(Icons.table_bar_outlined, size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
@@ -170,6 +195,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         ),
                         CardHome(
                           nome: 'Comandas',
+                          cor: const Color(0xFF3478BF),
                           icone: const Icon(Icons.fact_check_outlined, size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
@@ -182,6 +208,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         ),
                         CardHome(
                           nome: 'Balcão',
+                          cor: const Color(0xFF7756A5),
                           icone: const Icon(Icons.shopping_cart_outlined, size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(

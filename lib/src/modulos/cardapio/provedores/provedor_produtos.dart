@@ -8,6 +8,14 @@ class ProvedorProdutos extends ChangeNotifier {
   ProvedorProdutos(this._produtoService);
 
   Map<String, int> paginas = {};
+  static const int _itensPorPagina = 15;
+  int _requisicao = 0;
+  bool carregando = false;
+  bool carregandoMais = false;
+  bool temMais = true;
+  bool erroAoCarregarMais = false;
+  String? erro;
+  String _pesquisa = '';
   final Map<String, Modelowordprodutos> _produtosCompletosPorId = {};
   List<Modelowordprodutos> _produtos = [];
   List<Modelowordprodutos> get produtos => _produtos;
@@ -17,42 +25,99 @@ class ProvedorProdutos extends ChangeNotifier {
   }
 
   void resetarTudo() {
+    _requisicao++;
+    paginas.clear();
     _produtosCompletosPorId.clear();
-    produtos = [];
+    _produtos = [];
+    carregando = false;
+    carregandoMais = false;
+    temMais = true;
+    erro = null;
+    _pesquisa = '';
     notifyListeners();
+  }
+
+  void prepararPesquisa(String pesquisa) {
+    // Invalida a resposta anterior ainda durante a digitacao/debounce.
+    _requisicao++;
+    _pesquisa = pesquisa.trim();
+    carregando = true;
+    carregandoMais = false;
+    erro = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _requisicao++;
+    super.dispose();
   }
 
   Future<void> listarProdutosPorCategoria(String category,
       {bool carregarMais = false}) async {
-    if (paginas[category] == null) {
-      paginas[category] = 1;
+    if (carregarMais &&
+        (carregando || carregandoMais || !temMais || _pesquisa.isNotEmpty)) {
+      return;
     }
-
-    final res = await _produtoService.listarPorCategoria(
-        category, paginas[category] ?? 1);
-    if (res.isEmpty) return;
-    _guardarProdutosCompletos(res);
-
-    if (carregarMais) {
-      produtos = [...produtos, ...res];
-    } else {
-      produtos = res;
-    }
+    final requisicao = ++_requisicao;
+    final pagina = carregarMais ? (paginas[category] ?? 1) + 1 : 1;
+    _pesquisa = '';
+    carregando = !carregarMais;
+    carregandoMais = carregarMais;
+    erro = null;
+    erroAoCarregarMais = false;
     notifyListeners();
+    try {
+      final res = await _produtoService.listarPorCategoria(category, pagina);
+      if (requisicao != _requisicao) return;
+      _guardarProdutosCompletos(res);
+      final ids = carregarMais ? produtos.map((p) => p.id).toSet() : <String>{};
+      final novos = res.where((p) => ids.add(p.id)).toList();
+      _produtos = carregarMais ? [...produtos, ...novos] : novos;
+      paginas[category] = pagina;
+      temMais = res.length >= _itensPorPagina && novos.isNotEmpty;
+    } catch (_) {
+      if (requisicao != _requisicao) return;
+      erro = 'Não foi possível carregar os produtos.';
+      erroAoCarregarMais = carregarMais;
+    } finally {
+      if (requisicao == _requisicao) {
+        carregando = false;
+        carregandoMais = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> listarProdutosPorNome(
       String pesquisa, String categoria, String idcliente) async {
-    paginas[categoria] = 1;
-    final res =
-        await _produtoService.listarPorNome(pesquisa, categoria, idcliente);
-
-    var itens = res.map(_completarProdutoPesquisado).toList();
-    await _buscarProdutosCompletosParaPesquisa(itens);
-    itens = itens.map(_completarProdutoPesquisado).toList();
-
-    produtos = itens;
+    final requisicao = ++_requisicao;
+    _pesquisa = pesquisa.trim();
+    carregando = true;
+    carregandoMais = false;
+    erro = null;
+    erroAoCarregarMais = false;
     notifyListeners();
+    try {
+      final res =
+          await _produtoService.listarPorNome(_pesquisa, categoria, idcliente);
+      if (requisicao != _requisicao) return;
+      var itens = res.map(_completarProdutoPesquisado).toList();
+      await _buscarProdutosCompletosParaPesquisa(itens, requisicao);
+      if (requisicao != _requisicao) return;
+      itens = itens.map(_completarProdutoPesquisado).toList();
+      _produtos = itens;
+      paginas[categoria] = 1;
+      temMais = false;
+    } catch (_) {
+      if (requisicao != _requisicao) return;
+      erro = 'Não foi possível pesquisar os produtos.';
+    } finally {
+      if (requisicao == _requisicao) {
+        carregando = false;
+        notifyListeners();
+      }
+    }
   }
 
   void _guardarProdutosCompletos(List<Modelowordprodutos> itens) {
@@ -81,7 +146,7 @@ class ProvedorProdutos extends ChangeNotifier {
   }
 
   Future<void> _buscarProdutosCompletosParaPesquisa(
-      List<Modelowordprodutos> itens) async {
+      List<Modelowordprodutos> itens, int requisicao) async {
     final pendentesPorCategoria = <String, Set<String>>{};
 
     for (final produto in itens) {
@@ -99,7 +164,9 @@ class ProvedorProdutos extends ChangeNotifier {
       final pendentes = entry.value;
 
       while (pendentes.isNotEmpty && pagina <= 20) {
+        if (requisicao != _requisicao) return;
         final res = await _produtoService.listarPorCategoria(entry.key, pagina);
+        if (requisicao != _requisicao) return;
         if (res.isEmpty) {
           break;
         }

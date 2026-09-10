@@ -38,7 +38,7 @@ class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
-  String _baseHostImagens = 'https://bigchef.com.br';
+  String? _baseHostImagens;
 
   @override
   void initState() {
@@ -101,16 +101,21 @@ class _CardProdutoState extends State<CardProduto> {
     return ListenableBuilder(
       listenable: provedorCardapio,
       builder: (context, snapshot) {
-        final categoriaProduto = provedorCardapio.categorias
-                .where((categoria) => categoria.id == item.categoria)
-                .firstOrNull ??
+        final categoriaProduto = provedorCardapio.categorias.where((categoria) => categoria.id == item.categoria).firstOrNull ??
             (widget.categoria?.id == item.categoria ? widget.categoria : null);
-        final temTamanhosPizza = (item.tamanhosPizza?.isNotEmpty ?? false) ||
-            (categoriaProduto?.tamanhosPizza?.isNotEmpty ?? false);
+        final temTamanhosPizza = (item.tamanhosPizza?.isNotEmpty ?? false) || (categoriaProduto?.tamanhosPizza?.isNotEmpty ?? false);
         final tamanhoSelecionado = provedorCardapio.tamanhoPizzaDoProduto(item);
+        final selecionado = provedorCardapio.saboresPizzaSelecionados.any((sabor) => sabor.id == item.id);
+        final cs = Theme.of(context).colorScheme;
 
         return LayoutBuilder(builder: (context, constraints) {
           return Card(
+            elevation: 0,
+            color: selecionado ? cs.secondaryContainer.withValues(alpha: 0.3) : cs.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: selecionado ? cs.primary : cs.outlineVariant),
+            ),
             clipBehavior: Clip.hardEdge,
             child: InkWell(
               key: widget.key,
@@ -126,14 +131,10 @@ class _CardProdutoState extends State<CardProduto> {
                   return;
                 }
 
-                if (temTamanhosPizza &&
-                    (provedorCardapio.tamanhosPizza != null ||
-                        (widget.categoria?.tamanhosPizza?.isNotEmpty ?? false))) {
+                if (temTamanhosPizza && (provedorCardapio.tamanhosPizza != null || (widget.categoria?.tamanhosPizza?.isNotEmpty ?? false))) {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(provedorCardapio.tamanhosPizza == null
-                        ? 'Selecione um Tamanho'
-                        : 'Selecione um tamanho disponível para este sabor.'),
+                    content: Text(provedorCardapio.tamanhosPizza == null ? 'Selecione um Tamanho' : 'Selecione um tamanho disponível para este sabor.'),
                     backgroundColor: Colors.red,
                   ));
                   return;
@@ -307,24 +308,22 @@ class _CardProdutoState extends State<CardProduto> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      item.foto.isEmpty
-                          ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
+                      item.foto.isEmpty || _baseHostImagens == null
+                          ? Image.asset(Assets.produtoAsset, width: 88, height: 88)
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8.0),
                               child: CachedNetworkImage(
-                                width: 100,
-                                height: 100,
+                                width: 88,
+                                height: 88,
+                                memCacheWidth: (88 * MediaQuery.devicePixelRatioOf(context)).round(),
+                                memCacheHeight: (88 * MediaQuery.devicePixelRatioOf(context)).round(),
                                 fit: BoxFit.contain,
                                 fadeOutDuration: const Duration(milliseconds: 100),
-                                placeholder: (context, url) => const SizedBox(
-                                  height: 50.0,
-                                  width: 50.0,
-                                  child: Center(child: CircularProgressIndicator()),
-                                ),
-                                errorWidget: (context, url, error) => const Icon(Icons.error),
+                                placeholder: (context, url) => Image.asset(Assets.produtoAsset, fit: BoxFit.contain),
+                                errorWidget: (context, url, error) => Image.asset(Assets.produtoAsset, fit: BoxFit.contain),
                                 imageUrl: UrlImagem.montarUrlImagem(
                                   foto: item.foto,
-                                  baseHost: _baseHostImagens,
+                                  baseHost: _baseHostImagens!,
                                 ),
                               ),
                             ),
@@ -335,20 +334,30 @@ class _CardProdutoState extends State<CardProduto> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "${item.nome} ${item.tamanho}",
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 17),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      "${item.nome} ${item.tamanho}".trim(),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  if (selecionado) ...[
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.check_circle, color: Colors.green, size: 24, semanticLabel: 'Selecionado'),
+                                  ],
+                                ],
                               ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 5),
                                 child: Text(
-                                  'Código aqui: ${item.codigo}',
+                                  'Código: ${item.codigo}',
                                   overflow: TextOverflow.fade,
                                   maxLines: 2,
-                                  style: const TextStyle(
-                                    color: Color.fromARGB(255, 111, 111, 111),
+                                  style: TextStyle(
+                                    color: cs.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -376,7 +385,9 @@ class _CardProdutoState extends State<CardProduto> {
                                 Align(
                                   alignment: Alignment.bottomRight,
                                   child: Text(
-                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null && item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
+                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
+                                            _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
+                                            item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
                                         ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
                                         : (double.tryParse(item.valorVenda) ?? 0).obterReal(),
                                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
@@ -392,7 +403,8 @@ class _CardProdutoState extends State<CardProduto> {
                                     children: [
                                       Text(
                                         (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
-                                        style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+                                        style: const TextStyle(
+                                            fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
                                       ),
                                       const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
                                       Text(
@@ -420,22 +432,6 @@ class _CardProdutoState extends State<CardProduto> {
                       ),
                     ],
                   ),
-                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == item.id).isNotEmpty) ...[
-                    Positioned(
-                      right: 10,
-                      top: 10,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(2.0),
-                          child: Icon(Icons.check, color: Color.fromRGBO(255, 255, 255, 1)),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

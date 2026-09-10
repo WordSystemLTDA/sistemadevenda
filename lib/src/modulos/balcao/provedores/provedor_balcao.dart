@@ -11,6 +11,10 @@ class ProvedorBalcao extends ChangeNotifier {
   List<ModeloVendasBalcao> dados = [];
   bool listando = false;
   bool temMaisParaCarregar = true;
+  String? erro;
+  int _consulta = 0;
+  String _pesquisaAtual = '';
+  String get pesquisaAtual => _pesquisaAtual;
   String observacaoDoPedido = '';
 
   DateTimeRange _dataSelecionada = DateTimeRange(start: DateTime.now(), end: DateTime.now());
@@ -31,19 +35,17 @@ class ProvedorBalcao extends ChangeNotifier {
   int paginaSelecionada = 1;
   int maximoItensSelecionado = 30;
 
-  Future<void> listar({int? pagina, int? linhasPorPagina, String pesquisa = '', bool resetar = false, bool mostrarCarregamento = false}) async {
-    if (listando) return;
+  Future<void> listar({int? pagina, int? linhasPorPagina, String? pesquisa, bool resetar = false, bool mostrarCarregamento = false}) async {
+    final consulta = ++_consulta;
+    if (pesquisa != null) _pesquisaAtual = pesquisa.trim();
 
     if (resetar) {
-      dados.clear();
       paginaSelecionada = 1;
       temMaisParaCarregar = true;
-      notifyListeners();
     }
 
-    if (mostrarCarregamento) {
-      listando = true;
-    }
+    listando = true;
+    erro = null;
     notifyListeners();
 
     var dataInicio = DateFormat('yyyy-MM-dd').format(dataSelecionada.start);
@@ -51,23 +53,21 @@ class ProvedorBalcao extends ChangeNotifier {
     var hora =
         "${horaSelecionado.hour < 10 ? '0${horaSelecionado.hour}' : horaSelecionado.hour}:${horaSelecionado.minute < 10 ? '0${horaSelecionado.minute}' : horaSelecionado.minute}:00";
 
-    var novosItens = await _servico.listar(pagina ?? paginaSelecionada, linhasPorPagina ?? maximoItensSelecionado, pesquisa, dataInicio, dataFim, hora);
-
-    if (paginaSelecionada == 1) {
-      dados.clear();
+    try {
+      final limite = linhasPorPagina ?? maximoItensSelecionado;
+      final novosItens = await _servico.listar(pagina ?? paginaSelecionada, limite, _pesquisaAtual, dataInicio, dataFim, hora);
+      if (consulta != _consulta) return;
+      dados = novosItens;
+      temMaisParaCarregar = novosItens.length >= limite;
+    } catch (_) {
+      if (consulta != _consulta) return;
+      erro = 'Não foi possível atualizar as vendas.';
+    } finally {
+      if (consulta == _consulta) {
+        listando = false;
+        notifyListeners();
+      }
     }
-
-    if (novosItens.length < 30) {
-      temMaisParaCarregar = false;
-      notifyListeners();
-    }
-
-    dados = novosItens;
-
-    if (mostrarCarregamento) {
-      listando = false;
-    }
-    notifyListeners();
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {

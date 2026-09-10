@@ -24,8 +24,16 @@ class ServicoBalcao {
     final empresa = usuarioProvedor.usuario!.empresa;
     final id = usuarioProvedor.usuario!.id;
 
-    var response = await dio.cliente.post(
-        '/$caminhoAPI/listar.php?id_empresa=$empresa&id_usuario=$id&pagina=$pagina&linhasPorPagina=$linhasPorPagina&pesquisa=$pesquisa&dataInicio=$dataInicio&dataFim=$dataFim&hora=$hora');
+    var response = await dio.cliente.post('/$caminhoAPI/listar.php', queryParameters: {
+      'id_empresa': empresa,
+      'id_usuario': id,
+      'pagina': pagina,
+      'linhasPorPagina': linhasPorPagina,
+      'pesquisa': pesquisa,
+      'dataInicio': dataInicio,
+      'dataFim': dataFim,
+      'hora': hora,
+    });
 
     if (response.data.isNotEmpty) {
       return List<ModeloVendasBalcao>.from(response.data.map((elemento) {
@@ -122,7 +130,8 @@ class ServicoBalcao {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
-    var response = await dio.cliente.post('enderecos_clientes/listar_por_cliente.php?empresa=$idEmpresa&id_usuario=$idUsuario&pesquisa=$pesquisa&cliente=$idCliente');
+    var response =
+        await dio.cliente.post('enderecos_clientes/listar_por_cliente.php?empresa=$idEmpresa&id_usuario=$idUsuario&pesquisa=$pesquisa&cliente=$idCliente');
     var jsonData = response.data;
 
     dynamic dados = jsonData;

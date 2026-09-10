@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
@@ -12,166 +13,194 @@ class TabCustom extends StatefulWidget {
   final ModeloCategoria categoria;
   final bool finalizar;
 
-  const TabCustom(
-      {super.key,
-      required this.category,
-      required this.categoria,
-      required this.finalizar});
+  const TabCustom({super.key, required this.category, required this.categoria, required this.finalizar});
 
   @override
   State<TabCustom> createState() => _TabCustomState();
 }
 
-class _TabCustomState extends State<TabCustom>
-    with AutomaticKeepAliveClientMixin {
+class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
+
   final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
-
   final _scrollController = ScrollController();
-
-  ValueNotifier<bool> carregando = ValueNotifier(true);
+  final _pesquisaController = TextEditingController();
   Timer? _debounce;
-
-  void listarProdutos(String categoria, {bool carregarMais = false}) async {
-    await provedor.listarProdutosPorCategoria(categoria,
-        carregarMais: carregarMais);
-    carregando.value = false;
-  }
-
-  void pesquisarProdutos(String categoria) {
-    listarProdutos(categoria);
-  }
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_carregarMais);
+    _atualizar();
+  }
 
-    _scrollController.addListener(() {
-      if (_scrollController.position.maxScrollExtent ==
-          _scrollController.offset) {
-        provedor.paginas[widget.category] =
-            (provedor.paginas[widget.category] ?? 1) + 1;
-        listarProdutos(widget.category, carregarMais: true);
-      }
-    });
-    listarProdutos(widget.category);
+  void _carregarMais() {
+    if (_scrollController.hasClients && _scrollController.position.extentAfter < 240 && _pesquisaController.text.trim().isEmpty && provedor.erro == null) {
+      provedor.listarProdutosPorCategoria(widget.category, carregarMais: true);
+    }
+  }
+
+  Future<void> _atualizar() {
+    _debounce?.cancel();
+    final pesquisa = _pesquisaController.text.trim();
+    if (pesquisa.isEmpty) {
+      return provedor.listarProdutosPorCategoria(widget.category);
+    }
+    return provedor.listarProdutosPorNome(pesquisa, widget.category, '0');
+  }
+
+  void _pesquisar(String value) {
+    _debounce?.cancel();
+    provedor.prepararPesquisa(value);
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    if (value.trim().isEmpty) {
+      _atualizar();
+    } else {
+      _debounce = Timer(const Duration(milliseconds: 300), _atualizar);
+    }
   }
 
   @override
   void dispose() {
-    provedor.paginas[widget.category] = 1;
-
+    _debounce?.cancel();
+    _scrollController.dispose();
+    _pesquisaController.dispose();
+    provedor.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        provedor.paginas[widget.category] = 1;
-        listarProdutos(widget.category);
-      },
-      child: ListenableBuilder(
-        listenable: provedor,
-        builder: (context, _) {
-          return Column(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                child: SizedBox(
-                  height: 40,
-                  child: TextField(
-                    // readOnly: true,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey[700]!),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      contentPadding: const EdgeInsets.all(0),
-                      hintText: 'Pesquisar...',
-                      prefixIcon: IconButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          provedor.resetarTudo();
-                        },
-                        icon: const Icon(Icons.arrow_back),
-                      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+          child: CampoBusca(
+            controller: _pesquisaController,
+            hintText: 'Nome ou código',
+            onChanged: _pesquisar,
+            onSubmitted: (_) {
+              FocusScope.of(context).unfocus();
+              _atualizar();
+            },
+          ),
+        ),
+        if (widget.categoria.tamanhosPizza?.isNotEmpty ?? false) ListaTamanhosPizza(categoria: widget.categoria),
+        Expanded(
+          child: ListenableBuilder(
+            listenable: provedor,
+            builder: (context, _) => Column(
+              children: [
+                SizedBox(
+                  height: 2,
+                  child: provedor.carregando ? const LinearProgressIndicator(minHeight: 2) : null,
+                ),
+                if (provedor.erro != null && !provedor.erroAoCarregarMais && provedor.produtos.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(provedor.erro!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+                        IconButton(tooltip: 'Tentar novamente', onPressed: _atualizar, icon: const Icon(Icons.refresh)),
+                      ],
                     ),
-                    onChanged: (value) async {
-                      if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                        if (value.isEmpty) {
-                          provedor.paginas[widget.category] = 1;
-                          listarProdutos(widget.category);
-
-                          return;
-                        }
-
-                        provedor.listarProdutosPorNome(
-                            value, widget.category, '0');
-                      });
-                    },
-                    // onTap: () => _searchController.openView(),
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _atualizar,
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      slivers: [
+                        if (provedor.produtos.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: provedor.carregando ? const CircularProgressIndicator() : _estadoLista(context),
+                            ),
+                          )
+                        else ...[
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+                            sliver: SliverList.builder(
+                              itemCount: provedor.produtos.length,
+                              itemBuilder: (context, index) {
+                                final item = provedor.produtos[index];
+                                return IgnorePointer(
+                                  ignoring: provedor.carregando || (provedor.erro != null && !provedor.erroAoCarregarMais),
+                                  child: CardProduto(
+                                    key: ValueKey(item.id),
+                                    estaPesquisando: false,
+                                    item: item,
+                                    categoria: widget.categoria,
+                                    finalizar: widget.finalizar,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Center(child: _estadoLista(context)),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              if (widget.categoria.tamanhosPizza != null &&
-                  widget.categoria.tamanhosPizza!.isNotEmpty) ...[
-                ListaTamanhosPizza(categoria: widget.categoria),
               ],
-              Expanded(
-                child: ValueListenableBuilder(
-                  valueListenable: carregando,
-                  builder: (context, valueCarregando, _) {
-                    if (valueCarregando == true) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else {
-                      if (provedor.produtos.isEmpty &&
-                          valueCarregando == false) {
-                        return ListView(
-                          shrinkWrap: true,
-                          children: const [
-                            SizedBox(
-                                height: 100,
-                                child: Center(child: Text('Não há Itens')))
-                          ],
-                        );
-                      } else {
-                        return ListView.builder(
-                          controller: _scrollController,
-                          shrinkWrap: true,
-                          itemCount: provedor.produtos.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == provedor.produtos.length) {
-                              return const SizedBox(
-                                  height: 80,
-                                  child: Center(child: Text('Fim da Lista')));
-                            }
-
-                            final item = provedor.produtos[index];
-
-                            return CardProduto(
-                              estaPesquisando: false,
-                              item: item,
-                              categoria: widget.categoria,
-                              finalizar: widget.finalizar,
-                            );
-                          },
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _estadoLista(BuildContext context) {
+    if (provedor.carregandoMais) {
+      return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (provedor.erro != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(provedor.erro!, textAlign: TextAlign.center),
+          TextButton.icon(
+            onPressed: () {
+              if (provedor.erroAoCarregarMais) {
+                provedor.listarProdutosPorCategoria(widget.category, carregarMais: true);
+              } else {
+                _atualizar();
+              }
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Tentar novamente'),
+          ),
+        ],
+      );
+    }
+    if (provedor.produtos.isEmpty) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.search_off_rounded, size: 36, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          const SizedBox(height: 8),
+          const Text('Nenhum produto encontrado'),
+        ],
+      );
+    }
+    if (provedor.temMais) {
+      return TextButton.icon(
+        onPressed: provedor.carregando ? null : () => provedor.listarProdutosPorCategoria(widget.category, carregarMais: true),
+        icon: const Icon(Icons.expand_more),
+        label: const Text('Carregar mais'),
+      );
+    }
+    return Text('Fim da lista', style: Theme.of(context).textTheme.bodySmall);
   }
 }

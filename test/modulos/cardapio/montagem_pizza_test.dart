@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/essencial/modelos/modelo_configuracoes.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -29,6 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../suporte/captura_tela.dart';
 
 ModeloTamanhosPizza tamanho(String id, {int limite = 3}) => ModeloTamanhosPizza(
       id: id,
@@ -193,6 +196,8 @@ class ModuloTeste extends Module {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(carregarFontesDeTeste);
   late ProvedorCardapio cardapio;
   late UsuarioProvedor usuario;
   late ProdutosTeste produtos;
@@ -301,8 +306,15 @@ void main() {
         ..habilTipo = ''
         ..valorVenda = '10');
 
-      await tester.pumpWidget(
-          const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+      await tester.pumpWidget(RepaintBoundary(
+        key: const ValueKey('captura'),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+          home: const PaginaCardapio(tipo: TipoCardapio.comanda),
+        ),
+      ));
       await tester.pumpAndSettle();
       expect(find.byType(ListaTamanhosPizza), findsOneWidget);
       expect(cardapio.categorias.first.tamanhosPizza, hasLength(2));
@@ -321,6 +333,11 @@ void main() {
       expect(carrinho.itensCarrinho.listaComandosPedidos.single.nome, 'Agua');
       expect(find.byType(SnackBar), findsNothing);
 
+      await tester.runAsync(() => precacheImage(
+          const AssetImage(Assets.produtoAsset),
+          tester.element(find.byType(CardProduto).first)));
+      await tester.pump();
+      await capturarTela(tester, 'cardapio_${largura.toInt()}');
       final botao = find.byType(BotaoAcaoPedido);
       final rectAvancar = tester.getRect(botao);
       final rectCarrinho = tester.getRect(find.byType(FloatingActionButton));
@@ -555,7 +572,10 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
 
       await trocarCategoria(tester, 'Queijos');
-      expect(find.byIcon(Icons.check), findsOneWidget);
+      expect(
+          find.byWidgetPredicate((widget) =>
+              widget is Icon && widget.semanticLabel == 'Selecionado'),
+          findsOneWidget);
       await tester.tap(find.byType(CardProduto));
       await tester.pumpAndSettle();
       expect(cardapio.saboresPizzaSelecionados, hasLength(2));

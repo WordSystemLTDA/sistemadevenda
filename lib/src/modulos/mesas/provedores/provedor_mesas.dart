@@ -9,9 +9,12 @@ class ProvedorMesas extends ChangeNotifier {
 
   List<MesasModel> mesas = [];
   List<MesaModelo> mesasLista = [];
+  int _consulta = 0;
 
   Future<List<MesasModel>> listarMesas(String pesquisa) async {
+    final consulta = ++_consulta;
     final res = await _servico.listar(pesquisa);
+    if (consulta != _consulta) return res;
     mesas = res;
     notifyListeners();
     return res;

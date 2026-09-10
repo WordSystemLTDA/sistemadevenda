@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_nova_venda_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/widgets/card_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
@@ -23,21 +24,26 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
 
   String dataInicial = DateFormat('yyyy-MM-dd').format(DateTime.now());
   String dataFim = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  String dataPersonalizada = 'hoje';
+  String? dataPersonalizada;
   Timer? _debounce;
-  Timer? debounce;
 
   @override
   void initState() {
     super.initState();
-    dataManualController.text = '${DateFormat('dd/MM/yyyy').format(DateTime.parse(dataInicial))} - ${DateFormat('dd/MM/yyyy').format(DateTime.parse(dataFim))}';
-
-    _horaController.text = "0${provedor.horaSelecionado.hour}:${provedor.horaSelecionado.minute}0";
+    dataInicial = DateFormat('yyyy-MM-dd').format(provedor.dataSelecionada.start);
+    dataFim = DateFormat('yyyy-MM-dd').format(provedor.dataSelecionada.end);
+    final hoje = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    dataPersonalizada = dataInicial == hoje && dataFim == hoje ? 'hoje' : null;
+    dataManualController.text =
+        '${DateFormat('dd/MM/yyyy').format(provedor.dataSelecionada.start)} - ${DateFormat('dd/MM/yyyy').format(provedor.dataSelecionada.end)}';
+    _horaController.text = '${provedor.horaSelecionado.hour.toString().padLeft(2, '0')}:${provedor.horaSelecionado.minute.toString().padLeft(2, '0')}';
+    _pesquisaController.text = provedor.pesquisaAtual;
     listar();
   }
 
-  void listar() async {
-    await provedor.listar();
+  Future<void> listar() {
+    _debounce?.cancel();
+    return provedor.listar(pesquisa: _pesquisaController.text, mostrarCarregamento: true);
   }
 
   @override
@@ -116,28 +122,41 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
         listenable: provedor,
         builder: (context, snapshot) {
           return RefreshIndicator(
-            onRefresh: () async => listar(),
+            onRefresh: listar,
             child: Column(
               children: [
-                if (provedor.listando) const LinearProgressIndicator(minHeight: 2),
+                SizedBox(height: 2, child: provedor.listando ? const LinearProgressIndicator(minHeight: 2) : null),
                 _buildFiltrosCard(context),
+                if (provedor.erro != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(provedor.erro!, style: TextStyle(color: cs.error))),
+                        IconButton(tooltip: 'Tentar novamente', onPressed: listar, icon: const Icon(Icons.refresh)),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 Expanded(
-                  child: provedor.dados.isEmpty && !provedor.listando
-                      ? _buildEstadoVazio(context)
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          scrollDirection: Axis.vertical,
-                          itemCount: provedor.dados.length,
-                          padding: const EdgeInsets.only(top: 4, bottom: 90, left: 4, right: 4),
-                          itemBuilder: (_, index) {
-                            var item = provedor.dados[index];
-                            return CardVendasBalcao(
-                              item: item,
-                              listar: () => listar(),
-                            );
-                          },
-                        ),
+                  child: provedor.dados.isEmpty && provedor.listando
+                      ? const Center(child: CircularProgressIndicator())
+                      : provedor.dados.isEmpty
+                          ? _buildEstadoVazio(context)
+                          : ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              scrollDirection: Axis.vertical,
+                              itemCount: provedor.dados.length,
+                              padding: const EdgeInsets.only(top: 4, bottom: 90, left: 4, right: 4),
+                              itemBuilder: (_, index) {
+                                var item = provedor.dados[index];
+                                return CardVendasBalcao(
+                                  item: item,
+                                  listar: () => listar(),
+                                );
+                              },
+                            ),
                 ),
               ],
             ),
@@ -150,262 +169,224 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
   Widget _buildFiltrosCard(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final largura = constraints.maxWidth;
+        final larguraData = largura >= 600 ? largura - 296 : largura;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: TextField(
-                      readOnly: true,
-                      controller: dataManualController,
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.calendar_today_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                        isDense: true,
-                      ),
-                      style: const TextStyle(fontSize: 13.5),
-                      textAlign: TextAlign.center,
-                      onTap: () async {
-                        DateTimeRange? picked = await showDateRangePicker(
-                          context: context,
-                          firstDate: DateTime(DateTime.now().year - 35),
-                          lastDate: DateTime(DateTime.now().year + 50),
-                          initialDateRange: DateTimeRange(
-                            start: DateTime.parse(dataInicial),
-                            end: DateTime.parse(dataFim),
-                          ),
-                        );
-
-                        if (picked != null) {
-                          setState(() {
-                            dataManualController.text = "${DateFormat('dd/MM/yyyy').format(picked.start)} - ${DateFormat('dd/MM/yyyy').format(picked.end)}";
-                            if (mounted) {
-                              provedor.dataSelecionada = picked;
-                              dataInicial = DateFormat('yyyy-MM-dd').format(picked.start);
-                              dataFim = DateFormat('yyyy-MM-dd').format(picked.end);
-                            }
-                          });
-
-                          provedor.listar(mostrarCarregamento: true);
-                        }
-                      },
+            SizedBox(
+              width: larguraData,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: TextField(
+                  minLines: 1,
+                  maxLines: 2,
+                  textAlignVertical: TextAlignVertical.center,
+                  readOnly: true,
+                  controller: dataManualController,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.calendar_today_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    isDense: true,
                   ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 130,
-                  height: 42,
-                  child: DropdownMenu(
-                    inputDecorationTheme: InputDecorationTheme(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      constraints: BoxConstraints.tight(const Size.fromHeight(42)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                      ),
-                    ),
-                    textStyle: const TextStyle(fontSize: 13),
-                    initialSelection: dataPersonalizada,
-                    dropdownMenuEntries: const [
-                      DropdownMenuEntry(value: 'mes_anterior', label: 'Mês Anterior'),
-                      DropdownMenuEntry(value: 'ultimos7dias', label: 'Últimos 7 dias'),
-                      DropdownMenuEntry(value: 'ontem', label: 'Ontem'),
-                      DropdownMenuEntry(value: 'hoje', label: 'Hoje'),
-                      DropdownMenuEntry(value: 'mes_atual', label: 'Mês Atual'),
-                      DropdownMenuEntry(value: 'todos', label: 'Todos'),
-                    ],
-                    onSelected: (value) {
-                      dataPersonalizada = value ?? '';
-                      var agora = DateTime.now();
-                      var data = DateTimeRange(
+                  style: const TextStyle(fontSize: 13.5),
+                  textAlign: TextAlign.center,
+                  onTap: () async {
+                    DateTimeRange? picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(DateTime.now().year - 35),
+                      lastDate: DateTime(DateTime.now().year + 50),
+                      initialDateRange: DateTimeRange(
                         start: DateTime.parse(dataInicial),
                         end: DateTime.parse(dataFim),
-                      );
+                      ),
+                    );
 
-                      if (value == 'mes_anterior') {
-                        data = DateTimeRange(
-                          start: DateTime(DateTime.now().year, DateTime.now().month - 1, 1),
-                          end: DateTime(DateTime.now().year, DateTime.now().month, 0),
-                        );
-                      }
-                      if (value == 'ultimos7dias') {
-                        data = DateTimeRange(
-                          start: DateTime.now().subtract(const Duration(days: 7)),
-                          end: DateTime.now(),
-                        );
-                      }
-                      if (value == 'ontem') {
-                        data = DateTimeRange(
-                          start: DateTime.now().subtract(const Duration(days: 1)),
-                          end: DateTime.now().subtract(const Duration(days: 1)),
-                        );
-                      }
-                      if (value == 'hoje') {
-                        data = DateTimeRange(
-                          start: DateTime.now(),
-                          end: DateTime.now(),
-                        );
-                      }
-                      if (value == 'mes_atual') {
-                        data = DateTimeRange(start: DateTime(agora.year, agora.month, 1), end: DateTime(agora.year, agora.month + 1, 0));
-                      }
-                      if (value == 'todos') {
-                        data = DateTimeRange(start: DateTime(2000, agora.month, 1), end: DateTime.now());
-                      }
-
+                    if (picked != null && mounted) {
                       setState(() {
-                        dataManualController.text = "${DateFormat('dd/MM/yyyy').format(data.start)} - ${DateFormat('dd/MM/yyyy').format(data.end)}";
+                        dataPersonalizada = null;
+                        dataManualController.text = "${DateFormat('dd/MM/yyyy').format(picked.start)} - ${DateFormat('dd/MM/yyyy').format(picked.end)}";
                         if (mounted) {
-                          provedor.dataSelecionada = data;
-                          dataInicial = DateFormat('yyyy-MM-dd').format(data.start);
-                          dataFim = DateFormat('yyyy-MM-dd').format(data.end);
+                          provedor.dataSelecionada = picked;
+                          dataInicial = DateFormat('yyyy-MM-dd').format(picked.start);
+                          dataFim = DateFormat('yyyy-MM-dd').format(picked.end);
                         }
                       });
 
                       provedor.listar(mostrarCarregamento: true);
-                    },
-                  ),
+                    }
+                  },
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                SizedBox(
-                  width: 120,
-                  height: 42,
-                  child: TextField(
-                    readOnly: true,
-                    controller: _horaController,
-                    style: const TextStyle(fontSize: 13.5),
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.access_time_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                      isDense: true,
-                    ),
-                    onTap: () async {
-                      var dataInicialTemp = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, provedor.horaSelecionado.hour, provedor.horaSelecionado.minute);
+            SizedBox(
+              width: largura >= 600 ? 160 : largura - 128,
+              height: 48,
+              child: DropdownMenu(
+                key: ValueKey('$dataInicial-$dataFim-$dataPersonalizada'),
+                hintText: 'Período',
+                width: largura >= 600 ? 160 : largura - 128,
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  constraints: BoxConstraints.tight(const Size.fromHeight(48)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
+                  ),
+                ),
+                textStyle: const TextStyle(fontSize: 13),
+                initialSelection: dataPersonalizada,
+                dropdownMenuEntries: const [
+                  DropdownMenuEntry(value: 'mes_anterior', label: 'Mês Anterior'),
+                  DropdownMenuEntry(value: 'ultimos7dias', label: 'Últimos 7 dias'),
+                  DropdownMenuEntry(value: 'ontem', label: 'Ontem'),
+                  DropdownMenuEntry(value: 'hoje', label: 'Hoje'),
+                  DropdownMenuEntry(value: 'mes_atual', label: 'Mês Atual'),
+                  DropdownMenuEntry(value: 'todos', label: 'Todos'),
+                ],
+                onSelected: (value) {
+                  dataPersonalizada = value ?? '';
+                  var agora = DateTime.now();
+                  var data = DateTimeRange(
+                    start: DateTime.parse(dataInicial),
+                    end: DateTime.parse(dataFim),
+                  );
 
-                      TimeOfDay? picked = await showTimePicker(
-                        context: context,
-                        initialEntryMode: TimePickerEntryMode.input,
-                        initialTime: TimeOfDay.fromDateTime(dataInicialTemp),
-                        builder: (context, child) {
-                          return MediaQuery(
-                            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 700, maxHeight: 500),
-                                  child: child,
-                                )
-                              ],
-                            ),
-                          );
-                        },
+                  if (value == 'mes_anterior') {
+                    data = DateTimeRange(
+                      start: DateTime(DateTime.now().year, DateTime.now().month - 1, 1),
+                      end: DateTime(DateTime.now().year, DateTime.now().month, 0),
+                    );
+                  }
+                  if (value == 'ultimos7dias') {
+                    data = DateTimeRange(
+                      start: DateTime.now().subtract(const Duration(days: 7)),
+                      end: DateTime.now(),
+                    );
+                  }
+                  if (value == 'ontem') {
+                    data = DateTimeRange(
+                      start: DateTime.now().subtract(const Duration(days: 1)),
+                      end: DateTime.now().subtract(const Duration(days: 1)),
+                    );
+                  }
+                  if (value == 'hoje') {
+                    data = DateTimeRange(
+                      start: DateTime.now(),
+                      end: DateTime.now(),
+                    );
+                  }
+                  if (value == 'mes_atual') {
+                    data = DateTimeRange(start: DateTime(agora.year, agora.month, 1), end: DateTime(agora.year, agora.month + 1, 0));
+                  }
+                  if (value == 'todos') {
+                    data = DateTimeRange(start: DateTime(2000, agora.month, 1), end: DateTime.now());
+                  }
+
+                  setState(() {
+                    dataManualController.text = "${DateFormat('dd/MM/yyyy').format(data.start)} - ${DateFormat('dd/MM/yyyy').format(data.end)}";
+                    if (mounted) {
+                      provedor.dataSelecionada = data;
+                      dataInicial = DateFormat('yyyy-MM-dd').format(data.start);
+                      dataFim = DateFormat('yyyy-MM-dd').format(data.end);
+                    }
+                  });
+
+                  provedor.listar(mostrarCarregamento: true);
+                },
+              ),
+            ),
+            SizedBox(
+              width: 120,
+              height: 48,
+              child: TextField(
+                readOnly: true,
+                controller: _horaController,
+                style: const TextStyle(fontSize: 13.5),
+                decoration: InputDecoration(
+                  prefixIcon: Icon(Icons.access_time_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  isDense: true,
+                ),
+                onTap: () async {
+                  var dataInicialTemp =
+                      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, provedor.horaSelecionado.hour, provedor.horaSelecionado.minute);
+
+                  TimeOfDay? picked = await showTimePicker(
+                    context: context,
+                    initialEntryMode: TimePickerEntryMode.input,
+                    initialTime: TimeOfDay.fromDateTime(dataInicialTemp),
+                    builder: (context, child) {
+                      return MediaQuery(
+                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 700, maxHeight: 500),
+                              child: child,
+                            )
+                          ],
+                        ),
                       );
-
-                      if (picked != null) {
-                        provedor.horaSelecionado = picked;
-                        _horaController.text = "${picked.hour < 10 ? '0${picked.hour}' : picked.hour}:${picked.minute < 10 ? '0${picked.minute}' : picked.minute}";
-
-                        provedor.listar(mostrarCarregamento: true);
-                      }
                     },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: TextField(
-                      controller: _pesquisaController,
-                      style: const TextStyle(fontSize: 13.5),
-                      decoration: InputDecoration(
-                        prefixIcon: Icon(Icons.search_rounded, size: 18, color: cs.onSurface.withValues(alpha: 0.6)),
-                        hintText: 'Buscar venda, cliente...',
-                        hintStyle: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.5)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.25)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                        isDense: true,
-                      ),
-                      onChanged: (textoPesquisa) {
-                        if (_debounce?.isActive ?? false) _debounce!.cancel();
+                  );
 
-                        _debounce = Timer(const Duration(milliseconds: 500), () {
-                          if (textoPesquisa.isNotEmpty) {
-                            if (debounce?.isActive ?? false) {
-                              debounce!.cancel();
-                            }
+                  if (picked != null && mounted) {
+                    provedor.horaSelecionado = picked;
+                    _horaController.text = "${picked.hour < 10 ? '0${picked.hour}' : picked.hour}:${picked.minute < 10 ? '0${picked.minute}' : picked.minute}";
 
-                            debounce = Timer(const Duration(milliseconds: 200), () async {
-                              provedor.listar(pesquisa: textoPesquisa, mostrarCarregamento: true);
-                            });
-                          } else {
-                            provedor.listar(pesquisa: '', mostrarCarregamento: true);
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              ],
+                    provedor.listar(mostrarCarregamento: true);
+                  }
+                },
+              ),
+            ),
+            SizedBox(
+              width: largura,
+              child: CampoBusca(
+                controller: _pesquisaController,
+                hintText: 'Buscar venda ou cliente',
+                onChanged: (texto) {
+                  _debounce?.cancel();
+                  if (texto.trim().isEmpty) {
+                    listar();
+                  } else {
+                    _debounce = Timer(const Duration(milliseconds: 300), listar);
+                  }
+                },
+                onSubmitted: (_) => listar(),
+              ),
             ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -429,11 +410,6 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
               ),
               const SizedBox(height: 16),
               const Text('Nenhuma venda encontrada', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(
-                'Crie uma nova venda no botão "+"',
-                style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.6)),
-              ),
             ],
           ),
         ),

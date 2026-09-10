@@ -1,5 +1,4 @@
-import 'dart:async';
-
+import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -16,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 class PaginaMesas extends StatefulWidget {
   const PaginaMesas({super.key});
@@ -27,36 +25,48 @@ class PaginaMesas extends StatefulWidget {
 
 class _PaginaMesasState extends State<PaginaMesas> {
   ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
-  final MobileScannerController controller = MobileScannerController();
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   TextEditingController pesquisaController = TextEditingController();
 
-  Timer? debounce;
-  Timer? _debounce;
-
   final ProvedorMesas provedor = Modular.get<ProvedorMesas>();
   bool isLoading = true;
-  Timer? _timer;
   bool nfcDisponivel = true;
-  String opcaoFiltro = 'Ocupadas';
   ModeloConfigBigchef? configBigchef;
 
   @override
   void initState() {
     super.initState();
     listarMesas();
+    _carregarConfiguracao();
   }
 
-  void listarMesas() async {
-    configBigchef = await servicoConfigBigchef.listar();
-    nfcDisponivel = await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+  Future<void> listarMesas() async {
+    try {
+      await provedor.listarMesas('');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Não foi possível atualizar as mesas.'),
+        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarMesas),
+      ));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
-    setState(() => isLoading = true);
-    await provedor.listarMesas('');
-    setState(() => isLoading = false);
-
-    if (configBigchef?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available) {
-      await nfc();
+  Future<void> _carregarConfiguracao() async {
+    try {
+      final config = await servicoConfigBigchef.listar();
+      final disponivel = config?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+      if (!mounted) return;
+      setState(() {
+        configBigchef = config;
+        nfcDisponivel = disponivel;
+      });
+      if (disponivel && ModalRoute.of(context)?.isCurrent == true) await nfc();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => nfcDisponivel = false);
     }
   }
 
@@ -169,9 +179,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
   @override
   void dispose() {
-    if (_timer != null) _timer!.cancel();
-    if (debounce != null) debounce?.cancel();
-    if (_debounce != null) _debounce?.cancel();
+    pesquisaController.dispose();
     super.dispose();
   }
 
@@ -180,11 +188,15 @@ class _PaginaMesasState extends State<PaginaMesas> {
   }
 
   int _totalOcupadas() {
-    return provedor.mesas.where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == true)).fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => c.mesaOcupada).length));
+    return provedor.mesas
+        .where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == true))
+        .fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => c.mesaOcupada).length));
   }
 
   int _totalLivres() {
-    return provedor.mesas.where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == false)).fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => !c.mesaOcupada).length));
+    return provedor.mesas
+        .where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == false))
+        .fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => !c.mesaOcupada).length));
   }
 
   @override
@@ -235,10 +247,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final tabsLength = (provedor.mesas.isNotEmpty ? (provedor.mesas.length + 1) : 1) - (provedor.mesas.where((element) => (element.mesas ?? []).where((element2) => element2.mesaOcupada == true && element.titulo == 'em Fechamento').isNotEmpty).isNotEmpty ? 1 : 0);
-
           return DefaultTabController(
-            length: tabsLength,
+            length: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -277,15 +287,15 @@ class _PaginaMesasState extends State<PaginaMesas> {
                   child: TabBarView(
                     children: [
                       _ListaTab(
-                        onRefresh: () async => listarMesas(),
+                        onRefresh: listarMesas,
                         child: _conteudoLista(modo: _ModoLista.todas, pesquisa: pesquisaController.text),
                       ),
                       _ListaTab(
-                        onRefresh: () async => listarMesas(),
+                        onRefresh: listarMesas,
                         child: _conteudoLista(modo: _ModoLista.ocupadas, pesquisa: pesquisaController.text),
                       ),
                       _ListaTab(
-                        onRefresh: () async => listarMesas(),
+                        onRefresh: listarMesas,
                         child: _conteudoLista(modo: _ModoLista.livres, pesquisa: pesquisaController.text),
                       ),
                     ],
@@ -300,7 +310,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
   }
 
   Widget _conteudoLista({required _ModoLista modo, required String pesquisa}) {
-    final pesquisaLower = pesquisa.toLowerCase();
+    final pesquisaLower = pesquisa.trim().toLowerCase();
 
     final gruposBase = provedor.mesas.where((g) {
       if (modo == _ModoLista.ocupadas) {
@@ -317,7 +327,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
             if (modo == _ModoLista.ocupadas && !c.mesaOcupada) return false;
             if (modo == _ModoLista.livres && c.mesaOcupada) return false;
             if (pesquisaLower.isEmpty) return true;
-            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) || (c.obs ?? '').toLowerCase().contains(pesquisaLower) || c.nome.toLowerCase().contains(pesquisaLower);
+            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) ||
+                (c.obs ?? '').toLowerCase().contains(pesquisaLower) ||
+                c.nome.toLowerCase().contains(pesquisaLower);
           }).toList();
           return (titulo: g.titulo, itens: filtradas);
         })
@@ -332,30 +344,31 @@ class _PaginaMesasState extends State<PaginaMesas> {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-      itemCount: grupos.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 15),
-      itemBuilder: (context, index) {
-        final grupo = grupos[index];
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
-            const SizedBox(height: 10),
-            ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: grupo.itens.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => CardMesaOcupada(item: grupo.itens[i]),
+    return CustomScrollView(
+      key: PageStorageKey(modo),
+      physics: const AlwaysScrollableScrollPhysics(),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        for (final grupo in grupos) ...[
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            sliver: SliverToBoxAdapter(
+              child: _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
             ),
-            // const SizedBox(height: 10),
-          ],
-        );
-      },
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            sliver: SliverList.builder(
+              itemCount: grupo.itens.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: CardMesaOcupada(key: ValueKey(grupo.itens[i].id), item: grupo.itens[i]),
+              ),
+            ),
+          ),
+        ],
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      ],
     );
   }
 }
@@ -379,63 +392,47 @@ class _CabecalhoBusca extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final corCampo = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final corBorda = isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE5E7EB);
-    final corIcone = isDark ? Colors.grey[300] : const Color(0xFF374151);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: corCampo,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: corBorda),
-              ),
-              child: TextField(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final larguraAcoes = onNfc == null ? 104.0 : 156.0;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            SizedBox(
+              width: constraints.maxWidth < 480 ? constraints.maxWidth : constraints.maxWidth - larguraAcoes,
+              child: CampoBusca(
                 controller: pesquisaController,
+                hintText: 'Buscar mesa ou cliente',
                 onChanged: onChanged,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Buscar por nome, cliente ou observação',
-                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                  prefixIcon: Icon(Icons.search_rounded, size: 20, color: corIcone),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          _BotaoAcao(
-            icone: Icons.keyboard_alt_outlined,
-            cor: const Color(0xFF6366F1),
-            tooltip: 'Digitar código',
-            onTap: onAbrirModalCodigo,
-          ),
-          const SizedBox(width: 8),
-          _BotaoAcao(
-            icone: Icons.qr_code_scanner_rounded,
-            cor: const Color(0xFF3B82F6),
-            tooltip: 'Escanear QR Code',
-            onTap: onAbrirScanner,
-          ),
-          if (onNfc != null) ...[
-            const SizedBox(width: 8),
             _BotaoAcao(
-              icone: Icons.nfc_rounded,
-              cor: const Color(0xFF10B981),
-              tooltip: 'Ler tag NFC',
-              onTap: onNfc!,
+              icone: Icons.keyboard_alt_outlined,
+              cor: const Color(0xFF6366F1),
+              tooltip: 'Digitar código',
+              onTap: onAbrirModalCodigo,
             ),
+            _BotaoAcao(
+              icone: Icons.qr_code_scanner_rounded,
+              cor: const Color(0xFF3B82F6),
+              tooltip: 'Escanear QR Code',
+              onTap: onAbrirScanner,
+            ),
+            if (onNfc != null) ...[
+              _BotaoAcao(
+                icone: Icons.nfc_rounded,
+                cor: const Color(0xFF10B981),
+                tooltip: 'Ler tag NFC',
+                onTap: onNfc!,
+              ),
+            ],
           ],
-        ],
-      ),
+        );
+      }),
     );
   }
 }
@@ -483,13 +480,25 @@ class _BarraAbas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TabBar(
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
       tabs: [
-        Tab(text: 'Todas · $total'),
-        Tab(text: 'Ocupadas · $ocupadas'),
-        Tab(text: 'Livres · $livres'),
+        _aba('Todas', total),
+        _aba('Ocupadas', ocupadas),
+        _aba('Livres', livres),
       ],
     );
   }
+
+  Tab _aba(String nome, int quantidade) => Tab(
+        height: 52,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(nome, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text('$quantidade', style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
 }
 
 class _ListaTab extends StatelessWidget {
@@ -534,7 +543,7 @@ class _CabecalhoSecao extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: cor,
-              letterSpacing: 0.2,
+              letterSpacing: 0,
             ),
           ),
           const SizedBox(width: 8),
