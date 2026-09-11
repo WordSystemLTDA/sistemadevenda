@@ -47,11 +47,11 @@ class PendenciasImpressao extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Impressao')),
+        appBar: AppBar(title: const Text('Impressões pendentes')),
         body: ListenableBuilder(
           listenable: fila,
           builder: (context, _) => fila.itens.isEmpty
-              ? const Center(child: Text('Nenhuma impressao pendente'))
+              ? const Center(child: Text('Nenhuma impressão pendente'))
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: fila.itens.length,

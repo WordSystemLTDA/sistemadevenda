@@ -8,6 +8,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
+import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
@@ -26,7 +27,8 @@ class PaginaInicio extends StatefulWidget {
 }
 
 class _PaginaInicioState extends State<PaginaInicio> {
-  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   ServicoConfig servicoConfig = Modular.get<ServicoConfig>();
   ModeloConfigBigchef? configBigchef;
   bool isLoading = true;
@@ -46,7 +48,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Não foi possível atualizar as configurações.'),
-        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarDados),
+        action:
+            SnackBarAction(label: 'Tentar novamente', onPressed: listarDados),
       ));
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -66,7 +69,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
   }
 
   void verificarAtualizacao(BuildContext context, ConfigModelo versoes) async {
-    if (await FuncoesGlobais.appPrecisaAtualizar(versoes.versaoAppAndroid, versoes.versaoAppIos)) {
+    if (await FuncoesGlobais.appPrecisaAtualizar(
+        versoes.versaoAppAndroid, versoes.versaoAppIos)) {
       if (!context.mounted) return;
       showDialog<void>(
         context: context,
@@ -77,7 +81,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
               'Atualização disponível',
               style: TextStyle(fontSize: 16),
             ),
-            content: const Text('Clique no botão ATUALIZAR para poder atualizar o aplicativo'),
+            content: const Text(
+                'Clique no botão ATUALIZAR para poder atualizar o aplicativo'),
             actions: <Widget>[
               TextButton(
                 style: TextButton.styleFrom(
@@ -87,11 +92,14 @@ class _PaginaInicioState extends State<PaginaInicio> {
                 onPressed: () async {
                   try {
                     if (Platform.isAndroid) {
-                      if (await canLaunchUrl(Uri.parse(versoes.linkAtualizacaoAndroid))) {
-                        await launchUrl(Uri.parse(versoes.linkAtualizacaoAndroid));
+                      if (await canLaunchUrl(
+                          Uri.parse(versoes.linkAtualizacaoAndroid))) {
+                        await launchUrl(
+                            Uri.parse(versoes.linkAtualizacaoAndroid));
                       }
                     } else if (Platform.isIOS) {
-                      if (await canLaunchUrl(Uri.parse(versoes.linkAtualizacaoIos))) {
+                      if (await canLaunchUrl(
+                          Uri.parse(versoes.linkAtualizacaoIos))) {
                         await launchUrl(Uri.parse(versoes.linkAtualizacaoIos));
                       }
                     }
@@ -99,7 +107,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).removeCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Não foi possível abrir o LINK, entre em contato com o suporte.'),
+                      content: Text(
+                          'Não foi possível abrir o LINK, entre em contato com o suporte.'),
                       backgroundColor: Colors.red,
                       showCloseIcon: true,
                     ));
@@ -123,7 +132,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Não foi possível conectar ao servidor ${conexao.servidor}:${conexao.porta}, mude a conexão e a porta e tente novamente'),
+            content: Text(
+                'Não foi possível conectar ao servidor ${conexao.servidor}:${conexao.porta}, mude a conexão e a porta e tente novamente'),
             backgroundColor: Colors.red,
             showCloseIcon: true,
             duration: const Duration(hours: 1),
@@ -160,7 +170,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
             replacement: const Center(child: CircularProgressIndicator()),
             child: Column(
               children: [
-                if (context.read<UsuarioProvedor>().usuario?.nomeEmpresa?.isNotEmpty ?? false)
+                if (context
+                        .read<UsuarioProvedor>()
+                        .usuario
+                        ?.nomeEmpresa
+                        ?.isNotEmpty ??
+                    false)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                     child: SizedBox(
@@ -168,7 +183,10 @@ class _PaginaInicioState extends State<PaginaInicio> {
                       child: Text(
                         context.read<UsuarioProvedor>().usuario!.nomeEmpresa!,
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w500),
                       ),
                     ),
                   ),
@@ -176,7 +194,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: GridView.count(
-                      crossAxisCount: umaColuna ? 1 : (size.width >= 700 ? 3 : 2),
+                      crossAxisCount:
+                          umaColuna ? 1 : (size.width >= 700 ? 3 : 2),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       mainAxisExtent: itemHeight,
@@ -187,7 +206,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
                           icone: const Icon(Icons.table_bar_outlined, size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
-                              settings: const RouteSettings(name: 'PaginaMesas'),
+                              settings:
+                                  const RouteSettings(name: 'PaginaMesas'),
                               builder: (context) {
                                 return const PaginaMesas();
                               },
@@ -197,10 +217,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         CardHome(
                           nome: 'Comandas',
                           cor: const Color(0xFF3478BF),
-                          icone: const Icon(Icons.fact_check_outlined, size: 40),
+                          icone:
+                              const Icon(Icons.fact_check_outlined, size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
-                              settings: const RouteSettings(name: 'PaginaComandas'),
+                              settings:
+                                  const RouteSettings(name: 'PaginaComandas'),
                               builder: (context) {
                                 return const PaginaComandas();
                               },
@@ -210,10 +232,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         CardHome(
                           nome: 'Balcão',
                           cor: const Color(0xFF7756A5),
-                          icone: const Icon(Icons.shopping_cart_outlined, size: 40),
+                          icone: const Icon(Icons.shopping_cart_outlined,
+                              size: 40),
                           onPressed: () {
                             Navigator.of(context).push(MaterialPageRoute(
-                              settings: const RouteSettings(name: 'PaginaBalcao'),
+                              settings:
+                                  const RouteSettings(name: 'PaginaBalcao'),
                               builder: (context) {
                                 return const PaginaBalcao();
                               },
@@ -223,10 +247,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
                         if (configBigchef?.autenticarcomtag == 'Sim')
                           CardHome(
                             nome: 'Comandos NFC',
-                            icone: const Icon(Icons.send_to_mobile_outlined, size: 40),
+                            icone: const Icon(Icons.send_to_mobile_outlined,
+                                size: 40),
                             onPressed: () {
                               Navigator.of(context).push(MaterialPageRoute(
-                                settings: const RouteSettings(name: 'PaginaComandosNfc'),
+                                settings: const RouteSettings(
+                                    name: 'PaginaComandosNfc'),
                                 builder: (context) {
                                   return const PaginaComandosNfc();
                                 },
@@ -237,6 +263,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
                     ),
                   ),
                 ),
+                const CartaoPendenciasImpressao(),
               ],
             ),
           ),

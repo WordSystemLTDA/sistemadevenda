@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/config/config_modelo.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';

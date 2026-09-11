@@ -2,6 +2,7 @@ import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/essencial/widgets/qrcode_scanner_com_overlay.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
@@ -229,6 +230,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
     return Scaffold(
       backgroundColor: corFundo,
+      floatingActionButton:
+          const BotaoFlutuantePendenciasImpressao(tag: 'mesas'),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       appBar: AppBar(
         title:
             const Text('Mesas', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -419,7 +423,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
             ),
           ),
         ],
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
     );
   }

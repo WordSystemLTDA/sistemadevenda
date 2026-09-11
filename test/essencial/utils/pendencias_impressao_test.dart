@@ -1,12 +1,25 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
+import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  String mensagem(String id) => jsonEncode({
+        'idRequisicao': id,
+        'tipoImpressao': '1',
+        'tipo': 'Comanda',
+        'comanda': 'Comanda: 3',
+        'numeroPedido': '10679',
+        'nomedopc': 'Cozinha',
+        'produtos': [
+          {'nome': 'Pizza de queijos especiais', 'quantidade': 1}
+        ],
+      });
+
   for (final escala in [1.0, 2.0]) {
     testWidgets(
         'pendencia exige confirmacao antes de reimprimir em escala $escala',
@@ -73,4 +86,66 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  group('atalhos de impressoes pendentes', () {
+    testWidgets('card mostra o resumo das pendencias', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final fila = FilaImpressao();
+      addTearDown(fila.dispose);
+      var abriu = false;
+      await fila.registrar([mensagem('atalho-card')]);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: CartaoPendenciasImpressao(
+              fila: fila,
+              onAbrir: (_) => abriu = true,
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final card = find.byKey(const ValueKey('card_pendencias_impressao'));
+      expect(card, findsOneWidget);
+      expect(find.text('Impressões Pendentes'), findsOneWidget);
+      expect(find.text('1 impressão aguardando'), findsOneWidget);
+      await tester.tap(card);
+      expect(abriu, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('botao flutuante fica no lado esquerdo', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final fila = FilaImpressao();
+      addTearDown(fila.dispose);
+      var abriu = false;
+      await fila.registrar([mensagem('atalho-fab')]);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          floatingActionButton: BotaoFlutuantePendenciasImpressao(
+            tag: 'teste',
+            fila: fila,
+            onAbrir: (_) => abriu = true,
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+          body: const SizedBox.expand(),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final botao =
+          find.byKey(const ValueKey('botao_pendencias_impressao_teste'));
+      expect(botao, findsOneWidget);
+      expect(tester.getRect(botao).left, lessThan(40));
+      await tester.tap(botao);
+      expect(abriu, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }
