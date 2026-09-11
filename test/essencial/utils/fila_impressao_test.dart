@@ -4,6 +4,24 @@ import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// Interface do plugin usada apenas para simular falhas reais de persistencia.
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+class ArmazenamentoFalhando extends InMemorySharedPreferencesStore {
+  ArmazenamentoFalhando(this.lancarExcecao) : super.empty();
+  final bool lancarExcecao;
+  bool falhar = false;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async {
+    if (falhar) {
+      if (lancarExcecao) throw StateError('Disco indisponivel');
+      return false;
+    }
+    return super.setValue(valueType, key, value);
+  }
+}
 
 String mensagem(String id) => jsonEncode({
       'idRequisicao': id,
@@ -17,6 +35,97 @@ String mensagem(String id) => jsonEncode({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final lancarExcecao in [false, true]) {
+    test('falha ao persistir nao simula fila gravada (excecao: $lancarExcecao)',
+        () async {
+      final armazenamento = ArmazenamentoFalhando(lancarExcecao);
+      SharedPreferencesStorePlatform.instance = armazenamento;
+      final fila = FilaImpressao();
+      addTearDown(fila.dispose);
+      armazenamento.falhar = true;
+      await expectLater(fila.registrar([mensagem('disco')]), throwsStateError);
+      expect(fila.itens, isEmpty);
+      armazenamento.falhar = false;
+      await fila.registrar([mensagem('disco')]);
+      armazenamento.falhar = true;
+      await expectLater(fila.confirmar('disco'), throwsStateError);
+      expect(fila.itens.single.id, 'disco');
+      final restaurada = FilaImpressao();
+      addTearDown(restaurada.dispose);
+      await restaurada.carregar();
+      expect(restaurada.itens.single.id, 'disco');
+    });
+  }
+
+  test(
+      'comprovante ja esta salvo durante registro do pedido e antes de limpar carrinho',
+      () async {
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    final finalizacao = FinalizacaoComPreparo();
+    var limpou = false;
+    await finalizacao.executar(
+      prepararImpressao: () => [mensagem('protegida')],
+      salvarImpressaoAntesDoPedido: (mensagens) =>
+          fila.registrar(mensagens, estado: EstadoImpressao.aguardandoPedido),
+      cancelarImpressaoPreparada: fila.cancelarPreparacao,
+      registrarPedido: () async {
+        final restaurada = FilaImpressao();
+        addTearDown(restaurada.dispose);
+        await restaurada.carregar();
+        expect(restaurada.itens.single.id, 'protegida');
+        expect(
+            restaurada.itens.single.estado, EstadoImpressao.aguardandoPedido);
+        return true;
+      },
+      enviarImpressao: (mensagens) => fila.registrar(mensagens),
+      limparCarrinho: () async {
+        expect(fila.itens.single.estado, EstadoImpressao.aguardandoEnvio);
+        limpou = true;
+      },
+    );
+    expect(limpou, isTrue);
+  });
+
+  test('falha antes de salvar comprovante impede registro do pedido', () async {
+    final finalizacao = FinalizacaoComPreparo();
+    await expectLater(
+        finalizacao.executar(
+          prepararImpressao: () => [mensagem('nao-salva')],
+          salvarImpressaoAntesDoPedido: (_) async =>
+              throw StateError('Disco cheio'),
+          registrarPedido: () async =>
+              fail('Nao pode registrar sem comprovante salvo'),
+          enviarImpressao: (_) async => fail('Nao pode enviar'),
+          limparCarrinho: () async => fail('Nao pode perder os produtos'),
+        ),
+        throwsStateError);
+  });
+
+  test(
+      'API sem resposta conserva comprovante bloqueado; pedido recusado cancela preparacao',
+      () async {
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    Future<bool> executar(bool timeout) => FinalizacaoComPreparo().executar(
+          prepararImpressao: () => [mensagem('api')],
+          salvarImpressaoAntesDoPedido: (mensagens) => fila.registrar(mensagens,
+              estado: EstadoImpressao.aguardandoPedido),
+          cancelarImpressaoPreparada: fila.cancelarPreparacao,
+          registrarPedido: () async {
+            if (timeout) throw StateError('API sem resposta');
+            return false;
+          },
+          enviarImpressao: (_) async => fail('Nao deve imprimir'),
+          limparCarrinho: () async => fail('Nao deve limpar'),
+        );
+    await expectLater(executar(true), throwsStateError);
+    expect(fila.itens.single.estado, EstadoImpressao.aguardandoPedido);
+    expect(await fila.iniciarEnvio('api'), isFalse);
+    expect(await executar(false), isFalse);
+    expect(fila.itens, isEmpty);
+  });
 
   test('grava destinos simultaneos sem perder mensagens ou ACKs', () async {
     final fila = FilaImpressao();

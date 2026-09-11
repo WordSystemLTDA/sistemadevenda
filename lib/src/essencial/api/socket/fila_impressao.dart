@@ -3,18 +3,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum EstadoImpressao { aguardandoEnvio, semConfirmacao, erro }
+enum EstadoImpressao { aguardandoPedido, aguardandoEnvio, semConfirmacao, erro }
 
 class ImpressaoPendente {
   final String mensagem;
   final EstadoImpressao estado;
   final String? erro;
   final String servidor;
+  final int tentativas;
+  final DateTime? ultimaTentativa;
 
   ImpressaoPendente(this.mensagem,
       {this.estado = EstadoImpressao.aguardandoEnvio,
       this.erro,
-      this.servidor = ''});
+      this.servidor = '',
+      this.tentativas = 0,
+      this.ultimaTentativa});
 
   late final Map<String, dynamic> dados =
       Map.unmodifiable(jsonDecode(mensagem) as Map<String, dynamic>);
@@ -25,12 +29,17 @@ class ImpressaoPendente {
         'estado': estado.name,
         'erro': erro,
         'servidor': servidor,
+        'tentativas': tentativas,
+        'ultimaTentativa': ultimaTentativa?.toIso8601String(),
       };
 
   factory ImpressaoPendente.fromMap(Map<String, dynamic> map) =>
       ImpressaoPendente(map['mensagem'] as String,
           estado: EstadoImpressao.values.byName(map['estado'] as String),
           servidor: map['servidor'] as String? ?? '',
+          tentativas: map['tentativas'] as int? ?? 0,
+          ultimaTentativa:
+              DateTime.tryParse(map['ultimaTentativa'] as String? ?? ''),
           erro: map['erro'] as String?);
 }
 
@@ -58,8 +67,13 @@ class FilaImpressao extends ChangeNotifier {
 
   Future<void> _salvar(List<ImpressaoPendente> itens) async {
     final prefs = await SharedPreferences.getInstance();
-    final salvo = await prefs.setString(
-        chave, jsonEncode(itens.map((e) => e.toMap()).toList()));
+    var salvo = false;
+    try {
+      salvo = await prefs.setString(
+          chave, jsonEncode(itens.map((e) => e.toMap()).toList()));
+    } finally {
+      if (!salvo) await prefs.reload();
+    }
     if (!salvo) {
       throw StateError('Nao foi possivel salvar a fila de impressao.');
     }
@@ -108,21 +122,43 @@ class FilaImpressao extends ChangeNotifier {
 
   Future<void> carregar() => _executar(_carregar);
 
-  Future<void> registrar(List<String> mensagens, {String servidor = ''}) =>
+  Future<void> registrar(List<String> mensagens,
+          {String servidor = '',
+          EstadoImpressao estado = EstadoImpressao.aguardandoEnvio}) =>
       _executar(() async {
         await _carregar();
         final proximos = [..._itens];
         for (final mensagem in mensagens) {
-          final item = ImpressaoPendente(mensagem, servidor: servidor);
+          final item =
+              ImpressaoPendente(mensagem, servidor: servidor, estado: estado);
           if (item.dados['idRequisicao'] == null || item.id.trim().isEmpty) {
             throw ArgumentError('Impressao sem identificador.');
           }
-          if (!proximos.any((e) => e.id == item.id)) proximos.add(item);
+          final index = proximos.indexWhere((e) => e.id == item.id);
+          if (index < 0) {
+            proximos.add(item);
+          } else if (proximos[index].estado ==
+                  EstadoImpressao.aguardandoPedido &&
+              estado == EstadoImpressao.aguardandoEnvio) {
+            proximos[index] = item;
+          }
         }
         await _salvar(proximos);
       });
 
-  Future<bool> iniciarEnvio(String id) => _executar(() async {
+  Future<void> cancelarPreparacao(List<String> mensagens) =>
+      _executar(() async {
+        await _carregar();
+        final ids = mensagens.map((e) => ImpressaoPendente(e).id).toSet();
+        await _salvar(_itens
+            .where((e) =>
+                !ids.contains(e.id) ||
+                e.estado != EstadoImpressao.aguardandoPedido)
+            .toList());
+      });
+
+  Future<bool> iniciarEnvio(String id, {DateTime? agora}) =>
+      _executar(() async {
         await _carregar();
         final index = _itens.indexWhere((e) => e.id == id);
         if (index < 0 ||
@@ -132,8 +168,14 @@ class FilaImpressao extends ChangeNotifier {
         final proximos = [..._itens];
         // Marca antes de escrever no socket: uma queda deixa o resultado incerto,
         // nao autoriza repetir um comprovante que pode ja ter chegado a cozinha.
-        proximos[index] = ImpressaoPendente(proximos[index].mensagem,
+        final dados = proximos[index].dados;
+        final mensagem = dados['tipoImpressao']?.toString() == '1'
+            ? jsonEncode({...dados, 'protocoloImpressao': 2})
+            : proximos[index].mensagem;
+        proximos[index] = ImpressaoPendente(mensagem,
             servidor: proximos[index].servidor,
+            tentativas: proximos[index].tentativas + 1,
+            ultimaTentativa: agora ?? DateTime.now(),
             estado: EstadoImpressao.semConfirmacao);
         await _salvar(proximos);
         return true;
@@ -159,7 +201,11 @@ class FilaImpressao extends ChangeNotifier {
         if (index < 0) return;
         final proximos = [..._itens];
         proximos[index] = ImpressaoPendente(proximos[index].mensagem,
-            estado: estado, erro: erro, servidor: proximos[index].servidor);
+            estado: estado,
+            erro: erro,
+            servidor: proximos[index].servidor,
+            tentativas: proximos[index].tentativas,
+            ultimaTentativa: proximos[index].ultimaTentativa);
         await _salvar(proximos);
       });
 

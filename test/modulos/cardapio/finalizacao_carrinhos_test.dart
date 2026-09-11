@@ -81,6 +81,7 @@ class ServidorFinalizacaoTeste extends Server {
           'tipo': 'RespostaImpressao',
           'tipoResposta': 'impressao',
           'statusResposta': 'sucesso',
+          'protocoloImpressao': 2,
           'idRequisicao': mensagem['idRequisicao'],
         });
       }

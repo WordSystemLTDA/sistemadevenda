@@ -28,6 +28,127 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test(
+      'ACK antigo de recebimento nao apaga comprovante sem impressao confirmada',
+      () async {
+    final server = Server();
+    addTearDown(server.dispose);
+    await server.enviarImpressoes([mensagem('nao-impresso')]);
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'sucesso',
+      'idRequisicao': 'nao-impresso',
+    });
+    expect(server.filaImpressao.itens.single.id, 'nao-impresso');
+    final restaurada = FilaImpressao();
+    addTearDown(restaurada.dispose);
+    await restaurada.carregar();
+    expect(restaurada.itens.single.id, 'nao-impresso');
+  });
+
+  testWidgets(
+      'consulta e recupera automaticamente envio perdido sem abrir pagina',
+      (tester) async {
+    var agora = DateTime(2026, 9, 11);
+    final server = Server(agora: () => agora)..connected = true;
+    addTearDown(server.dispose);
+    final enviados = <Map<String, dynamic>>[];
+    server.channel = CanalTeste(SaidaTeste((data) {
+      enviados.add(Map<String, dynamic>.from(
+          jsonDecode(data as String)['data']['customData']));
+    }));
+    await server.enviarImpressoes([mensagem('perdida')]);
+    agora = agora.add(const Duration(seconds: 16));
+    await tester.pump(const Duration(seconds: 16));
+    await tester.pump();
+    expect(enviados.map((e) => e['tipo']), ['Comanda', 'ConsultarImpressao']);
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'naoEncontrada',
+      'protocoloImpressao': 2,
+      'idRequisicao': 'perdida',
+    });
+    await tester.pump();
+    await tester.pump();
+    final impressos = enviados.where((e) => e['tipoImpressao'] == '1').toList();
+    expect(impressos, hasLength(2));
+    expect(impressos.first, impressos.last);
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'sucesso',
+      'protocoloImpressao': 2,
+      'idRequisicao': 'perdida',
+    });
+    expect(server.filaImpressao.itens, isEmpty);
+  });
+
+  test(
+      'retoma apos reinicio consultando comprovante ja enviado, sem segunda via',
+      () async {
+    final fila = FilaImpressao();
+    await fila.registrar([mensagem('ja-enviada')]);
+    await fila.iniciarEnvio('ja-enviada', agora: DateTime(2020));
+    fila.dispose();
+    final server = Server()..connected = true;
+    addTearDown(server.dispose);
+    final enviados = <Map<String, dynamic>>[];
+    server.channel = CanalTeste(SaidaTeste((data) {
+      enviados.add(Map<String, dynamic>.from(
+          jsonDecode(data as String)['data']['customData']));
+    }));
+    await server.processarImpressoesPendentes();
+    expect(enviados.single['tipo'], 'ConsultarImpressao');
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'sucesso',
+      'protocoloImpressao': 2,
+      'idRequisicao': 'ja-enviada',
+      'produtos': [
+        {'nome': 'Produto sem outros campos'}
+      ],
+    });
+    expect(server.filaImpressao.itens, isEmpty);
+    expect(enviados, hasLength(1));
+  });
+
+  test('impressao em processamento no servidor permanece na fila ate concluir',
+      () async {
+    final server = Server()..connected = true;
+    addTearDown(server.dispose);
+    final enviados = <dynamic>[];
+    server.channel = CanalTeste(SaidaTeste(enviados.add));
+    await server.enviarImpressoes([mensagem('demorada')]);
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'processando',
+      'protocoloImpressao': 2,
+      'idRequisicao': 'demorada',
+    });
+    await server.processarImpressoesPendentes();
+    expect(enviados, hasLength(1));
+    expect(server.filaImpressao.itens.single.id, 'demorada');
+  });
+
+  test('impressao preparada nao e enviada antes do registro do pedido',
+      () async {
+    final server = Server()..connected = true;
+    addTearDown(server.dispose);
+    final enviados = <dynamic>[];
+    server.channel = CanalTeste(SaidaTeste(enviados.add));
+    await server.prepararImpressoes([mensagem('aguardando-api')]);
+    await server.processarImpressoesPendentes();
+    expect(enviados, isEmpty);
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.aguardandoPedido);
+    await server.enviarImpressoes([mensagem('aguardando-api')]);
+    expect(enviados, hasLength(1));
+  });
+
   test('grava lote antes do socket e ACK imediato nao fica preso na fila',
       () async {
     final prefs = await SharedPreferences.getInstance();
@@ -50,6 +171,7 @@ void main() {
         'tipo': 'RespostaImpressao',
         'tipoResposta': 'impressao',
         'statusResposta': 'sucesso',
+        'protocoloImpressao': 2,
         'idRequisicao': id
       }));
     }));

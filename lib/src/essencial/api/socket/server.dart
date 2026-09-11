@@ -22,16 +22,28 @@ class Server extends ChangeNotifier {
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
       _avisoImpressaoVisivel;
   bool _descartado = false;
+  Timer? _retentativaImpressao;
+  final Map<String, DateTime> _consultasImpressao = {};
+  final DateTime Function() _agora;
 
-  Server({FilaImpressao? filaImpressao})
-      : filaImpressao = filaImpressao ?? FilaImpressao() {
+  Server({FilaImpressao? filaImpressao, DateTime Function()? agora})
+      : _agora = agora ?? DateTime.now,
+        filaImpressao = filaImpressao ?? FilaImpressao() {
     this.filaImpressao.addListener(_atualizarFilaImpressao);
   }
 
   void _atualizarFilaImpressao() {
     if (filaImpressao.itens.isEmpty) {
+      _retentativaImpressao?.cancel();
+      _retentativaImpressao = null;
+      _consultasImpressao.clear();
       _avisoImpressaoVisivel?.close();
       _avisoImpressaoVisivel = null;
+    } else if (!_descartado && !_desconexaoIntencional) {
+      _retentativaImpressao ??= Timer.periodic(
+        const Duration(seconds: 5),
+        (_) => unawaited(processarImpressoesPendentes()),
+      );
     }
     if (!_descartado) notifyListeners();
   }
@@ -55,8 +67,8 @@ class Server extends ChangeNotifier {
     messenger?.hideCurrentSnackBar();
     _avisoImpressaoVisivel = messenger?.showSnackBar(SnackBar(
       duration: const Duration(days: 1),
-      content:
-          const Text('Impressao pendente. Confira o envio para a cozinha.'),
+      content: const Text(
+          'Impressao pendente. O envio sera retomado automaticamente.'),
       action: SnackBarAction(
           label: 'Conferir',
           onPressed: () => abrirPendenciasImpressao(context)),
@@ -66,25 +78,78 @@ class Server extends ChangeNotifier {
   Future<void> enviarImpressoes(List<String> mensagens) async {
     await filaImpressao.registrar(mensagens,
         servidor: hostname.isEmpty ? '' : '$hostname:$port');
-    await _reenviarMensagensPendentes();
+    await processarImpressoesPendentes();
     if (!connected) _avisarImpressaoPendente();
+  }
+
+  Future<void> prepararImpressoes(List<String> mensagens) =>
+      filaImpressao.registrar(mensagens,
+          servidor: hostname.isEmpty ? '' : '$hostname:$port',
+          estado: EstadoImpressao.aguardandoPedido);
+
+  Future<void> processarImpressoesPendentes() async {
+    if (_descartado || _desconexaoIntencional) return;
+    try {
+      await filaImpressao.carregar();
+      if (!connected) {
+        if (_conexaoEmAndamento == null && _temporizadorReconexao == null) {
+          if (hostname.isNotEmpty && port > 0) {
+            _agendarReconexao();
+          } else {
+            final conexao = await ConfigSharedPreferences().getConexao();
+            if (conexao != null && !_descartado && !_desconexaoIntencional) {
+              await connect(conexao.servidor, conexao.porta);
+            }
+          }
+        }
+        return;
+      }
+      await _reenviarMensagensPendentes();
+    } catch (erro, stack) {
+      log('Falha na recuperacao automatica da impressao',
+          error: erro, stackTrace: stack);
+      _avisarImpressaoPendente();
+    }
+  }
+
+  bool _pertenceAConexao(ImpressaoPendente item) {
+    if (item.servidor.isNotEmpty && item.servidor != '$hostname:$port') {
+      return false;
+    }
+    final empresa = item.dados['idEmpresa']?.toString() ?? '';
+    return empresa.isEmpty || empresa == usuarioProvedor.usuario?.empresa;
   }
 
   Future<void> _enviarImpressoesAguardando() async {
     await filaImpressao.carregar();
     for (final item in filaImpressao.itens) {
       if (!connected || channel == null) break;
-      if (item.servidor.isNotEmpty && item.servidor != '$hostname:$port') {
+      if (!_pertenceAConexao(item)) continue;
+      if (item.estado == EstadoImpressao.aguardandoPedido) continue;
+      if (item.estado != EstadoImpressao.aguardandoEnvio) {
+        if (item.dados['tipoImpressao']?.toString() != '1') continue;
+        final ultima = _consultasImpressao[item.id] ?? item.ultimaTentativa;
+        if (ultima != null &&
+            _agora().difference(ultima) < const Duration(seconds: 15)) {
+          continue;
+        }
+        _consultasImpressao[item.id] = _agora();
+        // Consulta o mesmo ID antes de repetir: o ACK pode ter se perdido.
+        _enviarMensagemNoCanal(jsonEncode({
+          'tipo': 'ConsultarImpressao',
+          'protocoloImpressao': 2,
+          'idRequisicao': item.id,
+          'idEmpresa': item.dados['idEmpresa'],
+          'nomedopc': item.dados['nomedopc'],
+        }));
         continue;
       }
-      final empresa = item.dados['idEmpresa']?.toString() ?? '';
-      if (empresa.isNotEmpty && empresa != usuarioProvedor.usuario?.empresa) {
-        continue;
-      }
-      if (!await filaImpressao.iniciarEnvio(item.id)) continue;
-      if (!_enviarMensagemNoCanal(item.mensagem)) {
+      if (!await filaImpressao.iniciarEnvio(item.id, agora: _agora())) continue;
+      if (!_enviarMensagemNoCanal(
+          jsonEncode({...item.dados, 'protocoloImpressao': 2}))) {
         await filaImpressao.registrarErro(item.id,
-            'Conexao interrompida durante o envio. Confira com a cozinha.');
+            'Conexao interrompida. Aguardando recuperacao automatica.');
+        _processarQuedaConexao();
         break;
       }
     }
@@ -111,13 +176,13 @@ class Server extends ChangeNotifier {
   bool _reenviandoMensagensPendentes = false;
   bool _novoEnvioSolicitado = false;
 
-  static const int _maximoTentativasReconexao = 12;
   static const Duration _timeoutConexao = Duration(seconds: 8);
   static const int _maximoMensagensPendentes = 200;
   static const String _chaveMensagensPendentes =
       'fila_mensagens_socket_pendentes';
 
   Future<bool> connect(String ip, String porta) async {
+    if (_descartado) return false;
     unawaited(filaImpressao.carregar().then((_) {
       if (!_descartado && filaImpressao.itens.isNotEmpty) {
         _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
@@ -152,6 +217,7 @@ class Server extends ChangeNotifier {
       }
 
       _desconexaoIntencional = false;
+      _atualizarFilaImpressao();
       hostname = ip;
       port = portaConvertida;
       _temporizadorReconexao?.cancel();
@@ -171,6 +237,7 @@ class Server extends ChangeNotifier {
       hostname = ip;
       port = portaConvertida;
       connected = true;
+      _consultasImpressao.clear();
       _tentativaReconexao = 0;
       notifyListeners();
 
@@ -221,6 +288,8 @@ class Server extends ChangeNotifier {
     _tentativaReconexao = 0;
     _temporizadorReconexao?.cancel();
     _temporizadorReconexao = null;
+    _retentativaImpressao?.cancel();
+    _retentativaImpressao = null;
     await _encerrarCanalAtual();
   }
 
@@ -253,7 +322,7 @@ class Server extends ChangeNotifier {
       notifyListeners();
     }
 
-    if (_desconexaoIntencional) {
+    if (_desconexaoIntencional || _descartado) {
       log('Reconexao ignorada: desconexao intencional.');
       return;
     }
@@ -262,7 +331,7 @@ class Server extends ChangeNotifier {
   }
 
   void _agendarReconexao() {
-    if (_desconexaoIntencional) {
+    if (_desconexaoIntencional || _descartado) {
       return;
     }
 
@@ -270,23 +339,22 @@ class Server extends ChangeNotifier {
       return;
     }
 
-    if (_tentativaReconexao >= _maximoTentativasReconexao) {
-      _mostrarAvisoFalhaReconexao();
-      return;
-    }
-
     final Duration atraso = _calcularAtrasoReconexao();
-    _tentativaReconexao++;
+    _tentativaReconexao = (_tentativaReconexao + 1).clamp(0, 4);
 
     log('Tentando reconectar em ${atraso.inSeconds} segundos...');
     _temporizadorReconexao = Timer(atraso, () async {
       _temporizadorReconexao = null;
 
-      if (_desconexaoIntencional) {
+      if (_desconexaoIntencional || _descartado) {
         return;
       }
 
       final ConfigSharedPreferences config = ConfigSharedPreferences();
+      if (hostname.isNotEmpty && port > 0) {
+        await connect(hostname, '$port');
+        return;
+      }
       final conexao = await config.getConexao();
 
       if (conexao == null ||
@@ -648,23 +716,49 @@ class Server extends ChangeNotifier {
         return;
       }
 
-      final ModeloRetornoSocket dados = ModeloRetornoSocket.fromMap(mensagem);
-
-      if (dados.tipo == 'RespostaImpressao' &&
-          dados.tipoResposta == 'impressao') {
-        final String? idRequisicao = (dados.idRequisicao ??
+      // ACKs sao lidos sem desserializar produtos: uma resposta nao precisa de
+      // todos os campos obrigatorios de um produto para confirmar a impressao.
+      if (mensagem['tipo'] == 'RespostaImpressao' &&
+          mensagem['tipoResposta'] == 'impressao') {
+        final String? idRequisicao = (mensagem['idRequisicao']?.toString() ??
                 _extrairIdRequisicaoDaReferenciaImpressao(
-                    dados.referenciaImpressaoOrigem))
+                    mensagem['referenciaImpressaoOrigem']?.toString()))
             ?.trim();
 
         if (idRequisicao != null && idRequisicao.isNotEmpty) {
-          if (dados.statusResposta == 'sucesso') {
+          await filaImpressao.carregar();
+          final item = filaImpressao.itens
+              .where((e) => e.id == idRequisicao)
+              .firstOrNull;
+          if (item == null ||
+              !_pertenceAConexao(item) ||
+              item.estado == EstadoImpressao.aguardandoPedido) {
+            return;
+          }
+          final protocoloConfirmado = mensagem['protocoloImpressao'] == 2 ||
+              item.dados['tipoImpressao']?.toString() != '1';
+          if (mensagem['statusResposta'] == 'sucesso' && protocoloConfirmado) {
             await filaImpressao.confirmar(idRequisicao);
-          } else if (dados.statusResposta == 'erro') {
-            await filaImpressao.registrarErro(idRequisicao,
-                dados.mensagemErro ?? 'Falha no servidor de impressao.');
+            _consultasImpressao.remove(idRequisicao);
+          } else if (mensagem['statusResposta'] == 'naoEncontrada' &&
+              protocoloConfirmado) {
+            if (item.dados['protocoloImpressao'] == 2) {
+              await filaImpressao.autorizarReenvio(idRequisicao);
+              unawaited(processarImpressoesPendentes());
+            } else {
+              await filaImpressao.registrarErro(idRequisicao,
+                  'Impressao anterior a atualizacao. Confira com a cozinha antes de reenviar.');
+            }
+          } else if (mensagem['statusResposta'] == 'erro') {
+            await filaImpressao.registrarErro(
+                idRequisicao,
+                mensagem['mensagemErro']?.toString() ??
+                    'Falha no servidor de impressao.');
             _avisarImpressaoPendente();
-            log('Servidor respondeu erro para impressao idRequisicao=$idRequisicao: ${dados.mensagemErro ?? 'Sem detalhes'}');
+          } else if (mensagem['statusResposta'] == 'sucesso' &&
+              !protocoloConfirmado) {
+            await filaImpressao.registrarErro(idRequisicao,
+                'Servidor sem confirmacao de execucao. Atualize o servidor de impressao.');
           }
         }
 
@@ -675,6 +769,8 @@ class Server extends ChangeNotifier {
         if (!_descartado) notifyListeners();
         return;
       }
+
+      final ModeloRetornoSocket dados = ModeloRetornoSocket.fromMap(mensagem);
 
       if (dados.tipo == 'PC') {
         nomedopc = dados.nomedopc ?? '';
@@ -693,6 +789,7 @@ class Server extends ChangeNotifier {
   void dispose() {
     _descartado = true;
     _temporizadorReconexao?.cancel();
+    _retentativaImpressao?.cancel();
     _avisoImpressao?.cancel();
     filaImpressao.removeListener(_atualizarFilaImpressao);
     filaImpressao.dispose();

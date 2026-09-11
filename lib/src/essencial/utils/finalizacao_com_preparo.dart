@@ -10,6 +10,8 @@ class FinalizacaoComPreparo {
     required Future<bool> Function() registrarPedido,
     required Future<void> Function(List<String>) enviarImpressao,
     required Future<void> Function() limparCarrinho,
+    Future<void> Function(List<String>)? salvarImpressaoAntesDoPedido,
+    Future<void> Function(List<String>)? cancelarImpressaoPreparada,
   }) async {
     if (concluido) return true;
     if (_executando) return false;
@@ -17,8 +19,14 @@ class FinalizacaoComPreparo {
     try {
       if (!pedidoRegistrado) {
         _mensagens = List.unmodifiable(prepararImpressao());
+        // O comprovante sobrevive ao fechamento do app durante a chamada HTTP.
+        // A fila so o libera para envio depois de confirmar o registro do pedido.
+        await salvarImpressaoAntesDoPedido?.call(_mensagens!);
         pedidoRegistrado = await registrarPedido();
-        if (!pedidoRegistrado) return false;
+        if (!pedidoRegistrado) {
+          await cancelarImpressaoPreparada?.call(_mensagens!);
+          return false;
+        }
       }
       if (!_impressaoRegistrada) {
         await enviarImpressao(_mensagens!);

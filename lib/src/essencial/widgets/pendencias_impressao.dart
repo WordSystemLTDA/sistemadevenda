@@ -75,10 +75,12 @@ class PendenciasImpressao extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                             switch (item.estado) {
+                              EstadoImpressao.aguardandoPedido =>
+                                'Registro do pedido sem confirmacao. Confira o atendimento antes de imprimir.',
                               EstadoImpressao.aguardandoEnvio =>
-                                'Aguardando conexao para enviar',
+                                'Aguardando envio automatico',
                               EstadoImpressao.semConfirmacao =>
-                                'Envio sem confirmacao. Confira com a cozinha.',
+                                'Aguardando confirmacao. Recuperacao automatica em andamento.',
                               EstadoImpressao.erro =>
                                 item.erro ?? 'Falha informada pelo servidor',
                             },
@@ -88,11 +90,13 @@ class PendenciasImpressao extends StatelessWidget {
                           alignment: MainAxisAlignment.end,
                           overflowAlignment: OverflowBarAlignment.end,
                           children: [
-                            TextButton.icon(
-                              onPressed: () => _confirmar(context, item, false),
-                              icon: const Icon(Icons.check),
-                              label: const Text('Recebido na cozinha'),
-                            ),
+                            if (dados['protocoloImpressao'] != 2)
+                              TextButton.icon(
+                                onPressed: () =>
+                                    _confirmar(context, item, false),
+                                icon: const Icon(Icons.check),
+                                label: const Text('Recebido na cozinha'),
+                              ),
                             if (item.estado != EstadoImpressao.aguardandoEnvio)
                               TextButton.icon(
                                 onPressed: () =>

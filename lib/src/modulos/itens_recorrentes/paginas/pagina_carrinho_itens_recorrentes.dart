@@ -575,6 +575,8 @@ class _PaginaCarrinhoItensRecorrentesState
           return resposta.$1;
         },
         enviarImpressao: server.enviarImpressoes,
+        salvarImpressaoAntesDoPedido: server.prepararImpressoes,
+        cancelarImpressaoPreparada: server.filaImpressao.cancelarPreparacao,
         limparCarrinho: () async {
           if (!await provedorItensRecorrentes
               .removerComandasPedidos(widget.idComandaPedido)) {

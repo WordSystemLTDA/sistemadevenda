@@ -40,7 +40,7 @@ void main() {
           ],
         })
       ]);
-      await fila.iniciarEnvio('pizza');
+      await fila.registrarErro('pizza', 'Impressao anterior sem confirmacao');
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -88,6 +88,21 @@ void main() {
   }
 
   group('atalhos de impressoes pendentes', () {
+    testWidgets('envio automatico nao pode ser apagado apenas no celular',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final fila = FilaImpressao();
+      addTearDown(fila.dispose);
+      await fila.registrar([mensagem('automatica')]);
+      await fila.iniciarEnvio('automatica');
+      await tester.pumpWidget(MaterialApp(
+        home: PendenciasImpressao(fila: fila, reenviar: (_) async {}),
+      ));
+      expect(find.text('Recebido na cozinha'), findsNothing);
+      expect(find.text('Reenviar'), findsOneWidget);
+      expect(fila.itens.single.id, 'automatica');
+    });
+
     testWidgets('card mostra o resumo das pendencias', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final fila = FilaImpressao();

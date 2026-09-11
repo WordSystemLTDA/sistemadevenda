@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -16,7 +17,8 @@ class Impressao {
 
   static String _gerarIdentificadorRequisicao() {
     _sequencialRequisicao++;
-    return '${DateTime.now().microsecondsSinceEpoch}_$_sequencialRequisicao';
+    final aleatorio = Random.secure().nextInt(0x7fffffff).toRadixString(16);
+    return '${DateTime.now().microsecondsSinceEpoch}_${_sequencialRequisicao}_$aleatorio';
   }
 
   static String _normalizarNomeComputadorDestino(

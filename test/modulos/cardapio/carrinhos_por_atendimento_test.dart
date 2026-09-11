@@ -369,9 +369,10 @@ void main() {
     await adicionar();
     final cardapio = ServicoCardapio(api, usuario);
     api.falhar = true;
-    final falha = await cardapio.inserirProdutosComanda(
-        carrinho.itensCarrinho.listaComandosPedidos, '0', '104', '4', '0');
-    expect(falha.$1, isFalse);
+    await expectLater(
+        cardapio.inserirProdutosComanda(
+            carrinho.itensCarrinho.listaComandosPedidos, '0', '104', '4', '0'),
+        throwsA(isA<DioException>()));
     expect(carrinho.itensCarrinho.quantidadeTotal, 1);
     api.falhar = false;
     api.resposta = {'sucesso': true, 'mensagem': 'OK'};

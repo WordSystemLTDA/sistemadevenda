@@ -267,6 +267,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
           return resposta.$1;
         },
         enviarImpressao: server.enviarImpressoes,
+        salvarImpressaoAntesDoPedido: server.prepararImpressoes,
+        cancelarImpressaoPreparada: server.filaImpressao.cancelarPreparacao,
         limparCarrinho: () async {
           if (!await carrinhoProvedor.removerComandasPedidos(
               contexto: contextoCarrinho)) {

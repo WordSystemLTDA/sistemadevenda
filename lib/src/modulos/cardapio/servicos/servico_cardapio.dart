@@ -129,7 +129,7 @@ class ServicoCardapio {
         }
       }
 
-      return (false, 'Erro');
+      rethrow;
     }
   }
 
@@ -178,7 +178,7 @@ class ServicoCardapio {
         }
       }
 
-      return (false, 'Erro');
+      rethrow;
     }
   }
 
