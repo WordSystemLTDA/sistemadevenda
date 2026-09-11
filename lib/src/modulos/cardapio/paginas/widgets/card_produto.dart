@@ -38,6 +38,8 @@ class _CardProdutoState extends State<CardProduto> {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  late final _alteracoes =
+      Listenable.merge([provedorCardapio, carrinhoProvedor]);
   String? _baseHostImagens;
 
   @override
@@ -66,21 +68,33 @@ class _CardProdutoState extends State<CardProduto> {
     //   texto = 'A partir ';
     //   texto += (double.parse(itemProduto.valorVenda) * (widget.finalizar ? (itemProduto.quantidade ?? 1) : 1)).obterReal(2);
     // } else {
-    if (widget.item.habilTipo == 'Pacote' && (widget.item.opcoesPacotesListaFinal != null && widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
-      var dadosPacotes = widget.item.opcoesPacotesListaFinal!.where((element) => element.id == 4).firstOrNull;
+    if (widget.item.habilTipo == 'Pacote' &&
+        (widget.item.opcoesPacotesListaFinal != null &&
+            widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
+      var dadosPacotes = widget.item.opcoesPacotesListaFinal!
+          .where((element) => element.id == 4)
+          .firstOrNull;
 
       // se tiver tamanhos irá aparecer assim
-      if (dadosPacotes != null && (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
-        if ((dadosPacotes.dados!.first.valor == dadosPacotes.dados!.last.valor)) {
-          texto += double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
+      if (dadosPacotes != null &&
+          (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
+        if ((dadosPacotes.dados!.first.valor ==
+            dadosPacotes.dados!.last.valor)) {
+          texto +=
+              double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
         } else {
-          texto += "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
+          texto +=
+              "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
         }
       } else {
-        texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+        texto = (double.parse(widget.item.valorVenda) *
+                (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
+            .obterReal(2);
       }
     } else {
-      texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+      texto = (double.parse(widget.item.valorVenda) *
+              (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
+          .obterReal(2);
     }
     // }
 
@@ -90,7 +104,8 @@ class _CardProdutoState extends State<CardProduto> {
 
     return Text(
       texto,
-      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+      style: const TextStyle(
+          color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
     );
   }
 
@@ -99,27 +114,42 @@ class _CardProdutoState extends State<CardProduto> {
     var item = widget.item;
 
     return ListenableBuilder(
-      listenable: provedorCardapio,
+      listenable: _alteracoes,
       builder: (context, snapshot) {
-        final categoriaProduto = provedorCardapio.categorias.where((categoria) => categoria.id == item.categoria).firstOrNull ??
+        final categoriaProduto = provedorCardapio.categorias
+                .where((categoria) => categoria.id == item.categoria)
+                .firstOrNull ??
             (widget.categoria?.id == item.categoria ? widget.categoria : null);
-        final temTamanhosPizza = (item.tamanhosPizza?.isNotEmpty ?? false) || (categoriaProduto?.tamanhosPizza?.isNotEmpty ?? false);
+        final temTamanhosPizza = (item.tamanhosPizza?.isNotEmpty ?? false) ||
+            (categoriaProduto?.tamanhosPizza?.isNotEmpty ?? false);
         final tamanhoSelecionado = provedorCardapio.tamanhoPizzaDoProduto(item);
-        final selecionado = provedorCardapio.saboresPizzaSelecionados.any((sabor) => sabor.id == item.id);
+        final selecionado = provedorCardapio.saboresPizzaSelecionados
+            .any((sabor) => sabor.id == item.id);
+        final quantidadeNoCarrinho = temTamanhosPizza
+            ? 0.0
+            : carrinhoProvedor.quantidadeDoProduto(item.id);
+        final marcado = selecionado || quantidadeNoCarrinho > 0;
+        final quantidadeTexto = quantidadeNoCarrinho
+            .toStringAsFixed(quantidadeNoCarrinho % 1 == 0 ? 0 : 2)
+            .replaceAll('.', ',');
         final cs = Theme.of(context).colorScheme;
 
         return LayoutBuilder(builder: (context, constraints) {
+          final larguraImagem = constraints.maxWidth < 360 ? 64.0 : 88.0;
           return Card(
             elevation: 0,
-            color: selecionado ? cs.secondaryContainer.withValues(alpha: 0.3) : cs.surface,
+            color: marcado
+                ? cs.secondaryContainer.withValues(alpha: 0.3)
+                : cs.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: selecionado ? cs.primary : cs.outlineVariant),
+              side: BorderSide(color: marcado ? cs.primary : cs.outlineVariant),
             ),
             clipBehavior: Clip.hardEdge,
             child: InkWell(
               key: widget.key,
               onTap: () async {
+                FocusManager.instance.primaryFocus?.unfocus();
                 final idComanda = provedorCardapio.idComanda;
                 final idMesa = provedorCardapio.idMesa;
 
@@ -131,10 +161,12 @@ class _CardProdutoState extends State<CardProduto> {
                   return;
                 }
 
-                if (temTamanhosPizza && (provedorCardapio.tamanhosPizza != null || (widget.categoria?.tamanhosPizza?.isNotEmpty ?? false))) {
+                if (temTamanhosPizza) {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(provedorCardapio.tamanhosPizza == null ? 'Selecione um Tamanho' : 'Selecione um tamanho disponível para este sabor.'),
+                    content: Text(provedorCardapio.tamanhosPizza == null
+                        ? 'Selecione um Tamanho'
+                        : 'Selecione um tamanho disponível para este sabor.'),
                     backgroundColor: Colors.red,
                   ));
                   return;
@@ -188,7 +220,8 @@ class _CardProdutoState extends State<CardProduto> {
                     id: item.id,
                     nome: item.nome,
                     codigo: item.codigo,
-                    imprimirCodigoProdutoPreparo: item.imprimirCodigoProdutoPreparo,
+                    imprimirCodigoProdutoPreparo:
+                        item.imprimirCodigoProdutoPreparo,
                     estoque: item.estoque,
                     tamanho: item.tamanho,
                     foto: item.foto,
@@ -239,17 +272,20 @@ class _CardProdutoState extends State<CardProduto> {
                   }
                 }).whenComplete(() {});
               },
-              onLongPress: () {
-                if (widget.estaPesquisando) {
-                  widget.searchController!.closeView(item.nome);
-                }
+              onLongPress: temTamanhosPizza
+                  ? null
+                  : () {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      if (widget.estaPesquisando) {
+                        widget.searchController!.closeView(item.nome);
+                      }
 
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) {
-                    return PaginaProduto(produto: item);
-                  },
-                ));
-              },
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) {
+                          return PaginaProduto(produto: item);
+                        },
+                      ));
+                    },
               borderRadius: BorderRadius.circular(5),
               child: Stack(
                 children: [
@@ -269,17 +305,24 @@ class _CardProdutoState extends State<CardProduto> {
                                   color: Colors.grey.withValues(alpha: 0.5),
                                   spreadRadius: 0,
                                   blurRadius: 7,
-                                  offset: const Offset(0, 3), // changes position of shadow
+                                  offset: const Offset(
+                                      0, 3), // changes position of shadow
                                 ),
                               ],
                             ),
-                            child: const Text('Promoção', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
+                            child: const Text('Promoção',
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.white),
+                                textAlign: TextAlign.center),
                           ),
                         ),
                       ),
                     ),
                   ],
-                  if (item.opcoesPacotes != null && item.opcoesPacotes!.where((element) => element.id == 1).isNotEmpty) ...[
+                  if (item.opcoesPacotes != null &&
+                      item.opcoesPacotes!
+                          .where((element) => element.id == 1)
+                          .isNotEmpty) ...[
                     Positioned(
                       top: 17,
                       left: -37,
@@ -295,11 +338,15 @@ class _CardProdutoState extends State<CardProduto> {
                                   color: Colors.grey.withValues(alpha: .5),
                                   spreadRadius: 0,
                                   blurRadius: 7,
-                                  offset: const Offset(0, 3), // changes position of shadow
+                                  offset: const Offset(
+                                      0, 3), // changes position of shadow
                                 ),
                               ],
                             ),
-                            child: const Text('Cortesia', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
+                            child: const Text('Cortesia',
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.white),
+                                textAlign: TextAlign.center),
                           ),
                         ),
                       ),
@@ -309,18 +356,28 @@ class _CardProdutoState extends State<CardProduto> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       item.foto.isEmpty || _baseHostImagens == null
-                          ? Image.asset(Assets.produtoAsset, width: 88, height: 88)
+                          ? Image.asset(Assets.produtoAsset,
+                              width: larguraImagem, height: larguraImagem)
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8.0),
                               child: CachedNetworkImage(
-                                width: 88,
-                                height: 88,
-                                memCacheWidth: (88 * MediaQuery.devicePixelRatioOf(context)).round(),
-                                memCacheHeight: (88 * MediaQuery.devicePixelRatioOf(context)).round(),
+                                width: larguraImagem,
+                                height: larguraImagem,
+                                memCacheWidth: (larguraImagem *
+                                        MediaQuery.devicePixelRatioOf(context))
+                                    .round(),
+                                memCacheHeight: (larguraImagem *
+                                        MediaQuery.devicePixelRatioOf(context))
+                                    .round(),
                                 fit: BoxFit.contain,
-                                fadeOutDuration: const Duration(milliseconds: 100),
-                                placeholder: (context, url) => Image.asset(Assets.produtoAsset, fit: BoxFit.contain),
-                                errorWidget: (context, url, error) => Image.asset(Assets.produtoAsset, fit: BoxFit.contain),
+                                fadeOutDuration:
+                                    const Duration(milliseconds: 100),
+                                placeholder: (context, url) => Image.asset(
+                                    Assets.produtoAsset,
+                                    fit: BoxFit.contain),
+                                errorWidget: (context, url, error) =>
+                                    Image.asset(Assets.produtoAsset,
+                                        fit: BoxFit.contain),
                                 imageUrl: UrlImagem.montarUrlImagem(
                                   foto: item.foto,
                                   baseHost: _baseHostImagens!,
@@ -329,7 +386,8 @@ class _CardProdutoState extends State<CardProduto> {
                             ),
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,23 +397,70 @@ class _CardProdutoState extends State<CardProduto> {
                                   Expanded(
                                     child: Text(
                                       "${item.nome} ${item.tamanho}".trim(),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                      style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500),
                                     ),
                                   ),
                                   if (selecionado) ...[
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.check_circle, color: Colors.green, size: 24, semanticLabel: 'Selecionado'),
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.green,
+                                        size: 24,
+                                        semanticLabel: 'Selecionado'),
+                                  ] else if (quantidadeNoCarrinho > 0) ...[
+                                    const SizedBox(width: 6),
+                                    Tooltip(
+                                      message: '$quantidadeTexto no carrinho',
+                                      child: Semantics(
+                                        label: '$quantidadeTexto no carrinho',
+                                        child: Container(
+                                          key: ValueKey(
+                                              'quantidade_carrinho_${item.id}'),
+                                          width: 32,
+                                          height: 28,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 4),
+                                          decoration: BoxDecoration(
+                                            color: cs.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                          child: AnimatedSwitcher(
+                                            duration:
+                                                MediaQuery.disableAnimationsOf(
+                                                        context)
+                                                    ? Duration.zero
+                                                    : const Duration(
+                                                        milliseconds: 220),
+                                            transitionBuilder: (child,
+                                                    animation) =>
+                                                ScaleTransition(
+                                                    scale: animation,
+                                                    child: child),
+                                            child: FittedBox(
+                                              key: ValueKey(
+                                                  quantidadeNoCarrinho),
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(quantidadeTexto,
+                                                  style: TextStyle(
+                                                      color: cs.onPrimary,
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 5),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 5),
                                 child: Text(
                                   'Código: ${item.codigo}',
-                                  overflow: TextOverflow.fade,
-                                  maxLines: 2,
                                   style: TextStyle(
                                     color: cs.onSurfaceVariant,
                                     fontSize: 12,
@@ -369,15 +474,22 @@ class _CardProdutoState extends State<CardProduto> {
                                     alignment: Alignment.bottomRight,
                                     child: Text(
                                       "A partir de ${double.parse(item.tamanhosPizza?.firstOrNull?.valor ?? item.valorVenda).obterReal()}",
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
                                     ),
                                   ),
                                 ] else ...[
                                   Align(
                                     alignment: Alignment.bottomRight,
                                     child: Text(
-                                      double.parse(tamanhoSelecionado.valor).obterReal(),
-                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+                                      double.parse(tamanhoSelecionado.valor)
+                                          .obterReal(),
+                                      style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
                                     ),
                                   ),
                                 ],
@@ -385,41 +497,75 @@ class _CardProdutoState extends State<CardProduto> {
                                 Align(
                                   alignment: Alignment.bottomRight,
                                   child: Text(
-                                    (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
-                                            _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null &&
-                                            item.opcoesPacotes?.where((element) => element.id == 4).firstOrNull != null)
+                                    (_provedorProduto.retornarDadosPorID(
+                                                [4], false, '0').isEmpty &&
+                                            _provedorProduto.retornarDadosPorID(
+                                                    [4],
+                                                    false,
+                                                    '0').firstOrNull ==
+                                                null &&
+                                            item.opcoesPacotes
+                                                    ?.where((element) =>
+                                                        element.id == 4)
+                                                    .firstOrNull !=
+                                                null)
                                         ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
-                                        : (double.tryParse(item.valorVenda) ?? 0).obterReal(),
-                                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+                                        : (double.tryParse(item.valorVenda) ??
+                                                0)
+                                            .obterReal(),
+                                    style: const TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14),
                                   ),
                                 ),
                               ] else ...[
                                 Align(
                                   alignment: Alignment.bottomRight,
                                   child: Wrap(
-                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     alignment: WrapAlignment.end,
                                     spacing: 4,
                                     children: [
                                       Text(
-                                        (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
+                                        (double.parse(item.valorVenda) +
+                                                double.parse(item
+                                                    .descontoProduto!
+                                                    .valorretirado))
+                                            .obterReal(),
                                         style: const TextStyle(
-                                            fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w600,
+                                            decoration:
+                                                TextDecoration.lineThrough),
                                       ),
-                                      const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+                                      const Text('por',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey,
+                                              fontWeight: FontWeight.w600)),
                                       Text(
-                                        double.parse(item.valorVenda).obterReal(),
-                                        style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+                                        double.parse(item.valorVenda)
+                                            .obterReal(),
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.deepOrange,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Container(
                                         decoration: BoxDecoration(
                                           color: Colors.deepOrange,
-                                          borderRadius: BorderRadius.circular(30),
+                                          borderRadius:
+                                              BorderRadius.circular(30),
                                         ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 5, vertical: 1),
                                         child: Text(
                                           '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
-                                          style: const TextStyle(fontSize: 8, color: Colors.white),
+                                          style: const TextStyle(
+                                              fontSize: 8, color: Colors.white),
                                         ),
                                       ),
                                     ],

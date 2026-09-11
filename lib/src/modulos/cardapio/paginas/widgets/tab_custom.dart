@@ -87,7 +87,6 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
             },
           ),
         ),
-        if (widget.categoria.tamanhosPizza?.isNotEmpty ?? false) ListaTamanhosPizza(categoria: widget.categoria),
         Expanded(
           child: ListenableBuilder(
             listenable: provedor,
@@ -115,6 +114,10 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                       physics: const AlwaysScrollableScrollPhysics(),
                       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                       slivers: [
+                        if (widget.categoria.tamanhosPizza?.isNotEmpty ?? false)
+                          SliverToBoxAdapter(
+                            child: ListaTamanhosPizza(categoria: widget.categoria),
+                          ),
                         if (provedor.produtos.isEmpty)
                           SliverFillRemaining(
                             hasScrollBody: false,
@@ -149,6 +152,9 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
                             ),
                           ),
                         ],
+                        SliverToBoxAdapter(
+                          child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+                        ),
                       ],
                     ),
                   ),

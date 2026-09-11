@@ -22,8 +22,10 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 
   Timer? _tickerTempoLancado;
-  StreamController<String> tempoLancadoController = StreamController<String>.broadcast();
-  StreamController<String> dataUltimoPedidoLancadoController = StreamController<String>.broadcast();
+  StreamController<String> tempoLancadoController =
+      StreamController<String>.broadcast();
+  StreamController<String> dataUltimoPedidoLancadoController =
+      StreamController<String>.broadcast();
 
   void _updateTimer() {
     final dataAbertura = DateTime.tryParse(widget.item.dataAbertura ?? '');
@@ -36,10 +38,12 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
     final duration = DateTime.now().difference(dataAbertura);
     tempoLancadoController.add(ConfigSistema.formatarHora(duration));
 
-    final dataUltimoPedido = DateTime.tryParse(widget.item.dataultimopedido ?? '');
+    final dataUltimoPedido =
+        DateTime.tryParse(widget.item.dataultimopedido ?? '');
     if (dataUltimoPedido != null) {
       final durationPedido = DateTime.now().difference(dataUltimoPedido);
-      dataUltimoPedidoLancadoController.add(ConfigSistema.formatarHora(durationPedido));
+      dataUltimoPedidoLancadoController
+          .add(ConfigSistema.formatarHora(durationPedido));
     } else {
       dataUltimoPedidoLancadoController.add('...');
     }
@@ -85,7 +89,9 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
       return;
     }
 
-    if (ocupadaAtual && (oldWidget.item.dataAbertura != widget.item.dataAbertura || oldWidget.item.dataultimopedido != widget.item.dataultimopedido)) {
+    if (ocupadaAtual &&
+        (oldWidget.item.dataAbertura != widget.item.dataAbertura ||
+            oldWidget.item.dataultimopedido != widget.item.dataultimopedido)) {
       _updateTimer();
     }
   }
@@ -184,8 +190,14 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
             : 'Ocupada';
 
     final Color corCardBase = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final Color corBorda = isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE5E7EB);
-    final Color corSubtle = isDark ? Colors.grey[400]! : const Color(0xFF6B7280);
+    final Color corBorda =
+        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE5E7EB);
+    final Color corSubtle =
+        isDark ? Colors.grey[400]! : const Color(0xFF6B7280);
+
+    final compacto = MediaQuery.sizeOf(context).width /
+            (MediaQuery.textScalerOf(context).scale(16) / 16) <
+        380;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -229,49 +241,52 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _BadgeStatus(cor: corStatus, label: labelStatus),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            item.nome,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.1,
-                            ),
+                        Text(
+                          item.nome,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
                           ),
                         ),
                         if (item.codigo.isNotEmpty && !ocupada) ...[
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6).withValues(alpha: 0.10),
+                              color: const Color(0xFF3B82F6)
+                                  .withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.qr_code, size: 12, color: Color(0xFF3B82F6)),
+                                const Icon(Icons.qr_code,
+                                    size: 12, color: Color(0xFF3B82F6)),
                                 const SizedBox(width: 4),
-                                Text(
+                                Flexible(
+                                    child: Text(
                                   "Código: ${item.codigo}",
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF3B82F6),
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                           ),
                         ],
                         if (item.idComandaPedido != null) ...[
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: corStatus.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(6),
@@ -292,21 +307,25 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                               return IconButton(
                                 visualDensity: VisualDensity.compact,
                                 iconSize: 20,
-                                onPressed: () => controller.isOpen ? controller.close() : controller.open(),
+                                onPressed: () => controller.isOpen
+                                    ? controller.close()
+                                    : controller.open(),
                                 icon: Icon(Icons.more_vert, color: corSubtle),
                               );
                             },
                             menuChildren: [
                               MenuItemButton(
                                 onPressed: () {},
-                                leadingIcon: Icon(Icons.tag, size: 18, color: corSubtle),
+                                leadingIcon:
+                                    Icon(Icons.tag, size: 18, color: corSubtle),
                                 child: Text('ID: ${item.id}'),
                               ),
                               MenuItemButton(
                                 onPressed: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (context) => PaginaDetalhesPedido(
+                                      builder: (context) =>
+                                          PaginaDetalhesPedido(
                                         idComandaPedido: item.idComandaPedido,
                                         idMesa: item.id,
                                         tipo: TipoCardapio.mesa,
@@ -314,7 +333,10 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                                     ),
                                   );
                                 },
-                                leadingIcon: const Icon(Icons.table_restaurant_outlined, size: 18, color: Color(0xFF3B82F6)),
+                                leadingIcon: const Icon(
+                                    Icons.table_restaurant_outlined,
+                                    size: 18,
+                                    color: Color(0xFF3B82F6)),
                                 child: const Text('Abrir Mesa'),
                               ),
                             ],
@@ -327,14 +349,17 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.history_rounded, size: 14, color: corSubtle),
+                          Icon(Icons.history_rounded,
+                              size: 14, color: corSubtle),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              DateTime.tryParse(item.ultimaVezAbertoDataHora ?? '') != null ? 'Última abertura: ${ConfigSistema.formatarHora(DateTime.now().difference(DateTime.parse(item.ultimaVezAbertoDataHora!)))}' : 'Nunca utilizada',
+                              DateTime.tryParse(
+                                          item.ultimaVezAbertoDataHora ?? '') !=
+                                      null
+                                  ? 'Última abertura: ${ConfigSistema.formatarHora(DateTime.now().difference(DateTime.parse(item.ultimaVezAbertoDataHora!)))}'
+                                  : 'Nunca utilizada',
                               style: TextStyle(fontSize: 12, color: corSubtle),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -342,43 +367,57 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                     ],
                     if (ocupada) ...[
                       const SizedBox(height: 3),
-                      Row(
+                      Flex(
+                        direction: compacto ? Axis.vertical : Axis.horizontal,
+                        crossAxisAlignment: compacto
+                            ? CrossAxisAlignment.stretch
+                            : CrossAxisAlignment.center,
                         children: [
-                          Expanded(
+                          Flexible(
+                            flex: compacto ? 0 : 1,
                             child: _LinhaInfo(
                               icone: Icons.person_outline_rounded,
                               texto: () {
-                                if ((item.nomeCliente ?? '').isEmpty && (item.obs ?? '').isNotEmpty) {
+                                if ((item.nomeCliente ?? '').isEmpty &&
+                                    (item.obs ?? '').isNotEmpty) {
                                   return item.obs!;
                                 }
-                                if ((item.nomeCliente ?? '').isNotEmpty) return item.nomeCliente!;
+                                if ((item.nomeCliente ?? '').isNotEmpty) {
+                                  return item.nomeCliente!;
+                                }
                                 return 'Sem cliente';
                               }(),
-                              textoCor: isDark ? Colors.grey[100] : const Color(0xFF111827),
+                              textoCor: isDark
+                                  ? Colors.grey[100]
+                                  : const Color(0xFF111827),
                               bold: true,
                               corIcone: corSubtle,
                             ),
                           ),
                           if (item.codigo.isNotEmpty) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6).withValues(alpha: 0.10),
+                                color: const Color(0xFF3B82F6)
+                                    .withValues(alpha: 0.10),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.qr_code, size: 12, color: Color(0xFF3B82F6)),
+                                  const Icon(Icons.qr_code,
+                                      size: 12, color: Color(0xFF3B82F6)),
                                   const SizedBox(width: 4),
-                                  Text(
+                                  Flexible(
+                                      child: Text(
                                     "Código: ${item.codigo}",
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF3B82F6),
                                     ),
-                                  ),
+                                  )),
                                 ],
                               ),
                             ),
@@ -399,24 +438,35 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
                         },
                       ),
                       const SizedBox(height: 4),
-                      Row(
+                      Flex(
+                        direction: compacto ? Axis.vertical : Axis.horizontal,
+                        crossAxisAlignment: compacto
+                            ? CrossAxisAlignment.stretch
+                            : CrossAxisAlignment.center,
                         children: [
-                          Expanded(
+                          Flexible(
+                            flex: compacto ? 0 : 1,
                             child: StreamBuilder<String>(
                               stream: dataUltimoPedidoLancadoController.stream,
                               initialData: '...',
                               builder: (context, snapshot) {
-                                final temData = DateTime.tryParse(item.dataultimopedido ?? '') != null;
+                                final temData = DateTime.tryParse(
+                                        item.dataultimopedido ?? '') !=
+                                    null;
                                 return _LinhaInfo(
                                   icone: Icons.restaurant_menu_rounded,
-                                  texto: temData ? 'Último pedido há ${snapshot.data!}' : 'Nenhum item lançado',
+                                  texto: temData
+                                      ? 'Último pedido há ${snapshot.data!}'
+                                      : 'Nenhum item lançado',
                                   corIcone: corSubtle,
                                   textoCor: corSubtle,
                                 );
                               },
                             ),
                           ),
-                          if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+                          if (usuarioProvedor.usuario?.configuracoes
+                                  ?.habilitarVerValorTotalNoApp ==
+                              'Sim') ...[
                             Text(
                               double.parse(item.valor ?? '0').obterReal(),
                               style: TextStyle(
@@ -466,12 +516,16 @@ class _BadgeStatus extends StatelessWidget {
               color: cor,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1),
+                BoxShadow(
+                    color: cor.withValues(alpha: 0.5),
+                    blurRadius: 4,
+                    spreadRadius: 1),
               ],
             ),
           ),
           const SizedBox(width: 6),
-          Text(
+          Flexible(
+              child: Text(
             label,
             style: TextStyle(
               fontSize: 10.5,
@@ -479,7 +533,7 @@ class _BadgeStatus extends StatelessWidget {
               color: cor,
               letterSpacing: 0.3,
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -509,8 +563,6 @@ class _LinhaInfo extends StatelessWidget {
         Expanded(
           child: Text(
             texto,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: bold ? FontWeight.w600 : FontWeight.w400,

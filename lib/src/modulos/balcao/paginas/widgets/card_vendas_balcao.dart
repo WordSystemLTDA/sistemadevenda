@@ -55,11 +55,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
 
   @override
   Widget build(BuildContext context) {
-    double width = MediaQuery.of(context).size.width;
-
     var item = widget.item;
-    return SizedBox(
-      height: 115,
+    return IntrinsicHeight(
       child: Card(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -87,19 +84,15 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                         thickness: 5,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 10, top: 9),
+                    Expanded(child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(
-                            width: width * 0.70,
-                            child: Text(
+                          Text(
                               item.nomecliente,
-                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                             ),
-                          ),
                           Text(item.nomeusuario, style: const TextStyle(fontSize: 12)),
                           Text(DateFormat('dd/MM/yyyy hh:ss').format(DateTime.parse(item.dataHora)), style: const TextStyle(fontSize: 12)),
                           const SizedBox(height: 5),
@@ -107,7 +100,7 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                           Text((double.tryParse(item.subtotal) ?? 0).obterReal()),
                         ],
                       ),
-                    ),
+                    )),
                   ],
                 ),
               ),

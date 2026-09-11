@@ -62,110 +62,129 @@ void main() {
     expect(Modelowordprodutos.fromMap(produto).iditensvenda, '987');
   });
 
-  testWidgets('pizza recorrente mostra montagem e relanca copia exata',
-      (tester) async {
-    final pizza = _pizzaRecorrente();
+  for (final (largura, escala) in [(800.0, 1.0), (320.0, 1.0), (320.0, 2.0)]) {
+    testWidgets(
+        'pizza recorrente mostra montagem e relanca copia exata em $largura escala $escala',
+        (tester) async {
+      tester.view.physicalSize = Size(largura, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final pizza = _pizzaRecorrente();
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: CardItensRecorrentes(
-            estaPesquisando: false,
-            searchController: null,
-            item: pizza,
-            categoria: null,
-            finalizar: true,
-            idComanda: '3',
-            idMesa: '0',
-            idComandaPedido: '10673',
+      await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(escala)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CardItensRecorrentes(
+              estaPesquisando: false,
+              searchController: null,
+              item: pizza,
+              categoria: null,
+              finalizar: true,
+              idComanda: '3',
+              idMesa: '0',
+              idComandaPedido: '10673',
+            ),
           ),
         ),
-      ),
-    ));
+      ));
 
-    expect(find.text('Pizza de Queijos'), findsOneWidget);
-    expect(find.text('Detalhes'), findsNothing);
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
-    expect(find.text('Tamanho Pizza'), findsNothing);
-    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+      expect(find.text('Pizza de Queijos'), findsOneWidget);
+      expect(find.text('Detalhes'), findsNothing);
+      expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+      expect(find.text('Tamanho Pizza'), findsNothing);
+      expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
 
-    await tester.tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(
+          find.byKey(const Key('botao_detalhes_pizza_recorrente')));
+      await tester
+          .tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
+      await tester.pumpAndSettle();
 
-    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
-    expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
-    expect(find.text('Tamanho Pizza'), findsOneWidget);
-    expect(find.text('G'), findsOneWidget);
-    expect(find.text('(1/3) Mussarela'), findsOneWidget);
-    expect(find.text('(1/3) Catupiry Especial'), findsOneWidget);
-    expect(find.text('(1/3) Dois Quijos'), findsOneWidget);
-    expect(find.text('Selecione as Bordas'), findsOneWidget);
-    expect(find.text('Catupiry'), findsOneWidget);
-    expect(find.text('Goiabada'), findsOneWidget);
-    expect(find.text('Selecione os Adicionais'), findsOneWidget);
-    expect(find.text('1x Ervilha'), findsOneWidget);
-    expect(find.text('1x Bacon'), findsOneWidget);
-    expect(find.text('Selecione os Itens Para Retirar'), findsOneWidget);
-    expect(find.text('Cebola'), findsOneWidget);
-    expect(find.text('Observação'), findsOneWidget);
-    expect(find.text('Sem cebola e cortar bem assada'), findsOneWidget);
+      expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+      expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
+      expect(find.text('Tamanho Pizza'), findsOneWidget);
+      expect(find.text('G'), findsOneWidget);
+      expect(find.text('(1/3) Mussarela'), findsOneWidget);
+      expect(find.text('(1/3) Catupiry Especial'), findsOneWidget);
+      expect(find.text('(1/3) Dois Quijos'), findsOneWidget);
+      expect(find.text('Selecione as Bordas'), findsOneWidget);
+      expect(find.text('Catupiry'), findsOneWidget);
+      expect(find.text('Goiabada'), findsOneWidget);
+      expect(find.text('Selecione os Adicionais'), findsOneWidget);
+      expect(find.text('1x Ervilha'), findsOneWidget);
+      expect(find.text('1x Bacon'), findsOneWidget);
+      expect(find.text('Selecione os Itens Para Retirar'), findsOneWidget);
+      expect(find.text('Cebola'), findsOneWidget);
+      expect(find.text('Observação'), findsOneWidget);
+      expect(find.text('Sem cebola e cortar bem assada'), findsOneWidget);
 
-    await tester.ensureVisible(
-        find.byKey(const Key('botao_detalhes_pizza_recorrente')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(
+          find.byKey(const Key('botao_detalhes_pizza_recorrente')));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(const Key('botao_detalhes_pizza_recorrente')));
+      await tester.pumpAndSettle();
 
-    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
-    expect(find.text('Tamanho Pizza'), findsNothing);
-    expect(find.text('Detalhes'), findsNothing);
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+      expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+      expect(find.text('Tamanho Pizza'), findsNothing);
+      expect(find.text('Detalhes'), findsNothing);
+      expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
 
-    await tester.tap(find.text('Pizza de Queijos'));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Pizza de Queijos'));
+      await tester.tap(find.text('Pizza de Queijos'));
+      await tester.pumpAndSettle();
 
-    expect(modulo.provedorItensRecorrentes.itensCarrinho, hasLength(1));
-    final relancada = modulo.provedorItensRecorrentes.itensCarrinho.single;
-    expect(relancada.nome, 'Pizza de Queijos');
-    expect(relancada.valorVenda, '77.00');
-    expect(relancada.observacao, 'Sem cebola e cortar bem assada');
+      expect(modulo.provedorItensRecorrentes.itensCarrinho, hasLength(1));
+      final relancada = modulo.provedorItensRecorrentes.itensCarrinho.single;
+      expect(relancada.nome, 'Pizza de Queijos');
+      expect(relancada.valorVenda, '77.00');
+      expect(relancada.observacao, 'Sem cebola e cortar bem assada');
 
-    final opcoes = relancada.opcoesPacotesListaFinal!;
-    expect(
-        opcoes.where((opcao) => opcao.id == 9).single.dados!.single.nome, 'G');
-    expect(
-      opcoes
-          .where((opcao) => opcao.id == 10)
-          .single
-          .dados!
-          .map((dado) => dado.nome),
-      ['Mussarela', 'Catupiry Especial', 'Dois Quijos'],
-    );
-    expect(
-      opcoes
-          .where((opcao) => opcao.id == 6)
-          .single
-          .dados!
-          .map((dado) => dado.nome),
-      ['Catupiry', 'Goiabada'],
-    );
-    expect(
-      opcoes
-          .where((opcao) => opcao.id == 7)
-          .single
-          .dados!
-          .map((dado) => dado.nome),
-      ['Ervilha', 'Bacon'],
-    );
-    expect(
-      opcoes
-          .where((opcao) => opcao.id == 8)
-          .single
-          .dados!
-          .map((dado) => dado.nome),
-      ['Cebola'],
-    );
-  });
+      final opcoes = relancada.opcoesPacotesListaFinal!;
+      expect(opcoes.where((opcao) => opcao.id == 9).single.dados!.single.nome,
+          'G');
+      expect(
+        opcoes
+            .where((opcao) => opcao.id == 10)
+            .single
+            .dados!
+            .map((dado) => dado.nome),
+        ['Mussarela', 'Catupiry Especial', 'Dois Quijos'],
+      );
+      expect(
+        opcoes
+            .where((opcao) => opcao.id == 6)
+            .single
+            .dados!
+            .map((dado) => dado.nome),
+        ['Catupiry', 'Goiabada'],
+      );
+      expect(
+        opcoes
+            .where((opcao) => opcao.id == 7)
+            .single
+            .dados!
+            .map((dado) => dado.nome),
+        ['Ervilha', 'Bacon'],
+      );
+      expect(
+        opcoes
+            .where((opcao) => opcao.id == 8)
+            .single
+            .dados!
+            .map((dado) => dado.nome),
+        ['Cebola'],
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
 }
 
 Modelowordprodutos _pizzaRecorrente() {

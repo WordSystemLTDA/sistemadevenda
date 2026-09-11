@@ -488,17 +488,20 @@ class _BarraAbas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TabBar(
+      isScrollable: MediaQuery.textScalerOf(context).scale(13) > 17 &&
+          MediaQuery.sizeOf(context).width < 600,
       labelPadding: const EdgeInsets.symmetric(horizontal: 4),
       tabs: [
-        _aba('Todas', total),
-        _aba('Ocupadas', ocupadas),
-        _aba('Livres', livres),
+        _aba(context, 'Todas', total),
+        _aba(context, 'Ocupadas', ocupadas),
+        _aba(context, 'Livres', livres),
       ],
     );
   }
 
-  Tab _aba(String nome, int quantidade) => Tab(
-        height: 56,
+  Tab _aba(BuildContext context, String nome, int quantidade) => Tab(
+        height: (MediaQuery.textScalerOf(context).scale(13) * 1.5 +
+            MediaQuery.textScalerOf(context).scale(12) * 1.5 + 12).clamp(56, double.infinity),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

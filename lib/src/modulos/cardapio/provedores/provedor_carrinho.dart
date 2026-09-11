@@ -12,6 +12,12 @@ class ProvedorCarrinho extends ChangeNotifier {
 
   ProvedorCarrinho(this._servico);
 
+  int _numeroAdicoes = 0;
+  int get numeroAdicoes => _numeroAdicoes;
+  final Map<String, double> _quantidadesPorProduto = {};
+
+  double quantidadeDoProduto(String id) => _quantidadesPorProduto[id] ?? 0;
+
   var itensCarrinho = ItensModeloComandao(
       listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
 
@@ -25,6 +31,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     List<Modelowordprodutos> listaItens = [];
     num quantidadeTotal = 0;
     double precoTotal = 0;
+    _quantidadesPorProduto.clear();
 
     for (int index = 0; index < carrinho.length; index++) {
       final item = carrinho[index];
@@ -36,6 +43,15 @@ class ProvedorCarrinho extends ChangeNotifier {
       listaItens.add(itemF);
       quantidadeTotal += itemF.quantidade ?? 1;
       precoTotal += double.parse(itemF.valorVenda) * (itemF.quantidade ?? 1);
+      final ehPizza = (itemF.opcoesPacotesListaFinal ?? [])
+          .any((opcao) => opcao.id == 9 || opcao.id == 10);
+      if (!ehPizza) {
+        _quantidadesPorProduto.update(
+          itemF.id,
+          (quantidade) => quantidade + (itemF.quantidade ?? 1),
+          ifAbsent: () => itemF.quantidade ?? 1,
+        );
+      }
     }
 
     itensCarrinho = ItensModeloComandao(
@@ -103,6 +119,7 @@ class ProvedorCarrinho extends ChangeNotifier {
     );
 
     if (res) {
+      _numeroAdicoes++;
       await listarComandasPedidos();
     }
 

@@ -26,7 +26,7 @@ class BotaoAcaoPedido extends StatelessWidget {
       enabled: !carregando,
       child: Container(
         width: double.infinity,
-        height: 56,
+        constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
@@ -48,7 +48,7 @@ class BotaoAcaoPedido extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             onTap: carregando ? null : onPressed,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: carregando
                   ? Center(
                       child: SizedBox(
@@ -60,56 +60,88 @@ class BotaoAcaoPedido extends StatelessWidget {
                         ),
                       ),
                     )
-                  : Row(
-                      children: [
-                        if (quantidade != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: corTexto.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${quantidade}x',
-                              style: TextStyle(
-                                  color: corTexto,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14),
-                            ),
-                          ),
+                  : LayoutBuilder(builder: (context, constraints) {
+                      final estiloRotulo = TextStyle(
+                          color: corTexto,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15);
+                      final estiloValor = TextStyle(
+                          color: corTexto,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16);
+                      final estiloQuantidade = TextStyle(
+                          color: corTexto,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14);
+                      double larguraTexto(String texto, TextStyle estilo) {
+                        final painter = TextPainter(
+                          text: TextSpan(text: texto, style: estilo),
+                          textDirection: Directionality.of(context),
+                          textScaler: MediaQuery.textScalerOf(context),
+                        )..layout();
+                        final largura = painter.width;
+                        painter.dispose();
+                        return largura;
+                      }
+
+                      final larguraQuantidade = quantidade == null
+                          ? 0.0
+                          : larguraTexto('${quantidade}x', estiloQuantidade) +
+                              32;
+                      final duasLinhas = larguraTexto(rotulo, estiloRotulo) +
+                              larguraTexto(total, estiloValor) +
+                              larguraQuantidade +
+                              38 >
+                          constraints.maxWidth;
+                      final textoRotulo = Text(rotulo, style: estiloRotulo);
+                      final textoTotal = Text(total,
+                          textAlign: TextAlign.end, style: estiloValor);
+                      final contador = quantidade == null
+                          ? null
+                          : Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: corTexto.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text('${quantidade}x',
+                                  style: estiloQuantidade),
+                            );
+                      final seta = Icon(Icons.arrow_forward_rounded,
+                          color: corTexto, size: 22);
+
+                      if (duasLinhas) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            textoRotulo,
+                            const SizedBox(height: 6),
+                            Row(children: [
+                              if (contador != null) ...[
+                                Flexible(child: contador),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(child: textoTotal),
+                              const SizedBox(width: 8),
+                              seta,
+                            ]),
+                          ],
+                        );
+                      }
+                      return Row(children: [
+                        if (contador != null) ...[
+                          contador,
                           const SizedBox(width: 12),
                         ],
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            rotulo,
-                            maxLines: 2,
-                            style: TextStyle(
-                                color: corTexto,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15),
-                          ),
-                        ),
+                        Expanded(child: textoRotulo),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              total,
-                              style: TextStyle(
-                                  color: corTexto,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16),
-                            ),
-                          ),
-                        ),
+                        textoTotal,
                         const SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded,
-                            color: corTexto, size: 22),
-                      ],
-                    ),
+                        seta,
+                      ]);
+                    }),
             ),
           ),
         ),

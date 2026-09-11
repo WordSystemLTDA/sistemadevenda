@@ -179,13 +179,14 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Padding(
+                                    Expanded(
+                                        child: Padding(
                                       padding: const EdgeInsets.only(left: 12),
                                       child: Text(
                                         '${opcoesPacote.titulo} (${opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length})',
                                         style: const TextStyle(fontSize: 16),
                                       ),
-                                    ),
+                                    )),
                                   ],
                                 ),
                               ),

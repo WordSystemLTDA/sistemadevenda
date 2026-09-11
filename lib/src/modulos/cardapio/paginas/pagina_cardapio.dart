@@ -1,12 +1,12 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
-import 'package:badges/badges.dart' as badges;
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -66,7 +66,8 @@ class PaginaCardapio extends StatefulWidget {
   State<PaginaCardapio> createState() => _PaginaCardapioState();
 }
 
-class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStateMixin {
+class _PaginaCardapioState extends State<PaginaCardapio>
+    with TickerProviderStateMixin {
   final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProdutos provedorProdutos = Modular.get<ProvedorProdutos>();
@@ -93,7 +94,8 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
 
   void listarDados() async {
     await provedor.listarCategorias().then((value) {
-      _tabController = TabController(initialIndex: indexTabBar, length: value.length, vsync: this);
+      _tabController = TabController(
+          initialIndex: indexTabBar, length: value.length, vsync: this);
       _tabController!.addListener(() {
         if (indexTabBar != _tabController!.index) {
           final categoria = provedor.categorias[_tabController!.index];
@@ -125,8 +127,10 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
     return AnimatedBuilder(
       animation: provedor,
       builder: (context, _) {
-        final temCategorias = _tabController != null && provedor.categorias.isNotEmpty;
+        final temCategorias =
+            _tabController != null && provedor.categorias.isNotEmpty;
         return Scaffold(
+          extendBody: true,
           backgroundColor: cs.surface,
           appBar: AppBar(
             backgroundColor: cs.inversePrimary,
@@ -135,16 +139,27 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
               children: [
                 Container(
                   padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.restaurant_menu_rounded, color: cs.onPrimaryContainer, size: 18),
+                  decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.restaurant_menu_rounded,
+                      color: cs.onPrimaryContainer, size: 18),
                 ),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Cardápio', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.1)),
-                    Text(widget.tipo.nome, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant)),
+                    const Text('Cardápio',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1)),
+                    Text(widget.tipo.nome,
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant)),
                   ],
                 ),
               ],
@@ -152,21 +167,27 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
             bottom: !temCategorias
                 ? const PreferredSize(
                     preferredSize: Size.fromHeight(48),
-                    child: SizedBox(height: 48, child: Align(alignment: Alignment.bottomCenter, child: LinearProgressIndicator())),
+                    child: SizedBox(
+                        height: 48,
+                        child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: LinearProgressIndicator())),
                   )
                 : TabBar(
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
                     tabs: [
-                      ...provedor.categorias.map((e) => Tab(text: e.nomeCategoria)),
+                      ...provedor.categorias
+                          .map((e) => Tab(text: e.nomeCategoria)),
                     ],
                   ),
           ),
           bottomNavigationBar: AnimatedBuilder(
             animation: carrinhoProvedor,
             builder: (context, _) {
-              final temPizza = provedor.tamanhosPizza != null && provedor.saboresPizzaSelecionados.isNotEmpty;
+              final temPizza = provedor.tamanhosPizza != null &&
+                  provedor.saboresPizzaSelecionados.isNotEmpty;
               return SafeArea(
                 top: false,
                 child: Padding(
@@ -193,35 +214,16 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                         const SizedBox(width: 12),
                       ] else
                         const Spacer(),
-                      badges.Badge(
-                        badgeContent: Text(
-                          carrinhoProvedor.itensCarrinho.quantidadeTotal.toStringAsFixed(0),
-                          style: TextStyle(color: cs.onError, fontSize: 11, fontWeight: FontWeight.w700),
-                        ),
-                        badgeStyle: badges.BadgeStyle(
-                          badgeColor: cs.error,
-                          padding: const EdgeInsets.all(6),
-                          elevation: 2,
-                        ),
-                        position: badges.BadgePosition.topEnd(end: -2, top: -2),
-                        child: SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: FloatingActionButton(
-                            heroTag: null,
-                            tooltip: 'Carrinho',
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => const PaginaCarrinho(),
-                              ));
-                            },
-                            child: const Icon(Icons.shopping_cart_outlined, size: 22),
-                          ),
-                        ),
+                      BotaoCarrinho(
+                        key: const ValueKey('carrinho_cardapio'),
+                        quantidade:
+                            carrinhoProvedor.itensCarrinho.quantidadeTotal,
+                        numeroAdicoes: carrinhoProvedor.numeroAdicoes,
+                        onPressed: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) => const PaginaCarrinho(),
+                          ));
+                        },
                       ),
                     ],
                   ),
@@ -238,7 +240,8 @@ class _PaginaCardapioState extends State<PaginaCardapio> with TickerProviderStat
                     children: [
                       ...provedor.categorias.map((e) {
                         listaCategorias.add(e.id);
-                        return TabCustom(category: e.id, categoria: e, finalizar: finalizar);
+                        return TabCustom(
+                            category: e.id, categoria: e, finalizar: finalizar);
                       }),
                     ],
                   ),

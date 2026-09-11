@@ -24,14 +24,16 @@ class PaginaCarrinho extends StatefulWidget {
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
 }
 
-class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStateMixin {
+class _PaginaCarrinhoState extends State<PaginaCarrinho>
+    with TickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
-  final ProvedorFinalizarPagamento provedorFinalizarPagamento = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorFinalizarPagamento provedorFinalizarPagamento =
+      Modular.get<ProvedorFinalizarPagamento>();
   final Server server = Modular.get<Server>();
 
   bool isLoading = false;
@@ -46,7 +48,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
 
   void listar() async {
     await carrinhoProvedor.listarComandasPedidos();
-    await servicoCardapio.listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não").then((value) {
+    await servicoCardapio
+        .listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não")
+        .then((value) {
       dados = value;
     });
     setState(() => carregando = false);
@@ -64,7 +68,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
             showCloseIcon: true,
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
       }
@@ -98,11 +103,14 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                       color: cs.errorContainer,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.delete_sweep_outlined, color: cs.onErrorContainer, size: 22),
+                    child: Icon(Icons.delete_sweep_outlined,
+                        color: cs.onErrorContainer, size: 22),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
-                    child: Text('Esvaziar carrinho', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                    child: Text('Esvaziar carrinho',
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -118,8 +126,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                     child: const Text('Cancelar'),
                   ),
@@ -131,8 +141,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                     style: FilledButton.styleFrom(
                       backgroundColor: cs.error,
                       foregroundColor: cs.onError,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ],
@@ -150,7 +162,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
     setState(() => isLoading = true);
 
     provedorFinalizarPagamento.idVenda = provedorCardapio.id;
-    provedorFinalizarPagamento.valor = carrinhoProvedor.itensCarrinho.precoTotal;
+    provedorFinalizarPagamento.valor =
+        carrinhoProvedor.itensCarrinho.precoTotal;
 
     if (provedorCardapio.tipo == TipoCardapio.balcao) {
       setState(() => isLoading = false);
@@ -176,19 +189,25 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
         var (sucesso, _) = resposta;
         if (sucesso) {
           provedorMesas.listarMesas('');
-          server.write(jsonEncode({'tipo': 'Mesa', 'nomeConexao': usuarioProvedor.usuario!.nome}));
+          server.write(jsonEncode(
+              {'tipo': 'Mesa', 'nomeConexao': usuarioProvedor.usuario!.nome}));
           removerTodosItensCarrinho();
           Impressao.comprovanteDePedido(
             tipodeentrega: provedorCardapio.tipodeentrega,
             tipoTela: provedorCardapio.tipo,
             comanda: dados!.nome!,
             numeroPedido: dados!.numeroPedido!,
-            nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') && (dados?.observacaoDoPedido ?? '').isNotEmpty ? (dados?.observacaoDoPedido ?? '') : (dados?.nomeCliente ?? 'Sem Cliente'),
+            nomeCliente:
+                ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' ||
+                            (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                        (dados?.observacaoDoPedido ?? '').isNotEmpty
+                    ? (dados?.observacaoDoPedido ?? '')
+                    : (dados?.nomeCliente ?? 'Sem Cliente'),
             nomeEmpresa: dados!.nomeEmpresa!,
             produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
             local: '',
           );
-          if (context.mounted) {
+          if (mounted) {
             Navigator.popUntil(context, ModalRoute.withName('PaginaMesas'));
           }
           return;
@@ -212,19 +231,25 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
       var (sucesso, _) = resposta;
       if (sucesso) {
         provedorComanda.listarComandas('');
-        server.write(jsonEncode({'tipo': 'Comanda', 'nomeConexao': usuarioProvedor.usuario!.nome}));
+        server.write(jsonEncode(
+            {'tipo': 'Comanda', 'nomeConexao': usuarioProvedor.usuario!.nome}));
         removerTodosItensCarrinho();
         Impressao.comprovanteDePedido(
           tipodeentrega: provedorCardapio.tipodeentrega,
           tipoTela: provedorCardapio.tipo,
           comanda: dados!.nome!,
           numeroPedido: dados!.numeroPedido!,
-          nomeCliente: ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' || (dados?.nomeCliente ?? 'Sem Cliente') == '') && (dados?.observacaoDoPedido ?? '').isNotEmpty ? (dados?.observacaoDoPedido ?? '') : (dados?.nomeCliente ?? 'Sem Cliente'),
+          nomeCliente:
+              ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' ||
+                          (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
+                      (dados?.observacaoDoPedido ?? '').isNotEmpty
+                  ? (dados?.observacaoDoPedido ?? '')
+                  : (dados?.nomeCliente ?? 'Sem Cliente'),
           nomeEmpresa: dados!.nomeEmpresa!,
           produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
           local: dados?.nomeMesa ?? '',
         );
-        if (context.mounted) {
+        if (mounted) {
           Navigator.popUntil(context, ModalRoute.withName('PaginaComandas'));
         }
         return;
@@ -269,17 +294,25 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                   color: cs.primaryContainer,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.shopping_cart_outlined, color: cs.onPrimaryContainer, size: 18),
+                child: Icon(Icons.shopping_cart_outlined,
+                    color: cs.onPrimaryContainer, size: 18),
               ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Carrinho', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.1)),
+                  const Text('Carrinho',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.1)),
                   Text(
                     '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
-                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -322,15 +355,23 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho> with TickerProviderStat
                         index: index,
                         value: carrinhoProvedor.itensCarrinho,
                         aoExcluirItem: () => setState(() {}),
-                        setarQuantidade: (increase) {
-                          setState(() {
-                            item.quantidade = item.quantidade! + (increase ? 1 : -1);
-                          });
-                          double precoTotal = 0;
-                          for (final e in carrinhoProvedor.itensCarrinho.listaComandosPedidos) {
-                            precoTotal += double.parse(e.valorVenda) * e.quantidade!;
+                        setarQuantidade: (increase) async {
+                          final quantidadeAnterior = item.quantidade ?? 1;
+                          final novaQuantidade =
+                              quantidadeAnterior + (increase ? 1 : -1);
+                          if (novaQuantidade < 1) return false;
+
+                          item.quantidade = novaQuantidade;
+                          if (mounted) setState(() {});
+
+                          final sucesso =
+                              await carrinhoProvedor.editar(item, index);
+                          if (!sucesso) {
+                            item.quantidade = quantidadeAnterior;
+                            if (mounted) setState(() {});
+                            _erroSnack();
                           }
-                          setState(() => carrinhoProvedor.itensCarrinho.precoTotal = precoTotal);
+                          return sucesso;
                         },
                       );
                     },
@@ -356,12 +397,14 @@ class _EstadoVazio extends StatelessWidget {
               color: cs.surfaceContainerHigh,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shopping_cart_outlined, size: 48, color: cs.onSurfaceVariant),
+            child: Icon(Icons.shopping_cart_outlined,
+                size: 48, color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           Text(
             'Seu carrinho está vazio',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface),
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface),
           ),
           const SizedBox(height: 4),
           Text(
@@ -399,7 +442,8 @@ class _BotaoFinalizar extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: cs.primary,
             foregroundColor: cs.onPrimary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             padding: const EdgeInsets.symmetric(horizontal: 18),
             elevation: 3,
           ),
@@ -407,23 +451,33 @@ class _BotaoFinalizar extends StatelessWidget {
               ? SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.4, color: cs.onPrimary),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.4, color: cs.onPrimary),
                 )
               : Row(
                   children: [
-                    Icon(Icons.check_circle_outline_rounded, size: 22, color: cs.onPrimary),
+                    Icon(Icons.check_circle_outline_rounded,
+                        size: 22, color: cs.onPrimary),
                     const SizedBox(width: 10),
-                    const Text('Finalizar', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2)),
+                    const Text('Finalizar',
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2)),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: cs.onPrimary.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         total.obterReal(),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2),
                       ),
                     ),
                   ],

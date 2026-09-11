@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/config_sistema.dart';
@@ -220,23 +221,12 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              nome,
-              style: const TextStyle(fontSize: 15),
-            ),
-          ),
-          if (valorNumerico > 0) ...[
-            const SizedBox(width: 12),
-            Text(
+      child: LinhaValor(
+          descricao: Text(nome, style: const TextStyle(fontSize: 15)),
+          valor: valorNumerico > 0 ? Text(
               valorNumerico.obterReal(),
               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 15),
-            ),
-          ],
-        ],
+            ) : const SizedBox.shrink(),
       ),
     );
   }
@@ -332,6 +322,24 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
       listenable: provedorCardapio,
       builder: (context, snapshot) {
         return LayoutBuilder(builder: (context, constraints) {
+          final compacto = constraints.maxWidth < 360 ||
+              MediaQuery.textScalerOf(context).scale(14) > 19;
+          final larguraImagem = compacto ? 64.0 : 100.0;
+          final resumo = ConstrainedBox(
+            constraints: BoxConstraints(minWidth: 70,
+                maxWidth: compacto ? double.infinity : 132),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (ehPizzaRecorrente) ...[
+                  _buildBotaoDetalhesPizza(context),
+                  const SizedBox(height: 8),
+                ],
+                _buildValorResumo(context, item),
+              ],
+            ),
+          );
           return Card(
             clipBehavior: Clip.hardEdge,
             child: InkWell(
@@ -530,12 +538,12 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           item.foto.isEmpty
-                              ? Image.asset(Assets.produtoAsset, width: 100, height: 100)
+                              ? Image.asset(Assets.produtoAsset, width: larguraImagem, height: larguraImagem)
                               : ClipRRect(
                                   borderRadius: BorderRadius.circular(8.0),
                                   child: CachedNetworkImage(
-                                    width: 100,
-                                    height: 100,
+                                    width: larguraImagem,
+                                    height: larguraImagem,
                                     fit: BoxFit.contain,
                                     fadeOutDuration: const Duration(milliseconds: 100),
                                     placeholder: (context, url) => const SizedBox(
@@ -556,16 +564,12 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                 children: [
                                   Text(
                                     nomeItem,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(fontSize: 17),
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 5),
                                     child: Text(
                                       'Código: ${item.codigo}',
-                                      overflow: TextOverflow.fade,
-                                      maxLines: 2,
                                       style: const TextStyle(
                                         color: Color.fromARGB(255, 111, 111, 111),
                                         fontSize: 12,
@@ -576,8 +580,6 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                     padding: const EdgeInsets.symmetric(vertical: 3),
                                     child: Text(
                                       'Quant. ${item.quantidade?.toStringAsFixed(0)}',
-                                      overflow: TextOverflow.fade,
-                                      maxLines: 2,
                                       style: const TextStyle(
                                         color: Color.fromARGB(255, 111, 111, 111),
                                         fontSize: 12,
@@ -591,26 +593,15 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                       return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
                                     },
                                   ),
+                                  if (compacto)
+                                    Align(alignment: Alignment.centerRight, child: resumo),
                                 ],
                               ),
                             ),
                           ),
-                          Padding(
+                          if (!compacto) Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(minWidth: 70, maxWidth: 132),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (ehPizzaRecorrente) ...[
-                                    _buildBotaoDetalhesPizza(context),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  _buildValorResumo(context, item),
-                                ],
-                              ),
-                            ),
+                            child: resumo,
                           ),
                         ],
                       ),

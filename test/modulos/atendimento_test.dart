@@ -13,6 +13,7 @@ import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
+import 'package:app/src/modulos/balcao/paginas/widgets/card_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
@@ -126,6 +127,7 @@ class ModuloAtendimentoTeste extends Module {
 
   @override
   void binds(Injector i) {
+    i.addInstance<ServicoBalcao>(balcao);
     i.addInstance<ProvedorMesas>(provedorMesas);
     i.addInstance<ProvedorComanda>(provedorComandas);
     i.addInstance<ProvedorBalcao>(provedorBalcao);
@@ -292,6 +294,96 @@ void main() {
     await abrir(tester, const PaginaInicio(), largura: 320, escala: 1.6);
     expect(find.text('Mesas'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  for (final tela in ['mesas', 'comandas', 'balcao']) {
+    testWidgets('$tela suporta celular pequeno com fonte ampliada',
+        (tester) async {
+      await abrir(
+          tester,
+          switch (tela) {
+            'mesas' => const PaginaMesas(),
+            'comandas' => const PaginaComandas(),
+            _ => const PaginaBalcao(),
+          },
+          largura: 320,
+          escala: 2);
+      expect(tester.takeException(), isNull);
+      await capturarTela(tester, '${tela}_320_fonte_ampliada');
+    });
+  }
+
+  testWidgets('mesas e comandas ocupadas com fonte ampliada', (tester) async {
+    await abrir(
+        tester,
+        Scaffold(
+            body: SingleChildScrollView(
+                child: Column(children: [
+          CardComanda(
+              itemComanda: ModeloComanda(
+            id: '1',
+            nome: 'Comanda da varanda',
+            codigo: '123456',
+            ativo: 'Sim',
+            comandaOcupada: true,
+            fechamento: true,
+            idComandaPedido: '123456',
+            nomeCliente: 'Bruno Masson e familia',
+            nomeMesa: 'Mesa da varanda',
+            valor: '1234.56',
+          )),
+          CardMesaOcupada(
+              item: MesaModelo(
+            id: '1',
+            nome: 'Mesa da varanda',
+            codigo: '123456',
+            ativo: 'Sim',
+            mesaOcupada: true,
+            fechamento: true,
+            idComandaPedido: '123456',
+            nomeCliente: 'Bruno Masson e familia',
+            valor: '1234.56',
+            dataAbertura: null,
+            horaAbertura: null,
+          )),
+        ]))),
+        largura: 320,
+        escala: 2);
+    expect(tester.takeException(), isNull);
+    await capturarTela(tester, 'ocupadas_320_fonte_ampliada');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('venda no balcao com nome longo e fonte ampliada',
+      (tester) async {
+    await abrir(
+        tester,
+        Scaffold(
+            body: SingleChildScrollView(
+                child: CardVendasBalcao(
+          listar: () {},
+          item: ModeloVendasBalcao(
+            id: '1',
+            nomecliente: 'Bruno Masson e familia',
+            numeropedido: '123456',
+            quantidadeProdutos: '12',
+            pagamento: 'Dinheiro',
+            subtotal: '1234.56',
+            status: 'Concluída',
+            nomeusuariocompleto: 'Atendente do balcao',
+            nomeusuario: 'Atendente do balcao',
+            dataHora: '2026-09-11 11:00:00',
+            valorTotalF: '1234.56',
+            tamanhoLista: 1,
+            idtipodeentrega: '1',
+            tipodeentrega: 'Retirada no balcao',
+            nomeEmpresa: 'Restaurante',
+          ),
+        ))),
+        largura: 320,
+        escala: 2);
+    expect(tester.takeException(), isNull);
+    await capturarTela(tester, 'venda_balcao_320_fonte_ampliada');
   });
 
   test('balcao aceita nova busca durante carregamento e ignora resposta antiga',

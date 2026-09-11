@@ -14,6 +14,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -170,6 +171,24 @@ class ProdutosTeste extends Fake implements ServicoProduto {
 
 class DioClienteTeste extends Fake implements DioCliente {}
 
+class CarrinhoComFalha extends ServicosItensComanda {
+  CarrinhoComFalha(super.dio, super.usuarioProvedor);
+
+  @override
+  Future<bool> inserir(
+          Modelowordprodutos produto,
+          tipo,
+          idMesa,
+          idComanda,
+          valor,
+          observacaoMesa,
+          idProduto,
+          String nomeProduto,
+          quantidade,
+          observacao) async =>
+      false;
+}
+
 class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
   @override
   Future<ModeloConfigBigchef?> listar() async => null;
@@ -241,6 +260,125 @@ void main() {
     await tester.tap(card);
     await tester.pumpAndSettle();
   }
+
+  Future<bool> adicionar(
+      ProvedorCarrinho carrinho, Modelowordprodutos produto) {
+    return carrinho.inserir(produto, 'Comanda', '0', '3', produto.valorVenda,
+        '', produto.id, produto.nome, produto.quantidade, '');
+  }
+
+  test('contador acompanha inclusoes, edicao, exclusao e carrinho salvo',
+      () async {
+    final carrinho =
+        ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario));
+    addTearDown(carrinho.dispose);
+    final bebida = sabor('Agua', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..valorVenda = '10'
+      ..quantidade = 1;
+    await adicionar(carrinho, bebida);
+    await adicionar(carrinho, bebida);
+    expect(carrinho.quantidadeDoProduto('Agua'), 2);
+    expect(carrinho.numeroAdicoes, 2);
+
+    final editada = Modelowordprodutos.fromMap(bebida.toMap())..quantidade = 3;
+    await carrinho.editar(editada, 0);
+    expect(carrinho.quantidadeDoProduto('Agua'), 4);
+    expect(carrinho.numeroAdicoes, 2);
+
+    final reaberto =
+        ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario));
+    addTearDown(reaberto.dispose);
+    await reaberto.listarComandasPedidos();
+    expect(reaberto.quantidadeDoProduto('Agua'), 4);
+    expect(reaberto.numeroAdicoes, 0);
+
+    await carrinho.excluirItemCarrinho('Agua', 0);
+    await carrinho.listarComandasPedidos();
+    expect(carrinho.quantidadeDoProduto('Agua'), 1);
+    await carrinho.removerComandasPedidos();
+    await carrinho.listarComandasPedidos();
+    expect(carrinho.quantidadeDoProduto('Agua'), 0);
+  });
+
+  test('inclusoes simultaneas preservam todas as unidades', () async {
+    final carrinho =
+        ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario));
+    addTearDown(carrinho.dispose);
+    final bebida = sabor('Agua', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..valorVenda = '10'
+      ..quantidade = 1;
+    await Future.wait(List.generate(3, (_) => adicionar(carrinho, bebida)));
+    expect(carrinho.quantidadeDoProduto('Agua'), 3);
+    expect(carrinho.itensCarrinho.quantidadeTotal, 3);
+    expect(carrinho.numeroAdicoes, 3);
+  });
+
+  test('falha ao salvar nao marca produto nem confirma inclusao', () async {
+    final carrinho =
+        ProvedorCarrinho(CarrinhoComFalha(DioClienteTeste(), usuario));
+    addTearDown(carrinho.dispose);
+    expect(await adicionar(carrinho, sabor('Agua', 'Bebidas', '10')), isFalse);
+    expect(carrinho.quantidadeDoProduto('Agua'), 0);
+    expect(carrinho.numeroAdicoes, 0);
+    expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+  });
+
+  testWidgets('produto comum fica marcado e atualiza quantidade na pesquisa',
+      (tester) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    produtos.produtos.add(sabor('Agua', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..habilTipo = ''
+      ..valorVenda = '10');
+    await tester.pumpWidget(
+        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
+    const chaveContador = ValueKey('quantidade_carrinho_Agua');
+    expect(find.byKey(chaveContador), findsNothing);
+    await tocarProduto(tester, 'Agua');
+    expect(
+        find.descendant(
+            of: find.byKey(chaveContador), matching: find.text('1')),
+        findsOneWidget);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    await tocarProduto(tester, 'Agua');
+    expect(
+        find.descendant(
+            of: find.byKey(chaveContador), matching: find.text('2')),
+        findsOneWidget);
+    final campoBusca = find.byType(TextField).first;
+    await tester.showKeyboard(campoBusca);
+    expect(tester.testTextInput.isVisible, isTrue);
+    await tester.enterText(campoBusca, 'Agua');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(
+        find.descendant(
+            of: find.byKey(chaveContador), matching: find.text('2')),
+        findsOneWidget);
+    await tocarProduto(tester, 'Agua');
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(
+        find.descendant(
+            of: find.byKey(chaveContador), matching: find.text('3')),
+        findsOneWidget);
+    final carrinho = Modular.get<ProvedorCarrinho>();
+    await carrinho.removerComandasPedidos();
+    await carrinho.listarComandasPedidos();
+    await tester.pumpAndSettle();
+    expect(find.byKey(chaveContador), findsNothing);
+    expect(carrinho.numeroAdicoes, 3);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   test('Todos reune tamanhos sem duplicar categorias com o mesmo vinculo',
       () async {
@@ -326,11 +464,25 @@ void main() {
       expect(cardapio.tamanhosPizza?.id, 'G');
       expect(cardapio.saboresPizzaSelecionados, hasLength(2));
       await tocarProduto(tester, 'Chocolate');
+      final carrinho = Modular.get<ProvedorCarrinho>();
+      expect(carrinho.numeroAdicoes, 0);
+      expect(
+          find.descendant(
+              of: find.byType(BotaoCarrinho),
+              matching: find.byIcon(Icons.check_rounded)),
+          findsNothing);
+      expect(find.byKey(const ValueKey('quantidade_carrinho_Mussarela')),
+          findsNothing);
       await tocarProduto(tester, 'Agua');
       expect(cardapio.saboresPizzaSelecionados, hasLength(3));
       expect(cardapio.calcularPrecoPizza(), 70);
-      final carrinho = Modular.get<ProvedorCarrinho>();
       expect(carrinho.itensCarrinho.listaComandosPedidos.single.nome, 'Agua');
+      expect(carrinho.numeroAdicoes, 1);
+      expect(
+          find.descendant(
+              of: find.byType(BotaoCarrinho),
+              matching: find.byIcon(Icons.check_rounded)),
+          findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
 
       await tester.runAsync(() => precacheImage(
@@ -363,6 +515,14 @@ void main() {
       expect(pizza.valorVenda, '70.00');
       expect(pizza.opcoesPacotesListaFinal!.firstWhere((o) => o.id == 10).dados,
           hasLength(3));
+      expect(carrinho.numeroAdicoes, 2);
+      expect(carrinho.quantidadeDoProduto('Mussarela'), 0);
+      expect(find.byType(PaginaCardapio), findsOneWidget);
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(
+          tester.widget<BotaoCarrinho>(find.byType(BotaoCarrinho)).quantidade,
+          2);
+      await capturarTela(tester, 'pizza_adicionada_${largura.toInt()}');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

@@ -61,9 +61,7 @@ class ServicosItensComanda {
       ...carrinho,
     ];
 
-    await prefs.setString('carrinho', jsonEncode(salvarCarrinho));
-
-    return true;
+    return prefs.setString('carrinho', jsonEncode(salvarCarrinho));
   }
 
   Future<bool> editar(Modelowordprodutos produto, int index) async {

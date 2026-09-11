@@ -56,9 +56,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       listar();
     } else {
       itemProduto = widget.produto;
-      _provedorProduto.opcoesPacotesListaFinal = widget.produto.opcoesPacotesListaFinal ?? [];
+      _provedorProduto.opcoesPacotesListaFinal =
+          widget.produto.opcoesPacotesListaFinal ?? [];
       _provedorProduto.valorVenda = double.parse(widget.produto.valorVenda);
-      _provedorProduto.valorVendaOriginal = double.parse(widget.produto.valorVenda);
+      _provedorProduto.valorVendaOriginal =
+          double.parse(widget.produto.valorVenda);
       _provedorProduto.calcularValorVenda(false, '0');
     }
   }
@@ -81,12 +83,18 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     var inicioServico = Modular.get<ServicoProduto>();
-    final idTamanhoPizza = widget.montagemPizza ? provedorCardapio.tamanhosPizza?.id ?? '0' : '0';
-    await inicioServico.listarPorId(widget.produto.id, idTamanhoPizza).then((value) {
+    final idTamanhoPizza =
+        widget.montagemPizza ? provedorCardapio.tamanhosPizza?.id ?? '0' : '0';
+    await inicioServico
+        .listarPorId(widget.produto.id, idTamanhoPizza)
+        .then((value) {
       itemProduto = value;
       if (value != null) {
         if (widget.valorVenda == null) {
-          _provedorProduto.opcoesPacotesListaFinal = [for (var elm in value.opcoesPacotes!) ModeloOpcoesPacotes.fromMap(elm.toMap())].map((e) {
+          _provedorProduto.opcoesPacotesListaFinal = [
+            for (var elm in value.opcoesPacotes!)
+              ModeloOpcoesPacotes.fromMap(elm.toMap())
+          ].map((e) {
             // SE FOR KITS/COMBOS
             if (e.id == 2) {
               var a = e.produtos!.map((e1) {
@@ -98,7 +106,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
                   // se for cortesia
                   if (e2.id == 1) {
-                    e2.dados = e2.dados!.where((element) => element.estaSelecionado == true).toList();
+                    e2.dados = e2.dados!
+                        .where((element) => element.estaSelecionado == true)
+                        .toList();
                     return e2;
                   }
 
@@ -121,7 +131,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
             // se for cortesia
             if (e.id == 1) {
-              e.dados = e.dados!.where((element) => element.estaSelecionado == true).toList();
+              e.dados = e.dados!
+                  .where((element) => element.estaSelecionado == true)
+                  .toList();
               return e;
             }
 
@@ -143,6 +155,18 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 
   void inserirNoCarrinho() async {
+    if (carregando || itemProduto == null) return;
+
+    if (widget.montagemPizza &&
+        (provedorCardapio.tamanhosPizza == null ||
+            provedorCardapio.saboresPizzaSelecionados.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'Selecione o tamanho e os sabores da pizza antes de continuar.'),
+      ));
+      return;
+    }
+
     final idComanda = provedorCardapio.idComanda;
     final idMesa = provedorCardapio.idMesa;
 
@@ -153,7 +177,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var observacaoMesa = '';
     var observacao = obsController.text;
 
-    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').isEmpty) {
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? [])
+            .isNotEmpty &&
+        _provedorProduto.retornarDadosPorID([4], false, '0').isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Selecione um tamanho antes de continuar.'),
@@ -163,7 +189,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       return;
     }
 
-    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 11) ?? []).isNotEmpty && _provedorProduto.retornarDadosPorID([11], false, '0').isEmpty) {
+    if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 11) ?? [])
+            .isNotEmpty &&
+        _provedorProduto.retornarDadosPorID([11], false, '0').isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Selecione um sabor antes de continuar.'),
@@ -173,9 +201,13 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       return;
     }
 
+    FocusManager.instance.primaryFocus?.unfocus();
+
     setState(() => carregando = !carregando);
 
     if (widget.montagemPizza && provedorCardapio.tamanhosPizza != null) {
+      _provedorProduto.opcoesPacotesListaFinal
+          .removeWhere((opcao) => opcao.id == 9 || opcao.id == 10);
       _provedorProduto.opcoesPacotesListaFinal.insert(
         0,
         ModeloOpcoesPacotes(
@@ -196,30 +228,34 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         1,
         ModeloOpcoesPacotes(
             id: 10,
-            titulo: 'Sabores Pizza (${provedorCardapio.saboresPizzaSelecionados.length})',
+            titulo:
+                'Sabores Pizza (${provedorCardapio.saboresPizzaSelecionados.length})',
             obrigatorio: false,
             dados: provedorCardapio.saboresPizzaSelecionados
                 .map((e) => ModeloDadosOpcoesPacotes(
                       id: e.id,
                       nome: e.nome,
                       codigo: e.codigo,
-                      imprimirCodigoProdutoPreparo: e.imprimirCodigoProdutoPreparo,
-                      valor: ((double.tryParse(provedorCardapio.valorSaborPizza(e)) ?? 0) / provedorCardapio.saboresPizzaSelecionados.length).toStringAsFixed(2),
-                      quantimaximaselecao: '1/${provedorCardapio.saboresPizzaSelecionados.length}',
+                      imprimirCodigoProdutoPreparo:
+                          e.imprimirCodigoProdutoPreparo,
+                      valor: ((double.tryParse(
+                                      provedorCardapio.valorSaborPizza(e)) ??
+                                  0) /
+                              provedorCardapio.saboresPizzaSelecionados.length)
+                          .toStringAsFixed(2),
+                      quantimaximaselecao:
+                          '1/${provedorCardapio.saboresPizzaSelecionados.length}',
                     ))
                 .toList()),
       );
-
-      provedorCardapio.limiteSaborBordaSelecionado = -1;
-      provedorCardapio.tamanhosPizza = null;
-      provedorCardapio.saboresPizzaSelecionados = [];
     }
 
     itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
     itemProduto!.observacao = obsController.text;
 
-    itemProduto!.opcoesPacotesListaFinal = _provedorProduto.opcoesPacotesListaFinal;
+    itemProduto!.opcoesPacotesListaFinal =
+        _provedorProduto.opcoesPacotesListaFinal;
 
     if (obsController.text.isNotEmpty) {
       _provedorProduto.opcoesPacotesListaFinal.insert(
@@ -251,7 +287,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     bool sucesso = false;
 
     if (widget.editar) {
-      sucesso = await carrinhoProvedor.editar(itemProduto!, widget.indexProduto!);
+      sucesso =
+          await carrinhoProvedor.editar(itemProduto!, widget.indexProduto!);
     } else {
       sucesso = await carrinhoProvedor.inserir(
         itemProduto!,
@@ -268,6 +305,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     if (sucesso) {
+      if (widget.montagemPizza) {
+        provedorCardapio.limiteSaborBordaSelecionado = -1;
+        provedorCardapio.tamanhosPizza = null;
+        provedorCardapio.saboresPizzaSelecionados = [];
+      }
       _provedorProduto.resetarTudo();
       if (mounted) Navigator.pop(context);
       if (widget.valorVenda != null) {
@@ -301,7 +343,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.inventory_2_outlined, size: 64, color: cs.onSurface.withValues(alpha: 0.4)),
+                Icon(Icons.inventory_2_outlined,
+                    size: 64, color: cs.onSurface.withValues(alpha: 0.4)),
                 const SizedBox(height: 12),
                 Text('Produto não existe', style: theme.textTheme.titleMedium),
               ],
@@ -325,14 +368,25 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       child: AnimatedBuilder(
         animation: _provedorProduto,
         builder: (context, _) {
-          final faixaPreco = (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty && _provedorProduto.retornarDadosPorID([4], false, '0').firstOrNull == null && itemProduto!.opcoesPacotes!.where((element) => element.id == 4).firstOrNull != null);
+          final faixaPreco =
+              (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
+                  _provedorProduto
+                          .retornarDadosPorID([4], false, '0').firstOrNull ==
+                      null &&
+                  itemProduto!.opcoesPacotes!
+                          .where((element) => element.id == 4)
+                          .firstOrNull !=
+                      null);
           final precoExibido = faixaPreco
               ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
               : (_provedorProduto.valorVenda).obterReal();
-          final total = (_provedorProduto.valorVenda * _provedorProduto.quantidade).obterReal();
+          final total =
+              (_provedorProduto.valorVenda * _provedorProduto.quantidade)
+                  .obterReal();
 
           return Scaffold(
-            backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+            backgroundColor:
+                isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
               elevation: 0,
@@ -344,13 +398,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                       color: cs.primaryContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.fastfood_outlined, size: 18, color: cs.onPrimaryContainer),
+                    child: Icon(Icons.fastfood_outlined,
+                        size: 18, color: cs.onPrimaryContainer),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "${itemProduto!.nome}${itemProduto!.tamanho.isNotEmpty ? ' ${itemProduto!.tamanho}' : ''}",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -391,7 +447,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                   if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
                     ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
                       if (opcoesPacote.id == 6) return const SizedBox();
-                      final count = opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length;
+                      final count = opcoesPacote.id == 2
+                          ? opcoesPacote.produtos!.length
+                          : opcoesPacote.dados!.length;
 
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
@@ -407,7 +465,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                             itemBuilder: (context, index) {
                               if (opcoesPacote.id == 2) {
-                                return CardKit(item: opcoesPacote.produtos![index]);
+                                return CardKit(
+                                    item: opcoesPacote.produtos![index]);
                               }
                               return CardOpcoesPacotes(
                                 opcoesPacote: opcoesPacote,
@@ -443,7 +502,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                               color: cs.onSurface.withValues(alpha: 0.5),
                             ),
                             filled: true,
-                            fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : cs.surface,
+                            fillColor: isDark
+                                ? Colors.white.withValues(alpha: 0.04)
+                                : cs.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
@@ -458,7 +519,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: cs.primary, width: 1.4),
+                              borderSide:
+                                  BorderSide(color: cs.primary, width: 1.4),
                             ),
                           ),
                         ),
@@ -526,7 +588,9 @@ class _HeroProduto extends StatelessWidget {
           color: isDark ? const Color(0xFF1F2937) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : cs.outline.withValues(alpha: 0.12),
           ),
           boxShadow: [
             BoxShadow(
@@ -540,116 +604,131 @@ class _HeroProduto extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Imagem
-                Hero(
-                  tag: 'foto_$foto',
-                  child: Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.04) : cs.primaryContainer.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: foto.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Image.asset(Assets.boxAsset, fit: BoxFit.contain),
-                          )
-                        : CachedNetworkImage(
-                            fit: BoxFit.contain,
-                            fadeOutDuration: const Duration(milliseconds: 100),
-                            placeholder: (context, url) => const Center(
-                              child: SizedBox(
-                                height: 28,
-                                width: 28,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+            LayoutBuilder(builder: (context, constraints) {
+              final empilhar = constraints.maxWidth < 240 ||
+                  MediaQuery.textScalerOf(context).scale(16) > 22;
+              final larguraImagem = constraints.maxWidth < 320 ? 88.0 : 120.0;
+              return Flex(
+                direction: empilhar ? Axis.vertical : Axis.horizontal,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Imagem
+                  Hero(
+                    tag: 'foto_$foto',
+                    child: Container(
+                      width: larguraImagem,
+                      height: larguraImagem,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.04)
+                            : cs.primaryContainer.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: foto.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Image.asset(Assets.boxAsset,
+                                  fit: BoxFit.contain),
+                            )
+                          : CachedNetworkImage(
+                              fit: BoxFit.contain,
+                              fadeOutDuration:
+                                  const Duration(milliseconds: 100),
+                              placeholder: (context, url) => const Center(
+                                child: SizedBox(
+                                  height: 28,
+                                  width: 28,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Icon(
+                                Icons.image_not_supported_outlined,
+                                color: cs.onSurface.withValues(alpha: 0.4),
+                              ),
+                              imageUrl: UrlImagem.montarUrlImagem(
+                                foto: foto,
+                                baseHost: baseHost,
                               ),
                             ),
-                            errorWidget: (context, url, error) => Icon(
-                              Icons.image_not_supported_outlined,
-                              color: cs.onSurface.withValues(alpha: 0.4),
-                            ),
-                            imageUrl: UrlImagem.montarUrlImagem(
-                              foto: foto,
-                              baseHost: baseHost,
-                            ),
-                          ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                // Coluna preço/total/quantidade
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _StepperQuantidade(
-                        quantidade: quantidade,
-                        onDiminuir: onDiminuir,
-                        onAumentar: onAumentar,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Preço unit.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface.withValues(alpha: 0.55),
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      Text(
-                        precoExibido,
-                        style: TextStyle(
-                          color: Colors.green.shade600,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Total',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface.withValues(alpha: 0.55),
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                      Text(
-                        total,
-                        style: TextStyle(
-                          color: Colors.green.shade700,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 14, height: 14),
+                  // Coluna preço/total/quantidade
+                  Flexible(
+                    flex: empilhar ? 0 : 1,
+                    child: SizedBox(
+                        width: empilhar ? constraints.maxWidth : null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _StepperQuantidade(
+                              quantidade: quantidade,
+                              onDiminuir: onDiminuir,
+                              onAumentar: onAumentar,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Preço unit.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurface.withValues(alpha: 0.55),
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            Text(
+                              precoExibido,
+                              style: TextStyle(
+                                color: Colors.green.shade600,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Total',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurface.withValues(alpha: 0.55),
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            Text(
+                              total,
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
             if (descricao.isNotEmpty) ...[
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.03) : cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : cs.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: cs.onSurface.withValues(alpha: 0.55)),
+                    Icon(Icons.info_outline_rounded,
+                        size: 16, color: cs.onSurface.withValues(alpha: 0.55)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         descricao,
-                        maxLines: 6,
-                        overflow: TextOverflow.fade,
                         style: TextStyle(
                           fontSize: 12.5,
                           height: 1.35,
@@ -688,7 +767,9 @@ class _StepperQuantidade extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : cs.primaryContainer.withValues(alpha: 0.35),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : cs.primaryContainer.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(30),
       ),
       padding: const EdgeInsets.all(2),
@@ -703,14 +784,16 @@ class _StepperQuantidade extends StatelessWidget {
           ),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
             child: Container(
               key: ValueKey(quantidade),
               constraints: const BoxConstraints(minWidth: 36),
               alignment: Alignment.center,
               child: Text(
                 quantidade.toString(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -782,7 +865,9 @@ class _SecaoCard extends StatelessWidget {
         color: isDark ? const Color(0xFF1F2937) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : cs.outline.withValues(alpha: 0.12),
         ),
         boxShadow: [
           BoxShadow(
@@ -811,12 +896,14 @@ class _SecaoCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     titulo,
-                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 14.5, fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (contagem != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: cs.primary.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(20),
@@ -834,7 +921,8 @@ class _SecaoCard extends StatelessWidget {
                 if (obrigatorio) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(20),

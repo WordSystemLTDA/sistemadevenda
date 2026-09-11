@@ -66,8 +66,9 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
             margin: EdgeInsets.zero,
             child: InkWell(
               onTap: () => _selecionarItem(context),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
@@ -137,22 +138,39 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                           },
                         ),
                       ],
+                      if (opcoesPacote.id == 7 &&
+                          _provedorProduto.retornarDadosPorID(
+                            [7],
+                            widget.kit,
+                            widget.idProduto,
+                          ).any((dado) => dado.id == item.id))
+                        const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Icon(Icons.check_circle,
+                              size: 24, color: Colors.green),
+                        ),
                       const SizedBox(width: 5),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(item.nome, style: const TextStyle(fontSize: 15)),
-                          if (item.valor != null &&
-                              double.parse(item.valor ?? '0') > 0) ...[
-                            Text(
-                              double.parse(item.valor ?? '0').obterReal(),
-                              style: const TextStyle(
-                                  fontSize: 15, color: Colors.green),
-                            ),
-                          ],
-                        ],
-                      ),
+                      Expanded(
+                          child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(item.nome,
+                                      style: const TextStyle(fontSize: 15)),
+                                  if (item.valor != null &&
+                                      double.parse(item.valor ?? '0') > 0) ...[
+                                    Text(
+                                      double.parse(item.valor ?? '0')
+                                          .obterReal(),
+                                      style: const TextStyle(
+                                          fontSize: 15, color: Colors.green),
+                                    ),
+                                  ],
+                                ],
+                              ))),
                     ],
                   ),
                   if (opcoesPacote.id == 7 &&
@@ -161,104 +179,99 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                               [opcoesPacote.id], widget.kit, widget.idProduto)
                           .where((element) => element.id == item.id)
                           .isNotEmpty) ...[
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            if (_provedorProduto
-                                    .retornarDadosPorID([opcoesPacote.id],
-                                        widget.kit, widget.idProduto)
-                                    .firstWhere(
-                                        (element) => element.id == item.id)
-                                    .quantidade! >
-                                1) {
-                              setState(() {
-                                _provedorProduto
-                                    .retornarDadosPorID([opcoesPacote.id],
-                                        widget.kit, widget.idProduto)
-                                    .firstWhere(
-                                        (element) => element.id == item.id)
-                                    .quantidade = _provedorProduto
+                    Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                if (_provedorProduto
                                         .retornarDadosPorID([opcoesPacote.id],
                                             widget.kit, widget.idProduto)
                                         .firstWhere(
                                             (element) => element.id == item.id)
-                                        .quantidade! -
-                                    1;
-                              });
-                              _provedorProduto.calcularValorVenda(
-                                  widget.kit, widget.idProduto);
-                            }
-                          },
-                          icon: Icon(
-                            Icons.remove_circle_outline,
-                            size: 30,
-                            color: _provedorProduto
+                                        .quantidade! >
+                                    1) {
+                                  setState(() {
+                                    _provedorProduto
                                         .retornarDadosPorID([opcoesPacote.id],
                                             widget.kit, widget.idProduto)
                                         .firstWhere(
                                             (element) => element.id == item.id)
-                                        .quantidade ==
-                                    1
-                                ? Colors.grey
-                                : Colors.red,
-                          ),
-                        ),
-                        Text(
-                          _provedorProduto
-                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
-                                  widget.idProduto)
-                              .firstWhere((element) => element.id == item.id)
-                              .quantidade
-                              .toString(),
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            setState(() {
+                                        .quantidade = _provedorProduto
+                                            .retornarDadosPorID(
+                                                [opcoesPacote.id],
+                                                widget.kit,
+                                                widget.idProduto)
+                                            .firstWhere((element) =>
+                                                element.id == item.id)
+                                            .quantidade! -
+                                        1;
+                                  });
+                                  _provedorProduto.calcularValorVenda(
+                                      widget.kit, widget.idProduto);
+                                }
+                              },
+                              icon: Icon(
+                                Icons.remove_circle_outline,
+                                size: 30,
+                                color: _provedorProduto
+                                            .retornarDadosPorID(
+                                                [opcoesPacote.id],
+                                                widget.kit,
+                                                widget.idProduto)
+                                            .firstWhere((element) =>
+                                                element.id == item.id)
+                                            .quantidade ==
+                                        1
+                                    ? Colors.grey
+                                    : Colors.red,
+                              ),
+                            ),
+                            Text(
                               _provedorProduto
                                   .retornarDadosPorID([opcoesPacote.id],
                                       widget.kit, widget.idProduto)
                                   .firstWhere(
                                       (element) => element.id == item.id)
-                                  .quantidade = _provedorProduto
+                                  .quantidade
+                                  .toString(),
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _provedorProduto
                                       .retornarDadosPorID([opcoesPacote.id],
                                           widget.kit, widget.idProduto)
                                       .firstWhere(
                                           (element) => element.id == item.id)
-                                      .quantidade! +
-                                  1;
-                            });
+                                      .quantidade = _provedorProduto
+                                          .retornarDadosPorID([opcoesPacote.id],
+                                              widget.kit, widget.idProduto)
+                                          .firstWhere((element) =>
+                                              element.id == item.id)
+                                          .quantidade! +
+                                      1;
+                                });
 
-                            _provedorProduto.calcularValorVenda(
-                                widget.kit, widget.idProduto);
-                          },
-                          icon: const Icon(
-                            Icons.add_circle_outline,
-                            size: 30,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
+                                _provedorProduto.calcularValorVenda(
+                                    widget.kit, widget.idProduto);
+                              },
+                              icon: const Icon(
+                                Icons.add_circle_outline,
+                                size: 30,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        )),
                   ]
                 ],
               ),
             ),
           ),
-          if (opcoesPacote.id == 7 &&
-              _provedorProduto.opcoesPacotesListaFinal.isNotEmpty &&
-              _provedorProduto
-                  .retornarDadosPorID(
-                      [opcoesPacote.id], widget.kit, widget.idProduto)
-                  .where((element) => element.id == item.id)
-                  .isNotEmpty) ...[
-            const Positioned(
-              top: -10,
-              left: -10,
-              child: Icon(Icons.check, size: 90, color: Colors.green),
-            ),
-          ],
         ],
       ),
     );

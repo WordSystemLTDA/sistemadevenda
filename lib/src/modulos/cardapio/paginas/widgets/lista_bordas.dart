@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/widgets/grade_opcoes_responsiva.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:flutter/material.dart';
@@ -23,154 +24,139 @@ class _ListaBordasState extends State<ListaBordas> {
         return ListenableBuilder(
           listenable: provedorProduto,
           builder: (context, snapshot) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 6.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(
-                      int.parse(provedor.configBigchef!.saborlimitedeborda),
-                      (index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 5),
-                      child: FittedBox(
-                        fit: BoxFit.fitWidth,
-                        child: Badge(
-                          label: (index + 1) ==
+            return GradeOpcoesResponsiva(
+              children: List.generate(
+                  int.parse(provedor.configBigchef!.saborlimitedeborda),
+                  (index) {
+                return Badge(
+                  label: (index + 1) == provedor.limiteSaborBordaSelecionado
+                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      : null,
+                  backgroundColor: Colors.green,
+                  alignment: AlignmentDirectional.topEnd,
+                  offset: const Offset(-10, 4),
+                  padding: const EdgeInsets.only(bottom: 2, top: 2),
+                  smallSize: 0,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 70),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color: (index + 1) ==
                                   provedor.limiteSaborBordaSelecionado
-                              ? const Icon(Icons.check,
-                                  color: Colors.white, size: 14)
-                              : null,
-                          backgroundColor: Colors.green,
-                          alignment: const Alignment(1, -1),
-                          padding: const EdgeInsets.only(bottom: 2, top: 2),
-                          smallSize: 0,
-                          child: Container(
-                            width: 180,
-                            height: 70,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: (index + 1) ==
-                                          provedor.limiteSaborBordaSelecionado
-                                      ? Colors.green
-                                      : Colors.grey),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                ScaffoldMessenger.of(context)
-                                    .removeCurrentSnackBar();
+                              ? Colors.green
+                              : Colors.grey),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).removeCurrentSnackBar();
 
-                                if (provedor.limiteSaborBordaSelecionado ==
-                                    (index + 1)) {
-                                  provedor.limiteSaborBordaSelecionado = 0;
-                                  var listaF =
-                                      provedorProduto.opcoesPacotesListaFinal;
-                                  listaF
-                                      .where((element) => element.id == 6)
-                                      .firstOrNull
-                                      ?.dados = [];
+                        if (provedor.limiteSaborBordaSelecionado ==
+                            (index + 1)) {
+                          provedor.limiteSaborBordaSelecionado = 0;
+                          var listaF = provedorProduto.opcoesPacotesListaFinal;
+                          listaF
+                              .where((element) => element.id == 6)
+                              .firstOrNull
+                              ?.dados = [];
 
-                                  provedorProduto.opcoesPacotesListaFinal =
-                                      listaF;
-                                } else {
-                                  provedor.limiteSaborBordaSelecionado =
-                                      (index + 1);
-                                }
+                          provedorProduto.opcoesPacotesListaFinal = listaF;
+                        } else {
+                          provedor.limiteSaborBordaSelecionado = (index + 1);
+                        }
 
-                                // print((widget.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados?.length ?? 0));
+                        // print((widget.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados?.length ?? 0));
 
-                                if ((provedorProduto.opcoesPacotesListaFinal
-                                            .where((element) => element.id == 6)
-                                            .firstOrNull
-                                            ?.dados
-                                            ?.length ??
-                                        0) >
-                                    (index + 1)) {
-                                  var listaF =
-                                      provedorProduto.opcoesPacotesListaFinal;
-                                  listaF
-                                      .where((element) => element.id == 6)
-                                      .firstOrNull
-                                      ?.dados = [];
+                        if ((provedorProduto.opcoesPacotesListaFinal
+                                    .where((element) => element.id == 6)
+                                    .firstOrNull
+                                    ?.dados
+                                    ?.length ??
+                                0) >
+                            (index + 1)) {
+                          var listaF = provedorProduto.opcoesPacotesListaFinal;
+                          listaF
+                              .where((element) => element.id == 6)
+                              .firstOrNull
+                              ?.dados = [];
 
-                                  provedorProduto.opcoesPacotesListaFinal =
-                                      listaF;
-                                }
-                              },
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: 65,
-                                    height: 60,
-                                    child: SfCircularChart(
-                                      series: [
-                                        DoughnutSeries(
-                                          dataSource: List.generate(
-                                            (index + 1),
-                                            (index2) {
-                                              var cores = {
-                                                0: Colors.black,
-                                                1: Colors.red,
-                                                2: Colors.deepPurple,
-                                                3: Colors.blue,
-                                                4: Colors.orange,
-                                                5: Colors.yellow,
-                                              };
+                          provedorProduto.opcoesPacotesListaFinal = listaF;
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 60,
+                            height: 54,
+                            child: SfCircularChart(
+                              margin: const EdgeInsets.all(4),
+                              series: [
+                                DoughnutSeries(
+                                  dataSource: List.generate(
+                                    (index + 1),
+                                    (index2) {
+                                      var cores = {
+                                        0: Colors.black,
+                                        1: Colors.red,
+                                        2: Colors.deepPurple,
+                                        3: Colors.blue,
+                                        4: Colors.orange,
+                                        5: Colors.yellow,
+                                      };
 
-                                              if ((index + 1) ==
-                                                      provedor
-                                                          .limiteSaborBordaSelecionado &&
-                                                  (index2 + 1) <=
-                                                      (provedorProduto
-                                                                  .opcoesPacotesListaFinal
-                                                                  .where((element) =>
-                                                                      element
-                                                                          .id ==
-                                                                      6)
-                                                                  .firstOrNull
-                                                                  ?.dados ??
-                                                              [])
-                                                          .length) {
-                                                return {
-                                                  'x': '',
-                                                  'y': 10,
-                                                  'color': cores[index2 + 1]
-                                                };
-                                              }
+                                      if ((index + 1) ==
+                                              provedor
+                                                  .limiteSaborBordaSelecionado &&
+                                          (index2 + 1) <=
+                                              (provedorProduto
+                                                          .opcoesPacotesListaFinal
+                                                          .where((element) =>
+                                                              element.id == 6)
+                                                          .firstOrNull
+                                                          ?.dados ??
+                                                      [])
+                                                  .length) {
+                                        return {
+                                          'x': '',
+                                          'y': 10,
+                                          'color': cores[index2 + 1]
+                                        };
+                                      }
 
-                                              return {
-                                                'x': '',
-                                                'y': 10,
-                                                'color': Colors.transparent
-                                              };
-                                            },
-                                          ),
-                                          explode: false,
-                                          explodeIndex: 0,
-                                          innerRadius: '60%',
-                                          animationDuration: 0,
-                                          cornerStyle: CornerStyle.bothCurve,
-                                          startAngle: 90,
-                                          endAngle: 90,
-                                          strokeColor:
-                                              Theme.of(context).brightness ==
-                                                      Brightness.dark
-                                                  ? Colors.white
-                                                  : Colors.black,
-                                          strokeWidth: 0.5,
-                                          pointColorMapper: (data, index) =>
-                                              data['color'],
-                                          xValueMapper: (data, _) =>
-                                              data['x'] as String,
-                                          yValueMapper: (data, _) => data['y'],
-                                        ),
-                                      ],
-                                    ),
+                                      return {
+                                        'x': '',
+                                        'y': 10,
+                                        'color': Colors.transparent
+                                      };
+                                    },
                                   ),
-                                  Column(
+                                  explode: false,
+                                  explodeIndex: 0,
+                                  innerRadius: '60%',
+                                  animationDuration: 0,
+                                  cornerStyle: CornerStyle.bothCurve,
+                                  startAngle: 90,
+                                  endAngle: 90,
+                                  strokeColor: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
+                                  strokeWidth: 0.5,
+                                  pointColorMapper: (data, index) =>
+                                      data['color'],
+                                  xValueMapper: (data, _) =>
+                                      data['x'] as String,
+                                  yValueMapper: (data, _) => data['y'],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                              child: Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -187,17 +173,13 @@ class _ListaBordasState extends State<ListaBordas> {
                                         style: const TextStyle(fontSize: 10),
                                       ),
                                     ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                                  ))),
+                        ],
                       ),
-                    );
-                  }),
-                ),
-              ),
+                    ),
+                  ),
+                );
+              }),
             );
           },
         );
