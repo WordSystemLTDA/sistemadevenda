@@ -5,6 +5,8 @@ import 'dart:io';
 
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
+import 'package:app/src/essencial/api/socket/fila_impressao.dart';
+import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -15,6 +17,85 @@ import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Server extends ChangeNotifier {
+  final FilaImpressao filaImpressao;
+  Timer? _avisoImpressao;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
+      _avisoImpressaoVisivel;
+  bool _descartado = false;
+
+  Server({FilaImpressao? filaImpressao})
+      : filaImpressao = filaImpressao ?? FilaImpressao() {
+    this.filaImpressao.addListener(_atualizarFilaImpressao);
+  }
+
+  void _atualizarFilaImpressao() {
+    if (filaImpressao.itens.isEmpty) {
+      _avisoImpressaoVisivel?.close();
+      _avisoImpressaoVisivel = null;
+    }
+    if (!_descartado) notifyListeners();
+  }
+
+  void abrirPendenciasImpressao(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PendenciasImpressao(
+              fila: filaImpressao,
+              reenviar: (id) async {
+                await filaImpressao.autorizarReenvio(id);
+                await _reenviarMensagensPendentes();
+              },
+            )));
+  }
+
+  void _avisarImpressaoPendente() {
+    if (_descartado || filaImpressao.itens.isEmpty) return;
+    final context = navigatorKey?.currentContext;
+    if (context == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.hideCurrentSnackBar();
+    _avisoImpressaoVisivel = messenger?.showSnackBar(SnackBar(
+      duration: const Duration(days: 1),
+      content:
+          const Text('Impressao pendente. Confira o envio para a cozinha.'),
+      action: SnackBarAction(
+          label: 'Conferir',
+          onPressed: () => abrirPendenciasImpressao(context)),
+    ));
+  }
+
+  Future<void> enviarImpressoes(List<String> mensagens) async {
+    await filaImpressao.registrar(mensagens,
+        servidor: hostname.isEmpty ? '' : '$hostname:$port');
+    await _reenviarMensagensPendentes();
+    if (!connected) _avisarImpressaoPendente();
+  }
+
+  Future<void> _enviarImpressoesAguardando() async {
+    await filaImpressao.carregar();
+    for (final item in filaImpressao.itens) {
+      if (!connected || channel == null) break;
+      if (item.servidor.isNotEmpty && item.servidor != '$hostname:$port') {
+        continue;
+      }
+      final empresa = item.dados['idEmpresa']?.toString() ?? '';
+      if (empresa.isNotEmpty && empresa != usuarioProvedor.usuario?.empresa) {
+        continue;
+      }
+      if (!await filaImpressao.iniciarEnvio(item.id)) continue;
+      if (!_enviarMensagemNoCanal(item.mensagem)) {
+        await filaImpressao.registrarErro(item.id,
+            'Conexao interrompida durante o envio. Confira com a cozinha.');
+        break;
+      }
+    }
+    if (filaImpressao.itens.isNotEmpty) {
+      _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
+        _avisoImpressao = null;
+        _avisarImpressaoPendente();
+      });
+    }
+  }
+
   WebSocketChannel? channel;
 
   bool connected = false;
@@ -28,14 +109,26 @@ class Server extends ChangeNotifier {
   Timer? _temporizadorReconexao;
   Completer<bool>? _conexaoEmAndamento;
   bool _reenviandoMensagensPendentes = false;
+  bool _novoEnvioSolicitado = false;
 
   static const int _maximoTentativasReconexao = 12;
   static const Duration _timeoutConexao = Duration(seconds: 8);
   static const int _maximoMensagensPendentes = 200;
-  static const Duration _tempoMaximoAguardandoConfirmacaoImpressao = Duration(minutes: 10);
-  static const String _chaveMensagensPendentes = 'fila_mensagens_socket_pendentes';
+  static const String _chaveMensagensPendentes =
+      'fila_mensagens_socket_pendentes';
 
   Future<bool> connect(String ip, String porta) async {
+    unawaited(filaImpressao.carregar().then((_) {
+      if (!_descartado && filaImpressao.itens.isNotEmpty) {
+        _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
+          _avisoImpressao = null;
+          _avisarImpressaoPendente();
+        });
+      }
+    }).catchError((Object erro, StackTrace stack) {
+      log('Falha ao recuperar impressoes pendentes',
+          error: erro, stackTrace: stack);
+    }));
     if (_conexaoEmAndamento != null) {
       return _conexaoEmAndamento!.future;
     }
@@ -50,12 +143,17 @@ class Server extends ChangeNotifier {
         return false;
       }
 
-      if (connected && channel != null && hostname == ip && port == portaConvertida) {
+      if (connected &&
+          channel != null &&
+          hostname == ip &&
+          port == portaConvertida) {
         completer.complete(true);
         return true;
       }
 
       _desconexaoIntencional = false;
+      hostname = ip;
+      port = portaConvertida;
       _temporizadorReconexao?.cancel();
       _temporizadorReconexao = null;
 
@@ -191,8 +289,11 @@ class Server extends ChangeNotifier {
       final ConfigSharedPreferences config = ConfigSharedPreferences();
       final conexao = await config.getConexao();
 
-      if (conexao == null || conexao.servidor.isEmpty || conexao.porta.isEmpty) {
-        _mostrarAvisoFalhaReconexao('Dados de conexao nao encontrados para reconectar.');
+      if (conexao == null ||
+          conexao.servidor.isEmpty ||
+          conexao.porta.isEmpty) {
+        _mostrarAvisoFalhaReconexao(
+            'Dados de conexao nao encontrados para reconectar.');
         return;
       }
 
@@ -215,7 +316,8 @@ class Server extends ChangeNotifier {
       ..removeCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(mensagem ?? 'Falha ao reconectar. Verifique o servidor e a rede.'),
+          content: Text(mensagem ??
+              'Falha ao reconectar. Verifique o servidor e a rede.'),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 5),
           showCloseIcon: true,
@@ -273,7 +375,11 @@ class Server extends ChangeNotifier {
       return nomeHost;
     }
 
-    final String fallbackAmbiente = (Platform.environment['COMPUTERNAME'] ?? Platform.environment['HOSTNAME'] ?? Platform.environment['USER'] ?? '').trim();
+    final String fallbackAmbiente = (Platform.environment['COMPUTERNAME'] ??
+            Platform.environment['HOSTNAME'] ??
+            Platform.environment['USER'] ??
+            '')
+        .trim();
     if (fallbackAmbiente.isNotEmpty) {
       return fallbackAmbiente;
     }
@@ -308,13 +414,16 @@ class Server extends ChangeNotifier {
         return null;
       }
 
-      final Map<String, dynamic> mapa = Map<String, dynamic>.from(mensagemBruta);
+      final Map<String, dynamic> mapa =
+          Map<String, dynamic>.from(mensagemBruta);
 
       if (mapa['type'] == 'customMessage' && mapa['data'] is Map) {
-        final Map<String, dynamic> dadosEnvelope = Map<String, dynamic>.from(mapa['data'] as Map);
+        final Map<String, dynamic> dadosEnvelope =
+            Map<String, dynamic>.from(mapa['data'] as Map);
         final dynamic customData = dadosEnvelope['customData'];
         if (customData is Map) {
-          final Map<String, dynamic> mapaCustom = Map<String, dynamic>.from(customData);
+          final Map<String, dynamic> mapaCustom =
+              Map<String, dynamic>.from(customData);
           if (mapaCustom['tipo'] != null) {
             return mapaCustom;
           }
@@ -362,24 +471,23 @@ class Server extends ChangeNotifier {
     return idRequisicaoNormalizado;
   }
 
-  String? _obterIdRequisicaoDaMensagem(String mensagem) {
-    final Map<String, dynamic>? mensagemMapa = _decodificarMensagemParaMapa(mensagem);
-    return _obterIdRequisicaoDaMensagemMapa(mensagemMapa);
-  }
-
   bool _mensagemExigeConfirmacaoEntrega(String mensagem) {
-    final Map<String, dynamic>? mensagemMapa = _decodificarMensagemParaMapa(mensagem);
+    final Map<String, dynamic>? mensagemMapa =
+        _decodificarMensagemParaMapa(mensagem);
     if (mensagemMapa == null) {
       return false;
     }
 
     final bool possuiTipoImpressao = mensagemMapa['tipoImpressao'] != null;
-    final bool possuiIdRequisicao = _obterIdRequisicaoDaMensagemMapa(mensagemMapa) != null;
+    final bool possuiIdRequisicao =
+        _obterIdRequisicaoDaMensagemMapa(mensagemMapa) != null;
     return possuiTipoImpressao && possuiIdRequisicao;
   }
 
-  String? _extrairIdRequisicaoDaReferenciaImpressao(String? referenciaImpressaoOrigem) {
-    final String referenciaNormalizada = (referenciaImpressaoOrigem ?? '').trim();
+  String? _extrairIdRequisicaoDaReferenciaImpressao(
+      String? referenciaImpressaoOrigem) {
+    final String referenciaNormalizada =
+        (referenciaImpressaoOrigem ?? '').trim();
     if (referenciaNormalizada.isEmpty) {
       return null;
     }
@@ -397,141 +505,52 @@ class Server extends ChangeNotifier {
     return ultimoTrecho;
   }
 
-  bool _idRequisicaoExpirou(String idRequisicao) {
-    final String prefixoMicrossegundos = idRequisicao.split('_').first.trim();
-    final int? microssegundos = int.tryParse(prefixoMicrossegundos);
-    if (microssegundos == null || microssegundos <= 0) {
-      return false;
-    }
-
-    final DateTime dataCriacao = DateTime.fromMicrosecondsSinceEpoch(microssegundos);
-    return DateTime.now().difference(dataCriacao) > _tempoMaximoAguardandoConfirmacaoImpressao;
-  }
-
   bool _enviarMensagemNoCanal(String mensagem) {
     if (channel == null || !connected) {
       return false;
     }
 
+    var mensagemParaEnviar = mensagem;
     try {
       final dynamic mensagemDecodificada = jsonDecode(mensagem);
       if (mensagemDecodificada is Map && mensagemDecodificada['tipo'] != null) {
-        final String envelope = _serializarMensagemEnvelope(
+        mensagemParaEnviar = _serializarMensagemEnvelope(
           Map<String, dynamic>.from(mensagemDecodificada),
         );
-        channel!.sink.add(envelope);
-        return true;
       }
     } catch (_) {
       // Mensagem nao e JSON valido. Mantem envio bruto para compatibilidade.
     }
 
     try {
-      channel!.sink.add(mensagem);
+      channel!.sink.add(mensagemParaEnviar);
       return true;
     } catch (e, stackTrace) {
-      log('Falha ao enviar mensagem no socket', error: e, stackTrace: stackTrace);
+      log('Falha ao enviar mensagem no socket',
+          error: e, stackTrace: stackTrace);
       return false;
-    }
-  }
-
-  Future<void> _removerMensagemPendenteEspecifica(String mensagem) async {
-    try {
-      final List<String> pendentes = await _carregarMensagensPendentes();
-      if (!pendentes.contains(mensagem)) {
-        return;
-      }
-
-      pendentes.remove(mensagem);
-      await _salvarMensagensPendentes(pendentes);
-    } catch (e, stackTrace) {
-      log('Falha ao remover mensagem pendente especifica', error: e, stackTrace: stackTrace);
-    }
-  }
-
-  Future<void> _removerMensagemPendentePorIdRequisicao(String idRequisicao) async {
-    try {
-      final List<String> pendentes = await _carregarMensagensPendentes();
-      bool houveAlteracao = false;
-
-      final List<String> filtradas = pendentes.where((String mensagemPendente) {
-        final String? idRequisicaoMensagem = _obterIdRequisicaoDaMensagem(mensagemPendente);
-        final bool manter = idRequisicaoMensagem == null || idRequisicaoMensagem != idRequisicao;
-        if (!manter) {
-          houveAlteracao = true;
-        }
-
-        return manter;
-      }).toList();
-
-      if (houveAlteracao) {
-        await _salvarMensagensPendentes(filtradas);
-      }
-    } catch (e, stackTrace) {
-      log('Falha ao remover mensagem pendente por idRequisicao', error: e, stackTrace: stackTrace);
-    }
-  }
-
-  Future<void> _limparPendenciasExpiradas() async {
-    try {
-      final List<String> pendentes = await _carregarMensagensPendentes();
-      bool houveAlteracao = false;
-
-      final List<String> filtradas = pendentes.where((String mensagemPendente) {
-        if (!_mensagemExigeConfirmacaoEntrega(mensagemPendente)) {
-          return true;
-        }
-
-        final String? idRequisicao = _obterIdRequisicaoDaMensagem(mensagemPendente);
-        if (idRequisicao == null) {
-          return true;
-        }
-
-        final bool expirou = _idRequisicaoExpirou(idRequisicao);
-        if (expirou) {
-          houveAlteracao = true;
-          log('Mensagem de impressao expirada removida da fila pendente. idRequisicao: $idRequisicao');
-          return false;
-        }
-
-        return true;
-      }).toList();
-
-      if (houveAlteracao) {
-        await _salvarMensagensPendentes(filtradas);
-      }
-    } catch (e, stackTrace) {
-      log('Falha ao limpar pendencias expiradas', error: e, stackTrace: stackTrace);
     }
   }
 
   bool write(String message) {
-    final bool exigeConfirmacaoEntrega = _mensagemExigeConfirmacaoEntrega(message);
-
-    if (exigeConfirmacaoEntrega) {
-      // Persistimos antes do envio para garantir ao menos uma tentativa apos falhas de rede.
-      unawaited(_enfileirarMensagemPendente(message));
-      unawaited(_limparPendenciasExpiradas());
+    if (_mensagemExigeConfirmacaoEntrega(message)) {
+      unawaited(enviarImpressoes([message])
+          .catchError((Object erro, StackTrace stack) {
+        log('Falha ao registrar impressao', error: erro, stackTrace: stack);
+        final context = navigatorKey?.currentContext;
+        if (context != null && context.mounted) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+            duration: Duration(days: 1),
+            content: Text(
+                'Falha ao salvar a impressao. Confira o pedido com a cozinha antes de sair.'),
+          ));
+        }
+      }));
+      return connected;
     }
-
-    if (channel == null || !connected) {
-      if (!exigeConfirmacaoEntrega) {
-        unawaited(_enfileirarMensagemPendente(message));
-      }
-      return false;
-    }
-
-    final bool enviado = _enviarMensagemNoCanal(message);
-    if (enviado) {
-      if (!exigeConfirmacaoEntrega) {
-        unawaited(_removerMensagemPendenteEspecifica(message));
-      }
-
-      return true;
-    }
-
-    unawaited(_enfileirarMensagemPendente(message));
-    return false;
+    final enviado = _enviarMensagemNoCanal(message);
+    if (!enviado) unawaited(_enfileirarMensagemPendente(message));
+    return enviado;
   }
 
   Future<List<String>> _carregarMensagensPendentes() async {
@@ -551,6 +570,7 @@ class Server extends ChangeNotifier {
 
   Future<void> _enfileirarMensagemPendente(String mensagem) async {
     try {
+      await filaImpressao.carregar();
       final List<String> pendentes = await _carregarMensagensPendentes();
 
       if (!pendentes.contains(mensagem)) {
@@ -558,29 +578,37 @@ class Server extends ChangeNotifier {
       }
 
       if (pendentes.length > _maximoMensagensPendentes) {
-        final int quantidadeParaRemover = pendentes.length - _maximoMensagensPendentes;
+        final int quantidadeParaRemover =
+            pendentes.length - _maximoMensagensPendentes;
         pendentes.removeRange(0, quantidadeParaRemover);
       }
 
       await _salvarMensagensPendentes(pendentes);
     } catch (e, stackTrace) {
-      log('Falha ao enfileirar mensagem pendente', error: e, stackTrace: stackTrace);
+      log('Falha ao enfileirar mensagem pendente',
+          error: e, stackTrace: stackTrace);
     }
   }
 
   Future<void> _reenviarMensagensPendentes() async {
+    try {
+      await filaImpressao.carregar();
+    } catch (erro, stack) {
+      log('Falha ao recuperar a fila para envio',
+          error: erro, stackTrace: stack);
+      return;
+    }
     if (_reenviandoMensagensPendentes) {
+      _novoEnvioSolicitado = true;
       return;
     }
-
-    if (channel == null || !connected) {
-      return;
-    }
+    if (channel == null || !connected) return;
 
     _reenviandoMensagensPendentes = true;
+    _novoEnvioSolicitado = false;
 
     try {
-      await _limparPendenciasExpiradas();
+      await _enviarImpressoesAguardando();
 
       final List<String> pendentes = await _carregarMensagensPendentes();
       if (pendentes.isEmpty) {
@@ -597,22 +625,23 @@ class Server extends ChangeNotifier {
           restantes.addAll(pendentes.sublist(indice));
           break;
         }
-
-        if (_mensagemExigeConfirmacaoEntrega(mensagem)) {
-          // Mantem na fila ate receber confirmacao explicita (ou expirar por tempo).
-          restantes.add(mensagem);
-        }
       }
 
       await _salvarMensagensPendentes(restantes);
     } catch (e, stackTrace) {
-      log('Falha ao reenviar mensagens pendentes', error: e, stackTrace: stackTrace);
+      log('Falha ao reenviar mensagens pendentes',
+          error: e, stackTrace: stackTrace);
+      _novoEnvioSolicitado = false;
+      _avisarImpressaoPendente();
     } finally {
       _reenviandoMensagensPendentes = false;
+      if (connected && _novoEnvioSolicitado) {
+        unawaited(_reenviarMensagensPendentes());
+      }
     }
   }
 
-  void onData(dynamic data) async {
+  Future<void> onData(dynamic data) async {
     try {
       final Map<String, dynamic>? mensagem = _desserializarMensagem(data);
       if (mensagem == null || mensagem['tipo'] == null) {
@@ -621,19 +650,29 @@ class Server extends ChangeNotifier {
 
       final ModeloRetornoSocket dados = ModeloRetornoSocket.fromMap(mensagem);
 
-      if (dados.tipo == 'RespostaImpressao' && dados.tipoResposta == 'impressao') {
-        final String? idRequisicao = (dados.idRequisicao ?? _extrairIdRequisicaoDaReferenciaImpressao(dados.referenciaImpressaoOrigem))?.trim();
+      if (dados.tipo == 'RespostaImpressao' &&
+          dados.tipoResposta == 'impressao') {
+        final String? idRequisicao = (dados.idRequisicao ??
+                _extrairIdRequisicaoDaReferenciaImpressao(
+                    dados.referenciaImpressaoOrigem))
+            ?.trim();
 
         if (idRequisicao != null && idRequisicao.isNotEmpty) {
           if (dados.statusResposta == 'sucesso') {
-            await _removerMensagemPendentePorIdRequisicao(idRequisicao);
+            await filaImpressao.confirmar(idRequisicao);
           } else if (dados.statusResposta == 'erro') {
+            await filaImpressao.registrarErro(idRequisicao,
+                dados.mensagemErro ?? 'Falha no servidor de impressao.');
+            _avisarImpressaoPendente();
             log('Servidor respondeu erro para impressao idRequisicao=$idRequisicao: ${dados.mensagemErro ?? 'Sem detalhes'}');
           }
         }
 
-        await _limparPendenciasExpiradas();
-        notifyListeners();
+        if (filaImpressao.itens.isEmpty) {
+          _avisoImpressao?.cancel();
+          _avisoImpressao = null;
+        }
+        if (!_descartado) notifyListeners();
         return;
       }
 
@@ -652,7 +691,11 @@ class Server extends ChangeNotifier {
 
   @override
   void dispose() {
+    _descartado = true;
     _temporizadorReconexao?.cancel();
+    _avisoImpressao?.cancel();
+    filaImpressao.removeListener(_atualizarFilaImpressao);
+    filaImpressao.dispose();
     super.dispose();
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
+
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
@@ -37,6 +39,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   final Server server = Modular.get<Server>();
 
   bool isLoading = false;
+  final _finalizacao = FinalizacaoComPreparo();
   Modeloworddadoscardapio? dados;
   bool carregando = true;
 
@@ -56,7 +59,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     setState(() => carregando = false);
   }
 
-  void removerTodosItensCarrinho() async {
+  Future<void> removerTodosItensCarrinho() async {
     final sucesso = await carrinhoProvedor.removerComandasPedidos();
 
     if (!sucesso) {
@@ -158,106 +161,109 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   }
 
   Future<void> _finalizar() async {
-    if (isLoading) return;
-    setState(() => isLoading = true);
-
+    if (isLoading ||
+        dados == null ||
+        (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty &&
+            !_finalizacao.pedidoRegistrado)) {
+      return;
+    }
     provedorFinalizarPagamento.idVenda = provedorCardapio.id;
     provedorFinalizarPagamento.valor =
         carrinhoProvedor.itensCarrinho.precoTotal;
-
     if (provedorCardapio.tipo == TipoCardapio.balcao) {
-      setState(() => isLoading = false);
       Navigator.push(
-        context,
-        MaterialPageRoute(
-          settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
-          builder: (context) => const PaginaFinalizarAcrescimo(),
-        ),
-      );
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
+            builder: (_) => const PaginaFinalizarAcrescimo(),
+          ));
       return;
     }
-
-    if (provedorCardapio.tipo == TipoCardapio.mesa) {
-      await servicoCardapio
-          .inserirProdutosMesa(
-        carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-        provedorCardapio.idMesa,
-        provedorCardapio.id,
-        provedorCardapio.idCliente,
-      )
-          .then((resposta) {
-        var (sucesso, _) = resposta;
-        if (sucesso) {
-          provedorMesas.listarMesas('');
-          server.write(jsonEncode(
-              {'tipo': 'Mesa', 'nomeConexao': usuarioProvedor.usuario!.nome}));
-          removerTodosItensCarrinho();
-          Impressao.comprovanteDePedido(
-            tipodeentrega: provedorCardapio.tipodeentrega,
-            tipoTela: provedorCardapio.tipo,
-            comanda: dados!.nome!,
-            numeroPedido: dados!.numeroPedido!,
-            nomeCliente:
-                ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' ||
-                            (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
-                        (dados?.observacaoDoPedido ?? '').isNotEmpty
-                    ? (dados?.observacaoDoPedido ?? '')
-                    : (dados?.nomeCliente ?? 'Sem Cliente'),
-            nomeEmpresa: dados!.nomeEmpresa!,
-            produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-            local: '',
-          );
-          if (mounted) {
-            Navigator.popUntil(context, ModalRoute.withName('PaginaMesas'));
-          }
-          return;
-        }
-        _erroSnack();
-      }).whenComplete(() {
-        if (mounted) setState(() => isLoading = false);
-      });
-      return;
-    }
-
-    await servicoCardapio
-        .inserirProdutosComanda(
-      carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-      provedorCardapio.idMesa,
-      provedorCardapio.id,
-      provedorCardapio.idComanda,
-      provedorCardapio.idCliente,
-    )
-        .then((resposta) {
-      var (sucesso, _) = resposta;
-      if (sucesso) {
-        provedorComanda.listarComandas('');
-        server.write(jsonEncode(
-            {'tipo': 'Comanda', 'nomeConexao': usuarioProvedor.usuario!.nome}));
-        removerTodosItensCarrinho();
-        Impressao.comprovanteDePedido(
+    setState(() => isLoading = true);
+    final tipo = provedorCardapio.tipo;
+    final itens = List.of(carrinhoProvedor.itensCarrinho.listaComandosPedidos);
+    try {
+      final sucesso = await _finalizacao.executar(
+        prepararImpressao: () => Impressao.prepararComprovanteDePedido(
+          produtos: itens,
+          tipoTela: tipo,
           tipodeentrega: provedorCardapio.tipodeentrega,
-          tipoTela: provedorCardapio.tipo,
-          comanda: dados!.nome!,
-          numeroPedido: dados!.numeroPedido!,
-          nomeCliente:
-              ((dados?.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' ||
-                          (dados?.nomeCliente ?? 'Sem Cliente') == '') &&
-                      (dados?.observacaoDoPedido ?? '').isNotEmpty
-                  ? (dados?.observacaoDoPedido ?? '')
-                  : (dados?.nomeCliente ?? 'Sem Cliente'),
-          nomeEmpresa: dados!.nomeEmpresa!,
-          produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-          local: dados?.nomeMesa ?? '',
-        );
-        if (mounted) {
-          Navigator.popUntil(context, ModalRoute.withName('PaginaComandas'));
-        }
-        return;
+          comanda: dados?.nome ?? '',
+          numeroPedido: dados?.numeroPedido ?? '',
+          nomeCliente: (dados?.nomeCliente ?? '').trim().isEmpty ||
+                  dados?.nomeCliente == 'Sem Cliente'
+              ? (dados?.observacaoDoPedido ?? '')
+              : dados!.nomeCliente!,
+          nomeEmpresa: dados?.nomeEmpresa ?? '',
+          local: tipo == TipoCardapio.mesa ? '' : dados?.nomeMesa ?? '',
+        ),
+        registrarPedido: () async {
+          final resposta = tipo == TipoCardapio.mesa
+              ? await servicoCardapio.inserirProdutosMesa(
+                  itens,
+                  provedorCardapio.idMesa,
+                  provedorCardapio.id,
+                  provedorCardapio.idCliente)
+              : await servicoCardapio.inserirProdutosComanda(
+                  itens,
+                  provedorCardapio.idMesa,
+                  provedorCardapio.id,
+                  provedorCardapio.idComanda,
+                  provedorCardapio.idCliente);
+          return resposta.$1;
+        },
+        enviarImpressao: server.enviarImpressoes,
+        limparCarrinho: () async {
+          if (!await carrinhoProvedor.removerComandasPedidos()) {
+            throw StateError('Nao foi possivel limpar o carrinho finalizado.');
+          }
+          await carrinhoProvedor.listarComandasPedidos();
+        },
+      );
+      if (!sucesso) {
+        throw StateError('Pedido nao registrado.');
       }
-      _erroSnack();
-    }).whenComplete(() {
+      server.write(jsonEncode({
+        'tipo': tipo.nome,
+        'nomeConexao': usuarioProvedor.usuario?.nome ?? ''
+      }));
+      if (tipo == TipoCardapio.mesa) {
+        provedorMesas.listarMesas('');
+      } else {
+        provedorComanda.listarComandas('');
+      }
+      if (mounted) {
+        setState(() => isLoading = false);
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        Navigator.popUntil(
+            context,
+            ModalRoute.withName(
+                tipo == TipoCardapio.mesa ? 'PaginaMesas' : 'PaginaComandas'));
+      }
+    } catch (_) {
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            scrollable: true,
+            title: Text(_finalizacao.pedidoRegistrado
+                ? 'Pedido ja registrado'
+                : 'Nao foi possivel finalizar'),
+            content: Text(_finalizacao.pedidoRegistrado
+                ? 'A finalizacao ficou pendente. Confira com a cozinha. Toque em Finalizar novamente para concluir a impressao e limpar o carrinho, sem lancar os produtos outra vez.'
+                : 'Confira a conexao e consulte os itens do pedido antes de tentar novamente.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendi'))
+            ],
+          ),
+        );
+      }
+    } finally {
       if (mounted) setState(() => isLoading = false);
-    });
+    }
   }
 
   void _erroSnack() {
@@ -281,101 +287,122 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
     return AnimatedBuilder(
       animation: carrinhoProvedor,
-      builder: (context, _) => Scaffold(
-        backgroundColor: cs.surface,
-        appBar: AppBar(
-          backgroundColor: cs.inversePrimary,
-          elevation: 0,
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.shopping_cart_outlined,
-                    color: cs.onPrimaryContainer, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Carrinho',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.1)),
-                  Text(
-                    '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
-                    style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurfaceVariant),
+      builder: (context, _) => PopScope(
+        canPop: !isLoading &&
+            (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
+        onPopInvokedWithResult: (saiu, _) {
+          if (!saiu && !isLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Conclua a finalizacao pendente antes de sair do carrinho.'),
+            ));
+          }
+        },
+        child: Scaffold(
+          backgroundColor: cs.surface,
+          appBar: AppBar(
+            backgroundColor: cs.inversePrimary,
+            elevation: 0,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ],
-              ),
+                  child: Icon(Icons.shopping_cart_outlined,
+                      color: cs.onPrimaryContainer, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Carrinho',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1)),
+                    Text(
+                      '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              if (carrinhoProvedor
+                  .itensCarrinho.listaComandosPedidos.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: IconButton(
+                    tooltip: 'Esvaziar',
+                    onPressed: isLoading || _finalizacao.pedidoRegistrado
+                        ? null
+                        : _confirmarLimpar,
+                    icon: Icon(Icons.delete_sweep_outlined, color: cs.error),
+                  ),
+                ),
             ],
           ),
-          actions: [
-            if (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: IconButton(
-                  tooltip: 'Esvaziar',
-                  onPressed: _confirmarLimpar,
-                  icon: Icon(Icons.delete_sweep_outlined, color: cs.error),
-                ),
-              ),
-          ],
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-        floatingActionButton: (carregando || itens.isEmpty)
-            ? null
-            : _BotaoFinalizar(
-                isLoading: isLoading,
-                total: carrinhoProvedor.itensCarrinho.precoTotal,
-                onTap: _finalizar,
-              ),
-        body: carregando
-            ? const Center(child: CircularProgressIndicator())
-            : itens.isEmpty
-                ? _EstadoVazio(cs: cs)
-                : ListView.builder(
-                    itemCount: itens.length,
-                    padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
-                    itemBuilder: (context, index) {
-                      final item = itens[index];
-                      return CardCarrinho(
-                        item: item,
-                        idComanda: provedorCardapio.idComanda,
-                        idMesa: provedorCardapio.idMesa,
-                        index: index,
-                        value: carrinhoProvedor.itensCarrinho,
-                        aoExcluirItem: () => setState(() {}),
-                        setarQuantidade: (increase) async {
-                          final quantidadeAnterior = item.quantidade ?? 1;
-                          final novaQuantidade =
-                              quantidadeAnterior + (increase ? 1 : -1);
-                          if (novaQuantidade < 1) return false;
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
+          floatingActionButtonAnimator:
+              FloatingActionButtonAnimator.noAnimation,
+          floatingActionButton:
+              (carregando || (itens.isEmpty && !_finalizacao.pedidoRegistrado))
+                  ? null
+                  : _BotaoFinalizar(
+                      isLoading: isLoading,
+                      total: carrinhoProvedor.itensCarrinho.precoTotal,
+                      onTap: _finalizar,
+                    ),
+          body: IgnorePointer(
+            ignoring: isLoading || _finalizacao.pedidoRegistrado,
+            child: carregando
+                ? const Center(child: CircularProgressIndicator())
+                : itens.isEmpty
+                    ? _EstadoVazio(cs: cs)
+                    : ListView.builder(
+                        itemCount: itens.length,
+                        padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
+                        itemBuilder: (context, index) {
+                          final item = itens[index];
+                          return CardCarrinho(
+                            item: item,
+                            idComanda: provedorCardapio.idComanda,
+                            idMesa: provedorCardapio.idMesa,
+                            index: index,
+                            value: carrinhoProvedor.itensCarrinho,
+                            aoExcluirItem: () => setState(() {}),
+                            setarQuantidade: (increase) async {
+                              final quantidadeAnterior = item.quantidade ?? 1;
+                              final novaQuantidade =
+                                  quantidadeAnterior + (increase ? 1 : -1);
+                              if (novaQuantidade < 1) return false;
 
-                          item.quantidade = novaQuantidade;
-                          if (mounted) setState(() {});
+                              item.quantidade = novaQuantidade;
+                              if (mounted) setState(() {});
 
-                          final sucesso =
-                              await carrinhoProvedor.editar(item, index);
-                          if (!sucesso) {
-                            item.quantidade = quantidadeAnterior;
-                            if (mounted) setState(() {});
-                            _erroSnack();
-                          }
-                          return sucesso;
+                              final sucesso =
+                                  await carrinhoProvedor.editar(item, index);
+                              if (!sucesso) {
+                                item.quantidade = quantidadeAnterior;
+                                if (mounted) setState(() {});
+                                _erroSnack();
+                              }
+                              return sucesso;
+                            },
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
+          ),
+        ),
       ),
     );
   }

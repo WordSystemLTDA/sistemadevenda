@@ -180,11 +180,14 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                           .where((element) => element.id == item.id)
                           .isNotEmpty) ...[
                     Align(
-                        alignment: Alignment.centerRight,
+                        alignment: Alignment.center,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                  width: 44, height: 44),
                               onPressed: () {
                                 if (_provedorProduto
                                         .retornarDadosPorID([opcoesPacote.id],
@@ -240,6 +243,9 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                               style: const TextStyle(fontSize: 20),
                             ),
                             IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                  width: 44, height: 44),
                               onPressed: () {
                                 setState(() {
                                   _provedorProduto

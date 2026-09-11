@@ -73,6 +73,13 @@ class ServidorTeste extends Fake implements Server {
   final mensagens = <Map<String, dynamic>>[];
 
   @override
+  Future<void> enviarImpressoes(List<String> mensagens) async {
+    for (final mensagem in mensagens) {
+      write(mensagem);
+    }
+  }
+
+  @override
   bool write(String message) {
     mensagens.add(jsonDecode(message) as Map<String, dynamic>);
     return true;
@@ -197,6 +204,31 @@ void main() {
     });
 
     tearDown(Modular.destroy);
+
+    test('preserva produtos sem computador em pedido com varios destinos',
+        () async {
+      final pizza = produto(nome: 'Pizza de Queijos', computador: 'Cozinha')
+        ..observacao = 'Sem cebola'
+        ..opcoesPacotesListaFinal = [saboresPizza()];
+      final itens = [
+        pizza,
+        produto(id: 'bebida', computador: 'Bar'),
+        produto(id: 'sem-destino')
+      ];
+      final mensagens = Impressao.prepararComprovanteDePedido(produtos: itens);
+      pizza.opcoesPacotesListaFinal!.clear();
+      itens.clear();
+      await servidor.enviarImpressoes(mensagens);
+      expect(servidor.mensagens, hasLength(3));
+      final enviados =
+          servidor.mensagens.expand((e) => e['produtos'] as List).toList();
+      expect(enviados.map((e) => e['id']), ['100', 'bebida', 'sem-destino']);
+      expect(enviados.first['observacao'], 'Sem cebola');
+      expect(
+          enviados.first['opcoesPacotesListaFinal'][0]['dados'], hasLength(2));
+      expect(servidor.mensagens.map((e) => e['idRequisicao']).toSet(),
+          hasLength(3));
+    });
 
     for (final agruparPorDestino in [true, false]) {
       test('pedido misto aplica regra no envio, agrupado=$agruparPorDestino',

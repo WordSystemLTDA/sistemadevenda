@@ -418,7 +418,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                 child: BotaoAcaoPedido(
-                  rotulo: 'Adicionar ao carrinho',
+                  rotulo: 'Adicionar ao',
+                  iconeRotulo: Icons.shopping_cart_outlined,
+                  rotuloSemantico: 'Adicionar ao carrinho',
                   carregando: carregando,
                   quantidade: _provedorProduto.quantidade,
                   total: total,

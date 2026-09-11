@@ -170,6 +170,18 @@ void main() {
       }
       await tester.ensureVisible(find.byType(CardOpcoesPacotes).last);
       await tester.pumpAndSettle();
+      final controle = find.descendant(
+          of: find.byType(CardOpcoesPacotes).last,
+          matching: find.byIcon(Icons.remove_circle_outline));
+      if (controle.evaluate().isNotEmpty) {
+        final menos = tester.getCenter(controle);
+        final mais = tester.getCenter(find.descendant(
+            of: find.byType(CardOpcoesPacotes).last,
+            matching: find.byIcon(Icons.add_circle_outline)));
+        final card = tester.getRect(find.byType(CardOpcoesPacotes).last);
+        expect((menos.dx + mais.dx) / 2, closeTo(card.center.dx, 1));
+        expect(mais.dx - menos.dx, lessThan(110));
+      }
       await capturarTela(tester, 'responsivo_opcoes_$cenario');
       expect(tester.takeException(), isNull);
     });

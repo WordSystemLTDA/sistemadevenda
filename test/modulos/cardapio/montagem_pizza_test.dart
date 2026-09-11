@@ -507,7 +507,7 @@ void main() {
               .montagemPizza,
           isTrue);
       expect(tester.widget<BotaoAcaoPedido>(botao).rotulo,
-          'Adicionar ao carrinho');
+          'Adicionar ao');
       await tester.tap(botao);
       await tester.pumpAndSettle();
       final pizza = carrinho.itensCarrinho.listaComandosPedidos

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
@@ -8,6 +9,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter/material.dart';
 
 class Impressao {
   static int _sequencialRequisicao = 0;
@@ -17,14 +19,17 @@ class Impressao {
     return '${DateTime.now().microsecondsSinceEpoch}_$_sequencialRequisicao';
   }
 
-  static String _normalizarNomeComputadorDestino(String? nomeComputadorDestino) {
+  static String _normalizarNomeComputadorDestino(
+      String? nomeComputadorDestino) {
     return (nomeComputadorDestino ?? '').trim();
   }
 
-  static Map<String, List<Modelowordprodutos>> _agruparProdutosPorComputadorDestino(
+  static Map<String, List<Modelowordprodutos>>
+      _agruparProdutosPorComputadorDestino(
     List<Modelowordprodutos> produtos,
   ) {
-    final Map<String, List<Modelowordprodutos>> grupos = <String, List<Modelowordprodutos>>{};
+    final Map<String, List<Modelowordprodutos>> grupos =
+        <String, List<Modelowordprodutos>>{};
 
     for (final Modelowordprodutos produto in produtos) {
       final String nomeComputadorDestino = _normalizarNomeComputadorDestino(
@@ -35,10 +40,55 @@ class Impressao {
         continue;
       }
 
-      grupos.putIfAbsent(nomeComputadorDestino, () => <Modelowordprodutos>[]).add(produto);
+      grupos
+          .putIfAbsent(nomeComputadorDestino, () => <Modelowordprodutos>[])
+          .add(produto);
     }
 
     return grupos;
+  }
+
+  static List<String> prepararComprovanteDePedido({
+    List<Modelowordprodutos> produtos = const [],
+    String comanda = 'Sem Comanda',
+    String numeroPedido = '0',
+    String nomeCliente = '',
+    String nomeEmpresa = '',
+    String tipodeentrega = '',
+    String local = '',
+    TipoCardapio tipoTela = TipoCardapio.balcao,
+    bool enviarDeVolta = true,
+  }) {
+    if (!enviarDeVolta || produtos.isEmpty) return [];
+    final usuario = Modular.get<UsuarioProvedor>();
+    final grupos = <String, List<Modelowordprodutos>>{};
+    for (final produto in produtos) {
+      final destino = _normalizarNomeComputadorDestino(
+          produto.destinoDeImpressao?.nomedopc);
+      grupos.putIfAbsent(destino, () => []).add(produto);
+    }
+    // Serializa todos os destinos antes de qualquer operacao assincrona ou limpeza do carrinho.
+    return grupos.entries
+        .map((grupo) => jsonEncode({
+              'idRequisicao': _gerarIdentificadorRequisicao(),
+              'tipo': tipoTela.nome,
+              'tipoImpressao': '1',
+              if (grupo.key.isNotEmpty) 'nomedopc': grupo.key,
+              'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+              'produtos':
+                  grupo.value.map(DadosImpressaoPreparo.produto).toList(),
+              'comanda': comanda,
+              'numeroPedido': numeroPedido,
+              'nomeCliente': nomeCliente,
+              'nomeEmpresa': nomeEmpresa,
+              'tipodeentrega': tipodeentrega,
+              'local': local,
+              'nomeUsuario': usuario.usuario?.nome ?? '',
+              'idEmpresa': usuario.usuario?.empresa ?? '0',
+              'idUsuario': usuario.usuario?.id ?? '1',
+              'enviarDeVolta': enviarDeVolta,
+            }))
+        .toList(growable: false);
   }
 
   static Future<void> comprovanteDePedido({
@@ -53,54 +103,48 @@ class Impressao {
     bool imprimirSomenteLocal = false,
     bool enviarDeVolta = true,
   }) async {
-    var server = Modular.get<Server>();
-    // var client = Modular.get<Client>();
-    var usuario = Modular.get<UsuarioProvedor>();
-
-    if (enviarDeVolta == true && produtos.isNotEmpty) {
-      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
-
-      if (grupos.isNotEmpty) {
-        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
-          server.write(jsonEncode({
-            'idRequisicao': _gerarIdentificadorRequisicao(),
-            'tipo': tipoTela.nome,
-            'tipoImpressao': '1',
-            'nomedopc': grupo.key,
-            'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-            'produtos': grupo.value.map(DadosImpressaoPreparo.produto).toList(),
-            'comanda': comanda,
-            'numeroPedido': numeroPedido,
-            'nomeCliente': nomeCliente,
-            'nomeEmpresa': nomeEmpresa,
-            'tipodeentrega': tipodeentrega,
-            'local': local,
-            'nomeUsuario': usuario.usuario?.nome ?? '',
-            'idEmpresa': usuario.usuario?.empresa ?? '0',
-            'idUsuario': usuario.usuario?.id ?? '1',
-            'enviarDeVolta': enviarDeVolta,
-          }));
+    final mensagens = prepararComprovanteDePedido(
+      produtos: produtos,
+      comanda: comanda,
+      numeroPedido: numeroPedido,
+      nomeCliente: nomeCliente,
+      nomeEmpresa: nomeEmpresa,
+      tipodeentrega: tipodeentrega,
+      local: local,
+      tipoTela: tipoTela,
+      enviarDeVolta: enviarDeVolta,
+    );
+    if (mensagens.isNotEmpty) {
+      // No balcao, o pagamento ja foi salvo: repetir somente o envio, nunca a cobranca.
+      while (true) {
+        try {
+          await Modular.get<Server>().enviarImpressoes(mensagens);
+          return;
+        } catch (_) {
+          final context = navigatorKey?.currentContext;
+          if (context == null || !context.mounted) rethrow;
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => PopScope(
+              canPop: false,
+              child: AlertDialog(
+                scrollable: true,
+                title: const Text('Impressão não salva'),
+                content: const Text(
+                    'O pedido já foi registrado, mas não foi possível salvar o envio para a cozinha. Verifique o armazenamento do aparelho. A nova tentativa não repetirá o pagamento.'),
+                actions: [
+                  FilledButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
-        return;
       }
-
-      server.write(jsonEncode({
-        'idRequisicao': _gerarIdentificadorRequisicao(),
-        'tipo': tipoTela.nome,
-        'tipoImpressao': '1',
-        'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-        'produtos': produtos.map(DadosImpressaoPreparo.produto).toList(),
-        'comanda': comanda,
-        'numeroPedido': numeroPedido,
-        'nomeCliente': nomeCliente,
-        'nomeEmpresa': nomeEmpresa,
-        'tipodeentrega': tipodeentrega,
-        'local': local,
-        'nomeUsuario': usuario.usuario?.nome ?? '',
-        'idEmpresa': usuario.usuario?.empresa ?? '0',
-        'idUsuario': usuario.usuario?.id ?? '1',
-        'enviarDeVolta': enviarDeVolta,
-      }));
     }
   }
 
@@ -198,10 +242,12 @@ class Impressao {
     }
 
     if (enviarDeVolta == true && produtos.isNotEmpty) {
-      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
+      final Map<String, List<Modelowordprodutos>> grupos =
+          _agruparProdutosPorComputadorDestino(produtos);
 
       if (grupos.isNotEmpty) {
-        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
+        for (final MapEntry<String, List<Modelowordprodutos>> grupo
+            in grupos.entries) {
           server.write(jsonEncode({
             'idRequisicao': _gerarIdentificadorRequisicao(),
             'tipo': TipoCardapio.delivery.nome,
@@ -296,10 +342,12 @@ class Impressao {
     }
 
     if (enviarDeVolta == true && produtos.isNotEmpty) {
-      final Map<String, List<Modelowordprodutos>> grupos = _agruparProdutosPorComputadorDestino(produtos);
+      final Map<String, List<Modelowordprodutos>> grupos =
+          _agruparProdutosPorComputadorDestino(produtos);
 
       if (grupos.isNotEmpty) {
-        for (final MapEntry<String, List<Modelowordprodutos>> grupo in grupos.entries) {
+        for (final MapEntry<String, List<Modelowordprodutos>> grupo
+            in grupos.entries) {
           server.write(jsonEncode({
             'idRequisicao': _gerarIdentificadorRequisicao(),
             'tipo': TipoCardapio.delivery.nome,

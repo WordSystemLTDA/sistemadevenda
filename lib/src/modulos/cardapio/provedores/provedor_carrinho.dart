@@ -64,8 +64,7 @@ class ProvedorCarrinho extends ChangeNotifier {
 
   Future<bool> removerComandasPedidos() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('carrinho', jsonEncode([]));
-    return true;
+    return prefs.setString('carrinho', jsonEncode([]));
   }
 
   Future<bool> excluirItemCarrinho(String id, int index) async {

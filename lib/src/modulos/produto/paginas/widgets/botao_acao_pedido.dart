@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 class BotaoAcaoPedido extends StatelessWidget {
   final String rotulo;
   final String total;
+  final IconData? iconeRotulo;
+  final String? rotuloSemantico;
   final int? quantidade;
   final bool carregando;
   final VoidCallback onPressed;
@@ -12,6 +14,8 @@ class BotaoAcaoPedido extends StatelessWidget {
     required this.rotulo,
     required this.total,
     required this.onPressed,
+    this.iconeRotulo,
+    this.rotuloSemantico,
     this.quantidade,
     this.carregando = false,
   });
@@ -89,11 +93,26 @@ class BotaoAcaoPedido extends StatelessWidget {
                           : larguraTexto('${quantidade}x', estiloQuantidade) +
                               32;
                       final duasLinhas = larguraTexto(rotulo, estiloRotulo) +
+                              (iconeRotulo == null ? 0 : 28) +
                               larguraTexto(total, estiloValor) +
                               larguraQuantidade +
                               38 >
                           constraints.maxWidth;
-                      final textoRotulo = Text(rotulo, style: estiloRotulo);
+                      final Widget textoRotulo = iconeRotulo == null
+                          ? Text(rotulo, style: estiloRotulo)
+                          : Semantics(
+                              label: rotuloSemantico ?? rotulo,
+                              excludeSemantics: true,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                      child: Text(rotulo, style: estiloRotulo)),
+                                  const SizedBox(width: 6),
+                                  Icon(iconeRotulo, color: corTexto, size: 22),
+                                ],
+                              ),
+                            );
                       final textoTotal = Text(total,
                           textAlign: TextAlign.end, style: estiloValor);
                       final contador = quantidade == null

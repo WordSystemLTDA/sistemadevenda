@@ -244,70 +244,76 @@ class _CardComandaState extends State<CardComanda> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    Row(
                       children: [
-                        _BadgeStatus(cor: corStatus, label: labelStatus),
-                        Text(
-                          item.nome,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.1,
-                          ),
-                        ),
-                        if (item.codigo.isNotEmpty && !ocupada) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6)
-                                  .withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.qr_code,
-                                    size: 12, color: Color(0xFF3B82F6)),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                    child: Text(
-                                  "Código: ${item.codigo}",
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF3B82F6),
-                                  ),
-                                )),
-                              ],
-                            ),
-                          ),
-                        ],
-                        if (item.idComandaPedido != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: corStatus.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '#${item.idComandaPedido}',
-                              style: TextStyle(
-                                fontSize: 11,
+                        Expanded(
+                            child: Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _BadgeStatus(cor: corStatus, label: labelStatus),
+                            Text(
+                              item.nome,
+                              style: const TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: corStatus,
+                                letterSpacing: 0.1,
                               ),
                             ),
-                          ),
-                        ],
+                            if (item.codigo.isNotEmpty && !ocupada) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3B82F6)
+                                      .withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.qr_code,
+                                        size: 12, color: Color(0xFF3B82F6)),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                        child: Text(
+                                      "Código: ${item.codigo}",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF3B82F6),
+                                      ),
+                                    )),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if (item.idComandaPedido != null) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: corStatus.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '#${item.idComandaPedido}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: corStatus,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        )),
                         if (ocupada)
                           MenuAnchor(
                             builder: (context, controller, child) {
                               return IconButton(
+                                tooltip: 'Opções da comanda',
                                 visualDensity: VisualDensity.compact,
                                 iconSize: 20,
                                 onPressed: () => controller.isOpen

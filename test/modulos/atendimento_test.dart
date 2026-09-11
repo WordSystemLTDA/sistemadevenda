@@ -296,6 +296,38 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final largura in [320.0, 393.0, 800.0]) {
+    testWidgets('menu da comanda alinhado a direita em $largura',
+        (tester) async {
+      await abrir(
+          tester,
+          Scaffold(
+              body: ListView(children: [
+            CardComanda(
+                itemComanda: ModeloComanda(
+              id: '3',
+              nome: 'Comanda: 3',
+              codigo: '',
+              ativo: 'Sim',
+              comandaOcupada: true,
+              fechamento: false,
+              idComandaPedido: '10679',
+              nomeCliente: 'Bruno Masson',
+              valor: '147.00',
+            ))
+          ])),
+          largura: largura);
+      final card = tester.getRect(find.byType(CardComanda));
+      final menu = find.byTooltip('Opções da comanda');
+      expect(tester.getRect(menu).right, greaterThan(card.right - 25));
+      await capturarTela(tester, 'comanda_menu_direita_${largura.toInt()}');
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      expect(find.text('Abrir Comanda'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final tela in ['mesas', 'comandas', 'balcao']) {
     testWidgets('$tela suporta celular pequeno com fonte ampliada',
         (tester) async {

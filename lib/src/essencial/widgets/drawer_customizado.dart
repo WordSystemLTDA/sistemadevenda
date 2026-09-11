@@ -306,6 +306,12 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
                               ),
                             ),
                           ListTile(
+                            leading: const Icon(Icons.print_outlined),
+                            title: const Text('Impressões pendentes'),
+                            trailing: Text('${server.filaImpressao.itens.length}'),
+                            onTap: () => server.abrirPendenciasImpressao(context),
+                          ),
+                          ListTile(
                             leading: const Icon(Icons.text_snippet),
                             title: const Text('Cadastrar'),
                             trailing: _isExpanded ? const Icon(Icons.keyboard_arrow_up) : const Icon(Icons.keyboard_arrow_down),
