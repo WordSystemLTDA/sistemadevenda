@@ -21,13 +21,13 @@ void main() {
         .setMockMethodCallHandler(SystemChannels.platform, null);
   });
 
-  test('produto adicionado aciona impacto medio', () async {
+  test('produto adicionado aciona impacto forte', () async {
     FeedbackUsuario.produtoAdicionado();
     await _aguardarMicrotarefas();
 
     expect(chamadas, hasLength(1));
     expect(chamadas.single.method, 'HapticFeedback.vibrate');
-    expect(chamadas.single.arguments, 'HapticFeedbackType.mediumImpact');
+    expect(chamadas.single.arguments, 'HapticFeedbackType.heavyImpact');
   });
 
   test('pedido finalizado aciona impacto forte', () async {
@@ -39,13 +39,13 @@ void main() {
     expect(chamadas.single.arguments, 'HapticFeedbackType.heavyImpact');
   });
 
-  test('selecao alterada aciona clique de selecao', () async {
+  test('selecao alterada aciona impacto medio', () async {
     FeedbackUsuario.selecaoAlterada();
     await _aguardarMicrotarefas();
 
     expect(chamadas, hasLength(1));
     expect(chamadas.single.method, 'HapticFeedback.vibrate');
-    expect(chamadas.single.arguments, 'HapticFeedbackType.selectionClick');
+    expect(chamadas.single.arguments, 'HapticFeedbackType.mediumImpact');
   });
 
   test('falha de haptico nao quebra o fluxo', () async {

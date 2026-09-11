@@ -1,5 +1,7 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,8 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
 
   final TextEditingController _observacoesController = TextEditingController();
   final FocusNode _focus = FocusNode();
+  late final ContextoCarrinho? _contexto;
+  bool _salvando = false;
 
   static const List<String> _sugestoes = [
     'Sem cebola',
@@ -43,6 +47,8 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
   @override
   void initState() {
     super.initState();
+    _contexto = widget.itensRecorrentes == true
+        ? provedorItensRecorrentes.contexto : carrinhoProvedor.contexto;
     _observacoesController.text = widget.observacao;
     WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
   }
@@ -64,25 +70,44 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
     setState(() {});
   }
 
-  void _salvar() {
+  Future<void> _salvar() async {
+    if (_salvando) return;
+    final rota = ModalRoute.of(context);
     final texto = _observacoesController.text.trim();
-
-    if (widget.itensRecorrentes == true) {
-      final item = provedorItensRecorrentes.itensCarrinho[widget.index];
-      setState(() {
-        item.observacao = texto;
-        item.opcoesPacotesListaFinal = _atualizarLista(item.opcoesPacotesListaFinal, texto);
-      });
-      Navigator.pop(context);
-      return;
-    }
-
-    final item = carrinhoProvedor.itensCarrinho.listaComandosPedidos[widget.index];
-    setState(() {
+    setState(() => _salvando = true);
+    try {
+      final recorrente = widget.itensRecorrentes == true;
+      final contexto = _contexto;
+      final atual = recorrente
+          ? provedorItensRecorrentes.contexto : carrinhoProvedor.contexto;
+      if (contexto == null || atual?.chave != contexto.chave) {
+        throw StateError('O atendimento foi alterado.');
+      }
+      final itens = recorrente
+          ? provedorItensRecorrentes.itensCarrinho
+          : carrinhoProvedor.itensCarrinho.listaComandosPedidos;
+      if (widget.index >= itens.length ||
+          itens[widget.index].id != widget.idProduto) {
+        throw StateError('O item foi alterado.');
+      }
+      final item = Modelowordprodutos.fromMap(itens[widget.index].toMap());
       item.observacao = texto;
-      item.opcoesPacotesListaFinal = _atualizarLista(item.opcoesPacotesListaFinal, texto);
-    });
-    Navigator.pop(context);
+      item.opcoesPacotesListaFinal =
+          _atualizarLista(item.opcoesPacotesListaFinal, texto);
+      final salvo = recorrente
+          ? await provedorItensRecorrentes.editar(
+              contexto.idAtendimento, item, widget.index)
+          : await carrinhoProvedor.editar(item, widget.index);
+      if (!salvo) throw StateError('Observacao nao salva.');
+      if (mounted && rota?.isCurrent == true) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível salvar a observação. Tente novamente.')));
+      }
+    } finally {
+      if (mounted) setState(() => _salvando = false);
+    }
   }
 
   List<ModeloOpcoesPacotes> _atualizarLista(List<ModeloOpcoesPacotes>? atual, String texto) {
@@ -286,7 +311,7 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
                       child: SizedBox(
                         height: 50,
                         child: FilledButton.icon(
-                          onPressed: _salvar,
+                          onPressed: _salvando ? null : _salvar,
                           icon: const Icon(Icons.check_rounded, size: 18),
                           label: const Text('Salvar observação'),
                           style: FilledButton.styleFrom(

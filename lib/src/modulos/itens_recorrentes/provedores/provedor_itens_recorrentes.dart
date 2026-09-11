@@ -14,6 +14,7 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
 
   final _contextos = <String, ContextoCarrinho>{};
   ContextoCarrinho? _contexto;
+  ContextoCarrinho? get contexto => _contexto;
   int _consulta = 0;
   bool _descartado = false;
   List<Modelowordprodutos> itensCarrinho = [];
@@ -74,6 +75,23 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
   Future<bool> removerComandasPedidos(String idComandaPedido) =>
       _servico.armazenamento
           .limpar(_contextoPorId(idComandaPedido), recorrentes: true);
+
+  Future<List<Modelowordprodutos>> obterItensParaFinalizar(
+          String idComandaPedido) =>
+      _servico.armazenamento
+          .listar(_contextoPorId(idComandaPedido), recorrentes: true);
+
+  Future<bool> editar(
+      String idComandaPedido, Modelowordprodutos produto, int index) {
+    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    return _servico.armazenamento.alterar(_contextoPorId(idComandaPedido),
+        (itens) {
+      if (index < 0 || index >= itens.length || itens[index].id != copia.id) {
+        throw StateError('O item do carrinho foi alterado.');
+      }
+      itens[index] = copia;
+    }, recorrentes: true);
+  }
 
   Future<bool> excluirItemCarrinho(String idComandaPedido, int index) =>
       _servico.armazenamento.alterar(

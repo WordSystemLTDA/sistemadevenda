@@ -8,11 +8,11 @@ class FeedbackUsuario {
   const FeedbackUsuario._();
 
   static void produtoAdicionado() {
-    _executar(HapticFeedback.mediumImpact);
+    _executar(HapticFeedback.heavyImpact);
   }
 
   static void selecaoAlterada() {
-    _executar(HapticFeedback.selectionClick);
+    _executar(HapticFeedback.mediumImpact);
   }
 
   static void pedidoFinalizado() {

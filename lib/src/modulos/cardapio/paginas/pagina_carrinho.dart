@@ -40,6 +40,17 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       Modular.get<ProvedorFinalizarPagamento>();
   final Server server = Modular.get<Server>();
   late final ContextoCarrinho? _contextoCarrinho;
+  late final TipoCardapio _tipo;
+  late final String _tipoDeEntrega;
+
+  String get _idMesa =>
+      dados?.idMesa ??
+      (_tipo == TipoCardapio.mesa ? _contextoCarrinho?.idRecurso : null) ??
+      '0';
+  String get _idComanda =>
+      dados?.idComanda ??
+      (_tipo == TipoCardapio.comanda ? _contextoCarrinho?.idRecurso : null) ??
+      '0';
 
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
@@ -50,15 +61,34 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   void initState() {
     super.initState();
     _contextoCarrinho = carrinhoProvedor.contexto;
+    _tipo = _contextoCarrinho == null
+        ? provedorCardapio.tipo
+        : TipoCardapio.values.byName(_contextoCarrinho!.tipo);
+    _tipoDeEntrega = provedorCardapio.tipodeentrega;
     listar();
   }
 
   Future<void> listar() async {
-    final id = provedorCardapio.id;
-    final tipo = provedorCardapio.tipo;
+    final contextoCarrinho = _contextoCarrinho;
     try {
+      dados = null;
+      if (contextoCarrinho == null || !contextoCarrinho.valido) {
+        throw StateError('Carrinho sem atendimento.');
+      }
       await carrinhoProvedor.listarComandasPedidos();
-      final resposta = await servicoCardapio.listarPorId(id, tipo, "Não");
+      final resposta = await servicoCardapio.listarPorId(
+          contextoCarrinho.idAtendimento, _tipo, "Não");
+      if (_tipo == TipoCardapio.comanda || _tipo == TipoCardapio.mesa) {
+        final recurso = _tipo == TipoCardapio.comanda
+            ? resposta.idComanda
+            : resposta.idMesa;
+        if (resposta.id != contextoCarrinho.idAtendimento ||
+            (contextoCarrinho.idRecurso.isNotEmpty &&
+                recurso != contextoCarrinho.idRecurso)) {
+          throw StateError(
+              'Os dados nao pertencem ao atendimento do carrinho.');
+        }
+      }
       if (mounted) dados = resposta;
     } catch (_) {
       if (mounted) {
@@ -78,7 +108,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   }
 
   Future<void> removerTodosItensCarrinho() async {
-    final sucesso = await carrinhoProvedor.removerComandasPedidos();
+    final sucesso = await carrinhoProvedor.removerComandasPedidos(
+        contexto: _contextoCarrinho);
 
     if (!sucesso) {
       if (mounted) {
@@ -180,16 +211,18 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   Future<void> _finalizar() async {
     if (isLoading ||
+        carregando ||
+        _contextoCarrinho == null ||
         carrinhoProvedor.contexto?.chave != _contextoCarrinho?.chave ||
         dados == null ||
         (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty &&
             !_finalizacao.pedidoRegistrado)) {
       return;
     }
-    provedorFinalizarPagamento.idVenda = provedorCardapio.id;
+    provedorFinalizarPagamento.idVenda = _contextoCarrinho!.idAtendimento;
     provedorFinalizarPagamento.valor =
         carrinhoProvedor.itensCarrinho.precoTotal;
-    if (provedorCardapio.tipo == TipoCardapio.balcao) {
+    if (_tipo == TipoCardapio.balcao) {
       Navigator.push(
           context,
           MaterialPageRoute(
@@ -199,37 +232,38 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       return;
     }
     setState(() => isLoading = true);
-    final tipo = provedorCardapio.tipo;
-    final contextoCarrinho = _contextoCarrinho;
-    final itens = List.of(carrinhoProvedor.itensCarrinho.listaComandosPedidos);
+    final tipo = _tipo;
+    final contextoCarrinho = _contextoCarrinho!;
+    final dadosPedido = dados!;
+    final idMesa = _idMesa;
+    final idComanda = _idComanda;
+    final idCliente = dadosPedido.idCliente ?? '0';
     try {
+      final itens =
+          await carrinhoProvedor.obterItensParaFinalizar(contextoCarrinho);
+      if (itens.isEmpty && !_finalizacao.pedidoRegistrado) {
+        throw StateError('O carrinho nao tem produtos pendentes.');
+      }
       final sucesso = await _finalizacao.executar(
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
-          tipodeentrega: provedorCardapio.tipodeentrega,
-          comanda: dados?.nome ?? '',
-          numeroPedido: dados?.numeroPedido ?? '',
-          nomeCliente: (dados?.nomeCliente ?? '').trim().isEmpty ||
-                  dados?.nomeCliente == 'Sem Cliente'
-              ? (dados?.observacaoDoPedido ?? '')
-              : dados!.nomeCliente!,
-          nomeEmpresa: dados?.nomeEmpresa ?? '',
-          local: tipo == TipoCardapio.mesa ? '' : dados?.nomeMesa ?? '',
+          tipodeentrega: _tipoDeEntrega,
+          comanda: dadosPedido.nome ?? '',
+          numeroPedido: dadosPedido.numeroPedido ?? '',
+          nomeCliente: (dadosPedido.nomeCliente ?? '').trim().isEmpty ||
+                  dadosPedido.nomeCliente == 'Sem Cliente'
+              ? (dadosPedido.observacaoDoPedido ?? '')
+              : dadosPedido.nomeCliente!,
+          nomeEmpresa: dadosPedido.nomeEmpresa ?? '',
+          local: tipo == TipoCardapio.mesa ? '' : dadosPedido.nomeMesa ?? '',
         ),
         registrarPedido: () async {
           final resposta = tipo == TipoCardapio.mesa
               ? await servicoCardapio.inserirProdutosMesa(
-                  itens,
-                  provedorCardapio.idMesa,
-                  provedorCardapio.id,
-                  provedorCardapio.idCliente)
-              : await servicoCardapio.inserirProdutosComanda(
-                  itens,
-                  provedorCardapio.idMesa,
-                  provedorCardapio.id,
-                  provedorCardapio.idComanda,
-                  provedorCardapio.idCliente);
+                  itens, idMesa, contextoCarrinho.idAtendimento, idCliente)
+              : await servicoCardapio.inserirProdutosComanda(itens, idMesa,
+                  contextoCarrinho.idAtendimento, idComanda, idCliente);
           return resposta.$1;
         },
         enviarImpressao: server.enviarImpressoes,
@@ -305,127 +339,128 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final itens = carrinhoProvedor.itensCarrinho.listaComandosPedidos;
-
     return AnimatedBuilder(
       animation: carrinhoProvedor,
-      builder: (context, _) => PopScope(
-        canPop: !isLoading &&
-            (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
-        onPopInvokedWithResult: (saiu, _) {
-          if (!saiu && !isLoading) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text(
-                  'Conclua a finalizacao pendente antes de sair do carrinho.'),
-            ));
-          }
-        },
-        child: Scaffold(
-          backgroundColor: cs.surface,
-          appBar: AppBar(
-            backgroundColor: cs.inversePrimary,
-            elevation: 0,
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.shopping_cart_outlined,
-                      color: cs.onPrimaryContainer, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Carrinho',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.1)),
-                    Text(
-                      '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
-                      style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w500,
-                          color: cs.onSurfaceVariant),
+      builder: (context, _) {
+        final itens = carrinhoProvedor.itensCarrinho.listaComandosPedidos;
+        return PopScope(
+          canPop: !isLoading &&
+              (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
+          onPopInvokedWithResult: (saiu, _) {
+            if (!saiu && !isLoading) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Conclua a finalizacao pendente antes de sair do carrinho.'),
+              ));
+            }
+          },
+          child: Scaffold(
+            backgroundColor: cs.surface,
+            appBar: AppBar(
+              backgroundColor: cs.inversePrimary,
+              elevation: 0,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ],
-                ),
+                    child: Icon(Icons.shopping_cart_outlined,
+                        color: cs.onPrimaryContainer, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Carrinho',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.1)),
+                      Text(
+                        '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                if (carrinhoProvedor
+                    .itensCarrinho.listaComandosPedidos.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: IconButton(
+                      tooltip: 'Esvaziar',
+                      onPressed: isLoading || _finalizacao.pedidoRegistrado
+                          ? null
+                          : _confirmarLimpar,
+                      icon: Icon(Icons.delete_sweep_outlined, color: cs.error),
+                    ),
+                  ),
               ],
             ),
-            actions: [
-              if (carrinhoProvedor
-                  .itensCarrinho.listaComandosPedidos.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: IconButton(
-                    tooltip: 'Esvaziar',
-                    onPressed: isLoading || _finalizacao.pedidoRegistrado
-                        ? null
-                        : _confirmarLimpar,
-                    icon: Icon(Icons.delete_sweep_outlined, color: cs.error),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            floatingActionButtonAnimator:
+                FloatingActionButtonAnimator.noAnimation,
+            floatingActionButton: (carregando ||
+                    (itens.isEmpty && !_finalizacao.pedidoRegistrado))
+                ? null
+                : _BotaoFinalizar(
+                    isLoading: isLoading,
+                    total: carrinhoProvedor.itensCarrinho.precoTotal,
+                    onTap: _finalizar,
                   ),
-                ),
-            ],
-          ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
-          floatingActionButtonAnimator:
-              FloatingActionButtonAnimator.noAnimation,
-          floatingActionButton:
-              (carregando || (itens.isEmpty && !_finalizacao.pedidoRegistrado))
-                  ? null
-                  : _BotaoFinalizar(
-                      isLoading: isLoading,
-                      total: carrinhoProvedor.itensCarrinho.precoTotal,
-                      onTap: _finalizar,
-                    ),
-          body: IgnorePointer(
-            ignoring: isLoading || _finalizacao.pedidoRegistrado,
-            child: carregando
-                ? const Center(child: CircularProgressIndicator())
-                : itens.isEmpty
-                    ? _EstadoVazio(cs: cs)
-                    : ListView.builder(
-                        itemCount: itens.length,
-                        padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
-                        itemBuilder: (context, index) {
-                          final item = itens[index];
-                          return CardCarrinho(
-                            item: item,
-                            idComanda: provedorCardapio.idComanda,
-                            idMesa: provedorCardapio.idMesa,
-                            index: index,
-                            value: carrinhoProvedor.itensCarrinho,
-                            aoExcluirItem: () => setState(() {}),
-                            setarQuantidade: (increase) async {
-                              final quantidadeAnterior = item.quantidade ?? 1;
-                              final novaQuantidade =
-                                  quantidadeAnterior + (increase ? 1 : -1);
-                              if (novaQuantidade < 1) return false;
+            body: IgnorePointer(
+              ignoring: isLoading || _finalizacao.pedidoRegistrado,
+              child: carregando
+                  ? const Center(child: CircularProgressIndicator())
+                  : itens.isEmpty
+                      ? _EstadoVazio(cs: cs)
+                      : ListView.builder(
+                          itemCount: itens.length,
+                          padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
+                          itemBuilder: (context, index) {
+                            final item = itens[index];
+                            return CardCarrinho(
+                              item: item,
+                              idComanda: _idComanda,
+                              idMesa: _idMesa,
+                              index: index,
+                              value: carrinhoProvedor.itensCarrinho,
+                              aoExcluirItem: () => setState(() {}),
+                              setarQuantidade: (increase) async {
+                                final quantidadeAnterior = item.quantidade ?? 1;
+                                final novaQuantidade =
+                                    quantidadeAnterior + (increase ? 1 : -1);
+                                if (novaQuantidade < 1) return false;
 
-                              item.quantidade = novaQuantidade;
-                              if (mounted) setState(() {});
-
-                              final sucesso =
-                                  await carrinhoProvedor.editar(item, index);
-                              if (!sucesso) {
-                                item.quantidade = quantidadeAnterior;
+                                item.quantidade = novaQuantidade;
                                 if (mounted) setState(() {});
-                                _erroSnack();
-                              }
-                              return sucesso;
-                            },
-                          );
-                        },
-                      ),
+
+                                final sucesso =
+                                    await carrinhoProvedor.editar(item, index);
+                                if (!sucesso) {
+                                  item.quantidade = quantidadeAnterior;
+                                  if (mounted) setState(() {});
+                                  _erroSnack();
+                                }
+                                return sucesso;
+                              },
+                            );
+                          },
+                        ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

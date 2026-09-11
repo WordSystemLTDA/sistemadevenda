@@ -9,7 +9,6 @@ import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
@@ -42,7 +41,6 @@ class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
 class _PaginaCarrinhoItensRecorrentesState
     extends State<PaginaCarrinhoItensRecorrentes>
     with TickerProviderStateMixin {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
@@ -56,7 +54,12 @@ class _PaginaCarrinhoItensRecorrentesState
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
   Modeloworddadoscardapio? dados;
-  bool carregando = false;
+  bool carregando = true;
+
+  TipoCardapio get _tipo => (widget.idMesa != '0' &&
+          (widget.idComanda == '0' || widget.idComanda.isEmpty))
+      ? TipoCardapio.mesa
+      : TipoCardapio.comanda;
 
   @override
   void initState() {
@@ -64,21 +67,35 @@ class _PaginaCarrinhoItensRecorrentesState
     listar();
   }
 
-  void listar() async {
-    await carrinhoProvedor.listarComandasPedidos();
-    final tipoTela = (widget.idMesa != '0' &&
-            (widget.idComanda == '0' || widget.idComanda == ''))
-        ? TipoCardapio.mesa
-        : TipoCardapio.comanda;
-    await servicoCardapio
-        .listarPorId(widget.idComandaPedido, tipoTela, "Não")
-        .then((value) {
-      dados = value;
-    });
-
-    setState(() {
-      carregando = false;
-    });
+  Future<void> listar() async {
+    try {
+      dados = null;
+      await provedorItensRecorrentes
+          .listarComandasPedidos(widget.idComandaPedido);
+      final resposta = await servicoCardapio.listarPorId(
+          widget.idComandaPedido, _tipo, "Não");
+      if (resposta.id != widget.idComandaPedido ||
+          (_tipo == TipoCardapio.comanda
+              ? resposta.idComanda != widget.idComanda
+              : resposta.idMesa != widget.idMesa)) {
+        throw StateError('Os dados nao pertencem ao atendimento do carrinho.');
+      }
+      if (mounted) dados = resposta;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Não foi possível consultar o atendimento.'),
+          action: SnackBarAction(
+              label: 'Tentar novamente',
+              onPressed: () {
+                setState(() => carregando = true);
+                listar();
+              }),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => carregando = false);
+    }
   }
 
   Future<void> removerTodosItensCarrinho() async {
@@ -132,149 +149,149 @@ class _PaginaCarrinhoItensRecorrentesState
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final temItens = provedorItensRecorrentes.itensCarrinho.isNotEmpty;
-    final quantidadeItens = provedorItensRecorrentes.itensCarrinho.fold<int>(
-      0,
-      (acc, item) => acc + ((item.quantidade ?? 0).toInt()),
-    );
-
     return AnimatedBuilder(
       animation: provedorItensRecorrentes,
-      builder: (context, _) => PopScope(
-        canPop: !isLoading &&
-            (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
-        onPopInvokedWithResult: (saiu, _) {
-          if (!saiu && !isLoading) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text(
-                  'Conclua a finalizacao pendente antes de sair do carrinho.'),
-            ));
-          }
-        },
-        child: Scaffold(
-          backgroundColor:
-              isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
-          appBar: AppBar(
-            backgroundColor: cs.inversePrimary,
-            elevation: 0,
-            centerTitle: false,
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.shopping_cart_rounded,
-                      size: 18, color: cs.onPrimaryContainer),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'Carrinho',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                if (temItens) ...[
-                  const SizedBox(width: 8),
+      builder: (context, _) {
+        final temItens = provedorItensRecorrentes.itensCarrinho.isNotEmpty;
+        final quantidadeItens = provedorItensRecorrentes.itensCarrinho
+            .fold<int>(
+                0, (acc, item) => acc + ((item.quantidade ?? 0).toInt()));
+        return PopScope(
+          canPop: !isLoading &&
+              (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
+          onPopInvokedWithResult: (saiu, _) {
+            if (!saiu && !isLoading) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Conclua a finalizacao pendente antes de sair do carrinho.'),
+              ));
+            }
+          },
+          child: Scaffold(
+            backgroundColor:
+                isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+            appBar: AppBar(
+              backgroundColor: cs.inversePrimary,
+              elevation: 0,
+              centerTitle: false,
+              title: Row(
+                children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
-                      '${provedorItensRecorrentes.itensCarrinho.length}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
+                    child: Icon(Icons.shopping_cart_rounded,
+                        size: 18, color: cs.onPrimaryContainer),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Carrinho',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  if (temItens) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${provedorItensRecorrentes.itensCarrinho.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: cs.primary,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
+              ),
+              actions: [
+                if (temItens)
+                  IconButton(
+                    tooltip: 'Esvaziar carrinho',
+                    onPressed: isLoading || _finalizacao.pedidoRegistrado
+                        ? null
+                        : () => _confirmarExcluirTodos(context),
+                    icon: Icon(Icons.delete_sweep_rounded,
+                        color: Colors.red.shade400),
+                  ),
               ],
             ),
-            actions: [
-              if (temItens)
-                IconButton(
-                  tooltip: 'Esvaziar carrinho',
-                  onPressed: isLoading || _finalizacao.pedidoRegistrado
-                      ? null
-                      : () => _confirmarExcluirTodos(context),
-                  icon: Icon(Icons.delete_sweep_rounded,
-                      color: Colors.red.shade400),
-                ),
-            ],
-          ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
-          floatingActionButtonAnimator:
-              FloatingActionButtonAnimator.noAnimation,
-          floatingActionButton:
-              (carregando || (!temItens && !_finalizacao.pedidoRegistrado))
-                  ? null
-                  : _buildBotaoFinalizar(context, quantidadeItens),
-          body: IgnorePointer(
-            ignoring: isLoading || _finalizacao.pedidoRegistrado,
-            child: carregando
-                ? const Center(child: CircularProgressIndicator())
-                : !temItens
-                    ? _buildCarrinhoVazio(context)
-                    : Column(
-                        children: [
-                          _buildResumoTopo(context, quantidadeItens),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount:
-                                  provedorItensRecorrentes.itensCarrinho.length,
-                              padding: const EdgeInsets.only(
-                                  bottom: 150, left: 12, right: 12, top: 4),
-                              itemBuilder: (context, index) {
-                                final item = provedorItensRecorrentes
-                                    .itensCarrinho[index];
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            floatingActionButtonAnimator:
+                FloatingActionButtonAnimator.noAnimation,
+            floatingActionButton:
+                (carregando || (!temItens && !_finalizacao.pedidoRegistrado))
+                    ? null
+                    : _buildBotaoFinalizar(context, quantidadeItens),
+            body: IgnorePointer(
+              ignoring: isLoading || _finalizacao.pedidoRegistrado,
+              child: carregando
+                  ? const Center(child: CircularProgressIndicator())
+                  : !temItens
+                      ? _buildCarrinhoVazio(context)
+                      : Column(
+                          children: [
+                            _buildResumoTopo(context, quantidadeItens),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: provedorItensRecorrentes
+                                    .itensCarrinho.length,
+                                padding: const EdgeInsets.only(
+                                    bottom: 150, left: 12, right: 12, top: 4),
+                                itemBuilder: (context, index) {
+                                  final item = provedorItensRecorrentes
+                                      .itensCarrinho[index];
 
-                                return CardCarrinhoItensRecorrentes(
-                                  item: item,
-                                  idComanda: widget.idComanda,
-                                  idComandaPedido: widget.idComandaPedido,
-                                  idMesa: widget.idMesa,
-                                  index: index,
-                                  value: null,
-                                  setarQuantidade: (increase) async {
-                                    if (increase) {
-                                      await provedorItensRecorrentes
-                                          .setarItemCarrinho(
-                                              widget.idComandaPedido,
-                                              index,
-                                              item.quantidade! + 1);
-                                      if (context.mounted) {
-                                        provedorItensRecorrentes
-                                            .listarComandasPedidos(
-                                                widget.idComandaPedido);
+                                  return CardCarrinhoItensRecorrentes(
+                                    item: item,
+                                    idComanda: widget.idComanda,
+                                    idComandaPedido: widget.idComandaPedido,
+                                    idMesa: widget.idMesa,
+                                    index: index,
+                                    value: null,
+                                    setarQuantidade: (increase) async {
+                                      if (increase) {
+                                        await provedorItensRecorrentes
+                                            .setarItemCarrinho(
+                                                widget.idComandaPedido,
+                                                index,
+                                                item.quantidade! + 1);
+                                        if (context.mounted) {
+                                          provedorItensRecorrentes
+                                              .listarComandasPedidos(
+                                                  widget.idComandaPedido);
+                                        }
+                                      } else {
+                                        await provedorItensRecorrentes
+                                            .setarItemCarrinho(
+                                                widget.idComandaPedido,
+                                                index,
+                                                item.quantidade! - 1);
+                                        if (context.mounted) {
+                                          provedorItensRecorrentes
+                                              .listarComandasPedidos(
+                                                  widget.idComandaPedido);
+                                        }
                                       }
-                                    } else {
-                                      await provedorItensRecorrentes
-                                          .setarItemCarrinho(
-                                              widget.idComandaPedido,
-                                              index,
-                                              item.quantidade! - 1);
-                                      if (context.mounted) {
-                                        provedorItensRecorrentes
-                                            .listarComandasPedidos(
-                                                widget.idComandaPedido);
-                                      }
-                                    }
-                                  },
-                                );
-                              },
+                                    },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -514,42 +531,47 @@ class _PaginaCarrinhoItensRecorrentesState
 
   Future<void> _aoFinalizar() async {
     if (isLoading ||
+        carregando ||
+        provedorItensRecorrentes.contexto?.idAtendimento !=
+            widget.idComandaPedido ||
         dados == null ||
         (provedorItensRecorrentes.itensCarrinho.isEmpty &&
             !_finalizacao.pedidoRegistrado)) {
       return;
     }
     setState(() => isLoading = true);
-    final tipo = (widget.idMesa != '0' &&
-            (widget.idComanda == '0' || widget.idComanda.isEmpty))
-        ? TipoCardapio.mesa
-        : TipoCardapio.comanda;
-    final itens = List.of(provedorItensRecorrentes.itensCarrinho);
+    final tipo = _tipo;
+    final dadosPedido = dados!;
     try {
+      final itens = await provedorItensRecorrentes
+          .obterItensParaFinalizar(widget.idComandaPedido);
+      if (itens.isEmpty && !_finalizacao.pedidoRegistrado) {
+        throw StateError('O carrinho nao tem produtos pendentes.');
+      }
       final sucesso = await _finalizacao.executar(
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
           tipodeentrega: '',
-          comanda: dados?.nome ?? '',
-          numeroPedido: dados?.numeroPedido ?? '',
-          nomeCliente: (dados?.nomeCliente ?? '').trim().isEmpty ||
-                  dados?.nomeCliente == 'Sem Cliente'
-              ? (dados?.observacaoDoPedido ?? '')
-              : dados!.nomeCliente!,
-          nomeEmpresa: dados?.nomeEmpresa ?? '',
-          local: tipo == TipoCardapio.mesa ? '' : dados?.nomeMesa ?? '',
+          comanda: dadosPedido.nome ?? '',
+          numeroPedido: dadosPedido.numeroPedido ?? '',
+          nomeCliente: (dadosPedido.nomeCliente ?? '').trim().isEmpty ||
+                  dadosPedido.nomeCliente == 'Sem Cliente'
+              ? (dadosPedido.observacaoDoPedido ?? '')
+              : dadosPedido.nomeCliente!,
+          nomeEmpresa: dadosPedido.nomeEmpresa ?? '',
+          local: tipo == TipoCardapio.mesa ? '' : dadosPedido.nomeMesa ?? '',
         ),
         registrarPedido: () async {
           final resposta = tipo == TipoCardapio.mesa
               ? await servicoCardapio.inserirProdutosMesa(itens, widget.idMesa,
-                  widget.idComandaPedido, widget.idCliente)
+                  widget.idComandaPedido, dadosPedido.idCliente ?? '0')
               : await servicoCardapio.inserirProdutosComanda(
                   itens,
                   widget.idMesa,
                   widget.idComandaPedido,
                   widget.idComanda,
-                  widget.idCliente);
+                  dadosPedido.idCliente ?? '0');
           return resposta.$1;
         },
         enviarImpressao: server.enviarImpressoes,

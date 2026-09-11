@@ -146,7 +146,7 @@ void main() {
       expect(
         chamadasHapticas
             .where((chamada) =>
-                chamada.arguments == 'HapticFeedbackType.mediumImpact')
+                chamada.arguments == 'HapticFeedbackType.heavyImpact')
             .length,
         1,
       );
@@ -228,7 +228,7 @@ void main() {
     expect(
       chamadasHapticas
           .where((chamada) =>
-              chamada.arguments == 'HapticFeedbackType.selectionClick')
+              chamada.arguments == 'HapticFeedbackType.mediumImpact')
           .length,
       1,
     );

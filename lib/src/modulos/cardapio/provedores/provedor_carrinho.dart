@@ -80,6 +80,15 @@ class ProvedorCarrinho extends ChangeNotifier {
     }
   }
 
+  Future<List<Modelowordprodutos>> obterItensParaFinalizar(
+      ContextoCarrinho contexto) async {
+    if (!contexto.valido || contexto.chave != _contexto?.chave) {
+      throw StateError('O atendimento do carrinho foi alterado.');
+    }
+    // Aguarda gravacoes pendentes e retorna uma copia do atendimento solicitado.
+    return _servico.armazenamento.listar(contexto);
+  }
+
   void _aoAlterarArmazenamento() {
     unawaited(
         listarComandasPedidos().catchError((Object erro, StackTrace stack) {

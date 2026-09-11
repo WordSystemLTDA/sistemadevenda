@@ -228,6 +228,6 @@ Future<void> _aguardarFeedback(WidgetTester tester) async {
 int _selecoes(List<MethodCall> chamadas) {
   return chamadas
       .where(
-          (chamada) => chamada.arguments == 'HapticFeedbackType.selectionClick')
+          (chamada) => chamada.arguments == 'HapticFeedbackType.mediumImpact')
       .length;
 }
