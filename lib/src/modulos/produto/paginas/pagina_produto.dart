@@ -610,104 +610,114 @@ class _HeroProduto extends StatelessWidget {
               final empilhar = constraints.maxWidth < 240 ||
                   MediaQuery.textScalerOf(context).scale(16) > 22;
               final larguraImagem = constraints.maxWidth < 320 ? 88.0 : 120.0;
-              return Flex(
-                direction: empilhar ? Axis.vertical : Axis.horizontal,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              final resumoPreco = Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Imagem
-                  Hero(
-                    tag: 'foto_$foto',
-                    child: Container(
-                      width: larguraImagem,
-                      height: larguraImagem,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : cs.primaryContainer.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: foto.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Image.asset(Assets.boxAsset,
-                                  fit: BoxFit.contain),
-                            )
-                          : CachedNetworkImage(
-                              fit: BoxFit.contain,
-                              fadeOutDuration:
-                                  const Duration(milliseconds: 100),
-                              placeholder: (context, url) => const Center(
-                                child: SizedBox(
-                                  height: 28,
-                                  width: 28,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Icon(
-                                Icons.image_not_supported_outlined,
-                                color: cs.onSurface.withValues(alpha: 0.4),
-                              ),
-                              imageUrl: UrlImagem.montarUrlImagem(
-                                foto: foto,
-                                baseHost: baseHost,
-                              ),
-                            ),
+                  _StepperQuantidade(
+                    quantidade: quantidade,
+                    onDiminuir: onDiminuir,
+                    onAumentar: onAumentar,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Preço unit.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                      letterSpacing: 0.4,
                     ),
                   ),
-                  const SizedBox(width: 14, height: 14),
-                  // Coluna preço/total/quantidade
-                  Flexible(
-                    flex: empilhar ? 0 : 1,
-                    child: SizedBox(
-                        width: empilhar ? constraints.maxWidth : null,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _StepperQuantidade(
-                              quantidade: quantidade,
-                              onDiminuir: onDiminuir,
-                              onAumentar: onAumentar,
+                  Text(
+                    precoExibido,
+                    style: TextStyle(
+                      color: Colors.green.shade600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Total',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  Text(
+                    total,
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              );
+              final imagem = Hero(
+                tag: 'foto_$foto',
+                child: Container(
+                  width: larguraImagem,
+                  height: larguraImagem,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : cs.primaryContainer.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: foto.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(16),
+                          child:
+                              Image.asset(Assets.boxAsset, fit: BoxFit.contain),
+                        )
+                      : CachedNetworkImage(
+                          fit: BoxFit.contain,
+                          fadeOutDuration: const Duration(milliseconds: 100),
+                          placeholder: (context, url) => const Center(
+                            child: SizedBox(
+                              height: 28,
+                              width: 28,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Preço unit.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface.withValues(alpha: 0.55),
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            Text(
-                              precoExibido,
-                              style: TextStyle(
-                                color: Colors.green.shade600,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Total',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface.withValues(alpha: 0.55),
-                                letterSpacing: 0.4,
-                              ),
-                            ),
-                            Text(
-                              total,
-                              style: TextStyle(
-                                color: Colors.green.shade700,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        )),
+                          ),
+                          errorWidget: (context, url, error) => Icon(
+                            Icons.image_not_supported_outlined,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          imageUrl: UrlImagem.montarUrlImagem(
+                            foto: foto,
+                            baseHost: baseHost,
+                          ),
+                        ),
+                ),
+              );
+              if (empilhar) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    imagem,
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: resumoPreco,
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  imagem,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: resumoPreco,
+                    ),
                   ),
                 ],
               );

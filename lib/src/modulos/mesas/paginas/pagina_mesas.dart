@@ -24,7 +24,8 @@ class PaginaMesas extends StatefulWidget {
 }
 
 class _PaginaMesasState extends State<PaginaMesas> {
-  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   TextEditingController pesquisaController = TextEditingController();
 
@@ -43,21 +44,34 @@ class _PaginaMesasState extends State<PaginaMesas> {
   Future<void> listarMesas() async {
     try {
       await provedor.listarMesas('');
+      if (!mounted) return;
+      if (provedor.erro != null) {
+        _mostrarErroAtualizacao(provedor.erro!);
+      }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Não foi possível atualizar as mesas.'),
-        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarMesas),
-      ));
+      _mostrarErroAtualizacao('Não foi possível atualizar as mesas.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
+  void _mostrarErroAtualizacao(String mensagem) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(mensagem),
+        behavior: SnackBarBehavior.floating,
+        action:
+            SnackBarAction(label: 'Tentar novamente', onPressed: listarMesas),
+      ));
+  }
+
   Future<void> _carregarConfiguracao() async {
     try {
       final config = await servicoConfigBigchef.listar();
-      final disponivel = config?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+      final disponivel = config?.autenticarcomtag == 'Sim' &&
+          await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
       if (!mounted) return;
       setState(() {
         configBigchef = config;
@@ -90,7 +104,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
         final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
 
-        await servicoCardapio.listarIdCodigoQrcode(TipoCardapio.mesa, codigo).then((value) {
+        await servicoCardapio
+            .listarIdCodigoQrcode(TipoCardapio.mesa, codigo)
+            .then((value) {
           if (value.sucesso == false) {
             FlutterNfcKit.finish(iosErrorMessage: 'Essa mesa não existe.');
             return;
@@ -111,7 +127,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
                   ),
                 );
               }
-            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '2') {
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa ==
+                '2') {
               if (mounted) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -124,7 +141,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
                   ),
                 );
               }
-            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa == '3') {
+            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdmesa ==
+                '3') {
               if (value.fechamento == true) {
                 if (mounted) {
                   Navigator.of(context).push(
@@ -169,7 +187,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
           }
         });
       } else {
-        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        FlutterNfcKit.finish(
+            iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
         return;
       }
     } on PlatformException catch (e) {
@@ -190,13 +209,17 @@ class _PaginaMesasState extends State<PaginaMesas> {
   int _totalOcupadas() {
     return provedor.mesas
         .where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == true))
-        .fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => c.mesaOcupada).length));
+        .fold(0,
+            (p, e) => p + ((e.mesas ?? []).where((c) => c.mesaOcupada).length));
   }
 
   int _totalLivres() {
     return provedor.mesas
         .where((g) => (g.mesas ?? []).any((c) => c.mesaOcupada == false))
-        .fold(0, (p, e) => p + ((e.mesas ?? []).where((c) => !c.mesaOcupada).length));
+        .fold(
+            0,
+            (p, e) =>
+                p + ((e.mesas ?? []).where((c) => !c.mesaOcupada).length));
   }
 
   @override
@@ -207,29 +230,35 @@ class _PaginaMesasState extends State<PaginaMesas> {
     return Scaffold(
       backgroundColor: corFundo,
       appBar: AppBar(
-        title: const Text('Mesas', style: TextStyle(fontWeight: FontWeight.w600)),
+        title:
+            const Text('Mesas', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
         actions: [
           MenuAnchor(
             style: MenuStyle(
-              backgroundColor: WidgetStatePropertyAll(isDark ? const Color(0xFF1F2937) : Colors.white),
+              backgroundColor: WidgetStatePropertyAll(
+                  isDark ? const Color(0xFF1F2937) : Colors.white),
               elevation: const WidgetStatePropertyAll(6),
               shape: WidgetStatePropertyAll(
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            builder: (BuildContext context, MenuController controller, Widget? child) {
+            builder: (BuildContext context, MenuController controller,
+                Widget? child) {
               return IconButton(
-                onPressed: () => controller.isOpen ? controller.close() : controller.open(),
+                onPressed: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
                 icon: const Icon(Icons.more_horiz),
               );
             },
             menuChildren: [
               MenuItemButton(
-                leadingIcon: const Icon(Icons.table_restaurant_outlined, size: 20, color: Color(0xFF3B82F6)),
+                leadingIcon: const Icon(Icons.table_restaurant_outlined,
+                    size: 20, color: Color(0xFF3B82F6)),
                 onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context) => const PaginaListaMesas()));
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => const PaginaListaMesas()));
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
@@ -264,7 +293,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
                       builder: (context) {
                         return GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const ModalDigitarCodigo(tipo: TipoCardapio.mesa),
+                          child:
+                              const ModalDigitarCodigo(tipo: TipoCardapio.mesa),
                         );
                       },
                     );
@@ -272,11 +302,15 @@ class _PaginaMesasState extends State<PaginaMesas> {
                   onAbrirScanner: () {
                     Navigator.push(context, MaterialPageRoute(
                       builder: (context) {
-                        return const BarcodeScannerWithOverlay(tipo: TipoCardapio.mesa);
+                        return const BarcodeScannerWithOverlay(
+                            tipo: TipoCardapio.mesa);
                       },
                     ));
                   },
-                  onNfc: configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel ? () async => await nfc() : null,
+                  onNfc:
+                      configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel
+                          ? () async => await nfc()
+                          : null,
                 ),
                 _BarraAbas(
                   total: _totalGeral(),
@@ -288,15 +322,21 @@ class _PaginaMesasState extends State<PaginaMesas> {
                     children: [
                       _ListaTab(
                         onRefresh: listarMesas,
-                        child: _conteudoLista(modo: _ModoLista.todas, pesquisa: pesquisaController.text),
+                        child: _conteudoLista(
+                            modo: _ModoLista.todas,
+                            pesquisa: pesquisaController.text),
                       ),
                       _ListaTab(
                         onRefresh: listarMesas,
-                        child: _conteudoLista(modo: _ModoLista.ocupadas, pesquisa: pesquisaController.text),
+                        child: _conteudoLista(
+                            modo: _ModoLista.ocupadas,
+                            pesquisa: pesquisaController.text),
                       ),
                       _ListaTab(
                         onRefresh: listarMesas,
-                        child: _conteudoLista(modo: _ModoLista.livres, pesquisa: pesquisaController.text),
+                        child: _conteudoLista(
+                            modo: _ModoLista.livres,
+                            pesquisa: pesquisaController.text),
                       ),
                     ],
                   ),
@@ -327,7 +367,9 @@ class _PaginaMesasState extends State<PaginaMesas> {
             if (modo == _ModoLista.ocupadas && !c.mesaOcupada) return false;
             if (modo == _ModoLista.livres && c.mesaOcupada) return false;
             if (pesquisaLower.isEmpty) return true;
-            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) ||
+            return (c.nomeCliente ?? '')
+                    .toLowerCase()
+                    .contains(pesquisaLower) ||
                 (c.obs ?? '').toLowerCase().contains(pesquisaLower) ||
                 c.nome.toLowerCase().contains(pesquisaLower);
           }).toList();
@@ -337,6 +379,14 @@ class _PaginaMesasState extends State<PaginaMesas> {
         .toList();
 
     if (grupos.isEmpty) {
+      if (provedor.erro != null && provedor.mesas.isEmpty) {
+        return _EstadoErro(
+          icone: Icons.wifi_off_rounded,
+          titulo: 'Falha ao carregar',
+          subtitulo: provedor.erro!,
+          onRetry: listarMesas,
+        );
+      }
       return const _EstadoVazio(
         icone: Icons.table_restaurant_outlined,
         titulo: 'Nada por aqui',
@@ -353,7 +403,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             sliver: SliverToBoxAdapter(
-              child: _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
+              child: _CabecalhoSecao(
+                  titulo: grupo.titulo, quantidade: grupo.itens.length),
             ),
           ),
           SliverPadding(
@@ -362,7 +413,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
               itemCount: grupo.itens.length,
               itemBuilder: (_, i) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: CardMesaOcupada(key: ValueKey(grupo.itens[i].id), item: grupo.itens[i]),
+                child: CardMesaOcupada(
+                    key: ValueKey(grupo.itens[i].id), item: grupo.itens[i]),
               ),
             ),
           ),
@@ -470,7 +522,8 @@ class _BarraAbas extends StatelessWidget {
   final int total;
   final int ocupadas;
   final int livres;
-  const _BarraAbas({required this.total, required this.ocupadas, required this.livres});
+  const _BarraAbas(
+      {required this.total, required this.ocupadas, required this.livres});
 
   @override
   Widget build(BuildContext context) {
@@ -488,11 +541,15 @@ class _BarraAbas extends StatelessWidget {
 
   Tab _aba(BuildContext context, String nome, int quantidade) => Tab(
         height: (MediaQuery.textScalerOf(context).scale(13) * 1.5 +
-            MediaQuery.textScalerOf(context).scale(12) * 1.5 + 12).clamp(56, double.infinity),
+                MediaQuery.textScalerOf(context).scale(12) * 1.5 +
+                12)
+            .clamp(56, double.infinity),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(nome, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(nome,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             Text('$quantidade', style: const TextStyle(fontSize: 12)),
           ],
         ),
@@ -548,7 +605,9 @@ class _CabecalhoSecao extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
+              color: (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFF1F5F9)),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -570,7 +629,8 @@ class _EstadoVazio extends StatelessWidget {
   final IconData icone;
   final String titulo;
   final String subtitulo;
-  const _EstadoVazio({required this.icone, required this.titulo, required this.subtitulo});
+  const _EstadoVazio(
+      {required this.icone, required this.titulo, required this.subtitulo});
 
   @override
   Widget build(BuildContext context) {
@@ -591,6 +651,53 @@ class _EstadoVazio extends StatelessWidget {
           subtitulo,
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+}
+
+class _EstadoErro extends StatelessWidget {
+  final IconData icone;
+  final String titulo;
+  final String subtitulo;
+  final VoidCallback onRetry;
+
+  const _EstadoErro({
+    required this.icone,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 60),
+        Icon(icone, size: 56, color: cs.error),
+        const SizedBox(height: 12),
+        Text(
+          titulo,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitulo,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Tentar novamente'),
+          ),
         ),
       ],
     );

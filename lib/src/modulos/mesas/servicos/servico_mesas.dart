@@ -12,7 +12,13 @@ class ServicoMesas {
   Future<List<MesasModel>> listar(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('mesas/listar.php?pesquisa=$pesquisa&empresa=$empresa');
+    final response = await dio.cliente.get(
+      'mesas/listar.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     if (response.data.isNotEmpty) {
       return List<MesasModel>.from(response.data.map((elemento) {
@@ -26,7 +32,13 @@ class ServicoMesas {
   Future<List<MesaModelo>> listarLista(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('mesas/listar_lista.php?pesquisa=$pesquisa&empresa=$empresa');
+    final response = await dio.cliente.get(
+      'mesas/listar_lista.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     if (response.data.isNotEmpty) {
       return List<MesaModelo>.from(response.data.map((elemento) {
@@ -96,14 +108,19 @@ class ServicoMesas {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final url = 'comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
-
-    final response = await dio.cliente.get(url).timeout(const Duration(seconds: 60));
+    final response = await dio.cliente.get(
+      'comandas/listar_clientes.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     return response.data;
   }
 
-  Future<bool> editarMesaOcupada(String id, String idMesa, String idCliente, String obs) async {
+  Future<bool> editarMesaOcupada(
+      String id, String idMesa, String idCliente, String obs) async {
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -119,12 +136,13 @@ class ServicoMesas {
         'usuario': usuario,
         'empresa': empresa,
       },
-    ).timeout(const Duration(seconds: 60));
+    );
 
     return response.data['sucesso'];
   }
 
-  Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(String idMesa, String idCliente, String obs) async {
+  Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(
+      String idMesa, String idCliente, String obs) async {
     const url = 'mesas/inserir_mesa_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -139,7 +157,7 @@ class ServicoMesas {
         'empresa': empresa,
         'usuario': usuario,
       },
-    ).timeout(const Duration(seconds: 60));
+    );
 
     bool sucesso = response.data['sucesso'];
     String idcomandapedido = response.data['idcomandapedido'];

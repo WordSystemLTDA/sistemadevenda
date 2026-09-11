@@ -12,7 +12,13 @@ class ServicoComandas {
   Future<List<ModeloComandas>> listar(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('comandas/listar.php?pesquisa=$pesquisa&empresa=$empresa').timeout(const Duration(seconds: 60));
+    final response = await dio.cliente.get(
+      'comandas/listar.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     if (response.data.isNotEmpty) {
       return List<ModeloComandas>.from(response.data.map((elemento) {
@@ -26,7 +32,13 @@ class ServicoComandas {
   Future<List<ModeloComanda>> listarLista(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final response = await dio.cliente.get('comandas/listar_lista.php?pesquisa=$pesquisa&empresa=$empresa').timeout(const Duration(seconds: 60));
+    final response = await dio.cliente.get(
+      'comandas/listar_lista.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     if (response.data.isNotEmpty) {
       return List<ModeloComanda>.from(response.data.map((elemento) {
@@ -95,9 +107,13 @@ class ServicoComandas {
   Future<List<dynamic>> listarMesa(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final url = 'comandas/listar_mesas.php?pesquisa=$pesquisa&empresa=$empresa';
-
-    final response = await dio.cliente.get(url).timeout(const Duration(seconds: 60));
+    final response = await dio.cliente.get(
+      'comandas/listar_mesas.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     return response.data;
   }
@@ -105,14 +121,19 @@ class ServicoComandas {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final url = 'comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
-
-    final response = await dio.cliente.get(url).timeout(const Duration(seconds: 60));
+    final response = await dio.cliente.get(
+      'comandas/listar_clientes.php',
+      queryParameters: {
+        'pesquisa': pesquisa,
+        'empresa': empresa,
+      },
+    );
 
     return response.data;
   }
 
-  Future<({bool sucesso, String? idcomandapedido})> inserirComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
+  Future<({bool sucesso, String? idcomandapedido})> inserirComandaOcupada(
+      String id, String idMesa, String idCliente, String obs) async {
     const url = 'comandas/inserir_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -128,7 +149,7 @@ class ServicoComandas {
         'usuario': usuario,
         'empresa': empresa,
       },
-    ).timeout(const Duration(seconds: 60));
+    );
 
     bool sucesso = response.data['sucesso'];
     String? idcomandapedido = response.data['idcomandapedido'];
@@ -136,7 +157,8 @@ class ServicoComandas {
     return (sucesso: sucesso, idcomandapedido: idcomandapedido);
   }
 
-  Future<bool> editarComandaOcupada(String id, String idMesa, String idCliente, String obs) async {
+  Future<bool> editarComandaOcupada(
+      String id, String idMesa, String idCliente, String obs) async {
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -152,12 +174,20 @@ class ServicoComandas {
         'usuario': usuario,
         'empresa': empresa,
       },
-    ).timeout(const Duration(seconds: 60));
+    );
 
     return response.data['sucesso'];
   }
 
-  Future<({bool sucesso, String idcliente, String nomecliente, String mensagem})> inserirCliente(String nome, String celular, String email, String obs) async {
+  Future<
+          ({
+            bool sucesso,
+            String idcliente,
+            String nomecliente,
+            String mensagem
+          })>
+      inserirCliente(
+          String nome, String celular, String email, String obs) async {
     const url = 'comandas/inserir_cliente.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -171,7 +201,7 @@ class ServicoComandas {
         'obs': obs,
         'empresa': empresa,
       },
-    ).timeout(const Duration(seconds: 60));
+    );
 
     bool sucesso = response.data['sucesso'];
     String idcliente = response.data['idcliente'];

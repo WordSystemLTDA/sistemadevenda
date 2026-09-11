@@ -40,47 +40,69 @@ import '../suporte/captura_tela.dart';
 class MesasTeste extends Fake implements ServicoMesas {
   int quantidade = 200;
   Completer<List<MesasModel>>? pendente;
+  final pendentes = <Completer<List<MesasModel>>>[];
+  bool controlarRespostas = false;
 
   @override
-  Future<List<MesasModel>> listar(String pesquisa) async =>
-      await pendente?.future ??
-      [
+  Future<List<MesasModel>> listar(String pesquisa) async {
+    if (controlarRespostas) {
+      final pendente = Completer<List<MesasModel>>();
+      pendentes.add(pendente);
+      return pendente.future;
+    }
+    return await pendente?.future ?? _dados();
+  }
+
+  List<MesasModel> _dados() => [
         MesasModel(
-            titulo: 'Livres',
-            mesas: List.generate(
-                quantidade,
-                (i) => MesaModelo(
-                      id: '$i',
-                      codigo: '${i + 1}',
-                      nome: 'Mesa ${i + 1}',
-                      ativo: 'Sim',
-                      mesaOcupada: false,
-                      nomeCliente: null,
-                      dataAbertura: null,
-                      horaAbertura: null,
-                    ))),
+          titulo: 'Livres',
+          mesas: List.generate(
+            quantidade,
+            (i) => MesaModelo(
+              id: '$i',
+              codigo: '${i + 1}',
+              nome: 'Mesa ${i + 1}',
+              ativo: 'Sim',
+              mesaOcupada: false,
+              nomeCliente: null,
+              dataAbertura: null,
+              horaAbertura: null,
+            ),
+          ),
+        ),
       ];
 }
 
 class ComandasTeste extends Fake implements ServicoComandas {
   int quantidade = 200;
   Completer<List<ModeloComandas>>? pendente;
+  final pendentes = <Completer<List<ModeloComandas>>>[];
+  bool controlarRespostas = false;
 
   @override
-  Future<List<ModeloComandas>> listar(String pesquisa) async =>
-      await pendente?.future ??
-      [
+  Future<List<ModeloComandas>> listar(String pesquisa) async {
+    if (controlarRespostas) {
+      final pendente = Completer<List<ModeloComandas>>();
+      pendentes.add(pendente);
+      return pendente.future;
+    }
+    return await pendente?.future ?? _dados();
+  }
+
+  List<ModeloComandas> _dados() => [
         ModeloComandas(
-            titulo: 'Livres',
-            comandas: List.generate(
-                quantidade,
-                (i) => ModeloComanda(
-                      id: '$i',
-                      codigo: '${i + 1}',
-                      nome: 'Comanda ${i + 1}',
-                      ativo: 'Sim',
-                      comandaOcupada: false,
-                    ))),
+          titulo: 'Livres',
+          comandas: List.generate(
+            quantidade,
+            (i) => ModeloComanda(
+              id: '$i',
+              codigo: '${i + 1}',
+              nome: 'Comanda ${i + 1}',
+              ativo: 'Sim',
+              comandaOcupada: false,
+            ),
+          ),
+        ),
       ];
 }
 
@@ -445,5 +467,68 @@ void main() {
     modulo.balcao.pendentes.last.complete([]);
     await tentativa;
     expect(modulo.provedorBalcao.erro, isNull);
+  });
+
+  test('comandas libera carregamento apos timeout e preserva lista antiga',
+      () async {
+    await modulo.provedorComandas.listarComandas('');
+    final listaAntiga = modulo.provedorComandas.comandas;
+    expect(listaAntiga.single.comandas, isNotEmpty);
+
+    modulo.comandas.controlarRespostas = true;
+    final consulta = modulo.provedorComandas.listarComandas('Bruno');
+    modulo.comandas.pendentes.last
+        .completeError(TimeoutException('Future not completed'));
+
+    final retorno = await consulta;
+    expect(retorno, same(listaAntiga));
+    expect(modulo.provedorComandas.comandas, same(listaAntiga));
+    expect(modulo.provedorComandas.erro, isNotNull);
+    expect(modulo.provedorComandas.listando, isFalse);
+
+    final tentativa = modulo.provedorComandas.listarComandas('');
+    modulo.comandas.pendentes.last.complete([]);
+    await tentativa;
+    expect(modulo.provedorComandas.erro, isNull);
+  });
+
+  test('comandas ignora timeout de consulta antiga quando existe busca nova',
+      () async {
+    modulo.comandas.controlarRespostas = true;
+    final antiga = modulo.provedorComandas.listarComandas('Bruno');
+    final atual = modulo.provedorComandas.listarComandas('Bruno Masson');
+    expect(modulo.comandas.pendentes, hasLength(2));
+
+    modulo.comandas.pendentes.last.complete([]);
+    await atual;
+    modulo.comandas.pendentes.first
+        .completeError(TimeoutException('Future not completed'));
+    await antiga;
+
+    expect(modulo.provedorComandas.erro, isNull);
+    expect(modulo.provedorComandas.listando, isFalse);
+  });
+
+  test('mesas libera carregamento apos timeout e preserva lista antiga',
+      () async {
+    await modulo.provedorMesas.listarMesas('');
+    final listaAntiga = modulo.provedorMesas.mesas;
+    expect(listaAntiga.single.mesas, isNotEmpty);
+
+    modulo.mesas.controlarRespostas = true;
+    final consulta = modulo.provedorMesas.listarMesas('Varanda');
+    modulo.mesas.pendentes.last
+        .completeError(TimeoutException('Future not completed'));
+
+    final retorno = await consulta;
+    expect(retorno, same(listaAntiga));
+    expect(modulo.provedorMesas.mesas, same(listaAntiga));
+    expect(modulo.provedorMesas.erro, isNotNull);
+    expect(modulo.provedorMesas.listando, isFalse);
+
+    final tentativa = modulo.provedorMesas.listarMesas('');
+    modulo.mesas.pendentes.last.complete([]);
+    await tentativa;
+    expect(modulo.provedorMesas.erro, isNull);
   });
 }

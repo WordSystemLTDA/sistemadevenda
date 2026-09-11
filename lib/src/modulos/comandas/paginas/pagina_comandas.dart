@@ -24,7 +24,8 @@ class PaginaComandas extends StatefulWidget {
 }
 
 class _PaginaComandasState extends State<PaginaComandas> {
-  ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
   TextEditingController pesquisaController = TextEditingController();
 
@@ -43,21 +44,34 @@ class _PaginaComandasState extends State<PaginaComandas> {
   Future<void> listarComandas() async {
     try {
       await provedor.listarComandas('');
+      if (!mounted) return;
+      if (provedor.erro != null) {
+        _mostrarErroAtualizacao(provedor.erro!);
+      }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Não foi possível atualizar as comandas.'),
-        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarComandas),
-      ));
+      _mostrarErroAtualizacao('Não foi possível atualizar as comandas.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
+  void _mostrarErroAtualizacao(String mensagem) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(mensagem),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+            label: 'Tentar novamente', onPressed: listarComandas),
+      ));
+  }
+
   Future<void> _carregarConfiguracao() async {
     try {
       final config = await servicoConfigBigchef.listar();
-      final disponivel = config?.autenticarcomtag == 'Sim' && await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
+      final disponivel = config?.autenticarcomtag == 'Sim' &&
+          await FlutterNfcKit.nfcAvailability == NFCAvailability.available;
       if (!mounted) return;
       setState(() {
         configBigchef = config;
@@ -84,7 +98,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
       if (tag.type == NFCTagType.mifare_ultralight) {
         var ndef = await FlutterNfcKit.readNDEFRecords();
         if (ndef.isEmpty) {
-          FlutterNfcKit.finish(iosErrorMessage: 'Essa TAG não tem código Registrado.');
+          FlutterNfcKit.finish(
+              iosErrorMessage: 'Essa TAG não tem código Registrado.');
           return;
         }
 
@@ -94,7 +109,9 @@ class _PaginaComandasState extends State<PaginaComandas> {
 
         final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
 
-        await servicoCardapio.listarIdCodigoQrcode(TipoCardapio.comanda, codigo).then((value) {
+        await servicoCardapio
+            .listarIdCodigoQrcode(TipoCardapio.comanda, codigo)
+            .then((value) {
           if (value.sucesso == false) {
             FlutterNfcKit.finish(iosErrorMessage: 'Essa comanda não existe.');
             return;
@@ -103,7 +120,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
           }
 
           if (value.ocupado == true) {
-            if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '1') {
+            if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda ==
+                '1') {
               if (mounted) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -115,7 +133,9 @@ class _PaginaComandasState extends State<PaginaComandas> {
                   ),
                 );
               }
-            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '2') {
+            } else if (usuarioProvedor
+                    .usuario?.configuracoes?.modaladdcomanda ==
+                '2') {
               if (mounted) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -128,7 +148,9 @@ class _PaginaComandasState extends State<PaginaComandas> {
                   ),
                 );
               }
-            } else if (usuarioProvedor.usuario?.configuracoes?.modaladdcomanda == '3') {
+            } else if (usuarioProvedor
+                    .usuario?.configuracoes?.modaladdcomanda ==
+                '3') {
               if (value.fechamento == true) {
                 if (mounted) {
                   Navigator.of(context).push(
@@ -173,7 +195,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
           }
         });
       } else {
-        FlutterNfcKit.finish(iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
+        FlutterNfcKit.finish(
+            iosErrorMessage: 'Tipo de TAG não reconhecido: ${tag.type.name}');
         return;
       }
     } on PlatformException catch (e) {
@@ -194,13 +217,20 @@ class _PaginaComandasState extends State<PaginaComandas> {
   int _totalOcupadas() {
     return provedor.comandas
         .where((g) => (g.comandas ?? []).any((c) => c.comandaOcupada == true))
-        .fold(0, (p, e) => p + ((e.comandas ?? []).where((c) => c.comandaOcupada).length));
+        .fold(
+            0,
+            (p, e) =>
+                p + ((e.comandas ?? []).where((c) => c.comandaOcupada).length));
   }
 
   int _totalLivres() {
     return provedor.comandas
         .where((g) => (g.comandas ?? []).any((c) => c.comandaOcupada == false))
-        .fold(0, (p, e) => p + ((e.comandas ?? []).where((c) => !c.comandaOcupada).length));
+        .fold(
+            0,
+            (p, e) =>
+                p +
+                ((e.comandas ?? []).where((c) => !c.comandaOcupada).length));
   }
 
   @override
@@ -211,29 +241,35 @@ class _PaginaComandasState extends State<PaginaComandas> {
     return Scaffold(
       backgroundColor: corFundo,
       appBar: AppBar(
-        title: const Text('Comandas', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text('Comandas',
+            style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
         actions: [
           MenuAnchor(
             style: MenuStyle(
-              backgroundColor: WidgetStatePropertyAll(isDark ? const Color(0xFF1F2937) : Colors.white),
+              backgroundColor: WidgetStatePropertyAll(
+                  isDark ? const Color(0xFF1F2937) : Colors.white),
               elevation: const WidgetStatePropertyAll(6),
               shape: WidgetStatePropertyAll(
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
-            builder: (BuildContext context, MenuController controller, Widget? child) {
+            builder: (BuildContext context, MenuController controller,
+                Widget? child) {
               return IconButton(
-                onPressed: () => controller.isOpen ? controller.close() : controller.open(),
+                onPressed: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
                 icon: const Icon(Icons.more_horiz),
               );
             },
             menuChildren: [
               MenuItemButton(
-                leadingIcon: const Icon(Icons.list_alt_rounded, size: 20, color: Color(0xFF3B82F6)),
+                leadingIcon: const Icon(Icons.list_alt_rounded,
+                    size: 20, color: Color(0xFF3B82F6)),
                 onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context) => const TodasComandas()));
+                  Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => const TodasComandas()));
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
@@ -268,7 +304,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
                       builder: (context) {
                         return GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const ModalDigitarCodigo(tipo: TipoCardapio.comanda),
+                          child: const ModalDigitarCodigo(
+                              tipo: TipoCardapio.comanda),
                         );
                       },
                     );
@@ -276,11 +313,15 @@ class _PaginaComandasState extends State<PaginaComandas> {
                   onAbrirScanner: () {
                     Navigator.push(context, MaterialPageRoute(
                       builder: (context) {
-                        return const BarcodeScannerWithOverlay(tipo: TipoCardapio.comanda);
+                        return const BarcodeScannerWithOverlay(
+                            tipo: TipoCardapio.comanda);
                       },
                     ));
                   },
-                  onNfc: configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel ? () async => await nfc() : null,
+                  onNfc:
+                      configBigchef?.autenticarcomtag == 'Sim' && nfcDisponivel
+                          ? () async => await nfc()
+                          : null,
                 ),
                 _BarraAbas(
                   total: _totalGeral(),
@@ -340,7 +381,9 @@ class _PaginaComandasState extends State<PaginaComandas> {
             if (modo == _ModoLista.ocupadas && !c.comandaOcupada) return false;
             if (modo == _ModoLista.livres && c.comandaOcupada) return false;
             if (pesquisaLower.isEmpty) return true;
-            return (c.nomeCliente ?? '').toLowerCase().contains(pesquisaLower) ||
+            return (c.nomeCliente ?? '')
+                    .toLowerCase()
+                    .contains(pesquisaLower) ||
                 (c.obs ?? '').toLowerCase().contains(pesquisaLower) ||
                 c.nome.toLowerCase().contains(pesquisaLower);
           }).toList();
@@ -350,6 +393,14 @@ class _PaginaComandasState extends State<PaginaComandas> {
         .toList();
 
     if (grupos.isEmpty) {
+      if (provedor.erro != null && provedor.comandas.isEmpty) {
+        return _EstadoErro(
+          icone: Icons.wifi_off_rounded,
+          titulo: 'Falha ao carregar',
+          subtitulo: provedor.erro!,
+          onRetry: listarComandas,
+        );
+      }
       return const _EstadoVazio(
         icone: Icons.inbox_outlined,
         titulo: 'Nada por aqui',
@@ -366,7 +417,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             sliver: SliverToBoxAdapter(
-              child: _CabecalhoSecao(titulo: grupo.titulo, quantidade: grupo.itens.length),
+              child: _CabecalhoSecao(
+                  titulo: grupo.titulo, quantidade: grupo.itens.length),
             ),
           ),
           SliverPadding(
@@ -375,7 +427,9 @@ class _PaginaComandasState extends State<PaginaComandas> {
               itemCount: grupo.itens.length,
               itemBuilder: (_, i) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: CardComanda(key: ValueKey(grupo.itens[i].id), itemComanda: grupo.itens[i]),
+                child: CardComanda(
+                    key: ValueKey(grupo.itens[i].id),
+                    itemComanda: grupo.itens[i]),
               ),
             ),
           ),
@@ -483,7 +537,8 @@ class _BarraAbas extends StatelessWidget {
   final int total;
   final int ocupadas;
   final int livres;
-  const _BarraAbas({required this.total, required this.ocupadas, required this.livres});
+  const _BarraAbas(
+      {required this.total, required this.ocupadas, required this.livres});
 
   @override
   Widget build(BuildContext context) {
@@ -501,11 +556,15 @@ class _BarraAbas extends StatelessWidget {
 
   Tab _aba(BuildContext context, String nome, int quantidade) => Tab(
         height: (MediaQuery.textScalerOf(context).scale(13) * 1.5 +
-            MediaQuery.textScalerOf(context).scale(12) * 1.5 + 12).clamp(56, double.infinity),
+                MediaQuery.textScalerOf(context).scale(12) * 1.5 +
+                12)
+            .clamp(56, double.infinity),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(nome, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(nome,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             Text('$quantidade', style: const TextStyle(fontSize: 12)),
           ],
         ),
@@ -561,7 +620,9 @@ class _CabecalhoSecao extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9)),
+              color: (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFF1F5F9)),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -583,7 +644,8 @@ class _EstadoVazio extends StatelessWidget {
   final IconData icone;
   final String titulo;
   final String subtitulo;
-  const _EstadoVazio({required this.icone, required this.titulo, required this.subtitulo});
+  const _EstadoVazio(
+      {required this.icone, required this.titulo, required this.subtitulo});
 
   @override
   Widget build(BuildContext context) {
@@ -604,6 +666,53 @@ class _EstadoVazio extends StatelessWidget {
           subtitulo,
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+}
+
+class _EstadoErro extends StatelessWidget {
+  final IconData icone;
+  final String titulo;
+  final String subtitulo;
+  final VoidCallback onRetry;
+
+  const _EstadoErro({
+    required this.icone,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 60),
+        Icon(icone, size: 56, color: cs.error),
+        const SizedBox(height: 12),
+        Text(
+          titulo,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitulo,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Tentar novamente'),
+          ),
         ),
       ],
     );
