@@ -214,6 +214,7 @@ class _BotaoFlutuantePendenciasImpressaoState
         final quantidade = _fila.itens.length;
         final temPendencia = quantidade > 0;
         final corFundo = temPendencia ? cs.error : cs.primary;
+        final corBotao = corFundo.withValues(alpha: temPendencia ? 0.62 : 0.52);
 
         return Semantics(
           button: true,
@@ -227,9 +228,9 @@ class _BotaoFlutuantePendenciasImpressaoState
               children: [
                 Material(
                   key: ValueKey('botao_pendencias_impressao_${widget.tag}'),
-                  color: corFundo,
-                  elevation: 7,
-                  shadowColor: corFundo.withValues(alpha: 0.30),
+                  color: corBotao,
+                  elevation: 3,
+                  shadowColor: corFundo.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(18),
                   child: InkWell(
                     onTap: () => _abrirPendencias(context),
