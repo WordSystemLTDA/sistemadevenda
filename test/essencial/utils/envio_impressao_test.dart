@@ -223,6 +223,43 @@ void main() {
     expect(server.filaImpressao.itens.single.estado, EstadoImpressao.erro);
   });
 
+  test('falha na consulta da impressao inicia reconexao sem perder a fila',
+      () async {
+    var agora = DateTime(2026, 9, 11);
+    final server = Server(agora: () => agora)..connected = true;
+    addTearDown(server.dispose);
+    var tentativas = 0;
+    server.channel = CanalTeste(SaidaTeste((_) {
+      if (++tentativas > 1) throw StateError('Canal interrompido');
+    }));
+    await server.enviarImpressoes([mensagem('consulta-interrompida')]);
+    agora = agora.add(const Duration(seconds: 16));
+    await server.processarImpressoesPendentes();
+    expect(tentativas, 2);
+    expect(server.connected, isFalse);
+    expect(server.channel, isNull);
+    expect(server.filaImpressao.itens.single.id, 'consulta-interrompida');
+
+    final enviados = <Map<String, dynamic>>[];
+    server.connected = true;
+    server.channel = CanalTeste(SaidaTeste((data) {
+      enviados.add(Map<String, dynamic>.from(
+          jsonDecode(data as String)['data']['customData']));
+    }));
+    agora = agora.add(const Duration(seconds: 16));
+    await server.processarImpressoesPendentes();
+    expect(enviados.single['tipo'], 'ConsultarImpressao');
+    expect(enviados.single['idRequisicao'], 'consulta-interrompida');
+    await server.onData({
+      'tipo': 'RespostaImpressao',
+      'tipoResposta': 'impressao',
+      'statusResposta': 'sucesso',
+      'protocoloImpressao': 2,
+      'idRequisicao': 'consulta-interrompida',
+    });
+    expect(server.filaImpressao.itens, isEmpty);
+  });
+
   test('nao envia pendencias de outra empresa na mesma conexao', () async {
     app.usuarioProvedor = UsuarioProvedor()
       ..setUsuario(UsuarioModelo(empresa: '32'));

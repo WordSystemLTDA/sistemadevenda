@@ -135,13 +135,17 @@ class Server extends ChangeNotifier {
         }
         _consultasImpressao[item.id] = _agora();
         // Consulta o mesmo ID antes de repetir: o ACK pode ter se perdido.
-        _enviarMensagemNoCanal(jsonEncode({
+        final enviada = _enviarMensagemNoCanal(jsonEncode({
           'tipo': 'ConsultarImpressao',
           'protocoloImpressao': 2,
           'idRequisicao': item.id,
           'idEmpresa': item.dados['idEmpresa'],
           'nomedopc': item.dados['nomedopc'],
         }));
+        if (!enviada) {
+          _processarQuedaConexao();
+          break;
+        }
         continue;
       }
       if (!await filaImpressao.iniciarEnvio(item.id, agora: _agora())) continue;
