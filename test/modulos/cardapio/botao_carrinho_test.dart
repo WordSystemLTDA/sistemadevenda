@@ -1,5 +1,6 @@
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -13,6 +14,19 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final estado = ValueNotifier((quantidade: 2, adicoes: 0));
       addTearDown(estado.dispose);
+      final chamadasHapticas = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform,
+              (methodCall) async {
+        if (methodCall.method == 'HapticFeedback.vibrate') {
+          chamadasHapticas.add(methodCall);
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
       var abriuCarrinho = false;
 
       await tester.pumpWidget(MaterialApp(
@@ -50,6 +64,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(
+        chamadasHapticas
+            .where((chamada) =>
+                chamada.arguments == 'HapticFeedbackType.mediumImpact')
+            .length,
+        1,
+      );
       final escala = tester
           .widget<ScaleTransition>(find.ancestor(
             of: botao,
@@ -71,9 +92,11 @@ void main() {
       expect(find.byIcon(Icons.check_rounded), findsNothing);
 
       // Recarregar ou remover itens nao deve confirmar uma nova inclusao.
+      final totalChamadasHapticas = chamadasHapticas.length;
       estado.value = (quantidade: 1, adicoes: 1);
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.check_rounded), findsNothing);
+      expect(chamadasHapticas.length, totalChamadasHapticas);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

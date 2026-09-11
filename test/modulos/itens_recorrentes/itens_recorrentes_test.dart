@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
@@ -11,15 +12,15 @@ import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_itens_rec
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../cardapio/montagem_pizza_test.dart' show DioClienteTeste;
 
 class ServicosCategoriaTeste extends Fake implements ServicosCategoria {
   @override
   Future<List<ModeloCategoria>> listar() async => [];
 }
-
-class ServicosItensComandaTeste extends Fake implements ServicosItensComanda {}
 
 class ModuloItensRecorrentesTeste extends Module {
   late final usuarioProvedor = UsuarioProvedor()
@@ -29,8 +30,8 @@ class ModuloItensRecorrentesTeste extends Module {
       nome: 'Atendente',
       nomeEmpresa: 'Restaurante',
     ));
-  late final provedorItensRecorrentes =
-      ProvedorItensRecorrentes(ServicosItensComandaTeste());
+  late final provedorItensRecorrentes = ProvedorItensRecorrentes(
+      ServicosItensComanda(DioClienteTeste(), usuarioProvedor));
   late final provedorCardapio =
       ProvedorCardapio(ServicosCategoriaTeste(), usuarioProvedor);
 
@@ -70,6 +71,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      final chamadasHapticas = _capturarFeedbackHaptico();
       final pizza = _pizzaRecorrente();
 
       await tester.pumpWidget(MaterialApp(
@@ -141,6 +143,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(modulo.provedorItensRecorrentes.itensCarrinho, hasLength(1));
+      expect(
+        chamadasHapticas
+            .where((chamada) =>
+                chamada.arguments == 'HapticFeedbackType.mediumImpact')
+            .length,
+        1,
+      );
       final relancada = modulo.provedorItensRecorrentes.itensCarrinho.single;
       expect(relancada.nome, 'Pizza de Queijos');
       expect(relancada.valorVenda, '77.00');
@@ -185,6 +194,63 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('selecionar sabor de pizza em itens recorrentes vibra',
+      (tester) async {
+    final chamadasHapticas = _capturarFeedbackHaptico();
+    modulo.provedorCardapio.tamanhosPizza = ModeloTamanhosPizza(
+      id: 'G',
+      nomedotamanho: 'G',
+      quantpedacos: '8',
+      saboreslimite: '3',
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardItensRecorrentes(
+          estaPesquisando: false,
+          searchController: null,
+          item: _pizzaRecorrente(),
+          categoria: null,
+          finalizar: true,
+          idComanda: '3',
+          idMesa: '0',
+          idComandaPedido: '10673',
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pizza de Queijos'));
+    await tester.pump();
+
+    expect(modulo.provedorCardapio.saboresPizzaSelecionados, hasLength(1));
+    expect(
+      chamadasHapticas
+          .where((chamada) =>
+              chamada.arguments == 'HapticFeedbackType.selectionClick')
+          .length,
+      1,
+    );
+    expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+List<MethodCall> _capturarFeedbackHaptico() {
+  final chamadas = <MethodCall>[];
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(SystemChannels.platform, (methodCall) async {
+    if (methodCall.method == 'HapticFeedback.vibrate') {
+      chamadas.add(methodCall);
+    }
+    return null;
+  });
+  addTearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null);
+  });
+  return chamadas;
 }
 
 Modelowordprodutos _pizzaRecorrente() {

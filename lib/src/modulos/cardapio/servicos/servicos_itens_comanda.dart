@@ -3,14 +3,16 @@ import 'dart:io';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ServicosItensComanda {
   final DioCliente dio;
   final UsuarioProvedor usuarioProvedor;
   ServicosItensComanda(this.dio, this.usuarioProvedor);
+  ArmazenamentoCarrinhos get armazenamento => ArmazenamentoCarrinhos.instancia;
 
   Future<List<dynamic>> listarComandasPedidos(
       String idComanda, String idMesa) async {
@@ -50,34 +52,26 @@ class ServicosItensComanda {
     idProduto,
     String nomeProduto,
     quantidade,
-    observacao,
-  ) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var carrinhoString = prefs.getString('carrinho');
-    var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
-
-    var salvarCarrinho = [
-      produto,
-      ...carrinho,
-    ];
-
-    return prefs.setString('carrinho', jsonEncode(salvarCarrinho));
+    observacao, {
+    required ContextoCarrinho contexto,
+  }) async {
+    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    return armazenamento.alterar(contexto, (itens) => itens.insert(0, copia));
   }
 
-  Future<bool> editar(Modelowordprodutos produto, int index) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var carrinhoString = prefs.getString('carrinho');
-    var carrinho = carrinhoString != null ? jsonDecode(carrinhoString) : [];
-
-    carrinho[index] = produto;
-
-    await prefs.setString('carrinho', jsonEncode(carrinho));
-
-    return true;
+  Future<bool> editar(Modelowordprodutos produto, int index,
+      {required ContextoCarrinho contexto}) async {
+    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    return armazenamento.alterar(contexto, (itens) => itens[index] = copia);
   }
 
-  Future<bool> lancarPedido(idMesa, idComanda, valorTotal, quantidade,
-      observacao, listaIdProdutos) async {
+  Future<bool> lancarPedido(
+      dynamic idMesa,
+      dynamic idComanda,
+      dynamic valorTotal,
+      dynamic quantidade,
+      dynamic observacao,
+      dynamic listaIdProdutos) async {
     const url = 'pedidos/lancar_pedido.php';
 
     final idUsuario = usuarioProvedor.usuario!.id;

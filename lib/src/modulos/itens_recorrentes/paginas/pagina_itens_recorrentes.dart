@@ -46,6 +46,12 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
   @override
   void initState() {
     super.initState();
+    provedorItensRecorrentes.selecionarAtendimento(
+      idAtendimento: widget.idComandaPedido ?? '',
+      tipo: widget.tipo.name,
+      idRecurso: widget.tipo == TipoCardapio.mesa
+          ? widget.idMesa ?? '' : widget.idComanda ?? '',
+    );
     WidgetsBinding.instance.addObserver(this);
     _server.addListener(_aoReceberEventoSocket);
     listarComandasPedidos();

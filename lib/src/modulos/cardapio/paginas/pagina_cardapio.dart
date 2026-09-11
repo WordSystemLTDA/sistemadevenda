@@ -1,10 +1,12 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:developer';
+
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -70,44 +72,83 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     with TickerProviderStateMixin {
   final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final ProvedorProdutos provedorProdutos = Modular.get<ProvedorProdutos>();
 
   TabController? _tabController;
-  List<String> listaCategorias = [];
+  List<ModeloCategoria> _categorias = [];
   int indexTabBar = 0;
   bool finalizar = false;
+  bool _carregandoDados = false;
+  String? _erroCarregamento;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setarCampos();
+      if (!mounted) return;
       listarDados();
     });
   }
 
   @override
   void dispose() {
-    super.dispose();
+    _tabController?.removeListener(_aoTrocarCategoria);
     _tabController?.dispose();
+    super.dispose();
   }
 
-  void listarDados() async {
-    await provedor.listarCategorias().then((value) {
-      _tabController = TabController(
-          initialIndex: indexTabBar, length: value.length, vsync: this);
-      _tabController!.addListener(() {
-        if (indexTabBar != _tabController!.index) {
-          final categoria = provedor.categorias[_tabController!.index];
-          if (categoria.tamanhosPizza?.isEmpty ?? true) {
-            provedor.tamanhosPizza = null;
-          }
-          setState(() => indexTabBar = _tabController!.index);
-        }
-      });
+  void _aoTrocarCategoria() {
+    final controller = _tabController;
+    if (!mounted || controller == null || indexTabBar == controller.index) {
+      return;
+    }
+    indexTabBar = controller.index;
+    final categoria = _categorias[indexTabBar];
+    if ((categoria.tamanhosPizza?.isEmpty ?? true) &&
+        provedor.tamanhosPizza != null) {
+      provedor.tamanhosPizza = null;
+    }
+  }
+
+  Future<void> listarDados() async {
+    if (!mounted || _carregandoDados) return;
+    setState(() {
+      _carregandoDados = true;
+      _erroCarregamento = null;
     });
-    await carrinhoProvedor.listarComandasPedidos();
-    await provedor.listarConfigBigChef();
+    try {
+      setarCampos();
+      await carrinhoProvedor.selecionarAtendimento(
+        tipo: widget.tipo.name,
+        idAtendimento: widget.id ?? '0',
+        idRecurso: widget.tipo == TipoCardapio.mesa
+            ? widget.idMesa ?? ''
+            : widget.idComanda ?? '',
+      );
+      if (!mounted) return;
+      if (_tabController == null) {
+        final categorias = await provedor.listarCategorias();
+        if (!mounted) return;
+        setState(() {
+          _categorias = List.of(categorias);
+          if (_categorias.isNotEmpty) {
+            _tabController =
+                TabController(length: _categorias.length, vsync: this)
+                  ..addListener(_aoTrocarCategoria);
+          }
+        });
+      }
+      await carrinhoProvedor.listarComandasPedidos();
+      if (!mounted) return;
+      await provedor.listarConfigBigChef();
+    } catch (erro, stack) {
+      log('Falha ao carregar o cardapio', error: erro, stackTrace: stack);
+      if (mounted) {
+        setState(() => _erroCarregamento =
+            'Não foi possível carregar o cardápio. Confira a conexão e tente novamente.');
+      }
+    } finally {
+      if (mounted) setState(() => _carregandoDados = false);
+    }
   }
 
   void setarCampos() {
@@ -127,8 +168,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     return AnimatedBuilder(
       animation: provedor,
       builder: (context, _) {
-        final temCategorias =
-            _tabController != null && provedor.categorias.isNotEmpty;
+        final temCategorias = _tabController != null && _categorias.isNotEmpty;
         return Scaffold(
           extendBody: true,
           backgroundColor: cs.surface,
@@ -165,21 +205,22 @@ class _PaginaCardapioState extends State<PaginaCardapio>
               ],
             ),
             bottom: !temCategorias
-                ? const PreferredSize(
+                ? PreferredSize(
                     preferredSize: Size.fromHeight(48),
                     child: SizedBox(
                         height: 48,
-                        child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: LinearProgressIndicator())),
+                        child: _carregandoDados
+                            ? const Align(
+                                alignment: Alignment.bottomCenter,
+                                child: LinearProgressIndicator())
+                            : null),
                   )
                 : TabBar(
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
                     tabs: [
-                      ...provedor.categorias
-                          .map((e) => Tab(text: e.nomeCategoria)),
+                      ..._categorias.map((e) => Tab(text: e.nomeCategoria)),
                     ],
                   ),
           ),
@@ -220,6 +261,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                             carrinhoProvedor.itensCarrinho.quantidadeTotal,
                         numeroAdicoes: carrinhoProvedor.numeroAdicoes,
                         onPressed: () {
+                          if (_carregandoDados) return;
                           Navigator.of(context).push(MaterialPageRoute(
                             builder: (context) => const PaginaCarrinho(),
                           ));
@@ -231,23 +273,58 @@ class _PaginaCardapioState extends State<PaginaCardapio>
               );
             },
           ),
-          body: !temCategorias
-              ? const SizedBox.shrink()
-              : DefaultTabController(
-                  length: provedor.categorias.length,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      ...provedor.categorias.map((e) {
-                        listaCategorias.add(e.id);
-                        return TabCustom(
-                            category: e.id, categoria: e, finalizar: finalizar);
-                      }),
-                    ],
-                  ),
+          body: Column(
+            children: [
+              if (_erroCarregamento != null && temCategorias)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _estadoCarregamento(),
                 ),
+              Expanded(
+                child: !temCategorias
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: _estadoCarregamento(),
+                        ),
+                      )
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          for (final categoria in _categorias)
+                            TabCustom(
+                              key: ValueKey(categoria.id),
+                              category: categoria.id,
+                              categoria: categoria,
+                              finalizar: finalizar,
+                            ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _estadoCarregamento() {
+    if (_carregandoDados) return const SizedBox.shrink();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _erroCarregamento ?? 'Nenhuma categoria encontrada',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: listarDados,
+          icon: const Icon(Icons.refresh),
+          label: Text(
+              _erroCarregamento == null ? 'Atualizar' : 'Tentar novamente'),
+        ),
+      ],
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/widgets/grade_opcoes_responsiva.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +52,8 @@ class _ListaBordasState extends State<ListaBordas> {
                     child: InkWell(
                       onTap: () {
                         ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                        final limiteAnterior =
+                            provedor.limiteSaborBordaSelecionado;
 
                         if (provedor.limiteSaborBordaSelecionado ==
                             (index + 1)) {
@@ -64,6 +67,11 @@ class _ListaBordasState extends State<ListaBordas> {
                           provedorProduto.opcoesPacotesListaFinal = listaF;
                         } else {
                           provedor.limiteSaborBordaSelecionado = (index + 1);
+                        }
+
+                        if (limiteAnterior !=
+                            provedor.limiteSaborBordaSelecionado) {
+                          FeedbackUsuario.selecaoAlterada();
                         }
 
                         // print((widget.opcoesPacotesListaFinal.where((element) => element.id == 6).firstOrNull?.dados?.length ?? 0));

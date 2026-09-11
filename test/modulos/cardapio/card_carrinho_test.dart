@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -77,8 +78,8 @@ void main() {
 
   testWidgets('confirma antes de aumentar e diminuir quantidade',
       (tester) async {
-    final carrinho = ProvedorCarrinho(
-        ServicosItensComanda(DioClienteTeste(), UsuarioProvedor()));
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
     addTearDown(carrinho.dispose);
     Modular.init(ModuloCarrinhoTeste(carrinho));
     final item = produtoCarrinho();
@@ -136,11 +137,13 @@ void main() {
 
   testWidgets('lixeira exclui item somente depois da confirmacao',
       (tester) async {
-    final carrinho = ProvedorCarrinho(
-        ServicosItensComanda(DioClienteTeste(), UsuarioProvedor()));
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
     addTearDown(carrinho.dispose);
     Modular.init(ModuloCarrinhoTeste(carrinho));
     final item = produtoCarrinho();
+    await carrinho.selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
     await carrinho.inserir(item, 'Comanda', '0', '3', '10', '', item.id,
         item.nome, item.quantidade, '');
     var excluiu = false;

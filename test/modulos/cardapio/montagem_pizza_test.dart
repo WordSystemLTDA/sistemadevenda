@@ -7,6 +7,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -185,7 +186,8 @@ class CarrinhoComFalha extends ServicosItensComanda {
           idProduto,
           String nomeProduto,
           quantidade,
-          observacao) async =>
+          observacao,
+          {required ContextoCarrinho contexto}) async =>
       false;
 }
 
@@ -225,7 +227,8 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     usuario = UsuarioProvedor()
-      ..setUsuario(UsuarioModelo(configuracoes: ConfiguracoesTeste('media')));
+      ..setUsuario(UsuarioModelo(
+          empresa: '32', configuracoes: ConfiguracoesTeste('media')));
     categorias = CategoriasTeste();
     cardapio = ProvedorCardapio(categorias, usuario);
     produtos = ProdutosTeste();
@@ -262,7 +265,11 @@ void main() {
   }
 
   Future<bool> adicionar(
-      ProvedorCarrinho carrinho, Modelowordprodutos produto) {
+      ProvedorCarrinho carrinho, Modelowordprodutos produto) async {
+    if (carrinho.contexto == null) {
+      await carrinho.selecionarAtendimento(
+          tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
+    }
     return carrinho.inserir(produto, 'Comanda', '0', '3', produto.valorVenda,
         '', produto.id, produto.nome, produto.quantidade, '');
   }
@@ -289,7 +296,8 @@ void main() {
     final reaberto =
         ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario));
     addTearDown(reaberto.dispose);
-    await reaberto.listarComandasPedidos();
+    await reaberto.selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
     expect(reaberto.quantidadeDoProduto('Agua'), 4);
     expect(reaberto.numeroAdicoes, 0);
 
@@ -337,8 +345,9 @@ void main() {
       ..tamanhosPizza = []
       ..habilTipo = ''
       ..valorVenda = '10');
-    await tester.pumpWidget(
-        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
     await tester.pumpAndSettle();
     expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
     const chaveContador = ValueKey('quantidade_carrinho_Agua');
@@ -450,7 +459,8 @@ void main() {
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-          home: const PaginaCardapio(tipo: TipoCardapio.comanda),
+          home: const PaginaCardapio(
+              tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'),
         ),
       ));
       await tester.pumpAndSettle();
@@ -506,8 +516,7 @@ void main() {
               .widget<PaginaProduto>(find.byType(PaginaProduto))
               .montagemPizza,
           isTrue);
-      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo,
-          'Adicionar ao');
+      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao');
       await tester.tap(botao);
       await tester.pumpAndSettle();
       final pizza = carrinho.itensCarrinho.listaComandosPedidos
@@ -532,6 +541,10 @@ void main() {
       (tester) async {
     Modular.init(ModuloTeste(cardapio, usuario, produtos));
     addTearDown(Modular.destroy);
+    await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
+    cardapio.idComanda = '3';
+    cardapio.id = '10673';
     final bebida = sabor('Bebida com opcoes', 'Bebidas', '10')
       ..tamanhosPizza = []
       ..habilTipo = 'Pacote'
@@ -562,8 +575,9 @@ void main() {
     Modular.init(ModuloTeste(cardapio, usuario, produtos));
     addTearDown(Modular.destroy);
 
-    await tester.pumpWidget(
-        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
     await tester.pumpAndSettle();
 
     await tocarTamanho(tester, 'G');
@@ -590,8 +604,9 @@ void main() {
     Modular.init(ModuloTeste(cardapio, usuario, produtos));
     addTearDown(Modular.destroy);
 
-    await tester.pumpWidget(
-        const MaterialApp(home: PaginaCardapio(tipo: TipoCardapio.comanda)));
+    await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
     await tester.pumpAndSettle();
     await tocarTamanho(tester, 'G');
 
@@ -707,7 +722,8 @@ void main() {
       addTearDown(Modular.destroy);
 
       await tester.pumpWidget(const MaterialApp(
-        home: PaginaCardapio(tipo: TipoCardapio.comanda),
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'),
       ));
       await tester.pumpAndSettle();
 
@@ -770,8 +786,8 @@ void main() {
 
   for (final regra in ['media', 'maior']) {
     test('recalcula $regra pelo tamanho sem depender dos cards visiveis', () {
-      usuario
-          .setUsuario(UsuarioModelo(configuracoes: ConfiguracoesTeste(regra)));
+      usuario.setUsuario(UsuarioModelo(
+          empresa: '32', configuracoes: ConfiguracoesTeste(regra)));
       cardapio.tamanhosPizza = tamanho('G');
       cardapio.selecionarSaborPizza(produtos.produtos[0]);
       cardapio.selecionarSaborPizza(produtos.produtos[1]);

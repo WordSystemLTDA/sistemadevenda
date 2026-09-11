@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
@@ -41,11 +42,14 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
   });
 
   @override
-  State<PaginaFinalizarFormaPagamento> createState() => _PaginaFinalizarFormaPagamentoState();
+  State<PaginaFinalizarFormaPagamento> createState() =>
+      _PaginaFinalizarFormaPagamentoState();
 }
 
-class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPagamento> {
-  final ProvedorFinalizarPagamento provedor = Modular.get<ProvedorFinalizarPagamento>();
+class _PaginaFinalizarFormaPagamentoState
+    extends State<PaginaFinalizarFormaPagamento> {
+  final ProvedorFinalizarPagamento provedor =
+      Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
@@ -58,7 +62,8 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
   final _dinheiroController = TextEditingController();
 
-  String dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)));
+  String dataOriginal = DateFormat('yyyy-MM-dd')
+      .format(DateTime.now().add(const Duration(days: 30)));
 
   double _totalRegistrado = 0;
   double _desconto = 0;
@@ -74,22 +79,28 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
     _totalRegistrado = widget.totalReceber;
     _dinheiroController.text = widget.totalReceber.toStringAsFixed(2);
-    _dinheiroController.selection = TextSelection(baseOffset: 0, extentOffset: _dinheiroController.text.length);
+    _dinheiroController.selection = TextSelection(
+        baseOffset: 0, extentOffset: _dinheiroController.text.length);
     listarBancoPix();
   }
 
   void listarBancoPix() async {
     setState(() => _carregando = true);
-    final res = await context.read<ServicoFinalizarPagamento>().listarBancoPix();
+    final res =
+        await context.read<ServicoFinalizarPagamento>().listarBancoPix();
     if (!mounted) return;
 
-    res.map((_) => listaBancosControllers.add(TextEditingController())).toList();
+    res
+        .map((_) => listaBancosControllers.add(TextEditingController()))
+        .toList();
     listaBancoPix.value = res;
     if (mounted) return setState(() => _carregando = false);
   }
 
   void calcular() {
-    final double dinheiro = _dinheiroController.text.isEmpty ? 0 : double.parse(_dinheiroController.text);
+    final double dinheiro = _dinheiroController.text.isEmpty
+        ? 0
+        : double.parse(_dinheiroController.text);
     // final double promissoria = _promissoriaController.text.isEmpty ? 0 : double.parse(_promissoriaController.text);
     // final double cartaoDebito = _cartaoDebitoController.text.isEmpty ? 0 : double.parse(_cartaoDebitoController.text);
     // final double cartaoCredito = _cartaoCreditoController.text.isEmpty ? 0 : double.parse(_cartaoCreditoController.text);
@@ -116,7 +127,8 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+      backgroundColor:
+          isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
       appBar: AppBar(
         backgroundColor: cs.inversePrimary,
         elevation: 0,
@@ -128,10 +140,12 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.point_of_sale_outlined, size: 18, color: cs.onPrimaryContainer),
+              child: Icon(Icons.point_of_sale_outlined,
+                  size: 18, color: cs.onPrimaryContainer),
             ),
             const SizedBox(width: 10),
-            const Text('Método de Pagamento', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Método de Pagamento',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -149,7 +163,9 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                 height: 58,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: habilitado ? [cs.primary, cs.primary.withValues(alpha: 0.85)] : [Colors.grey.shade400, Colors.grey.shade500],
+                    colors: habilitado
+                        ? [cs.primary, cs.primary.withValues(alpha: 0.85)]
+                        : [Colors.grey.shade400, Colors.grey.shade500],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -175,7 +191,9 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                           MaterialPageRoute(
                             builder: (context) => PaginaParcelamento(
                               idVenda: provedor.idVenda,
-                              valor: double.tryParse(_dinheiroController.text) ?? 0,
+                              valor:
+                                  double.tryParse(_dinheiroController.text) ??
+                                      0,
                               valorFalta: (_desconto * -1).toStringAsFixed(2),
                               valorTroco: _desconto.abs().toStringAsFixed(2),
                               // dinheiro: _dinheiroController.text,
@@ -186,7 +204,8 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                               desconto: widget.desconto.toStringAsFixed(2),
                               descontoPercentual: widget.descontoPercentual,
                               totalPedido: widget.totalPedido,
-                              totalReceber: widget.totalReceber.toStringAsFixed(2),
+                              totalReceber:
+                                  widget.totalReceber.toStringAsFixed(2),
                               pagamentoselecionado: widget.pagamentoselecionado,
                             ),
                           ),
@@ -196,39 +215,49 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
 
                         finalizando.value = true;
 
-                        var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
+                        var (sucesso, mensagem, idvenda) = await context
+                            .read<ServicoFinalizarPagamento>()
+                            .pagarPedido(
                               provedor.idVenda,
                               provedorCardapio.idComanda,
                               provedorCardapio.idMesa,
                               provedorCardapio.idCliente,
                               _dinheiroController.text, // valorLancamento,
-                              widget.totalReceber.toStringAsFixed(2), // valorOriginal,
+                              widget.totalReceber
+                                  .toStringAsFixed(2), // valorOriginal,
                               int.parse(widget.pagamentoselecionado),
                               0, // quantidadePessoas,
-                              widget.totalReceber.toStringAsFixed(2), // subTotal,
+                              widget.totalReceber
+                                  .toStringAsFixed(2), // subTotal,
                               dataOriginal, // dataLancamento,
                               '0', // parcelas
                               [], // parcelasLista
                               provedorCardapio.tipo,
                               _desconto.abs().toStringAsFixed(2), // valortroco,
                               '0', // TODO: fazer delivery (valorentrega)
-                              carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
+                              carrinhoProvedor.itensCarrinho.precoTotal
+                                  .toStringAsFixed(2), // valoresProduto,
                               false, // novo,
                               provedorCardapio.tipodeentrega,
-                              carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-                              widget.totalReceber.toStringAsFixed(2), // valorAPagarOriginal,
+                              carrinhoProvedor
+                                  .itensCarrinho.listaComandosPedidos,
+                              widget.totalReceber
+                                  .toStringAsFixed(2), // valorAPagarOriginal,
                               provedorBalcao.observacaoDoPedido,
                             );
 
                         if (sucesso) {
                           provedorBalcao.observacaoDoPedido = '';
 
-                          if (double.parse(_dinheiroController.text) >= widget.totalReceber) {
+                          if (double.parse(_dinheiroController.text) >=
+                              widget.totalReceber) {
                             var provedorBalcao = Modular.get<ProvedorBalcao>();
                             var servico = Modular.get<ServicoBalcao>();
                             await provedorBalcao.listar();
 
-                            var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
+                            var vendaBalcao = provedorBalcao.dados
+                                .where((element) => element.id == idvenda)
+                                .firstOrNull;
 
                             if (vendaBalcao != null) {
                               server.write(jsonEncode({
@@ -242,49 +271,83 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                                 comanda: "Balcão $idvenda",
                                 numeroPedido: vendaBalcao.numeropedido,
                                 // nomeCliente: vendaBalcao.nomecliente,
-                                nomeCliente: ((vendaBalcao.nomecliente) == 'Sem Cliente' || vendaBalcao.nomecliente == "") && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty ? (vendaBalcao.observacaoDoPedido ?? '') : (vendaBalcao.nomecliente),
+                                nomeCliente: ((vendaBalcao.nomecliente) ==
+                                                'Sem Cliente' ||
+                                            vendaBalcao.nomecliente == "") &&
+                                        (vendaBalcao.observacaoDoPedido ?? '')
+                                            .isNotEmpty
+                                    ? (vendaBalcao.observacaoDoPedido ?? '')
+                                    : (vendaBalcao.nomecliente),
                                 nomeEmpresa: vendaBalcao.nomeEmpresa,
-                                produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+                                produtos: carrinhoProvedor
+                                    .itensCarrinho.listaComandosPedidos,
                                 tipodeentrega: vendaBalcao.idtipodeentrega,
                               );
 
-                              var informacoes = await servico.listarPorId(idvenda);
-                              var parcelas = await servico.listarFinanceiroVenda(idvenda);
+                              var informacoes =
+                                  await servico.listarPorId(idvenda);
+                              var parcelas =
+                                  await servico.listarFinanceiroVenda(idvenda);
 
-                              final duration = DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
-                              final newDuration = ConfigSistema.formatarHora(duration);
+                              final duration = DateTime.now().difference(
+                                  DateTime.parse(vendaBalcao.dataHora));
+                              final newDuration =
+                                  ConfigSistema.formatarHora(duration);
 
                               Impressao.comprovanteDeConsumo(
-                                valorentrega: informacoes.informacoes.valorentrega,
+                                valorentrega:
+                                    informacoes.informacoes.valorentrega,
                                 nomeEmpresa: vendaBalcao.nomeEmpresa,
                                 produtos: informacoes.produtos,
-                                nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                                  return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                                nomelancamento: List<ModeloNomeLancamento>.from(
+                                    parcelas.map((elemento) {
+                                  return ModeloNomeLancamento(
+                                      nome: elemento.entradaMov,
+                                      valor: UtilBrasilFields
+                                              .converterMoedaParaDouble(
+                                                  elemento.valorMovF)
+                                          .toStringAsExponential(2));
                                 })),
-                                somaValorHistorico: informacoes.informacoes.subtotal,
+                                somaValorHistorico:
+                                    informacoes.informacoes.subtotal,
                                 cnpjEmpresa: informacoes.informacoes.docempresa,
-                                celularEmpresa: informacoes.informacoes.celularcliente,
-                                enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+                                celularEmpresa:
+                                    informacoes.informacoes.celularcliente,
+                                enderecoEmpresa:
+                                    informacoes.informacoes.enderecoempresa,
                                 permanencia: newDuration,
                                 local: '',
                                 total: informacoes.informacoes.subtotal,
-                                numeroPedido: informacoes.informacoes.numerodopedido,
-                                tipodeentrega: informacoes.informacoes.tipodeentrega,
-                                nomeCliente: (informacoes.informacoes.nomeCliente == '' ? null : informacoes.informacoes.nomeCliente) ?? 'Sem Cliente',
+                                numeroPedido:
+                                    informacoes.informacoes.numerodopedido,
+                                tipodeentrega:
+                                    informacoes.informacoes.tipodeentrega,
+                                nomeCliente:
+                                    (informacoes.informacoes.nomeCliente == ''
+                                            ? null
+                                            : informacoes
+                                                .informacoes.nomeCliente) ??
+                                        'Sem Cliente',
                               );
+                              FeedbackUsuario.pedidoFinalizado();
                             }
 
                             carrinhoProvedor.removerComandasPedidos();
 
                             if (context.mounted) {
-                              Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+                              Navigator.popUntil(
+                                  context, ModalRoute.withName('PaginaBalcao'));
                             }
                           } else {
                             if (context.mounted) {
                               provedor.idVenda = idvenda;
-                              provedor.valor = widget.totalReceber - double.parse(_dinheiroController.text);
+                              provedor.valor = widget.totalReceber -
+                                  double.parse(_dinheiroController.text);
 
-                              Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+                              Navigator.popUntil(
+                                  context,
+                                  ModalRoute.withName(
+                                      'PaginaFinalizarAcrescimo'));
                             }
                           }
                         } else {
@@ -304,19 +367,24 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         replacement: const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.4, color: Colors.white),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              widget.pagamentoselecionado == '2' ? Icons.arrow_forward_rounded : Icons.check_circle_rounded,
+                              widget.pagamentoselecionado == '2'
+                                  ? Icons.arrow_forward_rounded
+                                  : Icons.check_circle_rounded,
                               color: Colors.white,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              widget.pagamentoselecionado == '2' ? 'Ir para Parcelamento' : 'Finalizar',
+                              widget.pagamentoselecionado == '2'
+                                  ? 'Ir para Parcelamento'
+                                  : 'Finalizar',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -344,12 +412,15 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                     left: 14,
                     right: 14,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF1F2937) : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.12),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : cs.outline.withValues(alpha: 0.12),
                         ),
                       ),
                       child: Row(
@@ -357,9 +428,14 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.fact_check_outlined, size: 16, color: cs.onSurface.withValues(alpha: 0.7)),
+                              Icon(Icons.fact_check_outlined,
+                                  size: 16,
+                                  color: cs.onSurface.withValues(alpha: 0.7)),
                               const SizedBox(width: 6),
-                              const Text('Total Registrado', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              const Text('Total Registrado',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600)),
                             ],
                           ),
                           Text(
@@ -382,7 +458,10 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.55)],
+                            colors: [
+                              cs.primaryContainer,
+                              cs.primaryContainer.withValues(alpha: 0.55)
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -398,15 +477,20 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                         child: Row(
                           children: [
                             SearchAnchor(
-                              builder: (BuildContext context, SearchController controller) {
+                              builder: (BuildContext context,
+                                  SearchController controller) {
                                 return IconButton.filledTonal(
                                   onPressed: () => controller.openView(),
-                                  icon: const Icon(Icons.history_rounded, size: 18),
+                                  icon: const Icon(Icons.history_rounded,
+                                      size: 18),
                                   tooltip: 'Histórico de pagamentos',
                                 );
                               },
-                              suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                                final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                              suggestionsBuilder: (BuildContext context,
+                                  SearchController controller) async {
+                                final res = await Modular.get<ServicoBalcao>()
+                                    .listarHistoricoPagamentos(
+                                        provedor.idVenda, TipoCardapio.balcao);
                                 return [
                                   ...res.map(
                                     (e) => Card(
@@ -414,15 +498,20 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                                       margin: const EdgeInsets.all(5.0),
                                       child: InkWell(
                                         onTap: () {},
-                                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(8)),
                                         child: ListTile(
-                                          leading: const Icon(Icons.person_2_outlined),
+                                          leading: const Icon(
+                                              Icons.person_2_outlined),
                                           title: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(e.pagamento),
-                                              Text("Valor ${double.parse(e.valor).obterReal()}"),
-                                              Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                              Text(
+                                                  "Valor ${double.parse(e.valor).obterReal()}"),
+                                              Text(
+                                                  "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
                                             ],
                                           ),
                                           subtitle: Text('ID: ${e.id}'),
@@ -445,7 +534,8 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 1.4,
-                                      color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                                      color: cs.onPrimaryContainer
+                                          .withValues(alpha: 0.7),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -467,9 +557,12 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                       const SizedBox(height: 18),
                       Row(
                         children: [
-                          Icon(Icons.attach_money_rounded, size: 18, color: cs.primary),
+                          Icon(Icons.attach_money_rounded,
+                              size: 18, color: cs.primary),
                           const SizedBox(width: 8),
-                          const Text('Valor a receber', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                          const Text('Valor a receber',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -641,37 +734,54 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                               ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+                                fillColor: isDark
+                                    ? const Color(0xFF1F2937)
+                                    : Colors.white,
                                 isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 14),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                                  borderSide: BorderSide(
+                                      color:
+                                          cs.outline.withValues(alpha: 0.22)),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.22)),
+                                  borderSide: BorderSide(
+                                      color:
+                                          cs.outline.withValues(alpha: 0.22)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(color: cs.primary, width: 1.6),
+                                  borderSide:
+                                      BorderSide(color: cs.primary, width: 1.6),
                                 ),
                                 prefixText: 'R\$  ',
-                                prefixStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface.withValues(alpha: 0.55)),
+                                prefixStyle: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        cs.onSurface.withValues(alpha: 0.55)),
                                 suffixIcon: IconButton(
                                   onPressed: () {
                                     _dinheiroController.clear();
                                     calcular();
                                   },
-                                  icon: const Icon(Icons.close_rounded, size: 20),
+                                  icon:
+                                      const Icon(Icons.close_rounded, size: 20),
                                   splashRadius: 20,
                                 ),
                               ),
                               onChanged: (_) => calcular(),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               inputFormatters: [
-                                FilteringTextInputFormatter.deny(',', replacementString: '.'),
-                                FilteringTextInputFormatter.allow(RegExp(r'(^\d*\.?\d{0,2})')),
+                                FilteringTextInputFormatter.deny(',',
+                                    replacementString: '.'),
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'(^\d*\.?\d{0,2})')),
                               ],
                             ),
                           ),
@@ -680,20 +790,27 @@ class _PaginaFinalizarFormaPagamentoState extends State<PaginaFinalizarFormaPaga
                       const SizedBox(height: 16),
                       if (_desconto > 0) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: isDark ? 0.18 : 0.10),
+                            color: Colors.green
+                                .withValues(alpha: isDark ? 0.18 : 0.10),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.withValues(alpha: 0.35)),
+                            border: Border.all(
+                                color: Colors.green.withValues(alpha: 0.35)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.savings_outlined, color: Colors.green[700], size: 22),
+                                  Icon(Icons.savings_outlined,
+                                      color: Colors.green[700], size: 22),
                                   const SizedBox(width: 8),
-                                  const Text('Troco', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                  const Text('Troco',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700)),
                                 ],
                               ),
                               Text(

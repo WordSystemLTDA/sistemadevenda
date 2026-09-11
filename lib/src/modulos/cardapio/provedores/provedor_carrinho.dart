@@ -1,17 +1,23 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:developer';
 
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ProvedorCarrinho extends ChangeNotifier {
   final ServicosItensComanda _servico;
-  // final ServicoCardapio _servicoCardapio;
 
-  ProvedorCarrinho(this._servico);
+  ProvedorCarrinho(this._servico) {
+    _servico.armazenamento.addListener(_aoAlterarArmazenamento);
+  }
 
+  ContextoCarrinho? _contexto;
+  ContextoCarrinho? get contexto => _contexto;
+  int _consulta = 0;
+  bool _descartado = false;
   int _numeroAdicoes = 0;
   int get numeroAdicoes => _numeroAdicoes;
   final Map<String, double> _quantidadesPorProduto = {};
@@ -21,135 +27,141 @@ class ProvedorCarrinho extends ChangeNotifier {
   var itensCarrinho = ItensModeloComandao(
       listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
 
-  Future<dynamic> listarComandasPedidos() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    // prefs.remove('carrinho');
-    var carrinhoString = prefs.getString('carrinho');
-    List<dynamic> carrinho =
-        carrinhoString != null ? jsonDecode(carrinhoString) : [];
+  Future<void> selecionarAtendimento(
+      {required String tipo,
+      required String idAtendimento,
+      String idRecurso = ''}) async {
+    final novo = ContextoCarrinho(
+      empresa: _servico.usuarioProvedor.usuario?.empresa ?? '',
+      tipo: tipo,
+      idAtendimento: idAtendimento,
+      idRecurso: idRecurso,
+    );
+    _contexto = novo;
+    ++_consulta;
+    _atualizarItens([]);
+    if (novo.valido) {
+      await _servico.armazenamento.alterar(novo, (_) {});
+    }
+    if (_contexto == novo && !_descartado) await listarComandasPedidos();
+  }
 
-    List<Modelowordprodutos> listaItens = [];
+  void _atualizarItens(List<Modelowordprodutos> itens) {
+    if (_descartado) return;
+    _quantidadesPorProduto.clear();
     num quantidadeTotal = 0;
     double precoTotal = 0;
-    _quantidadesPorProduto.clear();
-
-    for (int index = 0; index < carrinho.length; index++) {
-      final item = carrinho[index];
-
-      var itemF = item is String
-          ? Modelowordprodutos.fromJson(item)
-          : Modelowordprodutos.fromMap(item);
-
-      listaItens.add(itemF);
-      quantidadeTotal += itemF.quantidade ?? 1;
-      precoTotal += double.parse(itemF.valorVenda) * (itemF.quantidade ?? 1);
-      final ehPizza = (itemF.opcoesPacotesListaFinal ?? [])
+    for (final item in itens) {
+      quantidadeTotal += item.quantidade ?? 1;
+      precoTotal += double.parse(item.valorVenda) * (item.quantidade ?? 1);
+      final ehPizza = (item.opcoesPacotesListaFinal ?? [])
           .any((opcao) => opcao.id == 9 || opcao.id == 10);
       if (!ehPizza) {
         _quantidadesPorProduto.update(
-          itemF.id,
-          (quantidade) => quantidade + (itemF.quantidade ?? 1),
-          ifAbsent: () => itemF.quantidade ?? 1,
-        );
+            item.id, (quantidade) => quantidade + (item.quantidade ?? 1),
+            ifAbsent: () => item.quantidade ?? 1);
       }
     }
-
     itensCarrinho = ItensModeloComandao(
-      listaComandosPedidos: listaItens,
-      quantidadeTotal: quantidadeTotal,
-      precoTotal: precoTotal,
-    );
+        listaComandosPedidos: itens,
+        quantidadeTotal: quantidadeTotal,
+        precoTotal: precoTotal);
     notifyListeners();
   }
 
-  Future<bool> removerComandasPedidos() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.setString('carrinho', jsonEncode([]));
+  Future<void> listarComandasPedidos() async {
+    final contexto = _contexto;
+    final consulta = ++_consulta;
+    final itens = contexto == null
+        ? <Modelowordprodutos>[]
+        : await _servico.armazenamento.listar(contexto);
+    if (!_descartado && consulta == _consulta && contexto == _contexto) {
+      _atualizarItens(itens);
+    }
+  }
+
+  void _aoAlterarArmazenamento() {
+    unawaited(
+        listarComandasPedidos().catchError((Object erro, StackTrace stack) {
+      log('Falha ao atualizar carrinho local', error: erro, stackTrace: stack);
+    }));
+  }
+
+  Future<bool> removerComandasPedidos({ContextoCarrinho? contexto}) async {
+    final alvo = contexto ?? _contexto;
+    if (alvo == null) return true;
+    final sucesso = await _servico.armazenamento.limpar(alvo);
+    if (alvo == _contexto) await listarComandasPedidos();
+    return sucesso;
   }
 
   Future<bool> excluirItemCarrinho(String id, int index) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    // prefs.remove(ChavesSharedPreferences.carrinho);
-
-    String? itensCarrinho = prefs.getString('carrinho');
-
-    if (itensCarrinho != null) {
-      List<Modelowordprodutos> carrinho =
-          List<Modelowordprodutos>.from(json.decode(itensCarrinho).map((e) {
-        if (e is String) {
-          return Modelowordprodutos.fromMap(jsonDecode(e));
-        } else {
-          return Modelowordprodutos.fromMap(e);
-        }
-      }));
-
-      carrinho.removeAt(index);
-
-      // var carrinho = await listarCarrinho();
-      prefs.setString('carrinho', json.encode(carrinho));
-    }
-
-    return true;
+    final alvo = _contexto;
+    if (alvo == null) return false;
+    final sucesso = await _servico.armazenamento.alterar(alvo, (itens) {
+      if (index < 0 || index >= itens.length || itens[index].id != id) {
+        throw StateError('O item do carrinho foi alterado.');
+      }
+      itens.removeAt(index);
+    });
+    if (alvo == _contexto) await listarComandasPedidos();
+    return sucesso;
   }
 
   Future<bool> inserir(
-    Modelowordprodutos produto,
-    tipo,
-    idMesa,
-    idComanda,
-    valor,
-    observacaoMesa,
-    idProduto,
-    String nomeProduto,
-    quantidade,
-    observacao,
-  ) async {
-    final res = await _servico.inserir(
-      produto,
+      Modelowordprodutos produto,
       tipo,
       idMesa,
       idComanda,
       valor,
       observacaoMesa,
       idProduto,
-      nomeProduto,
+      String nomeProduto,
       quantidade,
-      observacao,
-    );
-
-    if (res) {
+      observacao) async {
+    final alvo = _contexto;
+    if (alvo == null || !alvo.valido) return false;
+    if (alvo.idRecurso.isNotEmpty &&
+        ((alvo.tipo == 'comanda' && idComanda.toString() != alvo.idRecurso) ||
+            (alvo.tipo == 'mesa' && idMesa.toString() != alvo.idRecurso))) {
+      return false;
+    }
+    final res = await _servico.inserir(produto, tipo, idMesa, idComanda, valor,
+        observacaoMesa, idProduto, nomeProduto, quantidade, observacao,
+        contexto: alvo);
+    if (res && alvo == _contexto && !_descartado) {
       _numeroAdicoes++;
       await listarComandasPedidos();
     }
-
-    notifyListeners();
     return res;
   }
 
   Future<bool> editar(Modelowordprodutos produto, int index) async {
-    final res = await _servico.editar(
-      produto,
-      index,
-    );
-
-    if (res) {
-      await listarComandasPedidos();
-    }
-
-    notifyListeners();
+    final alvo = _contexto;
+    if (alvo == null) return false;
+    final res = await _servico.editar(produto, index, contexto: alvo);
+    if (res && alvo == _contexto) await listarComandasPedidos();
     return res;
   }
 
-  Future<bool> lancarPedido(idMesa, idComanda, String idComandaPedido,
-      valorTotal, quantidade, observacao, listaIdProdutos) async {
+  Future<bool> lancarPedido(
+      dynamic idMesa,
+      dynamic idComanda,
+      String idComandaPedido,
+      valorTotal,
+      quantidade,
+      observacao,
+      listaIdProdutos) async {
     final res = await _servico.lancarPedido(
         idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
-
-    if (res) {
-      await listarComandasPedidos();
-    }
-
-    notifyListeners();
+    if (res) await listarComandasPedidos();
     return res;
+  }
+
+  @override
+  void dispose() {
+    _descartado = true;
+    _servico.armazenamento.removeListener(_aoAlterarArmazenamento);
+    super.dispose();
   }
 }

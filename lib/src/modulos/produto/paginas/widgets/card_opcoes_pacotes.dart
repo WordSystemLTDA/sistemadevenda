@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -40,12 +41,27 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
       return;
     }
 
+    final estadoAnterior = _assinaturaOpcaoSelecionada();
     _provedorProduto.selecionarItem(
       widget.item,
       widget.opcoesPacote,
       widget.kit,
       widget.idProduto,
     );
+    if (estadoAnterior != _assinaturaOpcaoSelecionada()) {
+      FeedbackUsuario.selecaoAlterada();
+    }
+  }
+
+  String _assinaturaOpcaoSelecionada() {
+    return _provedorProduto
+        .retornarDadosPorID(
+          [widget.opcoesPacote.id],
+          widget.kit,
+          widget.idProduto,
+        )
+        .map((dado) => '${dado.id}:${dado.quantidade ?? ''}')
+        .join('|');
   }
 
   @override
@@ -212,6 +228,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                                             .quantidade! -
                                         1;
                                   });
+                                  FeedbackUsuario.selecaoAlterada();
                                   _provedorProduto.calcularValorVenda(
                                       widget.kit, widget.idProduto);
                                 }
@@ -262,6 +279,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                                       1;
                                 });
 
+                                FeedbackUsuario.selecaoAlterada();
                                 _provedorProduto.calcularValorVenda(
                                     widget.kit, widget.idProduto);
                               },

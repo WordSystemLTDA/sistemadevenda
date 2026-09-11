@@ -1,6 +1,8 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 
 class ServicosItensRecorrentes {
@@ -9,15 +11,32 @@ class ServicosItensRecorrentes {
 
   ServicosItensRecorrentes(this.dio, this.usuarioProvedor);
 
-  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens, {String? codigoQrcode}) async {
+  Future<Modeloworddadoscardapio> listarPorId(
+      String id, TipoCardapio tipo, String mostraritens,
+      {String? codigoQrcode}) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente
-        .get('itens_recorrentes/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
+    final response = await dio.cliente.get(
+        'itens_recorrentes/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
     if (response.statusCode == 200) {
-      return Modeloworddadoscardapio.fromMap(response.data);
+      final dados = Modeloworddadoscardapio.fromMap(response.data);
+      await ArmazenamentoCarrinhos.instancia
+          .atualizarStatus(empresa ?? '', id, dados.status);
+      if (dados.id == id && dados.status == 'Andamento') {
+        final mesa = dados.idComanda == null ||
+            dados.idComanda == '0' ||
+            dados.idComanda == '';
+        await ArmazenamentoCarrinhos.instancia
+            .importarRecorrentes(ContextoCarrinho(
+          empresa: empresa ?? '',
+          tipo: mesa ? 'mesa' : 'comanda',
+          idAtendimento: id,
+          idRecurso: (mesa ? dados.idMesa : dados.idComanda) ?? '',
+        ));
+      }
+      return dados;
     } else {
       return Future.error("Ops! Um erro ocorreu.");
     }

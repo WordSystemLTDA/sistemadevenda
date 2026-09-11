@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -564,6 +565,7 @@ class _PaginaCarrinhoItensRecorrentesState
       if (!sucesso) {
         throw StateError('Pedido nao registrado.');
       }
+      FeedbackUsuario.pedidoFinalizado();
       server.write(jsonEncode({
         'tipo': tipo.nome,
         'nomeConexao': usuarioProvedor.usuario?.nome ?? ''
@@ -581,23 +583,18 @@ class _PaginaCarrinhoItensRecorrentesState
       }
     } catch (_) {
       if (mounted) {
-        await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            scrollable: true,
-            title: Text(_finalizacao.pedidoRegistrado
-                ? 'Pedido ja registrado'
-                : 'Nao foi possivel finalizar'),
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
             content: Text(_finalizacao.pedidoRegistrado
-                ? 'A finalizacao ficou pendente. Confira com a cozinha. Toque em Finalizar novamente para concluir a impressao e limpar o carrinho, sem lancar os produtos outra vez.'
-                : 'Confira a conexao e consulte os itens do pedido antes de tentar novamente.'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Entendi'))
-            ],
-          ),
-        );
+                ? 'Finalizacao pendente. Toque em Finalizar novamente para concluir sem lancar os produtos outra vez.'
+                : 'Nao foi possivel finalizar. Confira a conexao e tente novamente.'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Tentar',
+              onPressed: _aoFinalizar,
+            ),
+          ));
       }
     } finally {
       if (mounted) setState(() => isLoading = false);

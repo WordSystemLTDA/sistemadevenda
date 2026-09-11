@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 
@@ -8,8 +9,10 @@ class ServicoMesas {
   final UsuarioProvedor usuarioProvedor;
 
   ServicoMesas(this.dio, this.usuarioProvedor);
+  int _consultaCarrinhos = 0;
 
   Future<List<MesasModel>> listar(String pesquisa) async {
+    final consulta = ++_consultaCarrinhos;
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get(
@@ -21,15 +24,21 @@ class ServicoMesas {
     );
 
     if (response.data.isNotEmpty) {
-      return List<MesasModel>.from(response.data.map((elemento) {
+      final grupos = List<MesasModel>.from(response.data.map((elemento) {
         return MesasModel.fromMap(elemento);
       }));
+      if (consulta == _consultaCarrinhos) {
+        await _sincronizarCarrinhos(empresa ?? '',
+            grupos.expand((grupo) => grupo.mesas ?? <MesaModelo>[]));
+      }
+      return grupos;
     }
 
     return [];
   }
 
   Future<List<MesaModelo>> listarLista(String pesquisa) async {
+    final consulta = ++_consultaCarrinhos;
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get(
@@ -41,9 +50,13 @@ class ServicoMesas {
     );
 
     if (response.data.isNotEmpty) {
-      return List<MesaModelo>.from(response.data.map((elemento) {
+      final mesas = List<MesaModelo>.from(response.data.map((elemento) {
         return MesaModelo.fromMap(elemento);
       }));
+      if (consulta == _consultaCarrinhos) {
+        await _sincronizarCarrinhos(empresa ?? '', mesas);
+      }
+      return mesas;
     }
 
     return [];
@@ -61,6 +74,20 @@ class ServicoMesas {
     });
 
     return response.data['sucesso'];
+  }
+
+  Future<void> _sincronizarCarrinhos(
+      String empresa, Iterable<MesaModelo> mesas) async {
+    for (final mesa in mesas) {
+      await ArmazenamentoCarrinhos.instancia.sincronizarRecurso(
+        empresa: empresa,
+        tipo: 'mesa',
+        idRecurso: mesa.id,
+        idAtendimento: mesa.idComandaPedido,
+        aberto: mesa.mesaOcupada,
+        bloqueado: mesa.fechamento == true,
+      );
+    }
   }
 
   Future<Map<String, dynamic>> excluirMesa(String id) async {

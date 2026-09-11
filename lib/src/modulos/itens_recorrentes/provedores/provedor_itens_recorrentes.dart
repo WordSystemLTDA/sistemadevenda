@@ -1,311 +1,102 @@
-import 'dart:convert';
+import 'dart:async';
+import 'dart:developer';
 
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
-import 'package:app/src/modulos/itens_recorrentes/modelos/modelo_itens_recorrentes.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ProvedorItensRecorrentes extends ChangeNotifier {
-  final ServicosItensComanda servico;
-  // final ServicoCardapio _servicoCardapio;
+  final ServicosItensComanda _servico;
+  ProvedorItensRecorrentes(this._servico) {
+    _servico.armazenamento.addListener(_aoAlterarArmazenamento);
+  }
 
-  ProvedorItensRecorrentes(this.servico);
-
-  // var itensCarrinho = ItensModeloComandao(listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);
+  final _contextos = <String, ContextoCarrinho>{};
+  ContextoCarrinho? _contexto;
+  int _consulta = 0;
+  bool _descartado = false;
   List<Modelowordprodutos> itensCarrinho = [];
   double precoTotal = 0;
 
-  Future<dynamic> listarComandasPedidos(String idComandaPedido) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+  void selecionarAtendimento(
+      {required String idAtendimento,
+      required String tipo,
+      required String idRecurso}) {
+    _contextos[idAtendimento] = ContextoCarrinho(
+        empresa: _servico.usuarioProvedor.usuario?.empresa ?? '',
+        tipo: tipo,
+        idAtendimento: idAtendimento,
+        idRecurso: idRecurso);
+    _contexto = _contextos[idAtendimento];
+    ++_consulta;
+    itensCarrinho = [];
+    precoTotal = 0;
+  }
 
-    // await prefs.remove('itens_recorrentes');
+  ContextoCarrinho _contextoPorId(String id) {
+    final empresa = _servico.usuarioProvedor.usuario?.empresa ?? '';
+    final salvo = _contextos[id];
+    if (salvo != null && salvo.empresa == empresa) return salvo;
+    return ContextoCarrinho(
+        empresa: empresa, tipo: 'comanda', idAtendimento: id);
+  }
 
-    var itensRecorrentesString = prefs.getString('itens_recorrentes');
-
-    List<dynamic> itensRecorrentes = itensRecorrentesString != null ? jsonDecode(itensRecorrentesString) : [];
-
-    List<Modelowordprodutos> produtos = [];
-    double preco = 0;
-    for (int index = 0; index < itensRecorrentes.length; index++) {
-      final item = jsonDecode(itensRecorrentes[index]);
-
-      if (item['idComandaPedido'] == idComandaPedido) {
-        var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
-        itemF.produtos.map((e) {
-          produtos.add(e);
-          preco += double.parse(e.valorVenda) * (e.quantidade ?? 1);
-        }).toList();
-
-        break;
-      }
+  Future<void> listarComandasPedidos(String idComandaPedido) async {
+    final contexto = _contextoPorId(idComandaPedido);
+    if (_contexto?.chave != contexto.chave) {
+      itensCarrinho = [];
+      precoTotal = 0;
     }
-
-    itensCarrinho = produtos;
-    precoTotal = preco;
+    _contexto = contexto;
+    final consulta = ++_consulta;
+    final itens =
+        await _servico.armazenamento.listar(contexto, recorrentes: true);
+    if (_descartado || consulta != _consulta || _contexto != contexto) return;
+    itensCarrinho = itens;
+    precoTotal = itens.fold(
+        0.0,
+        (total, item) =>
+            total + double.parse(item.valorVenda) * (item.quantidade ?? 1));
     notifyListeners();
   }
 
-  Future<bool> removerComandasPedidos(String idComandaPedido) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    var itensRecorrentesString = prefs.getString('itens_recorrentes');
-
-    List<dynamic> itensRecorrentes = itensRecorrentesString != null ? jsonDecode(itensRecorrentesString) : [];
-
-    List<ModeloItensRecorrentes> novosItensRecorrentes = [];
-
-    for (int index = 0; index < itensRecorrentes.length; index++) {
-      final item = jsonDecode(itensRecorrentes[index]);
-
-      if (item['idComandaPedido'] != idComandaPedido) {
-        novosItensRecorrentes.add(item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item));
-      }
-    }
-
-    final res = await prefs.setString('itens_recorrentes', json.encode(novosItensRecorrentes));
-    return res;
+  void _aoAlterarArmazenamento() {
+    final contexto = _contexto;
+    if (contexto == null) return;
+    unawaited(listarComandasPedidos(contexto.idAtendimento)
+        .catchError((Object erro, StackTrace stack) {
+      log('Falha ao atualizar carrinho recorrente',
+          error: erro, stackTrace: stack);
+    }));
   }
 
-  Future<bool> excluirItemCarrinho(String idComandaPedido, int index) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+  Future<bool> removerComandasPedidos(String idComandaPedido) =>
+      _servico.armazenamento
+          .limpar(_contextoPorId(idComandaPedido), recorrentes: true);
 
-    var itensRecorrentesString = prefs.getString('itens_recorrentes');
+  Future<bool> excluirItemCarrinho(String idComandaPedido, int index) =>
+      _servico.armazenamento.alterar(
+          _contextoPorId(idComandaPedido), (itens) => itens.removeAt(index),
+          recorrentes: true);
 
-    List<dynamic> itensRecorrentes = itensRecorrentesString != null ? jsonDecode(itensRecorrentesString) : [];
+  Future<bool> setarItemCarrinho(
+          String idComandaPedido, int index, double quantidade) =>
+      _servico.armazenamento.alterar(_contextoPorId(idComandaPedido),
+          (itens) => itens[index].quantidade = quantidade,
+          recorrentes: true);
 
-    List<ModeloItensRecorrentes> novosItensRecorrentes = [];
-
-    for (int i = 0; i < itensRecorrentes.length; i++) {
-      final item = itensRecorrentes[i];
-      var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
-
-      if (itemF.idComandaPedido != idComandaPedido) {
-        novosItensRecorrentes.add(itemF);
-        continue;
-      }
-
-      novosItensRecorrentes.add(
-        ModeloItensRecorrentes(
-          idComandaPedido: itemF.idComandaPedido,
-          produtos: itemF.produtos.asMap().entries.where((e) => e.key != index).map((e) => e.value).toList(),
-        ),
-      );
-    }
-
-    final res = await prefs.setString('itens_recorrentes', json.encode(novosItensRecorrentes));
-
-    return res;
+  Future<bool> inserir(String idComandaPedido, Modelowordprodutos produto) {
+    final copia = Modelowordprodutos.fromMap(produto.toMap())..quantidade = 1;
+    return _servico.armazenamento.alterar(
+        _contextoPorId(idComandaPedido), (itens) => itens.add(copia),
+        recorrentes: true);
   }
 
-  Future<bool> setarItemCarrinho(String idComandaPedido, int index, double quantidade) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    var itensRecorrentesString = prefs.getString('itens_recorrentes');
-
-    List<dynamic> itensRecorrentes = itensRecorrentesString != null ? jsonDecode(itensRecorrentesString) : [];
-
-    List<ModeloItensRecorrentes> novosItensRecorrentes = [];
-
-    for (int i = 0; i < itensRecorrentes.length; i++) {
-      final item = itensRecorrentes[i];
-      var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
-
-      if (itemF.idComandaPedido != idComandaPedido) {
-        novosItensRecorrentes.add(itemF);
-        continue;
-      }
-
-      novosItensRecorrentes.add(
-        ModeloItensRecorrentes(
-          idComandaPedido: itemF.idComandaPedido,
-          produtos: itemF.produtos.asMap().entries.map((e) {
-            if (e.key != index) return e.value;
-
-            return Modelowordprodutos(
-              id: e.value.id,
-              hashprodutos: e.value.hashprodutos,
-              iditensvenda: e.value.iditensvenda,
-              nome: e.value.nome,
-              codigo: e.value.codigo,
-              imprimirCodigoProdutoPreparo: e.value.imprimirCodigoProdutoPreparo,
-              estoque: e.value.estoque,
-              tamanho: e.value.tamanho,
-              foto: e.value.foto,
-              ativo: e.value.ativo,
-              descricao: e.value.descricao,
-              valorVenda: e.value.valorVenda,
-              categoria: e.value.categoria,
-              nomeCategoria: e.value.nomeCategoria,
-              dataLancado: e.value.dataLancado,
-              ativarEdQtd: e.value.ativarEdQtd,
-              ativarCustoDeProducao: e.value.ativarCustoDeProducao,
-              novo: e.value.novo,
-              destinoDeImpressao: e.value.destinoDeImpressao,
-              habilTipo: e.value.habilTipo,
-              habilItensRetirada: e.value.habilItensRetirada,
-              ativoLoja: e.value.ativoLoja,
-              tamanhosPizza: e.value.tamanhosPizza,
-              ingredientes: e.value.ingredientes,
-              quantidade: quantidade,
-              quantidadePessoa: e.value.quantidadePessoa,
-              tamanhoLista: e.value.tamanhoLista,
-              valorTotalVendas: e.value.valorTotalVendas,
-              observacao: e.value.observacao,
-              quantidadeController: e.value.quantidadeController,
-              acoes: e.value.acoes,
-              valorRestoDivisao: e.value.valorRestoDivisao,
-              opcoesPacotes: e.value.opcoesPacotes,
-              opcoesPacotesListaFinal: e.value.opcoesPacotesListaFinal,
-              descontoProduto: e.value.descontoProduto,
-              habilsepardelivery: e.value.habilsepardelivery,
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    final res = await prefs.setString('itens_recorrentes', json.encode(novosItensRecorrentes));
-
-    return res;
+  @override
+  void dispose() {
+    _descartado = true;
+    _servico.armazenamento.removeListener(_aoAlterarArmazenamento);
+    super.dispose();
   }
-
-  Future<bool> inserir(
-    String idComandaPedido,
-    Modelowordprodutos produto,
-    // Modelowordprodutos produto,
-    // tipo,
-    // idMesa,
-    // idComanda,
-    // valor,
-    // observacaoMesa,
-    // idProduto,
-    // String nomeProduto,
-    // quantidade,
-    // observacao,
-  ) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    var itensRecorrentesString = prefs.getString('itens_recorrentes');
-    List<dynamic> itensRecorrentes = itensRecorrentesString != null ? jsonDecode(itensRecorrentesString) : [];
-
-    List<ModeloItensRecorrentes> novosItensRecorrentes = [];
-
-    for (int index = 0; index < itensRecorrentes.length; index++) {
-      final item = itensRecorrentes[index];
-      var itemF = item is String ? ModeloItensRecorrentes.fromJson(item) : ModeloItensRecorrentes.fromMap(item);
-
-      if (itemF.idComandaPedido != idComandaPedido) {
-        novosItensRecorrentes.add(itemF);
-        continue;
-      }
-
-      novosItensRecorrentes.add(
-        ModeloItensRecorrentes(
-          idComandaPedido: itemF.idComandaPedido,
-          produtos: [
-            ...itemF.produtos,
-            Modelowordprodutos(
-              id: produto.id,
-              hashprodutos: produto.hashprodutos,
-              iditensvenda: produto.iditensvenda,
-              nome: produto.nome,
-              codigo: produto.codigo,
-              imprimirCodigoProdutoPreparo: produto.imprimirCodigoProdutoPreparo,
-              estoque: produto.estoque,
-              tamanho: produto.tamanho,
-              foto: produto.foto,
-              ativo: produto.ativo,
-              descricao: produto.descricao,
-              valorVenda: produto.valorVenda,
-              categoria: produto.categoria,
-              nomeCategoria: produto.nomeCategoria,
-              dataLancado: produto.dataLancado,
-              ativarEdQtd: produto.ativarEdQtd,
-              ativarCustoDeProducao: produto.ativarCustoDeProducao,
-              novo: produto.novo,
-              destinoDeImpressao: produto.destinoDeImpressao,
-              habilTipo: produto.habilTipo,
-              habilItensRetirada: produto.habilItensRetirada,
-              ativoLoja: produto.ativoLoja,
-              tamanhosPizza: produto.tamanhosPizza,
-              ingredientes: produto.ingredientes,
-              quantidade: 1,
-              quantidadePessoa: produto.quantidadePessoa,
-              tamanhoLista: produto.tamanhoLista,
-              valorTotalVendas: produto.valorTotalVendas,
-              observacao: produto.observacao,
-              quantidadeController: produto.quantidadeController,
-              acoes: produto.acoes,
-              valorRestoDivisao: produto.valorRestoDivisao,
-              opcoesPacotes: produto.opcoesPacotes,
-              opcoesPacotesListaFinal: produto.opcoesPacotesListaFinal,
-              descontoProduto: produto.descontoProduto,
-              habilsepardelivery: produto.habilsepardelivery,
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (novosItensRecorrentes
-        .firstWhere((e) => e.idComandaPedido == idComandaPedido, orElse: () => ModeloItensRecorrentes(idComandaPedido: '', produtos: []))
-        .idComandaPedido
-        .isEmpty) {
-      novosItensRecorrentes.add(ModeloItensRecorrentes(idComandaPedido: idComandaPedido, produtos: [
-        Modelowordprodutos(
-          id: produto.id,
-          hashprodutos: produto.hashprodutos,
-          iditensvenda: produto.iditensvenda,
-          nome: produto.nome,
-          codigo: produto.codigo,
-          imprimirCodigoProdutoPreparo: produto.imprimirCodigoProdutoPreparo,
-          estoque: produto.estoque,
-          tamanho: produto.tamanho,
-          foto: produto.foto,
-          ativo: produto.ativo,
-          descricao: produto.descricao,
-          valorVenda: produto.valorVenda,
-          categoria: produto.categoria,
-          nomeCategoria: produto.nomeCategoria,
-          dataLancado: produto.dataLancado,
-          ativarEdQtd: produto.ativarEdQtd,
-          ativarCustoDeProducao: produto.ativarCustoDeProducao,
-          novo: produto.novo,
-          destinoDeImpressao: produto.destinoDeImpressao,
-          habilTipo: produto.habilTipo,
-          habilItensRetirada: produto.habilItensRetirada,
-          ativoLoja: produto.ativoLoja,
-          tamanhosPizza: produto.tamanhosPizza,
-          ingredientes: produto.ingredientes,
-          quantidade: 1,
-          quantidadePessoa: produto.quantidadePessoa,
-          tamanhoLista: produto.tamanhoLista,
-          valorTotalVendas: produto.valorTotalVendas,
-          observacao: produto.observacao,
-          quantidadeController: produto.quantidadeController,
-          acoes: produto.acoes,
-          valorRestoDivisao: produto.valorRestoDivisao,
-          opcoesPacotes: produto.opcoesPacotes,
-          opcoesPacotesListaFinal: produto.opcoesPacotesListaFinal,
-          descontoProduto: produto.descontoProduto,
-          habilsepardelivery: produto.habilsepardelivery,
-        ),
-      ]));
-    }
-
-    final res = await prefs.setString('itens_recorrentes', json.encode(novosItensRecorrentes));
-
-    return res;
-  }
-
-  // Future<bool> lancarPedido(idMesa, idComanda, String idComandaPedido, valorTotal, quantidade, observacao, listaIdProdutos) async {
-  //   final res = await _servico.lancarPedido(idMesa, idComanda, valorTotal, quantidade, observacao, listaIdProdutos);
-
-  //   if (res) {
-  //     await listarComandasPedidos();
-  //   }
-
-  //   notifyListeners();
-  //   return res;
-  // }
 }

@@ -34,6 +34,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final usuario = UsuarioProvedor()
       ..setUsuario(UsuarioModelo(
+          empresa: '32',
           configuracoes: pizza_fixture.ConfiguracoesTeste('media')));
     cardapio = ProvedorCardapio(pizza_fixture.CategoriasTeste(), usuario);
     produtos = pizza_fixture.ProdutosTeste();
@@ -83,7 +84,10 @@ void main() {
 
     testWidgets('cardapio permite montar pizza sem cortes em $cenario',
         (tester) async {
-      await abrir(tester, const PaginaCardapio(tipo: TipoCardapio.comanda));
+      await abrir(
+          tester,
+          const PaginaCardapio(
+              tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'));
       await capturarTela(tester, 'responsivo_tamanhos_$cenario');
       final tamanhos = find.descendant(
           of: find.byType(ListaTamanhosPizza), matching: find.byType(InkWell));

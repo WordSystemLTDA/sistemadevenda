@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'dart:math' as math;
 
@@ -60,7 +61,8 @@ class CardItensRecorrentes extends StatefulWidget {
   State<CardItensRecorrentes> createState() => _CardItensRecorrentesState();
 }
 
-class _CardItensRecorrentesState extends State<CardItensRecorrentes> with TickerProviderStateMixin {
+class _CardItensRecorrentesState extends State<CardItensRecorrentes>
+    with TickerProviderStateMixin {
   // @override
   // Widget build(BuildContext context) {
   //   return SizedBox();
@@ -69,7 +71,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   //  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   // final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
-  final ProvedorItensRecorrentes provedorItensRecorrentes = Modular.get<ProvedorItensRecorrentes>();
+  final ProvedorItensRecorrentes provedorItensRecorrentes =
+      Modular.get<ProvedorItensRecorrentes>();
 
   Timer? _tickerTempoLancado;
   // antiga animação card produto
@@ -87,21 +90,33 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
     //   texto = 'A partir ';
     //   texto += (double.parse(itemProduto.valorVenda) * (widget.finalizar ? (itemProduto.quantidade ?? 1) : 1)).obterReal(2);
     // } else {
-    if (widget.item.habilTipo == 'Pacote' && (widget.item.opcoesPacotesListaFinal != null && widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
-      var dadosPacotes = widget.item.opcoesPacotesListaFinal!.where((element) => element.id == 4).firstOrNull;
+    if (widget.item.habilTipo == 'Pacote' &&
+        (widget.item.opcoesPacotesListaFinal != null &&
+            widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
+      var dadosPacotes = widget.item.opcoesPacotesListaFinal!
+          .where((element) => element.id == 4)
+          .firstOrNull;
 
       // se tiver tamanhos irá aparecer assim
-      if (dadosPacotes != null && (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
-        if ((dadosPacotes.dados!.first.valor == dadosPacotes.dados!.last.valor)) {
-          texto += double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
+      if (dadosPacotes != null &&
+          (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
+        if ((dadosPacotes.dados!.first.valor ==
+            dadosPacotes.dados!.last.valor)) {
+          texto +=
+              double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
         } else {
-          texto += "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
+          texto +=
+              "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
         }
       } else {
-        texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+        texto = (double.parse(widget.item.valorVenda) *
+                (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
+            .obterReal(2);
       }
     } else {
-      texto = (double.parse(widget.item.valorVenda) * (widget.finalizar ? (widget.item.quantidade ?? 1) : 1)).obterReal(2);
+      texto = (double.parse(widget.item.valorVenda) *
+              (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
+          .obterReal(2);
     }
     // }
 
@@ -111,13 +126,15 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
 
     return Text(
       texto,
-      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
+      style: const TextStyle(
+          color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
     );
   }
 
   void _updateTimer() {
     if (widget.item.dataLancado != null) {
-      final duration = DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
+      final duration =
+          DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
       final newDuration = ConfigSistema.formatarHora(duration);
 
       tempoLancadoController.add(newDuration);
@@ -128,7 +145,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   void initState() {
     super.initState();
     _updateTimer();
-    _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
+    _tickerTempoLancado ??=
+        Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
   }
 
   @override
@@ -141,17 +159,22 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   }
 
   bool _ehPizzaRecorrente(Modelowordprodutos item) {
-    return (item.opcoesPacotesListaFinal ?? []).any((opcao) => opcao.id == 9 || opcao.id == 10);
+    return (item.opcoesPacotesListaFinal ?? [])
+        .any((opcao) => opcao.id == 9 || opcao.id == 10);
   }
 
-  Future<void> _inserirItemRecorrente(BuildContext context, Modelowordprodutos item) async {
+  Future<void> _inserirItemRecorrente(
+      BuildContext context, Modelowordprodutos item) async {
     if (widget.estaPesquisando) {
       widget.searchController?.closeView(item.nome);
     }
 
-    final sucesso = await provedorItensRecorrentes.inserir(widget.idComandaPedido, item);
+    final sucesso =
+        await provedorItensRecorrentes.inserir(widget.idComandaPedido, item);
     if (sucesso && context.mounted) {
-      await provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+      FeedbackUsuario.produtoAdicionado();
+      await provedorItensRecorrentes
+          .listarComandasPedidos(widget.idComandaPedido);
     }
   }
 
@@ -165,9 +188,13 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
         return PaginaProduto(
           produto: item,
           inserirEmItensRecorrentes: (produto) {
-            provedorItensRecorrentes.inserir(widget.idComandaPedido, produto).then((value) {
+            provedorItensRecorrentes
+                .inserir(widget.idComandaPedido, produto)
+                .then((value) {
               if (value) {
-                provedorItensRecorrentes.listarComandasPedidos(widget.idComandaPedido);
+                FeedbackUsuario.produtoAdicionado();
+                provedorItensRecorrentes
+                    .listarComandasPedidos(widget.idComandaPedido);
               }
             });
           },
@@ -189,15 +216,20 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
             if (opcao.tipo != 7 && (opcao.dados ?? []).isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 4),
-                child: Text(opcao.titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                child: Text(opcao.titulo,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold)),
               ),
-              for (final dado in opcao.dados!) _buildLinhaDetalhe(context, _nomeDetalhe(dado), dado.valor, dado.quantidade),
+              for (final dado in opcao.dados!)
+                _buildLinhaDetalhe(
+                    context, _nomeDetalhe(dado), dado.valor, dado.quantidade),
             ],
           ],
           if (observacao.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.only(top: 8, bottom: 4),
-              child: Text('Observação', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              child: Text('Observação',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             ),
             Text(observacao, style: const TextStyle(fontSize: 15)),
           ],
@@ -216,17 +248,22 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
     return dado.nome;
   }
 
-  Widget _buildLinhaDetalhe(BuildContext context, String nome, String? valor, int? quantidade) {
-    final valorNumerico = (double.tryParse(valor ?? '0') ?? 0) * (quantidade ?? 1);
+  Widget _buildLinhaDetalhe(
+      BuildContext context, String nome, String? valor, int? quantidade) {
+    final valorNumerico =
+        (double.tryParse(valor ?? '0') ?? 0) * (quantidade ?? 1);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: LinhaValor(
-          descricao: Text(nome, style: const TextStyle(fontSize: 15)),
-          valor: valorNumerico > 0 ? Text(
-              valorNumerico.obterReal(),
-              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 15),
-            ) : const SizedBox.shrink(),
+        descricao: Text(nome, style: const TextStyle(fontSize: 15)),
+        valor: valorNumerico > 0
+            ? Text(
+                valorNumerico.obterReal(),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary, fontSize: 15),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -242,7 +279,9 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
       padding: EdgeInsets.zero,
       color: cor,
       iconSize: 24,
-      icon: Icon(_detalhesPizzaAbertos ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+      icon: Icon(_detalhesPizzaAbertos
+          ? Icons.keyboard_arrow_up
+          : Icons.keyboard_arrow_down),
       onPressed: () {
         setState(() {
           _detalhesPizzaAbertos = !_detalhesPizzaAbertos;
@@ -252,22 +291,27 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   }
 
   Widget _buildValorResumo(BuildContext context, Modelowordprodutos item) {
-    if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty) {
+    if (widget.categoria != null &&
+        widget.categoria!.tamanhosPizza!.isNotEmpty) {
       if (provedorCardapio.tamanhosPizza == null) {
         return Text(
           "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
           textAlign: TextAlign.right,
-          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+          style: const TextStyle(
+              color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
         );
       }
 
-      final tamanhoSelecionado = item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull;
+      final tamanhoSelecionado = item.tamanhosPizza!
+          .where((element) => element.id == provedorCardapio.tamanhosPizza!.id)
+          .firstOrNull;
       if (tamanhoSelecionado == null) return const SizedBox.shrink();
 
       return Text(
         double.parse(tamanhoSelecionado.valor).obterReal(),
         textAlign: TextAlign.right,
-        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+        style: const TextStyle(
+            color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
       );
     }
 
@@ -275,7 +319,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
       return Text(
         (double.tryParse(item.valorVenda) ?? 0).obterReal(),
         textAlign: TextAlign.right,
-        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+        style: const TextStyle(
+            color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
       );
     }
 
@@ -285,13 +330,24 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
       spacing: 4,
       children: [
         Text(
-          (double.parse(item.valorVenda) + double.parse(item.descontoProduto!.valorretirado)).obterReal(),
-          style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600, decoration: TextDecoration.lineThrough),
+          (double.parse(item.valorVenda) +
+                  double.parse(item.descontoProduto!.valorretirado))
+              .obterReal(),
+          style: const TextStyle(
+              fontSize: 10,
+              color: Colors.grey,
+              fontWeight: FontWeight.w600,
+              decoration: TextDecoration.lineThrough),
         ),
-        const Text('por', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+        const Text('por',
+            style: TextStyle(
+                fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
         Text(
           double.parse(item.valorVenda).obterReal(),
-          style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              fontSize: 14,
+              color: Colors.deepOrange,
+              fontWeight: FontWeight.bold),
         ),
         Container(
           decoration: BoxDecoration(
@@ -312,7 +368,9 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
   Widget build(BuildContext context) {
     var item = widget.item;
     final ehPizzaRecorrente = _ehPizzaRecorrente(item);
-    final nomeItem = [item.nome, item.tamanho].where((parte) => parte.trim().isNotEmpty).join(' ');
+    final nomeItem = [item.nome, item.tamanho]
+        .where((parte) => parte.trim().isNotEmpty)
+        .join(' ');
 
     // if (provedorCardapio.tamanhosPizza != null && item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).firstOrNull != null) {
     //   item.valorVenda = item.tamanhosPizza!.where((element) => element.id == provedorCardapio.tamanhosPizza!.id).first.valor;
@@ -326,8 +384,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
               MediaQuery.textScalerOf(context).scale(14) > 19;
           final larguraImagem = compacto ? 64.0 : 100.0;
           final resumo = ConstrainedBox(
-            constraints: BoxConstraints(minWidth: 70,
-                maxWidth: compacto ? double.infinity : 132),
+            constraints: BoxConstraints(
+                minWidth: 70, maxWidth: compacto ? double.infinity : 132),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -350,21 +408,46 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
 
                 // TODO: ARRUMAR AQUI
                 if (provedorCardapio.tamanhosPizza != null) {
-                  if (provedorCardapio.saboresPizzaSelecionados.where((element) => element.id == item.id).isNotEmpty) {
-                    provedorCardapio.saboresPizzaSelecionados.removeWhere((element) => element.id == item.id);
-                    var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados.where((element) => element.id != item.id)];
-                    provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
+                  final estavaSelecionado = provedorCardapio
+                      .saboresPizzaSelecionados
+                      .any((element) => element.id == item.id);
+                  if (provedorCardapio.saboresPizzaSelecionados
+                      .where((element) => element.id == item.id)
+                      .isNotEmpty) {
+                    provedorCardapio.saboresPizzaSelecionados
+                        .removeWhere((element) => element.id == item.id);
+                    var listaSaboresPizza = [
+                      ...provedorCardapio.saboresPizzaSelecionados
+                          .where((element) => element.id != item.id)
+                    ];
+                    provedorCardapio.saboresPizzaSelecionados =
+                        listaSaboresPizza;
                   } else {
-                    if (provedorCardapio.saboresPizzaSelecionados.length < int.parse(provedorCardapio.tamanhosPizza!.saboreslimite)) {
-                      var listaSaboresPizza = [...provedorCardapio.saboresPizzaSelecionados, item];
-                      provedorCardapio.saboresPizzaSelecionados = listaSaboresPizza;
+                    if (provedorCardapio.saboresPizzaSelecionados.length <
+                        int.parse(
+                            provedorCardapio.tamanhosPizza!.saboreslimite)) {
+                      var listaSaboresPizza = [
+                        ...provedorCardapio.saboresPizzaSelecionados,
+                        item
+                      ];
+                      provedorCardapio.saboresPizzaSelecionados =
+                          listaSaboresPizza;
                     }
+                  }
+
+                  final ficouSelecionado = provedorCardapio
+                      .saboresPizzaSelecionados
+                      .any((element) => element.id == item.id);
+                  if (estavaSelecionado != ficouSelecionado) {
+                    FeedbackUsuario.selecaoAlterada();
                   }
 
                   return;
                 }
 
-                if (widget.categoria != null && widget.categoria!.tamanhosPizza!.isNotEmpty && provedorCardapio.tamanhosPizza == null) {
+                if (widget.categoria != null &&
+                    widget.categoria!.tamanhosPizza!.isNotEmpty &&
+                    provedorCardapio.tamanhosPizza == null) {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                     content: Text('Selecione um Tamanho'),
@@ -498,17 +581,24 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                       color: Colors.grey.withValues(alpha: 0.5),
                                       spreadRadius: 0,
                                       blurRadius: 7,
-                                      offset: const Offset(0, 3), // changes position of shadow
+                                      offset: const Offset(
+                                          0, 3), // changes position of shadow
                                     ),
                                   ],
                                 ),
-                                child: const Text('Promoção', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
+                                child: const Text('Promoção',
+                                    style: TextStyle(
+                                        fontSize: 10, color: Colors.white),
+                                    textAlign: TextAlign.center),
                               ),
                             ),
                           ),
                         ),
                       ],
-                      if (item.opcoesPacotes != null && item.opcoesPacotes!.where((element) => element.id == 1).isNotEmpty) ...[
+                      if (item.opcoesPacotes != null &&
+                          item.opcoesPacotes!
+                              .where((element) => element.id == 1)
+                              .isNotEmpty) ...[
                         Positioned(
                           top: 17,
                           left: -37,
@@ -524,11 +614,15 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                       color: Colors.grey.withValues(alpha: .5),
                                       spreadRadius: 0,
                                       blurRadius: 7,
-                                      offset: const Offset(0, 3), // changes position of shadow
+                                      offset: const Offset(
+                                          0, 3), // changes position of shadow
                                     ),
                                   ],
                                 ),
-                                child: const Text('Cortesia', style: TextStyle(fontSize: 10, color: Colors.white), textAlign: TextAlign.center),
+                                child: const Text('Cortesia',
+                                    style: TextStyle(
+                                        fontSize: 10, color: Colors.white),
+                                    textAlign: TextAlign.center),
                               ),
                             ),
                           ),
@@ -538,26 +632,32 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           item.foto.isEmpty
-                              ? Image.asset(Assets.produtoAsset, width: larguraImagem, height: larguraImagem)
+                              ? Image.asset(Assets.produtoAsset,
+                                  width: larguraImagem, height: larguraImagem)
                               : ClipRRect(
                                   borderRadius: BorderRadius.circular(8.0),
                                   child: CachedNetworkImage(
                                     width: larguraImagem,
                                     height: larguraImagem,
                                     fit: BoxFit.contain,
-                                    fadeOutDuration: const Duration(milliseconds: 100),
-                                    placeholder: (context, url) => const SizedBox(
+                                    fadeOutDuration:
+                                        const Duration(milliseconds: 100),
+                                    placeholder: (context, url) =>
+                                        const SizedBox(
                                       height: 50.0,
                                       width: 50.0,
-                                      child: Center(child: CircularProgressIndicator()),
+                                      child: Center(
+                                          child: CircularProgressIndicator()),
                                     ),
-                                    errorWidget: (context, url, error) => const Icon(Icons.error),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(Icons.error),
                                     imageUrl: item.foto,
                                   ),
                                 ),
                           Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,21 +667,25 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                     style: const TextStyle(fontSize: 17),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 5),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 5),
                                     child: Text(
                                       'Código: ${item.codigo}',
                                       style: const TextStyle(
-                                        color: Color.fromARGB(255, 111, 111, 111),
+                                        color:
+                                            Color.fromARGB(255, 111, 111, 111),
                                         fontSize: 12,
                                       ),
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 3),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 3),
                                     child: Text(
                                       'Quant. ${item.quantidade?.toStringAsFixed(0)}',
                                       style: const TextStyle(
-                                        color: Color.fromARGB(255, 111, 111, 111),
+                                        color:
+                                            Color.fromARGB(255, 111, 111, 111),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -590,19 +694,24 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes> with Ticker
                                     stream: tempoLancadoController.stream,
                                     initialData: 'Carregando',
                                     builder: (context, snapshot) {
-                                      return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
+                                      return Text(
+                                          "Item lançado há: ${snapshot.data!}",
+                                          style: const TextStyle(fontSize: 13));
                                     },
                                   ),
                                   if (compacto)
-                                    Align(alignment: Alignment.centerRight, child: resumo),
+                                    Align(
+                                        alignment: Alignment.centerRight,
+                                        child: resumo),
                                 ],
                               ),
                             ),
                           ),
-                          if (!compacto) Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: resumo,
-                          ),
+                          if (!compacto)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: resumo,
+                            ),
                         ],
                       ),
                     ],

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -55,7 +56,8 @@ class PaginaParcelamento extends StatefulWidget {
 }
 
 class _PaginaParcelamentoState extends State<PaginaParcelamento> {
-  final ProvedorFinalizarPagamento provedor = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorFinalizarPagamento provedor =
+      Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
@@ -64,7 +66,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
 
   final _valorController = TextEditingController();
 
-  final _dataController = TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
+  final _dataController = TextEditingController(
+      text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
   String dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
   final ValueNotifier<bool> finalizando = ValueNotifier(false);
@@ -80,14 +83,18 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   void initState() {
     super.initState();
 
-    _valorController.text = widget.valor.toStringAsFixed(2).replaceAll('.', ',');
+    _valorController.text =
+        widget.valor.toStringAsFixed(2).replaceAll('.', ',');
 
     alterarParcelas(incrementar: true);
     listarDatasVenda();
   }
 
   void listarDatasVenda() async {
-    await context.read<ServicoFinalizarPagamento>().listarDatasVendas().then((value) {
+    await context
+        .read<ServicoFinalizarPagamento>()
+        .listarDatasVendas()
+        .then((value) {
       if (value == null) return;
 
       setState(() {
@@ -114,8 +121,11 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       parcelasNovas.add(ParcelasModelo(
         parcela: (i + 1).toString(),
         valor: (widget.valor / _parcelas).toStringAsFixed(2),
-        vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-        vencimentoController: TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
+        vencimento: DateFormat('yyyy-MM-dd').format(DateTime(
+            dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
+        vencimentoController: TextEditingController(
+            text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year,
+                dataOriginalF.month + i, dataOriginalF.day))),
         valorController: TextEditingController(
           text: (widget.valor / _parcelas).toStringAsFixed(2),
         ),
@@ -133,29 +143,33 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
 
     if (!mounted) return;
 
-    var (sucesso, mensagem, idvenda) = await context.read<ServicoFinalizarPagamento>().pagarPedido(
-          provedor.idVenda,
-          provedorCardapio.idComanda,
-          provedorCardapio.idMesa,
-          provedorCardapio.idCliente,
-          widget.valor.toStringAsFixed(2), // valorLancamento,
-          widget.totalReceber, // valorOriginal,
-          int.parse(widget.pagamentoselecionado),
-          0, // quantidadePessoas,
-          widget.totalReceber, // subTotal,
-          dataOriginal, // dataLancamento,
-          _parcelas.toString(), // parcelas
-          listaParcelas.value, // parcelasLista
-          provedorCardapio.tipo,
-          (double.tryParse(widget.desconto) ?? 0).abs().toStringAsFixed(2), // valortroco,
-          '0', // TODO: fazer delivery (valorentrega)
-          carrinhoProvedor.itensCarrinho.precoTotal.toStringAsFixed(2), // valoresProduto,
-          false, // novo,
-          provedorCardapio.tipodeentrega,
-          carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-          widget.totalReceber, // valorAPagarOriginal,
-          provedorBalcao.observacaoDoPedido,
-        );
+    var (sucesso, mensagem, idvenda) =
+        await context.read<ServicoFinalizarPagamento>().pagarPedido(
+              provedor.idVenda,
+              provedorCardapio.idComanda,
+              provedorCardapio.idMesa,
+              provedorCardapio.idCliente,
+              widget.valor.toStringAsFixed(2), // valorLancamento,
+              widget.totalReceber, // valorOriginal,
+              int.parse(widget.pagamentoselecionado),
+              0, // quantidadePessoas,
+              widget.totalReceber, // subTotal,
+              dataOriginal, // dataLancamento,
+              _parcelas.toString(), // parcelas
+              listaParcelas.value, // parcelasLista
+              provedorCardapio.tipo,
+              (double.tryParse(widget.desconto) ?? 0)
+                  .abs()
+                  .toStringAsFixed(2), // valortroco,
+              '0', // TODO: fazer delivery (valorentrega)
+              carrinhoProvedor.itensCarrinho.precoTotal
+                  .toStringAsFixed(2), // valoresProduto,
+              false, // novo,
+              provedorCardapio.tipodeentrega,
+              carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+              widget.totalReceber, // valorAPagarOriginal,
+              provedorBalcao.observacaoDoPedido,
+            );
 
     if (sucesso) {
       provedorBalcao.observacaoDoPedido = '';
@@ -164,7 +178,9 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         var provedorBalcao = Modular.get<ProvedorBalcao>();
         await provedorBalcao.listar();
 
-        var vendaBalcao = provedorBalcao.dados.where((element) => element.id == idvenda).firstOrNull;
+        var vendaBalcao = provedorBalcao.dados
+            .where((element) => element.id == idvenda)
+            .firstOrNull;
 
         if (vendaBalcao != null) {
           server.write(jsonEncode({
@@ -178,13 +194,15 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             comanda: "Balcão $idvenda",
             numeroPedido: vendaBalcao.numeropedido,
             // nomeCliente: vendaBalcao.nomecliente,
-            nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' && (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
+            nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' &&
+                    (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
                 ? (vendaBalcao.observacaoDoPedido ?? '')
                 : (vendaBalcao.nomecliente),
             nomeEmpresa: vendaBalcao.nomeEmpresa,
             produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
             tipodeentrega: vendaBalcao.idtipodeentrega,
           );
+          FeedbackUsuario.pedidoFinalizado();
 
           // Impressao.enviarImpressao(
           //   tipoImpressao: '1',
@@ -207,7 +225,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
           provedor.idVenda = idvenda;
           provedor.valor = double.parse(widget.totalReceber) - widget.valor;
 
-          Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+          Navigator.popUntil(
+              context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
         }
       }
     } else {
@@ -324,13 +343,23 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(5)),
         ),
-        backgroundColor: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now()) ? null : const Color(0xFF4f0073),
-        foregroundColor: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now()) ? null : Colors.white,
-        onPressed: DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) == DateFormat('yyyy-MM-dd').format(DateTime.now())
-            ? null
-            : () {
-                finalizar();
-              },
+        backgroundColor:
+            DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) ==
+                    DateFormat('yyyy-MM-dd').format(DateTime.now())
+                ? null
+                : const Color(0xFF4f0073),
+        foregroundColor:
+            DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) ==
+                    DateFormat('yyyy-MM-dd').format(DateTime.now())
+                ? null
+                : Colors.white,
+        onPressed:
+            DateFormat('yyyy-MM-dd').format(DateTime.parse(dataOriginal)) ==
+                    DateFormat('yyyy-MM-dd').format(DateTime.now())
+                ? null
+                : () {
+                    finalizar();
+                  },
         label: SizedBox(
           width: MediaQuery.of(context).size.width - 70,
           child: ValueListenableBuilder(
@@ -342,7 +371,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
                   ),
                 ),
                 child: const Text('Finalizar', textAlign: TextAlign.center),
@@ -387,8 +417,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         alignment: Alignment.centerLeft,
                       ),
                       onPressed: () {
-                        _dataController.text = DateFormat('dd/MM/yyyy').format(DateTime.now().add(Duration(days: int.parse(_vendaDia1))));
-                        dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(Duration(days: int.parse(_vendaDia1))));
+                        _dataController.text = DateFormat('dd/MM/yyyy').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia1))));
+                        dataOriginal = DateFormat('yyyy-MM-dd').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia1))));
 
                         List<ParcelasModelo> parcelasNovas = [];
 
@@ -397,11 +431,21 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
-                            vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-                            vencimentoController:
-                                TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
-                            valorController: TextEditingController(text: (widget.valor / _parcelas).toStringAsFixed(2)),
+                            valor:
+                                (widget.valor / _parcelas).toStringAsFixed(2),
+                            vencimento: DateFormat('yyyy-MM-dd').format(
+                                DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day)),
+                            vencimentoController: TextEditingController(
+                                text: DateFormat('dd/MM/yyyy').format(DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day))),
+                            valorController: TextEditingController(
+                                text: (widget.valor / _parcelas)
+                                    .toStringAsFixed(2)),
                           ));
                         }
 
@@ -422,8 +466,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         alignment: Alignment.centerLeft,
                       ),
                       onPressed: () {
-                        _dataController.text = DateFormat('dd/MM/yyyy').format(DateTime.now().add(Duration(days: int.parse(_vendaDia2))));
-                        dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(Duration(days: int.parse(_vendaDia2))));
+                        _dataController.text = DateFormat('dd/MM/yyyy').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia2))));
+                        dataOriginal = DateFormat('yyyy-MM-dd').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia2))));
 
                         List<ParcelasModelo> parcelasNovas = [];
 
@@ -432,11 +480,21 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
-                            vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-                            vencimentoController:
-                                TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
-                            valorController: TextEditingController(text: (widget.valor / _parcelas).toStringAsFixed(2)),
+                            valor:
+                                (widget.valor / _parcelas).toStringAsFixed(2),
+                            vencimento: DateFormat('yyyy-MM-dd').format(
+                                DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day)),
+                            vencimentoController: TextEditingController(
+                                text: DateFormat('dd/MM/yyyy').format(DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day))),
+                            valorController: TextEditingController(
+                                text: (widget.valor / _parcelas)
+                                    .toStringAsFixed(2)),
                           ));
                         }
 
@@ -456,8 +514,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         alignment: Alignment.centerLeft,
                       ),
                       onPressed: () {
-                        _dataController.text = DateFormat('dd/MM/yyyy').format(DateTime.now().add(Duration(days: int.parse(_vendaDia3))));
-                        dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(Duration(days: int.parse(_vendaDia3))));
+                        _dataController.text = DateFormat('dd/MM/yyyy').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia3))));
+                        dataOriginal = DateFormat('yyyy-MM-dd').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia3))));
 
                         List<ParcelasModelo> parcelasNovas = [];
 
@@ -466,11 +528,21 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
-                            vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-                            vencimentoController:
-                                TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
-                            valorController: TextEditingController(text: (widget.valor / _parcelas).toStringAsFixed(2)),
+                            valor:
+                                (widget.valor / _parcelas).toStringAsFixed(2),
+                            vencimento: DateFormat('yyyy-MM-dd').format(
+                                DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day)),
+                            vencimentoController: TextEditingController(
+                                text: DateFormat('dd/MM/yyyy').format(DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day))),
+                            valorController: TextEditingController(
+                                text: (widget.valor / _parcelas)
+                                    .toStringAsFixed(2)),
                           ));
                         }
 
@@ -490,8 +562,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         alignment: Alignment.centerLeft,
                       ),
                       onPressed: () {
-                        _dataController.text = DateFormat('dd/MM/yyyy').format(DateTime.now().add(Duration(days: int.parse(_vendaDia4))));
-                        dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now().add(Duration(days: int.parse(_vendaDia4))));
+                        _dataController.text = DateFormat('dd/MM/yyyy').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia4))));
+                        dataOriginal = DateFormat('yyyy-MM-dd').format(
+                            DateTime.now()
+                                .add(Duration(days: int.parse(_vendaDia4))));
 
                         List<ParcelasModelo> parcelasNovas = [];
 
@@ -500,11 +576,21 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         for (var i = 0; i < _parcelas; i++) {
                           parcelasNovas.add(ParcelasModelo(
                             parcela: (i + 1).toString(),
-                            valor: (widget.valor / _parcelas).toStringAsFixed(2),
-                            vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-                            vencimentoController:
-                                TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
-                            valorController: TextEditingController(text: (widget.valor / _parcelas).toStringAsFixed(2)),
+                            valor:
+                                (widget.valor / _parcelas).toStringAsFixed(2),
+                            vencimento: DateFormat('yyyy-MM-dd').format(
+                                DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day)),
+                            vencimentoController: TextEditingController(
+                                text: DateFormat('dd/MM/yyyy').format(DateTime(
+                                    dataOriginalF.year,
+                                    dataOriginalF.month + i,
+                                    dataOriginalF.day))),
+                            valorController: TextEditingController(
+                                text: (widget.valor / _parcelas)
+                                    .toStringAsFixed(2)),
                           ));
                         }
 
@@ -523,18 +609,23 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                     hintText: '',
                     prefixIcon: Icon(Icons.date_range),
                   ),
-                  onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
                   onTap: () async {
                     final DateTime? time = await showDatePicker(
                       context: context,
                       firstDate: DateTime(1950),
                       lastDate: DateTime(2100),
-                      initialDate: dataOriginal.isEmpty ? DateTime.now() : DateTime.parse(dataOriginal),
+                      initialDate: dataOriginal.isEmpty
+                          ? DateTime.now()
+                          : DateTime.parse(dataOriginal),
                     );
 
                     if (time != null) {
-                      _dataController.text = DateFormat('dd/MM/yyyy').format(time).toString();
-                      dataOriginal = DateFormat('yyyy-MM-dd').format(time).toString();
+                      _dataController.text =
+                          DateFormat('dd/MM/yyyy').format(time).toString();
+                      dataOriginal =
+                          DateFormat('yyyy-MM-dd').format(time).toString();
 
                       List<ParcelasModelo> parcelasNovas = [];
 
@@ -544,9 +635,15 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                         parcelasNovas.add(ParcelasModelo(
                           parcela: (i + 1).toString(),
                           valor: (widget.valor / _parcelas).toStringAsFixed(2),
-                          vencimento: DateFormat('yyyy-MM-dd').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day)),
-                          vencimentoController:
-                              TextEditingController(text: DateFormat('dd/MM/yyyy').format(DateTime(dataOriginalF.year, dataOriginalF.month + i, dataOriginalF.day))),
+                          vencimento: DateFormat('yyyy-MM-dd').format(DateTime(
+                              dataOriginalF.year,
+                              dataOriginalF.month + i,
+                              dataOriginalF.day)),
+                          vencimentoController: TextEditingController(
+                              text: DateFormat('dd/MM/yyyy').format(DateTime(
+                                  dataOriginalF.year,
+                                  dataOriginalF.month + i,
+                                  dataOriginalF.day))),
                           valorController: TextEditingController(
                             text: (widget.valor / _parcelas).toStringAsFixed(2),
                           ),
@@ -578,9 +675,13 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                     child: Container(
                       width: 200,
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(8)),
                         border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white54,
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.black
+                                  : Colors.white54,
                           width: 0.5,
                         ),
                       ),
@@ -606,11 +707,19 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                                                 parcela: (key + 1).toString(),
                                                 valor: item.valor,
                                                 vencimento: data,
-                                                vencimentoController: TextEditingController(
-                                                  text: DateFormat('dd/MM/yyyy').format(DateTime.parse(data)),
+                                                vencimentoController:
+                                                    TextEditingController(
+                                                  text: DateFormat('dd/MM/yyyy')
+                                                      .format(
+                                                          DateTime.parse(data)),
                                                 ),
-                                                valorController: TextEditingController(
-                                                  text: double.parse(valor.isEmpty ? '0' : valor).toStringAsFixed(2),
+                                                valorController:
+                                                    TextEditingController(
+                                                  text: double.parse(
+                                                          valor.isEmpty
+                                                              ? '0'
+                                                              : valor)
+                                                      .toStringAsFixed(2),
                                                 ),
                                               ))
                                           : MapEntry(key, value),
@@ -621,7 +730,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                             ),
                           );
                         },
-                        borderRadius: const BorderRadius.all(Radius.circular(8)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(8)),
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
@@ -636,7 +746,9 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                               Row(
                                 children: [
                                   const Text('Valor: '),
-                                  Text(item.valorController?.text.replaceAll('.', ',') ?? ''),
+                                  Text(item.valorController?.text
+                                          .replaceAll('.', ',') ??
+                                      ''),
                                   const Spacer(),
                                   Text(item.vencimentoController?.text ?? ''),
                                 ],
@@ -655,7 +767,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(topLeft: Radius.circular(60), topRight: Radius.circular(60)),
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(60), topRight: Radius.circular(60)),
               // color: Theme.of(context).colorScheme.inversePrimary,
               color: Color.fromARGB(255, 237, 232, 246),
             ),
@@ -665,11 +778,15 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                   padding: const EdgeInsets.only(top: 20),
                   child: Text(
                     '${_parcelas.toString()} Parcela',
-                    style: TextStyle(fontSize: 25, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        fontSize: 25,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w700),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 30, right: 30, bottom: 15, top: 20),
+                  padding: const EdgeInsets.only(
+                      left: 30, right: 30, bottom: 15, top: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -684,32 +801,53 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                                 Expanded(
                                   child: ElevatedButton(
                                     style: ButtonStyle(
-                                      backgroundColor: const WidgetStatePropertyAll(Colors.white),
+                                      backgroundColor:
+                                          const WidgetStatePropertyAll(
+                                              Colors.white),
                                       shape: WidgetStatePropertyAll(
-                                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10)),
                                       ),
                                     ),
-                                    onPressed: _parcelas <= 1 ? null : () => alterarParcelas(incrementar: false),
+                                    onPressed: _parcelas <= 1
+                                        ? null
+                                        : () =>
+                                            alterarParcelas(incrementar: false),
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.remove_circle_outline,
                                             size: 26,
-                                            color: Theme.of(context).brightness == Brightness.light
-                                                ? Theme.of(context).colorScheme.primary
-                                                : Theme.of(context).colorScheme.inversePrimary,
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                        Brightness.light
+                                                    ? Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                    : Theme.of(context)
+                                                        .colorScheme
+                                                        .inversePrimary,
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
                                             'Remover',
                                             style: TextStyle(
                                               fontSize: 17,
-                                              color: Theme.of(context).brightness == Brightness.light
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : Theme.of(context).colorScheme.inversePrimary,
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.light
+                                                  ? Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .inversePrimary,
                                             ),
                                           ),
                                         ],
@@ -721,32 +859,51 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                                 Expanded(
                                   child: ElevatedButton(
                                     style: ButtonStyle(
-                                      backgroundColor: const WidgetStatePropertyAll(Colors.white),
+                                      backgroundColor:
+                                          const WidgetStatePropertyAll(
+                                              Colors.white),
                                       shape: WidgetStatePropertyAll(
-                                        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10)),
                                       ),
                                     ),
-                                    onPressed: () => alterarParcelas(incrementar: true),
+                                    onPressed: () =>
+                                        alterarParcelas(incrementar: true),
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.add_circle_outline,
                                             size: 26,
-                                            color: Theme.of(context).brightness == Brightness.light
-                                                ? Theme.of(context).colorScheme.primary
-                                                : Theme.of(context).colorScheme.inversePrimary,
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                        Brightness.light
+                                                    ? Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                    : Theme.of(context)
+                                                        .colorScheme
+                                                        .inversePrimary,
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
                                             'Adicionar',
                                             style: TextStyle(
                                               fontSize: 17,
-                                              color: Theme.of(context).brightness == Brightness.light
-                                                  ? Theme.of(context).colorScheme.primary
-                                                  : Theme.of(context).colorScheme.inversePrimary,
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.light
+                                                  ? Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .inversePrimary,
                                             ),
                                           ),
                                         ],
@@ -763,7 +920,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
                       const Center(
                         child: Text(
                           'Valor à ser Parcelado',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600),
                         ),
                       ),
                       Row(

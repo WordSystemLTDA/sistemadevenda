@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -37,6 +39,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   final ProvedorFinalizarPagamento provedorFinalizarPagamento =
       Modular.get<ProvedorFinalizarPagamento>();
   final Server server = Modular.get<Server>();
+  late final ContextoCarrinho? _contextoCarrinho;
 
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
@@ -46,17 +49,32 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   @override
   void initState() {
     super.initState();
+    _contextoCarrinho = carrinhoProvedor.contexto;
     listar();
   }
 
-  void listar() async {
-    await carrinhoProvedor.listarComandasPedidos();
-    await servicoCardapio
-        .listarPorId(provedorCardapio.id, provedorCardapio.tipo, "Não")
-        .then((value) {
-      dados = value;
-    });
-    setState(() => carregando = false);
+  Future<void> listar() async {
+    final id = provedorCardapio.id;
+    final tipo = provedorCardapio.tipo;
+    try {
+      await carrinhoProvedor.listarComandasPedidos();
+      final resposta = await servicoCardapio.listarPorId(id, tipo, "Não");
+      if (mounted) dados = resposta;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Não foi possível consultar o atendimento.'),
+          action: SnackBarAction(
+              label: 'Tentar novamente',
+              onPressed: () {
+                setState(() => carregando = true);
+                listar();
+              }),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => carregando = false);
+    }
   }
 
   Future<void> removerTodosItensCarrinho() async {
@@ -162,6 +180,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   Future<void> _finalizar() async {
     if (isLoading ||
+        carrinhoProvedor.contexto?.chave != _contextoCarrinho?.chave ||
         dados == null ||
         (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty &&
             !_finalizacao.pedidoRegistrado)) {
@@ -181,6 +200,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     }
     setState(() => isLoading = true);
     final tipo = provedorCardapio.tipo;
+    final contextoCarrinho = _contextoCarrinho;
     final itens = List.of(carrinhoProvedor.itensCarrinho.listaComandosPedidos);
     try {
       final sucesso = await _finalizacao.executar(
@@ -214,7 +234,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         },
         enviarImpressao: server.enviarImpressoes,
         limparCarrinho: () async {
-          if (!await carrinhoProvedor.removerComandasPedidos()) {
+          if (!await carrinhoProvedor.removerComandasPedidos(
+              contexto: contextoCarrinho)) {
             throw StateError('Nao foi possivel limpar o carrinho finalizado.');
           }
           await carrinhoProvedor.listarComandasPedidos();
@@ -223,6 +244,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       if (!sucesso) {
         throw StateError('Pedido nao registrado.');
       }
+      FeedbackUsuario.pedidoFinalizado();
       server.write(jsonEncode({
         'tipo': tipo.nome,
         'nomeConexao': usuarioProvedor.usuario?.nome ?? ''

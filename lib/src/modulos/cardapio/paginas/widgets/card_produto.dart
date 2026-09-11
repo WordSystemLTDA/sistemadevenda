@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -157,7 +158,16 @@ class _CardProdutoState extends State<CardProduto> {
                 var mesa = idMesa.isEmpty ? 0 : idMesa;
 
                 if (temTamanhosPizza && tamanhoSelecionado != null) {
+                  final estavaSelecionado = provedorCardapio
+                      .saboresPizzaSelecionados
+                      .any((sabor) => sabor.id == item.id);
                   provedorCardapio.selecionarSaborPizza(item);
+                  final ficouSelecionado = provedorCardapio
+                      .saboresPizzaSelecionados
+                      .any((sabor) => sabor.id == item.id);
+                  if (estavaSelecionado != ficouSelecionado) {
+                    FeedbackUsuario.selecaoAlterada();
+                  }
                   return;
                 }
 

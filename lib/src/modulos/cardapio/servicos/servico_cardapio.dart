@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -15,26 +16,43 @@ class ServicoCardapio {
 
   ServicoCardapio(this.dio, this.usuarioProvedor);
 
-  Future<Modeloworddadoscardapio> listarPorId(String id, TipoCardapio tipo, String mostraritens, {String? codigoQrcode}) async {
+  Future<Modeloworddadoscardapio> listarPorId(
+      String id, TipoCardapio tipo, String mostraritens,
+      {String? codigoQrcode}) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
-    print(tipo.nome);
-
-    final response = await dio.cliente.get('cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
+    final response = await dio.cliente.get(
+        'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
 
     if (response.statusCode == 200) {
-      return Modeloworddadoscardapio.fromMap(response.data);
+      final dados = Modeloworddadoscardapio.fromMap(response.data);
+      if (tipo == TipoCardapio.comanda || tipo == TipoCardapio.mesa) {
+        await ArmazenamentoCarrinhos.instancia
+            .atualizarStatus(empresa ?? '', id, dados.status);
+      }
+      return dados;
     } else {
       return Future.error("Ops! Um erro ocorreu.");
     }
   }
 
-  Future<({String id, String codigo, String nome, String idComandaPedido, bool ocupado, bool sucesso, String idCliente, bool fechamento})> listarIdCodigoQrcode(TipoCardapio tipo, String? codigoQrcode) async {
+  Future<
+      ({
+        String id,
+        String codigo,
+        String nome,
+        String idComandaPedido,
+        bool ocupado,
+        bool sucesso,
+        String idCliente,
+        bool fechamento
+      })> listarIdCodigoQrcode(TipoCardapio tipo, String? codigoQrcode) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('cardapio/listar_id_por_codigo.php?codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}');
+    final response = await dio.cliente.get(
+        'cardapio/listar_id_por_codigo.php?codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}');
 
     var jsonData = response.data;
     bool ocupado = jsonData['ocupado'];
@@ -45,6 +63,18 @@ class ServicoCardapio {
     String idComandaPedido = jsonData['idComandaPedido'];
     String idCliente = jsonData['idCliente'];
     bool fechamento = jsonData['fechamento'];
+
+    if (sucesso &&
+        (tipo == TipoCardapio.comanda || tipo == TipoCardapio.mesa)) {
+      await ArmazenamentoCarrinhos.instancia.sincronizarRecurso(
+        empresa: empresa ?? '',
+        tipo: tipo.name,
+        idRecurso: id,
+        idAtendimento: idComandaPedido,
+        aberto: ocupado,
+        bloqueado: fechamento,
+      );
+    }
 
     return (
       id: id,
@@ -58,11 +88,22 @@ class ServicoCardapio {
     );
   }
 
-  Future<(bool, String)> inserirProdutosComanda(List<Modelowordprodutos> produtos, String idMesa, String idComandaPedido, String idComanda, String idcliente) async {
+  Future<(bool, String)> inserirProdutosComanda(
+      List<Modelowordprodutos> produtos,
+      String idMesa,
+      String idComandaPedido,
+      String idComanda,
+      String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
     try {
+      final atendimento =
+          await listarPorId(idComandaPedido, TipoCardapio.comanda, 'Não');
+      if (atendimento.id != idComandaPedido ||
+          atendimento.status != 'Andamento') {
+        return (false, 'Esta comanda nao esta aberta para receber produtos.');
+      }
       var campos = {
         'produtos': produtos,
         "id_comanda_pedido": idComandaPedido,
@@ -73,7 +114,8 @@ class ServicoCardapio {
         'id_cliente': idcliente,
       };
 
-      var response = await dio.cliente.post('comandas/inserir_produtos.php', data: jsonEncode(campos));
+      var response = await dio.cliente
+          .post('comandas/inserir_produtos.php', data: jsonEncode(campos));
 
       var jsonData = response.data;
       bool sucesso = jsonData['sucesso'];
@@ -91,11 +133,18 @@ class ServicoCardapio {
     }
   }
 
-  Future<(bool, String)> inserirProdutosMesa(List<Modelowordprodutos> produtos, String idMesa, String idComandaPedido, String idcliente) async {
+  Future<(bool, String)> inserirProdutosMesa(List<Modelowordprodutos> produtos,
+      String idMesa, String idComandaPedido, String idcliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
     try {
+      final atendimento =
+          await listarPorId(idComandaPedido, TipoCardapio.mesa, 'Não');
+      if (atendimento.id != idComandaPedido ||
+          atendimento.status != 'Andamento') {
+        return (false, 'Esta mesa nao esta aberta para receber produtos.');
+      }
       var campos = {
         // 'produtos': produtos.map((e) => e.toMap()).toList(),
         'produtos': produtos,
@@ -109,7 +158,8 @@ class ServicoCardapio {
       // print(produtos[0].opcoesPacotesListaFinal!.where((e) => e.tipo == 2).map((e) => e.toMap()).toList());
       // return (false, '');
 
-      var response = await dio.cliente.post('mesas/inserir_produtos.php', data: jsonEncode(campos));
+      var response = await dio.cliente
+          .post('mesas/inserir_produtos.php', data: jsonEncode(campos));
 
       // print(response.data);
       // return (false, '');
@@ -132,7 +182,8 @@ class ServicoCardapio {
     }
   }
 
-  Future<({bool sucesso, String mensagem})> fecharAbrirComanda(String idComandaPedido, String status) async {
+  Future<({bool sucesso, String mensagem})> fecharAbrirComanda(
+      String idComandaPedido, String status) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
     try {
@@ -143,11 +194,17 @@ class ServicoCardapio {
         'status': status,
       };
 
-      var response = await dio.cliente.post('comandas/fechar_abrir_comanda.php', data: jsonEncode(campos));
+      var response = await dio.cliente
+          .post('comandas/fechar_abrir_comanda.php', data: jsonEncode(campos));
 
       var jsonData = response.data;
       bool sucesso = jsonData['sucesso'];
       String mensagem = jsonData['mensagem'];
+
+      if (sucesso) {
+        await ArmazenamentoCarrinhos.instancia
+            .atualizarStatus(idEmpresa ?? '', idComandaPedido, status);
+      }
 
       return (sucesso: sucesso, mensagem: mensagem);
     } on DioException catch (e) {

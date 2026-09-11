@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class BotaoCarrinho extends StatefulWidget {
   final num quantidade;
@@ -42,7 +42,7 @@ class _BotaoCarrinhoState extends State<BotaoCarrinho>
       if (!MediaQuery.disableAnimationsOf(context)) {
         _animacao.forward(from: 0);
       }
-      HapticFeedback.lightImpact();
+      FeedbackUsuario.produtoAdicionado();
       _temporizador = Timer(const Duration(milliseconds: 1800), () {
         if (mounted) setState(() => _adicionado = false);
       });
