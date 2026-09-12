@@ -161,6 +161,78 @@ void main() {
     expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
   });
 
+  for (final recorrente in [false, true]) {
+    test(
+        'edicao protegida substitui somente o item pendente (recorrente: $recorrente)',
+        () async {
+      await abrir('4', '104');
+      await adicionar();
+      await recorrentes.inserir('104', produtoCarrinho());
+      final contexto = carrinho.contexto!;
+      final original =
+          (await armazenamento.listar(contexto, recorrentes: recorrente))
+              .single;
+      final editado = Modelowordprodutos.fromMap(original.toMap())
+        ..id = '1020'
+        ..nome = 'Pizza editada'
+        ..observacao = 'Bem assada';
+      final salvo = recorrente
+          ? await recorrentes.editar('104', editado, 0,
+              contexto: contexto, original: original)
+          : await carrinho.editar(editado, 0,
+              contexto: contexto, original: original);
+      expect(salvo, isTrue);
+      final itens =
+          await armazenamento.listar(contexto, recorrentes: recorrente);
+      expect(itens, hasLength(1));
+      expect(itens.single.id, '1020');
+      expect(itens.single.observacao, 'Bem assada');
+      expect(
+          (await armazenamento.listar(contexto, recorrentes: !recorrente))
+              .single
+              .id,
+          original.id);
+      expect(api.chamadas, isEmpty);
+    });
+
+    test(
+        'edicao nao sobrescreve item alterado ou carrinho encerrado (recorrente: $recorrente)',
+        () async {
+      await abrir('4', '104');
+      await adicionar();
+      await recorrentes.inserir('104', produtoCarrinho());
+      final contexto = carrinho.contexto!;
+      final original =
+          (await armazenamento.listar(contexto, recorrentes: recorrente))
+              .single;
+      Future<bool> salvar() => recorrente
+          ? recorrentes.editar('104', original, 0,
+              contexto: contexto, original: original)
+          : carrinho.editar(original, 0,
+              contexto: contexto, original: original);
+      await armazenamento.alterar(
+          contexto, (itens) => itens.single.quantidade = 5,
+          recorrentes: recorrente);
+      await expectLater(salvar(), throwsStateError);
+      expect(
+          (await armazenamento.listar(contexto, recorrentes: recorrente))
+              .single
+              .quantidade,
+          5);
+      await abrir('6', '106');
+      expect(await salvar(), isFalse);
+      expect(
+          await armazenamento.listar(carrinho.contexto!,
+              recorrentes: recorrente),
+          isEmpty);
+      await abrir('4', '104');
+      await armazenamento.atualizarStatus('32', '104', 'Finalizada');
+      expect(await salvar(), isFalse);
+      expect(await armazenamento.listar(contexto, recorrentes: recorrente),
+          isEmpty);
+    });
+  }
+
   test('troca rapida e inclusoes simultaneas nao misturam os carrinhos',
       () async {
     await abrir('4', '104');

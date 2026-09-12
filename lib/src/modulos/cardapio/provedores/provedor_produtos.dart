@@ -2,6 +2,15 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
 
+class _PesquisaProdutos {
+  final String termo;
+  final String? codigoExato;
+
+  const _PesquisaProdutos({required this.termo, this.codigoExato});
+
+  bool get porCodigoExato => codigoExato != null;
+}
+
 class ProvedorProdutos extends ChangeNotifier {
   final ServicoProduto _produtoService;
 
@@ -92,6 +101,7 @@ class ProvedorProdutos extends ChangeNotifier {
   Future<void> listarProdutosPorNome(
       String pesquisa, String categoria, String idcliente) async {
     final requisicao = ++_requisicao;
+    final filtro = _normalizarPesquisa(pesquisa);
     _pesquisa = pesquisa.trim();
     carregando = true;
     carregandoMais = false;
@@ -99,10 +109,17 @@ class ProvedorProdutos extends ChangeNotifier {
     erroAoCarregarMais = false;
     notifyListeners();
     try {
-      final res =
-          await _produtoService.listarPorNome(_pesquisa, categoria, idcliente);
+      final res = await _produtoService.listarPorNome(
+          filtro.termo, categoria, idcliente,
+          codigoExato: filtro.porCodigoExato);
       if (requisicao != _requisicao) return;
       var itens = res.map(_completarProdutoPesquisado).toList();
+      if (filtro.codigoExato != null) {
+        itens = itens
+            .where((produto) =>
+                _normalizarCodigo(produto.codigo) == filtro.codigoExato)
+            .toList();
+      }
       await _buscarProdutosCompletosParaPesquisa(itens, requisicao);
       if (requisicao != _requisicao) return;
       itens = itens.map(_completarProdutoPesquisado).toList();
@@ -118,6 +135,36 @@ class ProvedorProdutos extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  _PesquisaProdutos _normalizarPesquisa(String pesquisa) {
+    final termo = pesquisa.trim();
+    final codigoComAtalho =
+        RegExp(r'^qq\s*(.+)$', caseSensitive: false).firstMatch(termo);
+    if (codigoComAtalho != null) {
+      final codigo = _normalizarCodigo(codigoComAtalho.group(1)!);
+      if (codigo.isNotEmpty) {
+        return _PesquisaProdutos(termo: codigo, codigoExato: codigo);
+      }
+    }
+
+    if (RegExp(r'^\d+$').hasMatch(termo) &&
+        termo.length > 1 &&
+        termo.startsWith('0')) {
+      final codigo = _normalizarCodigo(termo);
+      return _PesquisaProdutos(termo: codigo, codigoExato: codigo);
+    }
+
+    return _PesquisaProdutos(termo: termo);
+  }
+
+  String _normalizarCodigo(String codigo) {
+    final valor = codigo.trim();
+    if (!RegExp(r'^\d+$').hasMatch(valor)) {
+      return valor.toLowerCase();
+    }
+    final semZeros = valor.replaceFirst(RegExp(r'^0+'), '');
+    return semZeros.isEmpty ? '0' : semZeros;
   }
 
   void _guardarProdutosCompletos(List<Modelowordprodutos> itens) {

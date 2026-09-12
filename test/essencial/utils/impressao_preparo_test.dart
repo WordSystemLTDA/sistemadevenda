@@ -121,6 +121,22 @@ void main() {
     expect(sabor.imprimirCodigoProdutoPreparo, 'Não');
   });
 
+  test('le configuracao de codigo pelo nome da coluna do banco', () {
+    final dadosProduto = produto().toMap()
+      ..remove('imprimirCodigoProdutoPreparo')
+      ..['imprimir_codigo_produto_preparo'] = 'Sim';
+    final produtoRecuperado = Modelowordprodutos.fromMap(dadosProduto);
+    expect(produtoRecuperado.imprimirCodigoProdutoPreparo, 'Sim');
+
+    final sabor = ModeloDadosOpcoesPacotes.fromMap({
+      'id': '1',
+      'nome': 'Queijo',
+      'codigo': '7',
+      'imprimir_codigo_produto_preparo': 'Sim',
+    });
+    expect(sabor.imprimirCodigoProdutoPreparo, 'Sim');
+  });
+
   test('preserva configuracao e codigo dos sabores ao serializar o carrinho',
       () {
     final pizza = produto(nome: 'Pizza')

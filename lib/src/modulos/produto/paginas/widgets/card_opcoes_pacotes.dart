@@ -14,6 +14,8 @@ class CardOpcoesPacotes extends StatefulWidget {
   final ModeloDadosOpcoesPacotes item;
   final bool kit;
   final String idProduto;
+  final ProvedorProduto? provedor;
+  final bool compacto;
 
   const CardOpcoesPacotes({
     super.key,
@@ -21,6 +23,8 @@ class CardOpcoesPacotes extends StatefulWidget {
     required this.opcoesPacote,
     required this.item,
     required this.idProduto,
+    this.provedor,
+    this.compacto = false,
   });
 
   @override
@@ -28,7 +32,8 @@ class CardOpcoesPacotes extends StatefulWidget {
 }
 
 class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
-  final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+  ProvedorProduto get _provedorProduto =>
+      widget.provedor ?? Modular.get<ProvedorProduto>();
 
   void _selecionarItem(BuildContext context) {
     if (_provedorProduto
@@ -42,6 +47,7 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     }
 
     final estadoAnterior = _assinaturaOpcaoSelecionada();
+    if (widget.opcoesPacote.id == 7) widget.item.quantidade ??= 1;
     _provedorProduto.selecionarItem(
       widget.item,
       widget.opcoesPacote,
@@ -50,6 +56,11 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     );
     if (estadoAnterior != _assinaturaOpcaoSelecionada()) {
       FeedbackUsuario.selecaoAlterada();
+    } else if (widget.opcoesPacote.id == 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text('Limite de bordas atingido. Desmarque uma borda para trocar.'),
+      ));
     }
   }
 
@@ -88,7 +99,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                 children: [
                   Row(
                     children: [
-                      if (item.foto != null &&
+                      if (!widget.compacto &&
+                          item.foto != null &&
                           item.foto!.isNotEmpty &&
                           opcoesPacote.id == 7) ...[
                         ClipRRect(
@@ -109,7 +121,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                           ),
                         ),
                       ],
-                      if (opcoesPacote.id == 8 ||
+                      if ((widget.compacto && opcoesPacote.id == 7) ||
+                          opcoesPacote.id == 8 ||
                           opcoesPacote.id == 5 ||
                           opcoesPacote.id == 6) ...[
                         Checkbox(
@@ -154,7 +167,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                           },
                         ),
                       ],
-                      if (opcoesPacote.id == 7 &&
+                      if (!widget.compacto &&
+                          opcoesPacote.id == 7 &&
                           _provedorProduto.retornarDadosPorID(
                             [7],
                             widget.kit,

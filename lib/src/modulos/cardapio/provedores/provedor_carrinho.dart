@@ -145,10 +145,15 @@ class ProvedorCarrinho extends ChangeNotifier {
     return res;
   }
 
-  Future<bool> editar(Modelowordprodutos produto, int index) async {
-    final alvo = _contexto;
+  Future<bool> editar(Modelowordprodutos produto, int index,
+      {ContextoCarrinho? contexto, Modelowordprodutos? original}) async {
+    final alvo = contexto ?? _contexto;
     if (alvo == null) return false;
-    final res = await _servico.editar(produto, index, contexto: alvo);
+    if (alvo.chave != _contexto?.chave) return false;
+    final res = original == null
+        ? await _servico.editar(produto, index, contexto: alvo)
+        : await _servico.armazenamento
+            .substituirItem(alvo, index, original, produto);
     if (res && alvo == _contexto) await listarComandasPedidos();
     return res;
   }

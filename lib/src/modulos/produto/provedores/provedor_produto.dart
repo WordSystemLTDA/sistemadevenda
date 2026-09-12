@@ -208,8 +208,10 @@ class ProvedorProduto extends ChangeNotifier {
     }
 
     // SABOR BORDA
-    if (int.parse(provedorCardapio.configBigchef!.saborlimitedeborda) > 0 &&
-        opcoesPacote.id == 6) {
+    final limiteSaboresBorda = int.tryParse(
+            provedorCardapio.configBigchef?.saborlimitedeborda ?? '0') ??
+        0;
+    if (limiteSaboresBorda > 0 && opcoesPacote.id == 6) {
       if (dadosID.length == provedorCardapio.limiteSaborBordaSelecionado) {
         if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
           dadosID.removeWhere((element) => element.id == item.id);

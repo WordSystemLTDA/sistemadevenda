@@ -52,6 +52,7 @@ class Modelowordprodutos {
   List<ModeloOpcoesPacotes>? opcoesPacotesListaFinal;
   ModeloDescontoProduto? descontoProduto;
   String? habilsepardelivery;
+  int? limiteSaboresBorda;
 
   Modelowordprodutos({
     required this.id,
@@ -96,6 +97,7 @@ class Modelowordprodutos {
     this.opcoesPacotesListaFinal,
     this.descontoProduto,
     this.habilsepardelivery,
+    this.limiteSaboresBorda,
   });
 
   Map<String, dynamic> toMap() {
@@ -143,19 +145,22 @@ class Modelowordprodutos {
           opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
       'descontoProduto': descontoProduto?.toMap(),
       'habilsepardelivery': habilsepardelivery,
+      'limiteSaboresBorda': limiteSaboresBorda,
     };
   }
 
   factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
     return Modelowordprodutos(
       id: map['id'] as String,
+      limiteSaboresBorda: (map['limiteSaboresBorda'] as num?)?.toInt(),
       hashprodutos:
           map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
       iditensvenda: (map['iditensvenda'] ?? map['id_itens_venda'])?.toString(),
       nome: map['nome'] as String,
       codigo: map['codigo'] as String,
-      imprimirCodigoProdutoPreparo:
-          map['imprimirCodigoProdutoPreparo'] as String? ?? 'Não',
+      imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??
+              map['imprimir_codigo_produto_preparo']) as String? ??
+          'Não',
       estoque: map['estoque'] as String,
       tamanho: map['tamanho'] as String,
       foto: map['foto'] as String,

@@ -17,8 +17,11 @@ class ConsultaProdutos extends Fake implements ServicoProduto {
     int pagina,
     Completer<List<Modelowordprodutos>> resposta
   })>[];
-  final pesquisas =
-      <({String termo, Completer<List<Modelowordprodutos>> resposta})>[];
+  final pesquisas = <({
+    String termo,
+    bool codigoExato,
+    Completer<List<Modelowordprodutos>> resposta
+  })>[];
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
@@ -30,9 +33,11 @@ class ConsultaProdutos extends Fake implements ServicoProduto {
 
   @override
   Future<List<Modelowordprodutos>> listarPorNome(
-      String pesquisa, String categoria, String idcliente) {
+      String pesquisa, String categoria, String idcliente,
+      {bool codigoExato = false}) {
     final resposta = Completer<List<Modelowordprodutos>>();
-    pesquisas.add((termo: pesquisa, resposta: resposta));
+    pesquisas
+        .add((termo: pesquisa, codigoExato: codigoExato, resposta: resposta));
     return resposta.future;
   }
 }
@@ -154,5 +159,28 @@ void main() {
     await tentativa;
     expect(provedor.produtos.single.id, 'Coca');
     expect(provedor.erro, isNull);
+  });
+
+  test('atalho qq e zero a esquerda buscam codigo exato', () async {
+    final consultaQq = provedor.listarProdutosPorNome('qq5', '0', '0');
+    expect(servico.pesquisas.last.termo, '5');
+    expect(servico.pesquisas.last.codigoExato, isTrue);
+    servico.pesquisas.last.resposta.complete([
+      produto('Quatro Queijos')..codigo = '5',
+      produto('Atum')..codigo = '50',
+      produto('Bacon')..codigo = '58',
+    ]);
+    await consultaQq;
+    expect(provedor.produtos.map((p) => p.codigo), ['5']);
+
+    final consultaZero = provedor.listarProdutosPorNome('05', '0', '0');
+    expect(servico.pesquisas.last.termo, '5');
+    expect(servico.pesquisas.last.codigoExato, isTrue);
+    servico.pesquisas.last.resposta.complete([
+      produto('Quatro Queijos')..codigo = '005',
+      produto('Atum')..codigo = '50',
+    ]);
+    await consultaZero;
+    expect(provedor.produtos.map((p) => p.codigo), ['005']);
   });
 }

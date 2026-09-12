@@ -7,15 +7,24 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 class ListaBordas extends StatefulWidget {
-  const ListaBordas({super.key});
+  final ProvedorCardapio? cardapio;
+  final ProvedorProduto? produto;
+  final int? limite;
+  final ValueChanged<int>? aoSelecionarLimite;
+  const ListaBordas(
+      {super.key,
+      this.cardapio,
+      this.produto,
+      this.limite,
+      this.aoSelecionarLimite});
 
   @override
   State<ListaBordas> createState() => _ListaBordasState();
 }
 
 class _ListaBordasState extends State<ListaBordas> {
-  final provedor = Modular.get<ProvedorCardapio>();
-  final provedorProduto = Modular.get<ProvedorProduto>();
+  late final provedor = widget.cardapio ?? Modular.get<ProvedorCardapio>();
+  late final provedorProduto = widget.produto ?? Modular.get<ProvedorProduto>();
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +36,8 @@ class _ListaBordasState extends State<ListaBordas> {
           builder: (context, snapshot) {
             return GradeOpcoesResponsiva(
               children: List.generate(
-                  int.parse(provedor.configBigchef!.saborlimitedeborda),
+                  widget.limite ??
+                      int.parse(provedor.configBigchef!.saborlimitedeborda),
                   (index) {
                 return Badge(
                   label: (index + 1) == provedor.limiteSaborBordaSelecionado
@@ -51,6 +61,10 @@ class _ListaBordasState extends State<ListaBordas> {
                     ),
                     child: InkWell(
                       onTap: () {
+                        if (widget.aoSelecionarLimite != null) {
+                          widget.aoSelecionarLimite!(index + 1);
+                          return;
+                        }
                         ScaffoldMessenger.of(context).removeCurrentSnackBar();
                         final limiteAnterior =
                             provedor.limiteSaborBordaSelecionado;

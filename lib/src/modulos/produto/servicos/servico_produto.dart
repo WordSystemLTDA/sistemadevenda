@@ -15,11 +15,13 @@ class ServicoProduto {
   // late final empresa = usuarioProvider['empresa'];
   // late final idUsuario = usuarioProvider['id'];
 
-  Future<List<Modelowordprodutos>> listarPorCategoria(String categoria, int pagina) async {
+  Future<List<Modelowordprodutos>> listarPorCategoria(
+      String categoria, int pagina) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
 
-    final response = await dio.cliente.get('produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina');
+    final response = await dio.cliente.get(
+        'produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina');
     // print(response.realUri);
 
     if (response.statusCode == 200) {
@@ -35,15 +37,19 @@ class ServicoProduto {
     }
   }
 
-  Future<List<Modelowordprodutos>> listarPorNome(String pesquisa, String categoria, String idcliente) async {
+  Future<List<Modelowordprodutos>> listarPorNome(
+      String pesquisa, String categoria, String idcliente,
+      {bool codigoExato = false}) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
-    final response = await dio.cliente.get('produtos/listar.php', queryParameters: {
+    final response =
+        await dio.cliente.get('produtos/listar.php', queryParameters: {
       'pesquisa': pesquisa,
       'empresa': empresa,
       'categoria': categoria,
       'id_usuario': idusuario,
       'id_cliente': idcliente,
+      'codigo_exato': codigoExato ? 'Sim' : 'Não',
     });
 
     if (response.statusCode == 200) {
@@ -59,10 +65,12 @@ class ServicoProduto {
     }
   }
 
-  Future<Modelowordprodutos?> listarPorId(String id, String idtamanhospizza) async {
+  Future<Modelowordprodutos?> listarPorId(
+      String id, String idtamanhospizza) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
-    final response = await dio.cliente.get('/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza');
+    final response = await dio.cliente.get(
+        '/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza');
 
     if (response.data == null) return null;
 
@@ -111,7 +119,8 @@ class ServicoProduto {
     return [];
   }
 
-  Future<bool> inserir(idComanda, valor, observacaoMesa, idProduto, quantidade, observacao) async {
+  Future<bool> inserir(dynamic idComanda, dynamic valor, dynamic observacaoMesa,
+      dynamic idProduto, dynamic quantidade, dynamic observacao) async {
     // const url = '${Apis.baseUrl}pedidos/inserir.php';
 
     // final response = await dio.post(

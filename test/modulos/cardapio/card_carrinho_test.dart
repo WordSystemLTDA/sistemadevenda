@@ -1,6 +1,8 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -132,6 +134,65 @@ void main() {
     expect(alteracoes, 2);
     expect(item.quantidade, 1);
     expect(find.byTooltip('Excluir item'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pizza exibe sabores no lugar do nome generico no carrinho',
+      (tester) async {
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
+    addTearDown(carrinho.dispose);
+    Modular.init(ModuloCarrinhoTeste(carrinho));
+    final item = produtoCarrinho()
+      ..nome = 'Pizza de Queijos'
+      ..codigo = '2'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 10,
+          titulo: 'Sabores Pizza (2)',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Catupiry Especial',
+              codigo: '2',
+              imprimirCodigoProdutoPreparo: 'Sim',
+              valor: '28.50',
+              quantimaximaselecao: '1/2',
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '3',
+              nome: 'Dois Quijos',
+              codigo: '3',
+              imprimirCodigoProdutoPreparo: 'Sim',
+              valor: '30.00',
+              quantimaximaselecao: '1/2',
+            ),
+          ],
+        ),
+      ];
+
+    const nomePizza = '2 - (1/2) Catupiry Especial\n3 - (1/2) Dois Quijos';
+    await carregarCard(
+      tester,
+      item: item,
+      setarQuantidade: (increase) async {
+        item.quantidade = item.quantidade! + (increase ? 1 : -1);
+        return true;
+      },
+    );
+
+    expect(find.text(nomePizza), findsOneWidget);
+    expect(find.text('Pizza de Queijos'), findsNothing);
+
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 - (1/2) Catupiry Especial'), findsOneWidget);
+    expect(find.text('3 - (1/2) Dois Quijos'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Aumentar quantidade'));
+    await tester.pumpAndSettle();
+    expect(find.text(nomePizza), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 

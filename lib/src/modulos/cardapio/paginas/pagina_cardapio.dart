@@ -225,10 +225,12 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                   ),
           ),
           bottomNavigationBar: AnimatedBuilder(
-            animation: carrinhoProvedor,
+            animation: Listenable.merge([provedor, carrinhoProvedor]),
             builder: (context, _) {
               final temPizza = provedor.tamanhosPizza != null &&
                   provedor.saboresPizzaSelecionados.isNotEmpty;
+              final quantidadeSabores =
+                  provedor.saboresPizzaSelecionados.length;
               return SafeArea(
                 top: false,
                 child: Padding(
@@ -238,7 +240,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                       if (temPizza) ...[
                         Expanded(
                           child: BotaoAcaoPedido(
-                            rotulo: 'Avançar',
+                            rotulo: 'Avançar ($quantidadeSabores)',
                             total: provedor.calcularPrecoPizza().obterReal(),
                             onPressed: () {
                               if (!context.mounted) return;

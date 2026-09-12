@@ -148,7 +148,8 @@ class ProdutosTeste extends Fake implements ServicoProduto {
 
   @override
   Future<List<Modelowordprodutos>> listarPorNome(
-      String pesquisa, String categoria, String idcliente) async {
+      String pesquisa, String categoria, String idcliente,
+      {bool codigoExato = false}) async {
     consultasPorNome.add(pesquisa);
     final termo = pesquisa.toLowerCase();
     return produtos
@@ -167,6 +168,66 @@ class ProdutosTeste extends Fake implements ServicoProduto {
     return Modelowordprodutos.fromMap(
         produtos.firstWhere((p) => p.id == id).toMap())
       ..opcoesPacotes = [];
+  }
+}
+
+class ProdutosComBordasTeste extends ProdutosTeste {
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+    consultasPorId.add((id, tamanho));
+    return Modelowordprodutos.fromMap(
+        produtos.firstWhere((p) => p.id == id).toMap())
+      ..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          tipo: 4,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: 'Cheddar',
+              nome: 'Cheddar',
+              valor: '12',
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: 'Catupiry',
+              nome: 'Catupiry',
+              valor: '12',
+            ),
+          ],
+        ),
+      ];
+  }
+}
+
+class ProdutosComAdicionaisTeste extends ProdutosTeste {
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+    consultasPorId.add((id, tamanho));
+    return Modelowordprodutos.fromMap(
+        produtos.firstWhere((p) => p.id == id).toMap())
+      ..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          obrigatorio: false,
+          tipo: 3,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: 'Milho',
+              nome: 'Milho',
+              valor: '3',
+              quantidade: 1,
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: 'Bacon',
+              nome: 'Bacon',
+              valor: '4',
+              quantidade: 1,
+            ),
+          ],
+        ),
+      ];
   }
 }
 
@@ -473,6 +534,9 @@ void main() {
       await trocarCategoria(tester, 'Todos');
       expect(cardapio.tamanhosPizza?.id, 'G');
       expect(cardapio.saboresPizzaSelecionados, hasLength(2));
+      expect(
+          tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).rotulo,
+          'Avançar (2)');
       await tocarProduto(tester, 'Chocolate');
       final carrinho = Modular.get<ProvedorCarrinho>();
       expect(carrinho.numeroAdicoes, 0);
@@ -504,7 +568,7 @@ void main() {
       final rectAvancar = tester.getRect(botao);
       final rectCarrinho = tester.getRect(find.byType(FloatingActionButton));
       expect(rectAvancar.overlaps(rectCarrinho), isFalse);
-      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar');
+      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (3)');
       await tester.tap(botao);
       await tester.pumpAndSettle();
       expect(find.byType(PaginaSaborBordas), findsOneWidget);
@@ -568,6 +632,40 @@ void main() {
     expect(cardapio.tamanhosPizza?.id, 'G');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('botao adicionar mostra quantidade de adicionais selecionados',
+      (tester) async {
+    produtos = ProdutosComAdicionaisTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    final bebida = sabor('Bebida com adicionais', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..habilTipo = 'Pacote'
+      ..valorVenda = '10';
+    produtos.produtos.add(bebida);
+
+    await tester.pumpWidget(MaterialApp(home: PaginaProduto(produto: bebida)));
+    await tester.pumpAndSettle();
+
+    final botao = find.byType(BotaoAcaoPedido);
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao');
+
+    await tester.tap(find.text('Milho'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao (1)');
+
+    await tester.tap(find.text('Bacon'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao (2)');
+
+    final primeiroAdicional = find.byType(CardOpcoesPacotes).first;
+    await tester.tap(find.descendant(
+      of: primeiroAdicional,
+      matching: find.byIcon(Icons.add_circle_outline),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao (3)');
   });
 
   testWidgets('pesquisa reaproveita tamanhos da listagem ja carregada',
@@ -709,6 +807,37 @@ void main() {
     expect(provedorProduto.retornarDadosPorID([6], false, '0'), [cheddar]);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('botao de avancar mostra quantidade de bordas selecionadas',
+      (tester) async {
+    produtos = ProdutosComBordasTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    cardapio.tamanhosPizza = tamanho('G');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final botao = find.byType(BotaoAcaoPedido);
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar');
+
+    await tester.tap(find.text('até 2 sabores'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cheddar'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (1)');
+
+    await tester.tap(find.text('Catupiry'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (2)');
   });
 
   for (final largura in [393.0, 800.0]) {

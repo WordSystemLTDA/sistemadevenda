@@ -82,7 +82,18 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
           .listar(_contextoPorId(idComandaPedido), recorrentes: true);
 
   Future<bool> editar(
-      String idComandaPedido, Modelowordprodutos produto, int index) {
+      String idComandaPedido, Modelowordprodutos produto, int index,
+      {ContextoCarrinho? contexto, Modelowordprodutos? original}) async {
+    if (original != null) {
+      final alvo = contexto ?? _contextoPorId(idComandaPedido);
+      if (alvo.chave != _contexto?.chave) return false;
+      final sucesso = await _servico.armazenamento
+          .substituirItem(alvo, index, original, produto, recorrentes: true);
+      if (sucesso && alvo == _contexto) {
+        await listarComandasPedidos(idComandaPedido);
+      }
+      return sucesso;
+    }
     final copia = Modelowordprodutos.fromMap(produto.toMap());
     return _servico.armazenamento.alterar(_contextoPorId(idComandaPedido),
         (itens) {

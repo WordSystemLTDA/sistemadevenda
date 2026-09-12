@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/widgets/grade_opcoes_responsiva.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -7,14 +8,23 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 class ListaTamanhosPizza extends StatefulWidget {
   final ModeloCategoria categoria;
-  const ListaTamanhosPizza({super.key, required this.categoria});
+  final ProvedorCardapio? provedor;
+  final bool permitirAlterar;
+  final ValueChanged<ModeloTamanhosPizza>? aoSelecionar;
+  const ListaTamanhosPizza(
+      {super.key,
+      required this.categoria,
+      this.provedor,
+      this.permitirAlterar = true,
+      this.aoSelecionar});
 
   @override
   State<ListaTamanhosPizza> createState() => _ListaTamanhosPizzaState();
 }
 
 class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  late final ProvedorCardapio provedorCardapio =
+      widget.provedor ?? Modular.get<ProvedorCardapio>();
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +49,19 @@ class _ListaTamanhosPizzaState extends State<ListaTamanhosPizza> {
                 : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () {
-                if (provedorCardapio.tamanhosPizza?.id == e.id) {
-                  provedorCardapio.tamanhosPizza = null;
-                } else {
-                  provedorCardapio.tamanhosPizza = e;
-                }
-              },
+              onTap: !widget.permitirAlterar
+                  ? null
+                  : () {
+                      if (widget.aoSelecionar != null) {
+                        widget.aoSelecionar!(e);
+                        return;
+                      }
+                      if (provedorCardapio.tamanhosPizza?.id == e.id) {
+                        provedorCardapio.tamanhosPizza = null;
+                      } else {
+                        provedorCardapio.tamanhosPizza = e;
+                      }
+                    },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 70),

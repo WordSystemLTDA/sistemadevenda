@@ -251,6 +251,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
 
     itemProduto!.quantidade = _provedorProduto.quantidade.toDouble();
+    if (widget.montagemPizza) {
+      itemProduto!.limiteSaboresBorda =
+          provedorCardapio.limiteSaborBordaSelecionado;
+    }
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
     itemProduto!.observacao = obsController.text;
 
@@ -329,6 +333,13 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     setState(() => carregando = !carregando);
   }
 
+  int get _quantidadeAdicionaisSelecionados {
+    return _provedorProduto.retornarDadosPorID([7], false, '0').fold<int>(0,
+        (total, adicional) {
+      return total + (adicional.quantidade ?? 1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -383,6 +394,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           final total =
               (_provedorProduto.valorVenda * _provedorProduto.quantidade)
                   .obterReal();
+          final quantidadeAdicionaisSelecionados =
+              _quantidadeAdicionaisSelecionados;
 
           return Scaffold(
             backgroundColor:
@@ -418,7 +431,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                 child: BotaoAcaoPedido(
-                  rotulo: 'Adicionar ao',
+                  rotulo: quantidadeAdicionaisSelecionados > 0
+                      ? 'Adicionar ao ($quantidadeAdicionaisSelecionados)'
+                      : 'Adicionar ao',
                   iconeRotulo: Icons.shopping_cart_outlined,
                   rotuloSemantico: 'Adicionar ao carrinho',
                   carregando: carregando,

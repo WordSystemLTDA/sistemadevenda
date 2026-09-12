@@ -6,6 +6,8 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
@@ -97,9 +99,10 @@ class CarrinhoFinalizacaoTeste extends ProvedorCarrinho {
   Completer<void>? esperaEdicao;
 
   @override
-  Future<bool> editar(produto, int index) async {
+  Future<bool> editar(Modelowordprodutos produto, int index,
+      {ContextoCarrinho? contexto, Modelowordprodutos? original}) async {
     await esperaEdicao?.future;
-    return super.editar(produto, index);
+    return super.editar(produto, index, contexto: contexto, original: original);
   }
 }
 

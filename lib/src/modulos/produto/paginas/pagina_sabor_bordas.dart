@@ -116,6 +116,15 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     ));
   }
 
+  int get _quantidadeBordasSelecionadas {
+    return _provedorProduto.opcoesPacotesListaFinal
+            .where((opcao) => opcao.id == 6)
+            .firstOrNull
+            ?.dados
+            ?.length ??
+        0;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (itemProduto == null) {
@@ -145,6 +154,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
         child: AnimatedBuilder(
           animation: _provedorProduto,
           builder: (context, valueProdutoProvedor) {
+            final quantidadeBordasSelecionadas = _quantidadeBordasSelecionadas;
             return Scaffold(
               appBar: AppBar(
                 title: Text("${itemProduto!.nome} ${itemProduto!.tamanho}"),
@@ -155,7 +165,9 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                   child: BotaoAcaoPedido(
-                    rotulo: 'Avançar',
+                    rotulo: quantidadeBordasSelecionadas > 0
+                        ? 'Avançar ($quantidadeBordasSelecionadas)'
+                        : 'Avançar',
                     total: _provedorProduto.valorVenda.obterReal(),
                     carregando: carregando,
                     onPressed: avancar,

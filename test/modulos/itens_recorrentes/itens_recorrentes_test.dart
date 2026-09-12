@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_carrinho_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:flutter/material.dart';
@@ -233,6 +234,71 @@ void main() {
       1,
     );
     expect(modulo.provedorItensRecorrentes.itensCarrinho, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'carrinho recorrente mostra sabores da pizza e codigos habilitados',
+      (tester) async {
+    final pizza = _pizzaRecorrente();
+    final sabores = pizza.opcoesPacotesListaFinal!
+        .where((opcao) => opcao.id == 10)
+        .single
+        .dados!;
+    sabores[0] = ModeloDadosOpcoesPacotes(
+      id: '1',
+      nome: 'Mussarela',
+      codigo: '1',
+      imprimirCodigoProdutoPreparo: 'Sim',
+      valor: '19.00',
+      quantimaximaselecao: '1/3',
+    );
+    sabores[1] = ModeloDadosOpcoesPacotes(
+      id: '2',
+      nome: 'Catupiry Especial',
+      codigo: '2',
+      imprimirCodigoProdutoPreparo: 'Sim',
+      valor: '19.00',
+      quantimaximaselecao: '1/3',
+    );
+    sabores[2] = ModeloDadosOpcoesPacotes(
+      id: '3',
+      nome: 'Dois Quijos',
+      codigo: '3',
+      imprimirCodigoProdutoPreparo: 'Sim',
+      valor: '20.00',
+      quantimaximaselecao: '1/3',
+    );
+
+    const nomePizza =
+        '1 - (1/3) Mussarela\n2 - (1/3) Catupiry Especial\n3 - (1/3) Dois Quijos';
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CardCarrinhoItensRecorrentes(
+            item: pizza,
+            index: 0,
+            idComanda: '3',
+            idComandaPedido: '10673',
+            idMesa: '0',
+            value: null,
+            setarQuantidade: (_) {},
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.text('Pizza de Queijos'), findsNothing);
+    expect(find.text(nomePizza), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sabores Pizza (3)'), findsOneWidget);
+    expect(find.text('1 - (1/3) Mussarela'), findsOneWidget);
+    expect(find.text('2 - (1/3) Catupiry Especial'), findsOneWidget);
+    expect(find.text('3 - (1/3) Dois Quijos'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

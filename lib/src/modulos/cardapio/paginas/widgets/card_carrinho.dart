@@ -1,9 +1,10 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
-import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/botao_editar_produto_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -217,7 +218,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                widget.item.nome,
+                                _nomeExibicaoItem(widget.item),
                                 style: const TextStyle(
                                     fontSize: 14.5,
                                     fontWeight: FontWeight.w600),
@@ -306,6 +307,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
+    final nomeExibicao = _nomeExibicaoItem(item);
 
     return Card(
       shape: RoundedRectangleBorder(
@@ -325,7 +327,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     LinhaValor(
-                      descricao: Text(item.nome,
+                      descricao: Text(nomeExibicao,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w500)),
                       valor: Text(
@@ -431,6 +433,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
               ),
             ),
           ),
+          BotaoEditarProdutoCarrinho(item: item, index: widget.index),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(
@@ -439,22 +442,6 @@ class _CardCarrinhoState extends State<CardCarrinho>
                 if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
                   const Divider(height: 1),
                 ],
-                Align(
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return PaginaProduto(
-                              produto: item,
-                              editar: true,
-                              indexProduto: widget.index);
-                        },
-                      ));
-                    },
-                    child: Text('Editar Produto'),
-                  ),
-                ),
                 ...(item.opcoesPacotesListaFinal ?? []).map((e) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +464,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
 
                             return LinhaValor(
                               descricao: Text(
-                                '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                _descricaoOpcaoCarrinho(e.id, dado),
                                 style: const TextStyle(fontSize: 15),
                               ),
                               valor: Text(
@@ -523,6 +510,50 @@ class _CardCarrinhoState extends State<CardCarrinho>
         ],
       ),
     );
+  }
+
+  String _nomeExibicaoItem(Modelowordprodutos item) {
+    final saboresPizza = (item.opcoesPacotesListaFinal ?? [])
+        .where((opcao) => opcao.id == 10)
+        .firstOrNull
+        ?.dados;
+
+    if (saboresPizza == null || saboresPizza.isEmpty) {
+      return item.nome;
+    }
+
+    final totalSabores = saboresPizza.length;
+    return saboresPizza.map((sabor) {
+      final proporcao = sabor.quantimaximaselecao?.trim();
+      final prefixo = proporcao == null || proporcao.isEmpty
+          ? '1/$totalSabores'
+          : proporcao;
+      return _nomeSaborPizza(sabor, prefixo);
+    }).join('\n');
+  }
+
+  String _descricaoOpcaoCarrinho(int idOpcao, ModeloDadosOpcoesPacotes dado) {
+    if (idOpcao == 10) {
+      final proporcao = dado.quantimaximaselecao?.trim();
+      final prefixo = proporcao == null || proporcao.isEmpty ? null : proporcao;
+      return _nomeSaborPizza(dado, prefixo);
+    }
+
+    return '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}';
+  }
+
+  String _nomeSaborPizza(ModeloDadosOpcoesPacotes sabor, String? proporcao) {
+    final nome = proporcao == null || proporcao.isEmpty
+        ? sabor.nome
+        : '($proporcao) ${sabor.nome}';
+    final codigo = sabor.codigo?.trim() ?? '';
+
+    if (sabor.imprimirCodigoProdutoPreparo != 'Sim' || codigo.isEmpty) {
+      return nome;
+    }
+
+    final prefixo = '$codigo - ';
+    return nome.startsWith(prefixo) ? nome : '$prefixo$nome';
   }
 }
 

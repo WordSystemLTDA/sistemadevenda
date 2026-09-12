@@ -21,6 +21,8 @@ class CardProduto extends StatefulWidget {
   final Modelowordprodutos item;
   final ModeloCategoria? categoria;
   final bool finalizar;
+  final ProvedorCardapio? cardapioEdicao;
+  final ValueChanged<Modelowordprodutos>? aoSelecionarSabor;
 
   const CardProduto({
     super.key,
@@ -29,18 +31,23 @@ class CardProduto extends StatefulWidget {
     required this.item,
     required this.categoria,
     required this.finalizar,
-  });
+    this.cardapioEdicao,
+    this.aoSelecionarSabor,
+  }) : assert((cardapioEdicao == null) == (aoSelecionarSabor == null));
 
   @override
   State<CardProduto> createState() => _CardProdutoState();
 }
 
 class _CardProdutoState extends State<CardProduto> {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-  final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
-  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
-  late final _alteracoes =
-      Listenable.merge([provedorCardapio, carrinhoProvedor]);
+  late final ProvedorCarrinho carrinhoProvedor =
+      Modular.get<ProvedorCarrinho>();
+  late final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
+  late final ProvedorCardapio provedorCardapio =
+      widget.cardapioEdicao ?? Modular.get<ProvedorCardapio>();
+  late final Listenable _alteracoes = widget.cardapioEdicao != null
+      ? provedorCardapio
+      : Listenable.merge([provedorCardapio, carrinhoProvedor]);
   String? _baseHostImagens;
 
   @override
@@ -50,6 +57,7 @@ class _CardProdutoState extends State<CardProduto> {
   }
 
   Future<void> _carregarBaseHostImagens() async {
+    if (widget.item.foto.isEmpty) return;
     final baseHost = await UrlImagem.obterBaseHostImagens();
     if (!mounted) {
       return;
@@ -151,6 +159,10 @@ class _CardProdutoState extends State<CardProduto> {
               key: widget.key,
               onTap: () async {
                 FocusManager.instance.primaryFocus?.unfocus();
+                if (widget.aoSelecionarSabor != null) {
+                  widget.aoSelecionarSabor!(item);
+                  return;
+                }
                 final idComanda = provedorCardapio.idComanda;
                 final idMesa = provedorCardapio.idMesa;
 

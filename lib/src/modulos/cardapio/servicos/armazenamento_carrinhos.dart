@@ -93,6 +93,27 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         return true;
       });
 
+  Future<bool> substituirItem(
+    ContextoCarrinho contexto,
+    int index,
+    Modelowordprodutos original,
+    Modelowordprodutos editado, {
+    bool recorrentes = false,
+  }) {
+    final assinatura = jsonEncode(original.toMap());
+    final copia = Modelowordprodutos.fromMap(editado.toMap());
+    return alterar(contexto, (itens) {
+      // Confere dentro da mesma escrita para nao sobrescrever outro item.
+      if (index < 0 ||
+          index >= itens.length ||
+          jsonEncode(itens[index].toMap()) != assinatura) {
+        throw StateError(
+            'O item do carrinho foi alterado. Abra a edição novamente.');
+      }
+      itens[index] = copia;
+    }, recorrentes: recorrentes);
+  }
+
   // O formato antigo dos recorrentes tem atendimento; o carrinho global nao tem.
   // Esta importacao so ocorre depois da confirmacao do atendimento pela API.
   Future<void> importarRecorrentes(ContextoCarrinho contexto) =>

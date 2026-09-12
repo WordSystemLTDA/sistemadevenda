@@ -49,8 +49,6 @@ class ModeloDadosOpcoesPacotes {
       id: map['id'] as String,
       nome: map['nome'] as String,
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
-      imprimirCodigoProdutoPreparo:
-          map['imprimirCodigoProdutoPreparo'] as String? ?? 'Não',
       valor: map['valor'] != null ? map['valor'] as String : null,
       foto: map['foto'] != null ? map['foto'] as String : null,
       quantimaximaselecao: map['quantimaximaselecao'] != null
@@ -64,6 +62,9 @@ class ModeloDadosOpcoesPacotes {
           : null,
       excluir: map['excluir'] != null ? map['excluir'] as bool : null,
       quantidade: map['quantidade'] != null ? map['quantidade'] as int : null,
+      imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??
+              map['imprimir_codigo_produto_preparo']) as String? ??
+          'Não',
     );
   }
 
