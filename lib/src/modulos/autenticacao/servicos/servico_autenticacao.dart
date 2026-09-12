@@ -17,7 +17,10 @@ class ServicoAutenticacao {
   final UsuarioProvedor usuarioProvedor;
   ServicoAutenticacao(this.dio, this.usuarioProvedor);
 
-  Future<bool> entrar(usuario, senha, {bool permitirSessaoSalva = false}) async {
+  Future<bool> entrar(String? usuario, String? senha, {bool permitirSessaoSalva = false}) async {
+    if (usuario == null || senha == null || usuario.isEmpty || senha.isEmpty) {
+      return false;
+    }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final servidor = (await Apis().getConexao()).servidor;
     final banco = BancoLocal.instancia;

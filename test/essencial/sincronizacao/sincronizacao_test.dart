@@ -8,10 +8,12 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -47,18 +49,21 @@ void main() {
     conflito = false;
     aplicados.clear();
     tentativas.clear();
-    SharedPreferences.setMockInitialValues({'conexao': jsonEncode({
-      'tipoConexao': 'local', 'servidor': 'cozinha', 'porta': '9980'})});
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': 'cozinha', 'porta': '9980'})
+    });
     pasta = await Directory.systemTemp.createTemp('garcom-teste-');
-    banco = await BancoLocal.abrir(factory: databaseFactoryFfi,
-        path: '${pasta.path}/pedidos.db');
+    banco = await BancoLocal.abrir(
+        factory: databaseFactoryFfi, path: '${pasta.path}/pedidos.db');
     BancoLocal.instancia = banco;
     api = DioCliente();
     usuario = UsuarioProvedor()
       ..setUsuario(UsuarioModelo(id: '1', empresa: '32', nome: 'Garcom'));
     socket = SocketOfflineTeste();
     sync = Sincronizador(api, usuario, socket, banco: banco);
-    api.cliente.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+    api.cliente.interceptors
+        .add(InterceptorsWrapper(onRequest: (options, handler) {
       final rota = CacheConsultas.caminho(options);
       Map<String, dynamic>? pedido;
       if (options.method == 'POST') {
@@ -66,41 +71,61 @@ void main() {
         tentativas.add(pedido);
       }
       if (!conectado) {
-        handler.reject(DioException(requestOptions: options,
-            type: DioExceptionType.connectionError));
+        handler.reject(DioException(
+            requestOptions: options, type: DioExceptionType.connectionError));
         return;
       }
       if (pedido != null) {
         if (conflito && pedido['dados']['id_comanda_pedido'] == '104') {
-          handler.reject(DioException(requestOptions: options,
+          handler.reject(DioException(
+              requestOptions: options,
               type: DioExceptionType.badResponse,
-              response: Response(requestOptions: options, statusCode: 409,
+              response: Response(
+                  requestOptions: options,
+                  statusCode: 409,
                   data: {'mensagem': 'Atendimento encerrado'})));
           return;
         }
         aplicados.add(pedido['id_operacao'] as String);
         if (perderResposta) {
           perderResposta = false;
-          handler.reject(DioException(requestOptions: options,
-              type: DioExceptionType.receiveTimeout));
+          handler.reject(DioException(
+              requestOptions: options, type: DioExceptionType.receiveTimeout));
           return;
         }
-        handler.resolve(Response(requestOptions: options, statusCode: 200,
-            data: {'protocolo': 1, 'sucesso': true,
-              'id_operacao': pedido['id_operacao']}));
+        handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'protocolo': 1,
+              'sucesso': true,
+              'id_operacao': pedido['id_operacao']
+            }));
         return;
       }
       final Object dados = rota == 'sincronizacao/estado.php'
-          ? {'protocolo': 1, 'atendimentos': {
-              '104': {'id': '104', 'versao': 'versao-original'},
-              '106': {'id': '106', 'versao': 'versao-outra'},
-            }} : rota == 'config_bigchef/listar.php' ? <String, dynamic>{} : [];
-      handler.resolve(Response(requestOptions: options, data: dados, statusCode: 200));
+          ? {
+              'protocolo': 1,
+              'atendimentos': {
+                '104': {'id': '104', 'versao': 'versao-original'},
+                '106': {'id': '106', 'versao': 'versao-outra'},
+              }
+            }
+          : rota == 'config_bigchef/listar.php'
+              ? <String, dynamic>{}
+              : [];
+      handler.resolve(
+          Response(requestOptions: options, data: dados, statusCode: 200));
     }));
     await sync.configurar();
-    await banco.gravar('estado:${sync.escopo}', jsonEncode({'atendimentos': {
-      '104': {'versao': 'versao-original'}, '106': {'versao': 'versao-outra'},
-    }}));
+    await banco.gravar(
+        'estado:${sync.escopo}',
+        jsonEncode({
+          'atendimentos': {
+            '104': {'versao': 'versao-original'},
+            '106': {'versao': 'versao-outra'},
+          }
+        }));
   });
 
   tearDown(() async {
@@ -114,28 +139,45 @@ void main() {
     await pasta.delete(recursive: true);
   });
 
-  Future<void> guardar({ContextoCarrinho alvo = contexto, bool recorrentes = false}) async {
-    final item = produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha')
-      ..quantidade = 2
-      ..observacao = 'Sem cebola';
-    await ArmazenamentoCarrinhos.instancia.alterar(alvo,
-        (itens) => itens.add(item), recorrentes: recorrentes);
-    await sync.guardarPedido(contexto: alvo, itens: [item], idMesa: '0',
-        idComanda: alvo.idRecurso, idCliente: '0', recorrentes: recorrentes,
-        impressoes: [jsonEncode({'idRequisicao': 'impressao-${alvo.idAtendimento}',
-          'tipoImpressao': '1', 'idEmpresa': '32', 'produtos': [item.toMap()]})]);
+  Future<void> guardar(
+      {ContextoCarrinho alvo = contexto, bool recorrentes = false}) async {
+    final item =
+        produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha')
+          ..quantidade = 2
+          ..observacao = 'Sem cebola';
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(alvo, (itens) => itens.add(item), recorrentes: recorrentes);
+    await sync.guardarPedido(
+        contexto: alvo,
+        itens: [item],
+        idMesa: '0',
+        idComanda: alvo.idRecurso,
+        idCliente: '0',
+        recorrentes: recorrentes,
+        impressoes: [
+          jsonEncode({
+            'idRequisicao': 'impressao-${alvo.idAtendimento}',
+            'tipoImpressao': '1',
+            'idEmpresa': '32',
+            'produtos': [item.toMap()]
+          })
+        ]);
     await sync.enviarPendentes();
   }
 
   for (final recorrentes in [false, true]) {
-    test('salva pedido e limpa somente o carrinho correspondente; recorrentes=$recorrentes', () async {
+    test(
+        'salva pedido e limpa somente o carrinho correspondente; recorrentes=$recorrentes',
+        () async {
       await guardar(recorrentes: recorrentes);
       final fila = await banco.operacoes(sync.escopo);
       expect(fila, hasLength(1));
       expect(fila.single['estado'], 'pendente');
       expect(socket.filaImpressao.itens, isEmpty);
-      expect(await ArmazenamentoCarrinhos.instancia.listar(contexto,
-          recorrentes: recorrentes), isEmpty);
+      expect(
+          await ArmazenamentoCarrinhos.instancia
+              .listar(contexto, recorrentes: recorrentes),
+          isEmpty);
       final salvo = jsonDecode(fila.single['dados'] as String);
       expect(salvo['produtos'].single['quantidade'], 2);
       expect(salvo['produtos'].single['observacao'], 'Sem cebola');
@@ -148,7 +190,8 @@ void main() {
     });
   }
 
-  test('resposta perdida repete o mesmo ID, sem registrar produtos duas vezes', () async {
+  test('resposta perdida repete o mesmo ID, sem registrar produtos duas vezes',
+      () async {
     conectado = true;
     perderResposta = true;
     await guardar();
@@ -160,17 +203,24 @@ void main() {
     expect(socket.filaImpressao.itens, hasLength(1));
   });
 
-  test('conflito preserva os dados e nao impede outro atendimento de sincronizar', () async {
+  test(
+      'conflito preserva os dados e nao impede outro atendimento de sincronizar',
+      () async {
     await guardar();
-    await guardar(alvo: const ContextoCarrinho(empresa: '32', tipo: 'comanda',
-        idAtendimento: '106', idRecurso: '6'));
+    await guardar(
+        alvo: const ContextoCarrinho(
+            empresa: '32',
+            tipo: 'comanda',
+            idAtendimento: '106',
+            idRecurso: '6'));
     conectado = true;
     conflito = true;
     await sync.tentarNovamente();
     final pendentes = await banco.operacoes(sync.escopo);
     expect(pendentes.single['estado'], 'conflito');
     expect(pendentes.single['atendimento'], '104');
-    expect(jsonDecode(pendentes.single['dados'] as String)['produtos'], hasLength(1));
+    expect(jsonDecode(pendentes.single['dados'] as String)['produtos'],
+        hasLength(1));
     expect(socket.filaImpressao.itens.single.id, 'impressao-106');
     final envios = tentativas.length;
     await sync.tentarNovamente();
@@ -180,10 +230,56 @@ void main() {
   test('reabrir o banco recupera os pedidos ainda nao enviados', () async {
     await guardar();
     final fila = await banco.operacoes(sync.escopo);
-    final outro = await BancoLocal.abrir(factory: databaseFactoryFfi,
-        path: '${pasta.path}/pedidos.db');
-    expect((await outro.operacoes(sync.escopo)).single['id'], fila.single['id']);
-    // A fabrica compartilha o handle do mesmo arquivo dentro do processo.
+    sync.dispose();
+    await banco.db.close();
+    banco = await BancoLocal.abrir(
+        factory: databaseFactoryFfi, path: '${pasta.path}/pedidos.db');
+    BancoLocal.instancia = banco;
+    sync = Sincronizador(api, usuario, socket, banco: banco);
+    await sync.configurar();
+    expect(
+        (await banco.operacoes(sync.escopo)).single['id'], fila.single['id']);
+    conectado = true;
+    await sync.tentarNovamente();
+    expect(aplicados, hasLength(1));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
+
+  test('erro ao gravar o carrinho reverte a inclusao na fila', () async {
+    final item =
+        produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha');
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(contexto, (itens) => itens.add(item));
+    await banco.db.execute(
+        "CREATE TEMP TRIGGER simular_disco_cheio BEFORE INSERT ON documentos "
+        "WHEN NEW.chave LIKE 'carrinhos:%' BEGIN SELECT RAISE(ABORT, 'disco cheio'); END");
+    await expectLater(
+        sync.guardarPedido(
+            contexto: contexto,
+            itens: [item],
+            idMesa: '0',
+            idComanda: '4',
+            idCliente: '0',
+            impressoes: []),
+        throwsA(isA<DatabaseException>()));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(
+        await ArmazenamentoCarrinhos.instancia.listar(contexto), hasLength(1));
+  });
+
+  test('arquivar conflito nao envia ou apaga o pedido', () async {
+    await guardar();
+    conectado = true;
+    conflito = true;
+    await sync.tentarNovamente();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    await sync.arquivarConflito(pendente['id'] as String);
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    final historico = await banco.db.query('operacoes');
+    expect(historico.single['estado'], 'arquivado');
+    expect(historico.single['dados'], pendente['dados']);
+    expect(aplicados, isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
   });
 
   test('mudanca de empresa nao envia a fila de outra conta', () async {
@@ -197,40 +293,98 @@ void main() {
     expect(await banco.operacoes(anterior), hasLength(1));
   });
 
-  test('carrinho alterado durante a finalizacao nao e apagado nem enfileirado', () async {
-    final item = produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha');
-    await ArmazenamentoCarrinhos.instancia.alterar(contexto, (itens) => itens.add(item));
-    final diferente = produto(id: '8', nome: 'Suco', codigo: '8', computador: 'Cozinha');
-    await expectLater(sync.guardarPedido(contexto: contexto, itens: [diferente],
-        idMesa: '0', idComanda: '4', idCliente: '0', impressoes: []), throwsStateError);
+  test('carrinho alterado durante a finalizacao nao e apagado nem enfileirado',
+      () async {
+    final item =
+        produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha');
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(contexto, (itens) => itens.add(item));
+    final diferente =
+        produto(id: '8', nome: 'Suco', codigo: '8', computador: 'Cozinha');
+    await expectLater(
+        sync.guardarPedido(
+            contexto: contexto,
+            itens: [diferente],
+            idMesa: '0',
+            idComanda: '4',
+            idCliente: '0',
+            impressoes: []),
+        throwsStateError);
     expect(await banco.operacoes(sync.escopo), isEmpty);
-    expect((await ArmazenamentoCarrinhos.instancia.listar(contexto)).single.id, '5');
+    expect((await ArmazenamentoCarrinhos.instancia.listar(contexto)).single.id,
+        '5');
   });
 
-  test('ACK de impressao impede recriar fila apos reinicio entre confirmacao e limpeza', () async {
-    final mensagem = jsonEncode({'idRequisicao': 'ack-1', 'tipoImpressao': '1'});
+  test(
+      'ACK de impressao impede recriar fila apos reinicio entre confirmacao e limpeza',
+      () async {
+    final mensagem =
+        jsonEncode({'idRequisicao': 'ack-1', 'tipoImpressao': '1'});
     await socket.filaImpressao.registrar([mensagem]);
     await socket.filaImpressao.confirmar('ack-1');
     await socket.filaImpressao.registrar([mensagem]);
     expect(socket.filaImpressao.itens, isEmpty);
   });
 
-  test('catalogo local permite pesquisa e pagina ainda nao consultadas na rede', () async {
+  test('catalogo local permite pesquisa e pagina ainda nao consultadas na rede',
+      () async {
     final itens = [
-      produto(id: '5', codigo: '5', nome: 'Quatro Queijos', computador: 'Cozinha').toMap(),
-      produto(id: '50', codigo: '50', nome: 'Atum', computador: 'Cozinha').toMap(),
+      produto(
+              id: '5',
+              codigo: '5',
+              nome: 'Quatro Queijos',
+              computador: 'Cozinha')
+          .toMap(),
+      produto(id: '50', codigo: '50', nome: 'Atum', computador: 'Cozinha')
+          .toMap(),
     ];
-    await banco.gravar('catalogo:${sync.escopo}', jsonEncode({'produtos': itens, 'detalhes': {}}));
-    final resposta = await api.cliente.get('produtos/listar.php', queryParameters: {
-      'pesquisa': '05', 'codigo_exato': 'Sim', 'empresa': '32',
-      'categoria': '0', 'id_usuario': '1', 'id_cliente': '0',
+    await banco.gravar('catalogo:${sync.escopo}',
+        jsonEncode({'produtos': itens, 'detalhes': {}}));
+    final resposta =
+        await api.cliente.get('produtos/listar.php', queryParameters: {
+      'pesquisa': '05',
+      'codigo_exato': 'Sim',
+      'empresa': '32',
+      'categoria': '0',
+      'id_usuario': '1',
+      'id_cliente': '0',
     });
     expect(resposta.data, hasLength(1));
     expect(resposta.data.single['codigo'], '5');
-    final todos = await api.cliente.get('produtos/listar_por_categoria.php', queryParameters: {
-      'categoria': '0', 'empresa': '32', 'id_usuario': '1', 'pagina': 1,
+    final todos = await api.cliente
+        .get('produtos/listar_por_categoria.php', queryParameters: {
+      'categoria': '0',
+      'empresa': '32',
+      'id_usuario': '1',
+      'pagina': 1,
     });
     expect(todos.data, hasLength(2));
     await Future<void>.delayed(const Duration(milliseconds: 30));
   });
+
+  for (final largura in [320.0, 430.0, 1024.0]) {
+    testWidgets('pendencias legiveis na largura $largura', (tester) async {
+      tester.view.physicalSize = Size(largura, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.runAsync(() async {
+        await guardar();
+        conectado = true;
+        conflito = true;
+        await sync.tentarNovamente();
+      });
+      await tester.pumpWidget(MaterialApp(
+          home: MediaQuery(
+              data: MediaQueryData(
+                  size: Size(largura, 900),
+                  textScaler: const TextScaler.linear(1.5)),
+              child: PendenciasSincronizacao(sincronizador: sync))));
+      await tester.pumpAndSettle();
+      expect(find.text('Atendimento encerrado'), findsOneWidget);
+      expect(find.text('Sem cebola'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 }

@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 
 import 'banco_local.dart';
 import 'cache_consultas.dart';
+import 'execucao_segundo_plano.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
@@ -36,6 +37,7 @@ class Sincronizador extends ChangeNotifier {
   bool _solicitada = false;
   DateTime? ultimaAtualizacao;
   DateTime? _ultimoCatalogo;
+  final Map<String, DateTime> _detalhesAtualizados = {};
   List<Map<String, Object?>> pendencias = [];
   void Function()? aoAtualizarTelas;
 
@@ -43,12 +45,15 @@ class Sincronizador extends ChangeNotifier {
       : banco = banco ?? BancoLocal.instancia!;
 
   bool get sincronizando => _emAndamento != null;
-  int get conflitos => pendencias.where((e) => e['estado'] == 'conflito').length;
+  int get conflitos =>
+      pendencias.where((e) => e['estado'] == 'conflito').length;
 
   void iniciar() {
     instancia = this;
     usuario.addListener(_sessaoMudou);
     socket.addListener(_socketMudou);
+    socket.aoAtualizarDados = _dadosMudaram;
+    api.cache?.aoAtualizar = () => aoAtualizarTelas?.call();
     _timer ??= Timer.periodic(const Duration(seconds: 15), (_) => solicitar());
     solicitar();
   }
@@ -64,6 +69,16 @@ class Sincronizador extends ChangeNotifier {
     _notificar();
     solicitar();
   }
+
+  void _dadosMudaram(String tipo) {
+    if (['Produto', 'Produtos', 'Cardapio', 'Categoria', 'Categorias']
+        .contains(tipo)) {
+      _ultimoCatalogo = null;
+    }
+    if (['Mesa', 'Comanda'].contains(tipo)) _detalhesAtualizados.clear();
+    solicitar();
+  }
+
   bool _socketConectado = false;
   void _socketMudou() {
     if (socket.connected && !_socketConectado) solicitar();
@@ -77,8 +92,8 @@ class Sincronizador extends ChangeNotifier {
   }
 
   Future<void> configurar() => _configurando ??= _configurar().whenComplete(() {
-    _configurando = null;
-  });
+        _configurando = null;
+      });
 
   Future<void> _configurar() async {
     final conta = usuario.usuario;
@@ -97,13 +112,14 @@ class Sincronizador extends ChangeNotifier {
     servidor = url;
     destino = conexao == null ? '' : '${conexao.servidor}:${conexao.porta}';
     banco.servidor = url;
-    await banco.migrarPreferencia(ArmazenamentoCarrinhos.chavePreferencias,
-        banco.chaveCarrinhos);
+    await banco.migrarPreferencia(
+        ArmazenamentoCarrinhos.chavePreferencias, banco.chaveCarrinhos);
     if (!identical(conta, usuario.usuario) || _descartado) return;
     api.cache?.escopo = escopo;
     api.cache?.servidor = servidor;
     api.cache?.empresa = conta.empresa ?? '';
     _ultimoCatalogo = null;
+    _detalhesAtualizados.clear();
     catalogoPronto = await banco.ler('catalogo:$escopo') != null;
     pendencias = await banco.operacoes(escopo);
     _notificar();
@@ -119,29 +135,42 @@ class Sincronizador extends ChangeNotifier {
     bool recorrentes = false,
   }) async {
     await configurar();
-    if (escopo.isEmpty || contexto.empresa != usuario.usuario?.empresa ||
+    if (escopo.isEmpty ||
+        contexto.empresa != usuario.usuario?.empresa ||
         !['mesa', 'comanda'].contains(contexto.tipo)) {
       throw StateError('O atendimento nao pertence a esta conexao.');
     }
     final estadoSalvo = await banco.ler('estado:$escopo');
-    final atendimento = estadoSalvo == null ? null :
-        (jsonDecode(estadoSalvo)['atendimentos'] as Map?)?[contexto.idAtendimento];
-    if (atendimento == null || atendimento['versao'] == null) {
+    final atendimento = estadoSalvo == null
+        ? null
+        : (jsonDecode(estadoSalvo)['atendimentos']
+            as Map?)?[contexto.idAtendimento];
+    final versao =
+        await banco.ler('versao:$escopo:${contexto.idAtendimento}') ??
+            atendimento?['versao'];
+    if (versao == null) {
       throw StateError('Aguarde a primeira sincronizacao deste atendimento.');
     }
     await ArmazenamentoCarrinhos.instancia.finalizarDuravel(
-      escopo: escopo, contexto: contexto, itens: itens,
+      escopo: escopo,
+      contexto: contexto,
+      itens: itens,
       dados: {
         'produtos': itens.map((e) => e.toMap()).toList(),
         'id_comanda_pedido': contexto.idAtendimento,
-        'versao_atendimento': atendimento['versao'],
-        'id_comanda': idComanda, 'id_mesa': idMesa,
-        'tipo': contexto.tipo, 'id_cliente': idCliente,
-        'empresa': contexto.empresa, 'id_usuario': usuario.usuario!.id,
+        'versao_atendimento': versao,
+        'id_comanda': idComanda,
+        'id_mesa': idMesa,
+        'tipo': contexto.tipo,
+        'id_cliente': idCliente,
+        'empresa': contexto.empresa,
+        'id_usuario': usuario.usuario!.id,
       },
-      impressoes: impressoes, destino: destino, recorrentes: recorrentes,
+      impressoes: impressoes,
+      destino: destino,
+      recorrentes: recorrentes,
     );
-    pendencias = await banco.operacoes(escopo);
+    await _recarregarPendencias();
     _notificar();
     unawaited(enviarPendentes());
   }
@@ -157,26 +186,32 @@ class Sincronizador extends ChangeNotifier {
   }
 
   Options _opcoes(String url) => Options(
-    extra: {'semCache': true, 'servidorFixo': url},
-    sendTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 15),
-  );
+        extra: {'semCache': true, 'servidorFixo': url},
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      );
 
   Future<void> enviarPendentes() => _enviando ??= () async {
-    try {
-      await configurar();
-      if (escopo.isNotEmpty) await _enviarPendentes(escopo, servidor);
-    } on DioException catch (e) {
-      if (CacheConsultas.falhaDeConexao(e)) online = false;
-      else erro = 'Nao foi possivel enviar os pedidos. Verifique o servidor.';
-    } catch (_) {
-      erro = 'O envio ficou pendente. Os pedidos continuam salvos.';
-    } finally {
-      await _recarregarPendencias();
-      _enviando = null;
-      _notificar();
-    }
-  }();
+        try {
+          await configurar();
+          if (escopo.isNotEmpty) {
+            await ExecucaoSegundoPlano.executar(
+                () => _enviarPendentes(escopo, servidor));
+          }
+        } on DioException catch (e) {
+          if (CacheConsultas.falhaDeConexao(e)) {
+            online = false;
+          } else {
+            erro = 'Nao foi possivel enviar os pedidos. Verifique o servidor.';
+          }
+        } catch (_) {
+          erro = 'O envio ficou pendente. Os pedidos continuam salvos.';
+        } finally {
+          await _recarregarPendencias();
+          _enviando = null;
+          _notificar();
+        }
+      }();
 
   Future<void> _sincronizar() async {
     String? alvo;
@@ -205,7 +240,8 @@ class Sincronizador extends ChangeNotifier {
       ultimaAtualizacao = DateTime.now();
       aoAtualizarTelas?.call();
       if (_ultimoCatalogo == null ||
-          DateTime.now().difference(_ultimoCatalogo!) > const Duration(minutes: 2)) {
+          DateTime.now().difference(_ultimoCatalogo!) >
+              const Duration(minutes: 2)) {
         await _carregarCatalogo(alvo, url, empresa, idUsuario);
       }
       await socket.processarImpressoesPendentes();
@@ -219,7 +255,9 @@ class Sincronizador extends ChangeNotifier {
       }
     } catch (e) {
       if (alvo != null && alvo != escopo) return;
-      erro = e is StateError ? e.message.toString() : 'Nao foi possivel sincronizar.';
+      erro = e is StateError
+          ? e.message.toString()
+          : 'Nao foi possivel sincronizar.';
     } finally {
       await _recarregarPendencias();
       _notificar();
@@ -233,7 +271,8 @@ class Sincronizador extends ChangeNotifier {
       final itens = await banco.operacoes(alvo);
       if (alvo == escopo && !_descartado) pendencias = itens;
     } catch (_) {
-      erro = 'Nao foi possivel acessar os pedidos salvos. Verifique o armazenamento do aparelho.';
+      erro =
+          'Nao foi possivel acessar os pedidos salvos. Verifique o armazenamento do aparelho.';
     }
   }
 
@@ -243,6 +282,20 @@ class Sincronizador extends ChangeNotifier {
         whereArgs: [id, escopo, 'conflito']);
     await _recarregarPendencias();
     _notificar();
+  }
+
+  Future<List<Map<String, dynamic>>> rascunhosBloqueados() async {
+    final dados =
+        jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}') as Map;
+    return dados.values
+        .whereType<Map>()
+        .where((r) =>
+            r['empresa'] == usuario.usuario?.empresa &&
+            (r['encerrado'] == true || r['bloqueado'] == true) &&
+            ((r['itens'] as List? ?? []).isNotEmpty ||
+                (r['recorrentes'] as List? ?? []).isNotEmpty))
+        .map((r) => Map<String, dynamic>.from(r))
+        .toList();
   }
 
   Future<void> _enviarPendentes(String alvo, String url) async {
@@ -266,59 +319,90 @@ class Sincronizador extends ChangeNotifier {
         Response resposta;
         try {
           resposta = await api.cliente.post('sincronizacao/operacao.php',
-              data: jsonEncode({'id_operacao': id, 'acao': op['acao'],
-                'empresa': dados['empresa'], 'id_usuario': dados['id_usuario'],
-                'dados': dados}), options: _opcoes(url));
+              data: jsonEncode({
+                'id_operacao': id,
+                'acao': op['acao'],
+                'empresa': dados['empresa'],
+                'id_usuario': dados['id_usuario'],
+                'dados': dados
+              }),
+              options: _opcoes(url));
         } on DioException catch (e) {
           if (e.response?.statusCode == 409 || e.response?.statusCode == 422) {
             final mensagem = e.response?.data;
-            await banco.atualizarOperacao(id, {'estado': 'conflito',
-              'erro': mensagem is Map ? mensagem['mensagem']?.toString() :
-                  'O atendimento mudou. Confira este pedido com o responsavel.'});
+            await banco.atualizarOperacao(id, {
+              'estado': 'conflito',
+              'erro': mensagem is Map
+                  ? mensagem['mensagem']?.toString()
+                  : 'O atendimento mudou. Confira este pedido com o responsavel.'
+            });
             bloqueados.add(atendimento);
             continue;
           }
           await banco.atualizarOperacao(id, {
-            'proxima': DateTime.now().add(Duration(
-                seconds: (2 * (1 << tentativas.clamp(0, 5))).clamp(2, 60)))
+            'proxima': DateTime.now()
+                .add(Duration(
+                    seconds: (2 * (1 << tentativas.clamp(0, 5))).clamp(2, 60)))
                 .millisecondsSinceEpoch,
           });
           rethrow;
         }
         final resultado = resposta.data;
         // Exige o protocolo e o mesmo recibo, inclusive depois de resposta perdida.
-        if (resultado is! Map || resultado['protocolo'] != 1 ||
-            resultado['id_operacao'] != id || resultado['sucesso'] != true) {
+        if (resultado is! Map ||
+            resultado['protocolo'] != 1 ||
+            resultado['id_operacao'] != id ||
+            resultado['sucesso'] != true) {
           throw StateError('O servidor nao confirmou o pedido com seguranca.');
         }
-        await banco.atualizarOperacao(id, {'estado': 'registrado',
-          'resposta': jsonEncode(resultado), 'erro': null, 'proxima': 0});
+        await banco.atualizarOperacao(id, {
+          'estado': 'registrado',
+          'resposta': jsonEncode(resultado),
+          'erro': null,
+          'proxima': 0
+        });
       }
       if (alvo != escopo || usuario.usuario == null) return;
-      final mensagens = List<String>.from(jsonDecode(op['impressoes'] as String));
+      final mensagens =
+          List<String>.from(jsonDecode(op['impressoes'] as String));
       // O comprovante so entra na fila depois do commit confirmado no servidor.
-      await socket.filaImpressao.registrar(mensagens, servidor: op['destino'] as String);
+      await socket.filaImpressao
+          .registrar(mensagens, servidor: op['destino'] as String);
       await banco.atualizarOperacao(id, {'estado': 'concluido', 'erro': null});
-      socket.write(jsonEncode({'tipo':
-          jsonDecode(op['dados'] as String)['tipo'] == 'mesa' ? 'Mesa' : 'Comanda'}));
+      _detalhesAtualizados.remove(atendimento);
+      socket.write(jsonEncode({
+        'tipo': jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
+            ? 'Mesa'
+            : 'Comanda'
+      }));
       await socket.processarImpressoesPendentes();
     }
   }
 
   Future<void> _atualizarConsultas(
       String alvo, String url, String empresa, String idUsuario) async {
-    for (final rota in ['mesas/listar.php', 'comandas/listar.php',
-      'categorias/listar.php', 'config_bigchef/listar.php',
-      'comandas/listar_clientes.php', 'comandas/listar_mesas.php']) {
+    for (final rota in [
+      'mesas/listar.php',
+      'comandas/listar.php',
+      'categorias/listar.php',
+      'config_bigchef/listar.php',
+      'comandas/listar_clientes.php',
+      'comandas/listar_mesas.php'
+    ]) {
       if (alvo != escopo) return;
       final resposta = await api.cliente.get(rota,
-          queryParameters: {'empresa': empresa,
-            if (!['categorias/listar.php', 'config_bigchef/listar.php'].contains(rota)) 'pesquisa': ''},
+          queryParameters: {
+            'empresa': empresa,
+            if (!['categorias/listar.php', 'config_bigchef/listar.php']
+                .contains(rota))
+              'pesquisa': ''
+          },
           options: _opcoes(url));
       if (resposta.data is! List && resposta.data is! Map) {
         throw StateError('Lista invalida recebida do servidor.');
       }
-      await banco.guardarConsulta(alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
+      await banco.guardarConsulta(
+          alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
       if (rota == 'mesas/listar.php' || rota == 'comandas/listar.php') {
         final tipo = rota.startsWith('mesas/') ? 'Mesa' : 'Comanda';
         final campo = tipo == 'Mesa' ? 'mesas' : 'comandas';
@@ -326,15 +410,30 @@ class Sincronizador extends ChangeNotifier {
           for (final recurso in (grupo[campo] as List? ?? [])) {
             final id = recurso['idComandaPedido']?.toString() ?? '';
             if (id.isEmpty || id == '0' || alvo != escopo) continue;
+            final ultima = _detalhesAtualizados[id];
+            if (ultima != null &&
+                DateTime.now().difference(ultima) <
+                    const Duration(seconds: 60)) {
+              continue;
+            }
             for (final mostrar in ['Não', 'Sim']) {
-              final detalhe = await api.cliente.get('cardapio/listar_por_id.php',
-                queryParameters: {'id': id, 'codigoQrcode': 'null', 'empresa': empresa,
-                  'id_usuario': idUsuario, 'tipo': tipo, 'mostrar_itens': mostrar},
-                options: _opcoes(url));
+              final detalhe =
+                  await api.cliente.get('cardapio/listar_por_id.php',
+                      queryParameters: {
+                        'id': id,
+                        'codigoQrcode': 'null',
+                        'empresa': empresa,
+                        'id_usuario': idUsuario,
+                        'tipo': tipo,
+                        'mostrar_itens': mostrar
+                      },
+                      options: _opcoes(url));
               if (detalhe.data is Map && detalhe.data['id']?.toString() == id) {
-                await banco.guardarConsulta(alvo, CacheConsultas.chave(detalhe.requestOptions), detalhe.data);
+                await banco.guardarConsulta(alvo,
+                    CacheConsultas.chave(detalhe.requestOptions), detalhe.data);
               }
             }
+            _detalhesAtualizados[id] = DateTime.now();
           }
         }
       }
@@ -344,11 +443,17 @@ class Sincronizador extends ChangeNotifier {
   Future<void> _carregarCatalogo(
       String alvo, String url, String empresa, String idUsuario) async {
     final produtos = <Map<String, dynamic>>[];
-    for (var pagina = 1; ; pagina++) {
+    for (var pagina = 1;; pagina++) {
       if (alvo != escopo || _descartado) return;
-      final resposta = await api.cliente.get('produtos/listar_por_categoria.php',
-          queryParameters: {'categoria': '0', 'empresa': empresa,
-            'id_usuario': idUsuario, 'pagina': pagina}, options: _opcoes(url));
+      final resposta = await api.cliente.get(
+          'produtos/listar_por_categoria.php',
+          queryParameters: {
+            'categoria': '0',
+            'empresa': empresa,
+            'id_usuario': idUsuario,
+            'pagina': pagina
+          },
+          options: _opcoes(url));
       if (resposta.data is! List) throw StateError('Cardapio invalido.');
       final itens = List<Map<String, dynamic>>.from(resposta.data as List);
       produtos.addAll(itens);
@@ -356,26 +461,49 @@ class Sincronizador extends ChangeNotifier {
     }
     final detalhes = <String, dynamic>{};
     for (final produto in produtos) {
-      final tamanhos = <String>{'0',
-        ...(produto['tamanhosPizza'] as List? ?? []).map((t) => t['id'].toString())};
+      final tamanhos = <String>{
+        '0',
+        ...(produto['tamanhosPizza'] as List? ?? [])
+            .map((t) => t['id'].toString())
+      };
       for (final tamanho in tamanhos) {
         if (alvo != escopo || _descartado) return;
         final resposta = await api.cliente.get('produtos/listar_por_id.php',
-          queryParameters: {'id': produto['id'], 'empresa': empresa,
-            'id_usuario': idUsuario, 'id_tamanhos_pizza': tamanho}, options: _opcoes(url));
+            queryParameters: {
+              'id': produto['id'],
+              'empresa': empresa,
+              'id_usuario': idUsuario,
+              'id_tamanhos_pizza': tamanho
+            },
+            options: _opcoes(url));
         if (resposta.data is! Map || resposta.data['id'] != produto['id']) {
-          throw StateError('Nao foi possivel preparar todas as opcoes do cardapio.');
+          throw StateError(
+              'Nao foi possivel preparar todas as opcoes do cardapio.');
         }
         detalhes['${produto['id']}:$tamanho'] = resposta.data;
         if (tamanho == '0') detalhes['${produto['id']}:'] = resposta.data;
       }
     }
-    if (alvo != escopo) return;
-    final catalogo = jsonEncode({'produtos': produtos, 'detalhes': detalhes});
+    if (alvo != escopo || _descartado) return;
+    final categorias = await api.cliente.get('categorias/listar.php',
+        queryParameters: {'empresa': empresa}, options: _opcoes(url));
+    if (alvo != escopo || _descartado) return;
+    final especiais = <String, dynamic>{
+      for (final categoria in categorias.data as List)
+        if (categoria['produtosPromocao'] is List)
+          categoria['id'].toString(): categoria['produtosPromocao'],
+    };
+    final catalogo = jsonEncode({
+      'produtos': produtos,
+      'detalhes': detalhes,
+      'categorias': categorias.data,
+      'categoriasEspeciais': especiais
+    });
     final mudou = await banco.ler('catalogo:$alvo') != catalogo;
     await banco.db.transaction((tx) async {
       await BancoLocal.gravarDocumento(tx, 'catalogo:$alvo', catalogo);
-      await tx.delete('consultas', where: 'escopo = ? AND chave LIKE ?',
+      await tx.delete('consultas',
+          where: 'escopo = ? AND chave LIKE ?',
           whereArgs: [alvo, '["produtos/%']);
     });
     _ultimoCatalogo = DateTime.now();
@@ -386,13 +514,17 @@ class Sincronizador extends ChangeNotifier {
 
   Future<void> tentarNovamente() async {
     for (final op in await banco.operacoes(escopo)) {
-      if (op['estado'] != 'conflito') await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+      if (op['estado'] != 'conflito') {
+        await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+      }
     }
     await sincronizar();
     await enviarPendentes();
   }
 
-  void _notificar() { if (!_descartado) notifyListeners(); }
+  void _notificar() {
+    if (!_descartado) notifyListeners();
+  }
 
   @override
   void dispose() {
@@ -400,6 +532,8 @@ class Sincronizador extends ChangeNotifier {
     _timer?.cancel();
     usuario.removeListener(_sessaoMudou);
     socket.removeListener(_socketMudou);
+    socket.aoAtualizarDados = null;
+    api.cache?.aoAtualizar = null;
     if (identical(instancia, this)) instancia = null;
     revisaoCatalogo.dispose();
     super.dispose();

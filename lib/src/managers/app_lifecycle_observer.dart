@@ -45,13 +45,16 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   }
 
   Future<void> _retomar() => _conectando ??= () async {
-    final conexao = await ConfigSharedPreferences().getConexao();
-    if (!mounted) return;
-    sincronizador.solicitar();
-    if (conexao != null && conexao.servidor.isNotEmpty && conexao.porta.isNotEmpty) {
-      await server.connect(conexao.servidor, conexao.porta);
-    }
-  }().whenComplete(() => _conectando = null);
+        final conexao = await ConfigSharedPreferences().getConexao();
+        if (!mounted) return;
+        sincronizador.solicitar();
+        if (conexao != null &&
+            conexao.servidor.isNotEmpty &&
+            conexao.porta.isNotEmpty) {
+          await server.connect(conexao.servidor, conexao.porta);
+        }
+      }()
+          .whenComplete(() => _conectando = null);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

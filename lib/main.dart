@@ -41,24 +41,29 @@ class _FalhaArmazenamentoState extends State<FalhaArmazenamento> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(child: Center(child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.storage_outlined, size: 40),
-        const SizedBox(height: 16),
-        const Text('Nao foi possivel abrir os dados salvos. Verifique o espaco livre do aparelho e tente novamente.',
-            textAlign: TextAlign.center),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: tentando ? null : () async {
-            setState(() => tentando = true);
-            await iniciarAplicativo();
-            if (mounted) setState(() => tentando = false);
-          },
-          icon: const Icon(Icons.refresh),
-          label: const Text('Tentar novamente'),
-        ),
-      ]),
-    ))),
-  );
+        body: SafeArea(
+            child: Center(
+                child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.storage_outlined, size: 40),
+            const SizedBox(height: 16),
+            const Text(
+                'Nao foi possivel abrir os dados salvos. Verifique o espaco livre do aparelho e tente novamente.',
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: tentando
+                  ? null
+                  : () async {
+                      setState(() => tentando = true);
+                      await iniciarAplicativo();
+                      if (mounted) setState(() => tentando = false);
+                    },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tentar novamente'),
+            ),
+          ]),
+        ))),
+      );
 }

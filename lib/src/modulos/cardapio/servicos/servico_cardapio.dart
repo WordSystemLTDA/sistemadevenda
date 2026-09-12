@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -184,6 +185,14 @@ class ServicoCardapio {
 
   Future<({bool sucesso, String mensagem})> fecharAbrirComanda(
       String idComandaPedido, String status) async {
+    final sincronizador = Sincronizador.instancia;
+    if (status != 'Andamento' && sincronizador != null) {
+      final pendencias = await sincronizador.banco.operacoes(sincronizador.escopo);
+      if (pendencias.any((op) => op['atendimento'] == idComandaPedido)) {
+        return (sucesso: false,
+            mensagem: 'Este atendimento tem pedidos aguardando envio ou conferencia. Resolva as pendencias antes de fechar.');
+      }
+    }
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
     try {

@@ -59,6 +59,8 @@ class Server extends ChangeNotifier {
             )));
   }
 
+  void Function(String tipo)? aoAtualizarDados;
+
   void _avisarImpressaoPendente() {
     if (_descartado || filaImpressao.itens.isEmpty) return;
     final context = navigatorKey?.currentContext;
@@ -783,6 +785,7 @@ class Server extends ChangeNotifier {
       }
 
       AtualizacaoDeTela().call(dados);
+      aoAtualizarDados?.call(dados.tipo);
       notifyListeners();
     } catch (e, stackTrace) {
       log('erro em onData', error: e, stackTrace: stackTrace);

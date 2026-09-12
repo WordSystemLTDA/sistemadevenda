@@ -38,7 +38,6 @@ class ServicoComandas {
   }
 
   Future<List<ModeloComanda>> listarLista(String pesquisa) async {
-    final consulta = ++_consultaCarrinhos;
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get(
@@ -53,9 +52,7 @@ class ServicoComandas {
       final comandas = List<ModeloComanda>.from(response.data.map((elemento) {
         return ModeloComanda.fromMap(elemento);
       }));
-      if (consulta == _consultaCarrinhos) {
-        await _sincronizarCarrinhos(empresa ?? '', comandas);
-      }
+      // A lista de cadastro nao informa a ocupacao real dos atendimentos.
       return comandas;
     }
 

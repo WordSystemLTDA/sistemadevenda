@@ -106,7 +106,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     try {
       final novas = List<ModeloCategoria>.of(await provedor.listarCategorias());
       if (!mounted || jsonEncode(novas.map((e) => e.toMap()).toList()) ==
-          jsonEncode(_categorias.map((e) => e.toMap()).toList())) return;
+          jsonEncode(_categorias.map((e) => e.toMap()).toList())) {
+        return;
+      }
       final idAtual = _categorias.isEmpty ? null : _categorias[indexTabBar].id;
       final index = novas.indexWhere((e) => e.id == idAtual);
       final anterior = _tabController;
@@ -115,8 +117,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
         _categorias = novas;
         indexTabBar = index < 0 ? 0 : index;
         _tabController = novas.isEmpty ? null :
-            TabController(length: novas.length, initialIndex: indexTabBar, vsync: this)
-              ..addListener(_aoTrocarCategoria);
+            (TabController(length: novas.length, initialIndex: indexTabBar, vsync: this)
+              ..addListener(_aoTrocarCategoria));
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => anterior?.dispose());
     } catch (_) {

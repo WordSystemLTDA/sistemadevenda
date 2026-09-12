@@ -72,8 +72,10 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
 
   void sair() async {
     await UsuarioServico.sair(context);
-    if (mounted) Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const PaginaLogin()), (_) => false);
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const PaginaLogin()), (_) => false);
+    }
   }
 
   void verificarVersaoApp(String versaoApp, String versaoAppIos) async {

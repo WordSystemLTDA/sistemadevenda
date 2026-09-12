@@ -33,7 +33,9 @@ class AppWidget extends StatelessWidget {
               navigatorKey: navigatorKey,
               builder: (context, child) => Column(children: [
                 Expanded(child: child ?? const SizedBox.shrink()),
-                SafeArea(top: false, child: EstadoSincronizacao(navigatorKey: navigatorKey)),
+                SafeArea(
+                    top: false,
+                    child: EstadoSincronizacao(navigatorKey: navigatorKey)),
               ]),
               routes: {
                 'login': (context) {
