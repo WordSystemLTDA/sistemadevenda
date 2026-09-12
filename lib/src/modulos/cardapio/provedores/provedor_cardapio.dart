@@ -4,6 +4,8 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
@@ -188,4 +190,18 @@ class ProvedorCardapio extends ChangeNotifier {
 
     return 0;
   }
+
+  List<ModeloDadosOpcoesPacotes> saboresParaCarrinho() => ValoresPizza.ratear(
+      saboresPizzaSelecionados
+          .map((sabor) => ModeloDadosOpcoesPacotes(
+                id: sabor.id,
+                nome: sabor.nome,
+                codigo: sabor.codigo,
+                imprimirCodigoProdutoPreparo:
+                    sabor.imprimirCodigoProdutoPreparo,
+                valor: valorSaborPizza(sabor),
+                quantimaximaselecao: '1/${saboresPizzaSelecionados.length}',
+              ))
+          .toList(),
+      usuarioProvedor.usuario?.configuracoes?.modelovalortamanhopizza);
 }

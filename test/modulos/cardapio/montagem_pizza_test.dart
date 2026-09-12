@@ -93,10 +93,14 @@ Modelowordprodutos sabor(String id, String categoria, String valorGrande) =>
     );
 
 class ConfiguracoesTeste extends Fake implements Modelowordconfiguracoes {
-  ConfiguracoesTeste(this.modelovalortamanhopizza);
+  ConfiguracoesTeste(this.modelovalortamanhopizza, {String? modeloBorda})
+      : modelovaloradicionalpizza = modeloBorda ?? modelovalortamanhopizza;
 
   @override
   final String modelovalortamanhopizza;
+
+  @override
+  final String modelovaloradicionalpizza;
 }
 
 class CategoriasTeste extends Fake implements ServicosCategoria {

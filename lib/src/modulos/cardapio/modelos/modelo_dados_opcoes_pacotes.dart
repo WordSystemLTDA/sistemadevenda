@@ -7,6 +7,7 @@ class ModeloDadosOpcoesPacotes {
   final String? codigo;
   final String imprimirCodigoProdutoPreparo;
   final String? valor;
+  final String? valorOriginal;
   final String? foto;
   final String? quantimaximaselecao;
   final String? habilsepardelivery;
@@ -20,6 +21,7 @@ class ModeloDadosOpcoesPacotes {
     this.codigo,
     this.imprimirCodigoProdutoPreparo = 'Não',
     this.valor,
+    this.valorOriginal,
     this.foto,
     this.quantimaximaselecao,
     this.habilsepardelivery,
@@ -35,6 +37,7 @@ class ModeloDadosOpcoesPacotes {
       'codigo': codigo,
       'imprimirCodigoProdutoPreparo': imprimirCodigoProdutoPreparo,
       'valor': valor,
+      if (valorOriginal != null) 'valorOriginal': valorOriginal,
       'foto': foto,
       'quantimaximaselecao': quantimaximaselecao,
       'habilsepardelivery': habilsepardelivery,
@@ -50,6 +53,7 @@ class ModeloDadosOpcoesPacotes {
       nome: map['nome'] as String,
       codigo: map['codigo'] != null ? map['codigo'] as String : null,
       valor: map['valor'] != null ? map['valor'] as String : null,
+      valorOriginal: map['valorOriginal']?.toString(),
       foto: map['foto'] != null ? map['foto'] as String : null,
       quantimaximaselecao: map['quantimaximaselecao'] != null
           ? map['quantimaximaselecao'] as String

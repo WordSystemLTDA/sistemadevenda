@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/titulo_opcoes_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -450,12 +451,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (e.dados != null && e.dados!.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo,
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
+                        TituloOpcoesCarrinho(item: item, grupo: e),
                         ListView.builder(
                           padding: const EdgeInsets.only(
                               left: 10, top: 5, right: 10, bottom: 5),

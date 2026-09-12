@@ -292,7 +292,7 @@ void main() {
     edicao.produto.selecionarItem(retirada.dados!.first, retirada, false, '0');
     edicao.observacao = 'Cortar em 8 pedaços';
     expect(edicao.alterado, isTrue);
-    expect(edicao.valorUnitario, 75);
+    expect(edicao.valorUnitario, 81);
     final salvo = await edicao.concluir();
     final dados = salvo.opcoesPacotesListaFinal!;
     expect(dados.firstWhere((o) => o.id == 6).dados!.single.nome, 'Cheddar');
@@ -304,9 +304,9 @@ void main() {
     final reaberta = criar(salvo);
     addTearDown(reaberta.dispose);
     await reaberta.carregar(configuracao: configBigchef());
-    expect(reaberta.valorUnitario, 75);
+    expect(reaberta.valorUnitario, 81);
     expect(reaberta.cardapio.limiteSaborBordaSelecionado, 2);
-    expect((await reaberta.concluir()).valorVenda, '75.00');
+    expect((await reaberta.concluir()).valorVenda, '81.00');
   });
 
   for (final maior in [false, true]) {
@@ -329,7 +329,8 @@ void main() {
           salvo.opcoesPacotesListaFinal!.firstWhere((o) => o.id == 10).dados!;
       expect(sabores.map((d) => d.nome), ['Calabresa especial', 'Chocolate']);
       expect(sabores.map((d) => d.quantimaximaselecao), ['1/2', '1/2']);
-      expect(sabores.map((d) => d.valor), ['35.00', '45.00']);
+      expect(sabores.map((d) => d.valor),
+          maior ? ['45.00', '45.00'] : ['35.00', '45.00']);
       expect(salvo.quantidade, 2);
     });
   }

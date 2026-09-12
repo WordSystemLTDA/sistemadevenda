@@ -1,10 +1,9 @@
 // ignore_for_file: unnecessary_getters_setters
 
-import 'dart:math' as math;
-
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:flutter/material.dart';
 
@@ -244,38 +243,26 @@ class ProvedorProduto extends ChangeNotifier {
   }
 
   double calcularPrecoBorda() {
-    var modelovalortamanhopizza =
-        usuarioProvedor.usuario!.configuracoes!.modelovalortamanhopizza ?? '';
     final bordasSelecionadas = opcoesPacotesListaFinal
             .where((element) => element.id == 6)
             .firstOrNull
             ?.dados ??
         [];
-    final limiteSelecionado = provedorCardapio.limiteSaborBordaSelecionado;
-
-    if (limiteSelecionado <= 0 || bordasSelecionadas.isEmpty) {
-      return 0;
-    }
-
-    if (modelovalortamanhopizza == 'media') {
-      var somaDosProdutosSelecionados = double.parse(bordasSelecionadas.fold(
-        '0',
-        (previousValue, element) {
-          return (double.parse(previousValue) +
-                  double.parse(element.valor ?? '0'))
-              .toStringAsFixed(2);
-        },
-      ));
-
-      var media = somaDosProdutosSelecionados / limiteSelecionado;
-
-      return media;
-    } else if (modelovalortamanhopizza == 'maior') {
-      return bordasSelecionadas
-          .map((e) => double.parse(e.valor ?? '0'))
-          .reduce(math.max);
-    }
-
-    return 0;
+    return ValoresPizza.calcular(bordasSelecionadas, modeloValorBorda);
   }
+
+  String get modeloValorBorda =>
+      provedorCardapio.configBigchef?.modeloValorAdicionalPizza ??
+      usuarioProvedor.usuario?.configuracoes?.modelovaloradicionalpizza ??
+      'media';
+
+  List<ModeloOpcoesPacotes> opcoesParaCarrinho() =>
+      opcoesPacotesListaFinal.map((opcao) {
+        final copia = ModeloOpcoesPacotes.fromMap(opcao.toMap());
+        if (copia.id == 6) {
+          copia.dados =
+              ValoresPizza.ratear(copia.dados ?? [], modeloValorBorda);
+        }
+        return copia;
+      }).toList();
 }

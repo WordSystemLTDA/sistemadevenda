@@ -34,6 +34,7 @@ class Modelowordconfiguracoes {
   final String? nomePlanoDeTratamento;
   final String? ativarAgendTarefa;
   final String? modelovalortamanhopizza;
+  final String? modelovaloradicionalpizza;
   final String? modaladdmesa;
   final String? modaladdcomanda;
   final String? habilitarVerValorTotalNoApp;
@@ -71,6 +72,7 @@ class Modelowordconfiguracoes {
     this.nomePlanoDeTratamento,
     this.ativarAgendTarefa,
     this.modelovalortamanhopizza,
+    this.modelovaloradicionalpizza,
     this.modaladdmesa,
     this.modaladdcomanda,
     this.habilitarVerValorTotalNoApp,
@@ -110,6 +112,7 @@ class Modelowordconfiguracoes {
       'nomePlanoDeTratamento': nomePlanoDeTratamento,
       'ativarAgendTarefa': ativarAgendTarefa,
       'modelovalortamanhopizza': modelovalortamanhopizza,
+      'modelovaloradicionalpizza': modelovaloradicionalpizza,
       'modaladdmesa': modaladdmesa,
       'modaladdcomanda': modaladdcomanda,
       'habilitarVerValorTotalNoApp': habilitarVerValorTotalNoApp,
@@ -150,6 +153,7 @@ class Modelowordconfiguracoes {
       nomePlanoDeTratamento: map['nomePlanoDeTratamento'] != null ? map['nomePlanoDeTratamento'] as String : null,
       ativarAgendTarefa: map['ativarAgendTarefa'] != null ? map['ativarAgendTarefa'] as String : null,
       modelovalortamanhopizza: map['modelovalortamanhopizza'] != null ? map['modelovalortamanhopizza'] as String : null,
+      modelovaloradicionalpizza: (map['modelovaloradicionalpizza'] ?? map['modelo_valor_adicional_pizza']) as String?,
       modaladdmesa: map['modaladdmesa'] != null ? map['modaladdmesa'] as String : null,
       modaladdcomanda: map['modaladdcomanda'] != null ? map['modaladdcomanda'] as String : null,
       habilitarVerValorTotalNoApp: map['habilitarVerValorTotalNoApp'] != null ? map['habilitarVerValorTotalNoApp'] as String : null,

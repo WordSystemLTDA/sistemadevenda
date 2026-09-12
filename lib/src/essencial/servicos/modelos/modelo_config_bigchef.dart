@@ -20,6 +20,7 @@ class ModeloConfigBigchef {
   final String valordiferenca;
   final String saborlimitedeborda;
   final String autenticarcomtag;
+  final String? modeloValorAdicionalPizza;
 
   ModeloConfigBigchef({
     required this.abrircomandadireto,
@@ -40,6 +41,7 @@ class ModeloConfigBigchef {
     required this.valordiferenca,
     required this.saborlimitedeborda,
     required this.autenticarcomtag,
+    this.modeloValorAdicionalPizza,
   });
 
   Map<String, dynamic> toMap() {
@@ -62,6 +64,7 @@ class ModeloConfigBigchef {
       'valordiferenca': valordiferenca,
       'saborlimitedeborda': saborlimitedeborda,
       'autenticarcomtag': autenticarcomtag,
+      'modelo_valor_adicional_pizza': modeloValorAdicionalPizza,
     };
   }
 
@@ -85,6 +88,7 @@ class ModeloConfigBigchef {
       valordiferenca: map['valordiferenca'] as String,
       saborlimitedeborda: map['saborlimitedeborda'] as String,
       autenticarcomtag: map['autenticarcomtag'] as String,
+      modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ?? map['modelovaloradicionalpizza']) as String?,
     );
   }
 

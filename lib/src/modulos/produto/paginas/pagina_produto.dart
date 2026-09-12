@@ -231,22 +231,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
             titulo:
                 'Sabores Pizza (${provedorCardapio.saboresPizzaSelecionados.length})',
             obrigatorio: false,
-            dados: provedorCardapio.saboresPizzaSelecionados
-                .map((e) => ModeloDadosOpcoesPacotes(
-                      id: e.id,
-                      nome: e.nome,
-                      codigo: e.codigo,
-                      imprimirCodigoProdutoPreparo:
-                          e.imprimirCodigoProdutoPreparo,
-                      valor: ((double.tryParse(
-                                      provedorCardapio.valorSaborPizza(e)) ??
-                                  0) /
-                              provedorCardapio.saboresPizzaSelecionados.length)
-                          .toStringAsFixed(2),
-                      quantimaximaselecao:
-                          '1/${provedorCardapio.saboresPizzaSelecionados.length}',
-                    ))
-                .toList()),
+            dados: provedorCardapio.saboresParaCarrinho()),
       );
     }
 
@@ -257,9 +242,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     }
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
     itemProduto!.observacao = obsController.text;
-
-    itemProduto!.opcoesPacotesListaFinal =
-        _provedorProduto.opcoesPacotesListaFinal;
 
     if (obsController.text.isNotEmpty) {
       _provedorProduto.opcoesPacotesListaFinal.insert(
@@ -281,6 +263,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         ),
       );
     }
+
+    itemProduto!.opcoesPacotesListaFinal =
+        _provedorProduto.opcoesParaCarrinho();
 
     if (widget.inserirEmItensRecorrentes != null) {
       widget.inserirEmItensRecorrentes!(itemProduto!);

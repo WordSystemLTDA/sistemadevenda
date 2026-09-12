@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
@@ -247,6 +248,13 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       produto.calcularValorVenda(false, '0');
       // Aplica apenas a diferenca da edicao, sem cobrar a montagem duas vezes.
       _composicaoInicial = produto.valorVenda;
+      final bordasOriginais = (original.opcoesPacotesListaFinal ?? [])
+          .where((o) => o.id == 6)
+          .firstOrNull;
+      if (pizza && bordasOriginais != null) {
+        _composicaoInicial += ValoresPizza.subtotal(original, bordasOriginais) -
+            produto.calcularPrecoBorda();
+      }
       _assinaturaInicial = _assinatura();
     } catch (error, stackTrace) {
       developer.log('Falha ao carregar produto ${original.id} para edição.',
@@ -357,23 +365,11 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
         titulo: 'Sabores Pizza (${sabores.length})',
         obrigatorio: false,
         dados: saboresAlterados
-            ? sabores
-                .map((s) => ModeloDadosOpcoesPacotes(
-                      id: s.id,
-                      nome: s.nome,
-                      codigo: s.codigo,
-                      imprimirCodigoProdutoPreparo:
-                          s.imprimirCodigoProdutoPreparo,
-                      quantimaximaselecao: '1/${sabores.length}',
-                      valor: (double.parse(cardapio.valorSaborPizza(s)) /
-                              sabores.length)
-                          .toStringAsFixed(2),
-                    ))
-                .toList()
+            ? cardapio.saboresParaCarrinho()
             : _saboresOriginais,
       ));
     }
-    montagem.addAll(produto.opcoesPacotesListaFinal);
+    montagem.addAll(produto.opcoesParaCarrinho());
     if (observacao.trim().isNotEmpty) {
       montagem.add(ModeloOpcoesPacotes(
         id: 11,
