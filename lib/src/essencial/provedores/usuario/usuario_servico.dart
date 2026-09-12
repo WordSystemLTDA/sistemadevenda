@@ -6,6 +6,8 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_modular/flutter_modular.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 
 class UsuarioServico {
   static Future<UsuarioModelo?> pegarUsuario(BuildContext context) async {
@@ -32,10 +34,11 @@ class UsuarioServico {
 
     // Limpe os dados do usuário nas SharedPreferences
     // prefs.remove(ChavesSharedPreferences.usuario);
-    prefs.clear();
+    await prefs.remove(ConfigSharedPreferences.usuario);
+    Modular.get<UsuarioProvedor>().setUsuario(null);
+    await Modular.get<Server>().disconnect();
 
     // Notifique o UsuarioProvider (se estiver usando Provider)
-    UsuarioProvedor().setUsuario(null);
     // Navigator.pushReplacementNamed(context, AppRotas.login);
   }
 

@@ -3,6 +3,7 @@ import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 
 UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 GlobalKey<NavigatorState>? navigatorKey = GlobalKey<NavigatorState>();
@@ -30,6 +31,10 @@ class AppWidget extends StatelessWidget {
               debugShowCheckedModeBanner: false,
               initialRoute: "login",
               navigatorKey: navigatorKey,
+              builder: (context, child) => Column(children: [
+                Expanded(child: child ?? const SizedBox.shrink()),
+                SafeArea(top: false, child: EstadoSincronizacao(navigatorKey: navigatorKey)),
+              ]),
               routes: {
                 'login': (context) {
                   return const PaginaLogin();

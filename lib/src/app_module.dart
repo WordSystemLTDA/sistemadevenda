@@ -28,6 +28,7 @@ import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:app/src/modulos/vendas/provedores/provedores_listar_vendas.dart';
 import 'package:app/src/modulos/vendas/servicos/servicos_listar_vendas.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 class AppModule extends Module {
   @override
@@ -35,6 +36,7 @@ class AppModule extends Module {
     i.addInstance(DioCliente());
     i.addSingleton(UsuarioProvedor.new);
     i.addSingleton(Server.new);
+    i.addSingleton(Sincronizador.new);
     i.addSingleton(ConfigProvider.new);
     i.addSingleton(ThemeController.new);
 

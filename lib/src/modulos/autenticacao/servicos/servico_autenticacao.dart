@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:app/src/essencial/api/conexao.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
@@ -14,8 +17,10 @@ class ServicoAutenticacao {
   final UsuarioProvedor usuarioProvedor;
   ServicoAutenticacao(this.dio, this.usuarioProvedor);
 
-  Future<bool> entrar(usuario, senha) async {
+  Future<bool> entrar(usuario, senha, {bool permitirSessaoSalva = false}) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final servidor = (await Apis().getConexao()).servidor;
+    final banco = BancoLocal.instancia;
 
     var campos = {
       "usuario": usuario,
@@ -37,12 +42,32 @@ class ServicoAutenticacao {
 
       if (response.statusCode == 200 && sucesso == true) {
         await prefs.setString(ConfigSharedPreferences.usuario, jsonEncode(dados));
+        await banco?.gravar('sessao:$servidor', jsonEncode({
+          'id': dados['id'], 'empresa': dados['empresa'], 'autorizada': true,
+        }));
         usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
         return sucesso;
       } else {
+        if (permitirSessaoSalva) await banco?.gravar('sessao:$servidor', '{"autorizada":false}');
         return false;
       }
-    } on DioException catch (_) {
+    } on DioException catch (erro) {
+      if (permitirSessaoSalva && [401, 403].contains(erro.response?.statusCode)) {
+        await banco?.gravar('sessao:$servidor', '{"autorizada":false}');
+      }
+      if (permitirSessaoSalva && CacheConsultas.falhaDeConexao(erro) && banco != null) {
+        final salvo = prefs.getString(ConfigSharedPreferences.usuario);
+        final autorizacao = await banco.ler('sessao:$servidor');
+        if (salvo != null && autorizacao != null) {
+          final dados = jsonDecode(salvo) as Map<String, dynamic>;
+          final sessao = jsonDecode(autorizacao) as Map<String, dynamic>;
+          if (sessao['autorizada'] == true && sessao['id'] == dados['id'] &&
+              sessao['empresa'] == dados['empresa'] && dados['email'] == usuario) {
+            usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
+            return true;
+          }
+        }
+      }
       return false;
     }
   }

@@ -56,7 +56,8 @@ class _PaginaLoginState extends State<PaginaLogin> {
     var usuario = await UsuarioServico.pegarUsuario(context);
 
     if (usuario != null) {
-      final sucesso = await _service.entrar(usuario.email, usuario.senha);
+      final sucesso = await _service.entrar(usuario.email, usuario.senha,
+          permitirSessaoSalva: true);
 
       if (sucesso) {
         if (mounted) {
@@ -69,9 +70,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
       }
     }
 
-    setState(() {
-      verificando = false;
-    });
+    if (mounted) setState(() => verificando = false);
   }
 
   @override

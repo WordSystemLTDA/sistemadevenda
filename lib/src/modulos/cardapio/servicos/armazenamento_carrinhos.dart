@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:flutter/foundation.dart';
@@ -27,13 +29,20 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     return resultado;
   }
 
-  Map<String, dynamic> _ler(SharedPreferences prefs) =>
-      Map<String, dynamic>.from(
-          jsonDecode(prefs.getString(chavePreferencias) ?? '{}') as Map);
+  Future<Map<String, dynamic>> _ler(SharedPreferences prefs) async {
+    final banco = BancoLocal.instancia;
+    final valor = banco == null
+        ? prefs.getString(chavePreferencias)
+        : await banco.ler(banco.chaveCarrinhos);
+    return Map<String, dynamic>.from(jsonDecode(valor ?? '{}') as Map);
+  }
 
   Future<void> _salvar(
       SharedPreferences prefs, Map<String, dynamic> dados) async {
-    if (!await prefs.setString(chavePreferencias, jsonEncode(dados))) {
+    final banco = BancoLocal.instancia;
+    if (banco != null) {
+      await banco.gravar(banco.chaveCarrinhos, jsonEncode(dados));
+    } else if (!await prefs.setString(chavePreferencias, jsonEncode(dados))) {
       throw StateError('Nao foi possivel salvar o carrinho neste aparelho.');
     }
     notifyListeners();
@@ -43,7 +52,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
       {bool recorrentes = false}) async {
     await _fila;
     final prefs = await SharedPreferences.getInstance();
-    final registro = _ler(prefs)[contexto.chave];
+    final registro = (await _ler(prefs))[contexto.chave];
     if (!contexto.valido || registro == null || registro['encerrado'] == true) {
       return [];
     }
@@ -58,7 +67,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
           {bool recorrentes = false}) =>
       _executar((prefs) async {
         if (!contexto.valido) return false;
-        final dados = _ler(prefs);
+        final dados = await _ler(prefs);
         final registro = Map<String, dynamic>.from(dados[contexto.chave] ??
             {
               ...contexto.toMap(),
@@ -84,7 +93,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
 
   Future<bool> limpar(ContextoCarrinho contexto, {bool recorrentes = false}) =>
       _executar((prefs) async {
-        final dados = _ler(prefs);
+        final dados = await _ler(prefs);
         final registro = dados[contexto.chave];
         if (registro == null) return true;
         registro[recorrentes ? 'recorrentes' : 'itens'] = <dynamic>[];
@@ -92,6 +101,27 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         await _salvar(prefs, dados);
         return true;
       });
+
+  Future<String> finalizarDuravel({
+    required String escopo,
+    required ContextoCarrinho contexto,
+    required List<Modelowordprodutos> itens,
+    required Map<String, dynamic> dados,
+    required List<String> impressoes,
+    required String destino,
+    bool recorrentes = false,
+  }) => _executar((_) async {
+    final banco = BancoLocal.instancia;
+    if (banco == null) throw StateError('Banco local indisponivel.');
+    final id = await banco.guardarPedido(
+      escopo: escopo, chaveCarrinho: contexto.chave,
+      atendimento: contexto.idAtendimento,
+      itens: itens.map((e) => e.toMap()).toList(), dados: dados,
+      impressoes: impressoes, destino: destino, recorrentes: recorrentes,
+    );
+    notifyListeners();
+    return id;
+  });
 
   Future<bool> substituirItem(
     ContextoCarrinho contexto,
@@ -148,7 +178,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
             .where((item) => item['idComandaPedido'] == contexto.idAtendimento)
             .firstOrNull;
         if (antigo == null) return;
-        final dados = _ler(prefs);
+        final dados = await _ler(prefs);
         final registro = Map<String, dynamic>.from(
             dados[contexto.chave] ?? contexto.toMap());
         if (registro['encerrado'] == true ||
@@ -174,7 +204,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     bool bloqueado = false,
   }) =>
       _executar((prefs) async {
-        final dados = _ler(prefs);
+        final dados = await _ler(prefs);
         var mudou = false;
         for (final registro in dados.values) {
           if (registro['empresa'] != empresa) continue;
@@ -190,8 +220,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
           final encerrar =
               !aberto || registro['idAtendimento'] != idAtendimento;
           if (encerrar && registro['encerrado'] != true) {
-            registro['itens'] = <dynamic>[];
-            registro['recorrentes'] = <dynamic>[];
+            // Preserva rascunhos para recuperacao; nunca os transfere ao novo atendimento.
             registro['encerrado'] = true;
             registro['recorrentesImportados'] = true;
             mudou = true;
@@ -232,7 +261,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     if (status == null || status.isEmpty) return;
     if (status == 'Andamento' || status == 'Fechamento') {
       await _executar((prefs) async {
-        final dados = _ler(prefs);
+        final dados = await _ler(prefs);
         var mudou = false;
         final contexto = ContextoCarrinho(
             empresa: empresa, tipo: 'comanda', idAtendimento: idAtendimento);

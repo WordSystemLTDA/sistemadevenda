@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pub_semver/pub_semver.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DrawerCustomizado extends StatefulWidget {
@@ -72,16 +71,9 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
   }
 
   void sair() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.remove("usuario").then((value) {
-      if (mounted) {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (context) {
-            return const PaginaLogin();
-          },
-        ));
-      }
-    });
+    await UsuarioServico.sair(context);
+    if (mounted) Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const PaginaLogin()), (_) => false);
   }
 
   void verificarVersaoApp(String versaoApp, String versaoAppIos) async {

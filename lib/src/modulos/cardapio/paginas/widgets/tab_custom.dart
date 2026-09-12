@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
@@ -27,12 +28,18 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   final _scrollController = ScrollController();
   final _pesquisaController = TextEditingController();
   Timer? _debounce;
+  final _sincronizador = Sincronizador.instancia;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_carregarMais);
+    _sincronizador?.revisaoCatalogo.addListener(_catalogoAtualizado);
     _atualizar();
+  }
+
+  void _catalogoAtualizado() {
+    if (mounted) unawaited(provedor.atualizarSilenciosamente(widget.category));
   }
 
   void _carregarMais() {
@@ -63,6 +70,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
 
   @override
   void dispose() {
+    _sincronizador?.revisaoCatalogo.removeListener(_catalogoAtualizado);
     _debounce?.cancel();
     _scrollController.dispose();
     _pesquisaController.dispose();

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +67,13 @@ class FilaImpressao extends ChangeNotifier {
   }
 
   Future<void> _salvar(List<ImpressaoPendente> itens) async {
+    final banco = BancoLocal.instancia;
+    if (banco != null) {
+      await banco.gravar(chave, jsonEncode(itens.map((e) => e.toMap()).toList()));
+      _itens = itens;
+      _notificar();
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     var salvo = false;
     try {
@@ -84,7 +92,9 @@ class FilaImpressao extends ChangeNotifier {
   Future<void> _carregar() async {
     if (_carregada) return;
     final prefs = await SharedPreferences.getInstance();
-    final salvo = prefs.getString(chave);
+    final banco = BancoLocal.instancia;
+    if (banco != null) await banco.migrarPreferencia(chave, chave);
+    final salvo = banco == null ? prefs.getString(chave) : await banco.ler(chave);
     final itens = salvo == null
         ? <ImpressaoPendente>[]
         : (jsonDecode(salvo) as List)
@@ -133,6 +143,9 @@ class FilaImpressao extends ChangeNotifier {
               ImpressaoPendente(mensagem, servidor: servidor, estado: estado);
           if (item.dados['idRequisicao'] == null || item.id.trim().isEmpty) {
             throw ArgumentError('Impressao sem identificador.');
+          }
+          if (await BancoLocal.instancia?.ler('impressaoConfirmada:${item.id}') != null) {
+            continue;
           }
           final index = proximos.indexWhere((e) => e.id == item.id);
           if (index < 0) {
@@ -184,6 +197,18 @@ class FilaImpressao extends ChangeNotifier {
   Future<void> confirmar(String id) => _executar(() async {
         await _carregar();
         if (!_itens.any((e) => e.id == id)) return;
+        final banco = BancoLocal.instancia;
+        if (banco != null) {
+          final proximos = _itens.where((e) => e.id != id).toList();
+          await banco.db.transaction((tx) async {
+            await BancoLocal.gravarDocumento(tx, 'impressaoConfirmada:$id', 'true');
+            await BancoLocal.gravarDocumento(tx, chave,
+                jsonEncode(proximos.map((e) => e.toMap()).toList()));
+          });
+          _itens = proximos;
+          _notificar();
+          return;
+        }
         await _salvar(_itens.where((e) => e.id != id).toList());
       });
 

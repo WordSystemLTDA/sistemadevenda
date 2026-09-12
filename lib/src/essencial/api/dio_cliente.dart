@@ -1,7 +1,10 @@
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 class DioCliente {
+  CacheConsultas? cache;
   DioCliente() {
     configurar();
   }
@@ -29,24 +32,20 @@ class DioCliente {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           // Add the access token to the request header
-          options.baseUrl = servidor ?? (await Apis().getConexao()).servidor;
+          options.baseUrl = options.extra['servidorFixo'] as String? ??
+              servidor ?? (await Apis().getConexao()).servidor;
 
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode == 401) {
-            // If a 401 response is received, refresh the access token
-
-            // Update the request header with the new access token
-            e.requestOptions.baseUrl =
-                servidor ?? (await Apis().getConexao()).servidor;
-
-            // Repeat the request with the updated header
-            return handler.resolve(await cliente.fetch(e.requestOptions));
-          }
           return handler.next(e);
         },
       ),
     );
+    final banco = BancoLocal.instancia;
+    if (banco != null && cache == null) {
+      cache = CacheConsultas(cliente, banco);
+      cliente.interceptors.add(cache!);
+    }
   }
 }

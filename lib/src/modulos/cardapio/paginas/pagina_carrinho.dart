@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
@@ -245,6 +246,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         throw StateError('O carrinho nao tem produtos pendentes.');
       }
       final sucesso = await _finalizacao.executar(
+        registrarPedidoDuravel: Sincronizador.instancia == null ? null : (mensagens) =>
+            Sincronizador.instancia!.guardarPedido(
+              contexto: contextoCarrinho, itens: itens, idMesa: idMesa,
+              idComanda: idComanda, idCliente: idCliente, impressoes: mensagens),
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
@@ -299,7 +304,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
             ModalRoute.withName(
                 tipo == TipoCardapio.mesa ? 'PaginaMesas' : 'PaginaComandas'));
       }
-    } catch (_) {
+    } catch (erro) {
       if (mounted) {
         await showDialog<void>(
           context: context,
@@ -310,6 +315,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 : 'Nao foi possivel finalizar'),
             content: Text(_finalizacao.pedidoRegistrado
                 ? 'A finalizacao ficou pendente. Confira com a cozinha. Toque em Finalizar novamente para concluir a impressao e limpar o carrinho, sem lancar os produtos outra vez.'
+                : erro is StateError ? erro.message.toString()
                 : 'Confira a conexao e consulte os itens do pedido antes de tentar novamente.'),
             actions: [
               TextButton(

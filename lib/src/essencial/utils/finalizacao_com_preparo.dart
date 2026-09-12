@@ -12,11 +12,19 @@ class FinalizacaoComPreparo {
     required Future<void> Function() limparCarrinho,
     Future<void> Function(List<String>)? salvarImpressaoAntesDoPedido,
     Future<void> Function(List<String>)? cancelarImpressaoPreparada,
+    Future<void> Function(List<String>)? registrarPedidoDuravel,
   }) async {
     if (concluido) return true;
     if (_executando) return false;
     _executando = true;
     try {
+      if (registrarPedidoDuravel != null) {
+        _mensagens = List.unmodifiable(prepararImpressao());
+        await registrarPedidoDuravel(_mensagens!);
+        pedidoRegistrado = true;
+        concluido = true;
+        return true;
+      }
       if (!pedidoRegistrado) {
         _mensagens = List.unmodifiable(prepararImpressao());
         // O comprovante sobrevive ao fechamento do app durante a chamada HTTP.

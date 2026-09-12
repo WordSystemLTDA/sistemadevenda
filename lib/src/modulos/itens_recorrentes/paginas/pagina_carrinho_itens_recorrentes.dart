@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
@@ -549,6 +550,12 @@ class _PaginaCarrinhoItensRecorrentesState
         throw StateError('O carrinho nao tem produtos pendentes.');
       }
       final sucesso = await _finalizacao.executar(
+        registrarPedidoDuravel: Sincronizador.instancia == null ? null : (mensagens) =>
+            Sincronizador.instancia!.guardarPedido(
+              contexto: provedorItensRecorrentes.contexto!, itens: itens,
+              idMesa: widget.idMesa, idComanda: widget.idComanda,
+              idCliente: dadosPedido.idCliente ?? '0', impressoes: mensagens,
+              recorrentes: true),
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
@@ -605,13 +612,14 @@ class _PaginaCarrinhoItensRecorrentesState
         if (!mounted) return;
         _voltarParaTelaOrigem(mesa: tipo == TipoCardapio.mesa);
       }
-    } catch (_) {
+    } catch (erro) {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(
             content: Text(_finalizacao.pedidoRegistrado
                 ? 'Finalizacao pendente. Toque em Finalizar novamente para concluir sem lancar os produtos outra vez.'
+                : erro is StateError ? erro.message.toString()
                 : 'Nao foi possivel finalizar. Confira a conexao e tente novamente.'),
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(

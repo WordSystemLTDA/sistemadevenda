@@ -195,6 +195,37 @@ class ProvedorProdutos extends ChangeNotifier {
     }
   }
 
+  Future<void> atualizarSilenciosamente(String categoria) async {
+    if (carregando || carregandoMais) return;
+    final consulta = _requisicao;
+    try {
+      final pesquisa = _normalizarPesquisa(_pesquisa);
+      final novos = <Modelowordprodutos>[];
+      var ultimaPaginaCompleta = false;
+      if (_pesquisa.isNotEmpty) {
+        novos.addAll(await _produtoService.listarPorNome(pesquisa.termo, categoria, '0',
+            codigoExato: pesquisa.porCodigoExato));
+      } else {
+        for (var pagina = 1; pagina <= (paginas[categoria] ?? 1); pagina++) {
+          final itens = await _produtoService.listarPorCategoria(categoria, pagina);
+          novos.addAll(itens);
+          ultimaPaginaCompleta = itens.length >= _itensPorPagina;
+        }
+      }
+      if (consulta != _requisicao) return;
+      _produtosCompletosPorId.clear();
+      _guardarProdutosCompletos(novos);
+      _produtos = novos;
+      _produtosPorCategoria[categoria] = [...novos];
+      temMais = _pesquisa.isEmpty && ultimaPaginaCompleta;
+      _temMaisPorCategoria[categoria] = temMais;
+      erro = null;
+      notifyListeners();
+    } catch (_) {
+      // Mantem a lista atual se a conexao cair durante uma atualizacao.
+    }
+  }
+
   Modelowordprodutos _completarProdutoPesquisado(Modelowordprodutos produto) {
     final produtoCompleto = _produtosCompletosPorId[produto.id];
     if (produtoCompleto == null) {

@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:developer';
+import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
@@ -79,10 +81,12 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   bool finalizar = false;
   bool _carregandoDados = false;
   String? _erroCarregamento;
+  final _sincronizador = Sincronizador.instancia;
 
   @override
   void initState() {
     super.initState();
+    _sincronizador?.revisaoCatalogo.addListener(_atualizarCategorias);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       listarDados();
@@ -91,9 +95,33 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   @override
   void dispose() {
+    _sincronizador?.revisaoCatalogo.removeListener(_atualizarCategorias);
     _tabController?.removeListener(_aoTrocarCategoria);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _atualizarCategorias() async {
+    if (!mounted || _carregandoDados) return;
+    try {
+      final novas = List<ModeloCategoria>.of(await provedor.listarCategorias());
+      if (!mounted || jsonEncode(novas.map((e) => e.toMap()).toList()) ==
+          jsonEncode(_categorias.map((e) => e.toMap()).toList())) return;
+      final idAtual = _categorias.isEmpty ? null : _categorias[indexTabBar].id;
+      final index = novas.indexWhere((e) => e.id == idAtual);
+      final anterior = _tabController;
+      anterior?.removeListener(_aoTrocarCategoria);
+      setState(() {
+        _categorias = novas;
+        indexTabBar = index < 0 ? 0 : index;
+        _tabController = novas.isEmpty ? null :
+            TabController(length: novas.length, initialIndex: indexTabBar, vsync: this)
+              ..addListener(_aoTrocarCategoria);
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => anterior?.dispose());
+    } catch (_) {
+      // Preserva as categorias e a selecao em andamento durante a reconexao.
+    }
   }
 
   void _aoTrocarCategoria() {
