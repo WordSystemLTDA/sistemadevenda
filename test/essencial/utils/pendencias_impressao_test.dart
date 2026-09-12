@@ -87,6 +87,35 @@ void main() {
     });
   }
 
+  testWidgets('impressao pendente com produto incompleto nao derruba a tela',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([
+      jsonEncode({
+        'idRequisicao': 'produto-incompleto',
+        'tipoImpressao': '1',
+        'tipo': 'Comanda',
+        'comanda': 'Comanda: 8',
+        'produtos': [
+          'linha antiga',
+          42,
+          {'nome': 'Refrigerante'}
+        ],
+      })
+    ]);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PendenciasImpressao(fila: fila, reenviar: (_) async {}),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Comanda: 8 - #'), findsOneWidget);
+    expect(find.text('1x Refrigerante'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   group('atalhos de impressoes pendentes', () {
     testWidgets('envio automatico nao pode ser apagado apenas no celular',
         (tester) async {

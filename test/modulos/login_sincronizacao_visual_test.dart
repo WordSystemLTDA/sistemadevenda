@@ -7,6 +7,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
@@ -146,6 +147,10 @@ void main() {
       expect(areaIndicador.top, greaterThanOrEqualTo(59));
       expect(areaIndicador.bottom, lessThanOrEqualTo(59 + kToolbarHeight));
       expect(areaIndicador.center.dy, closeTo(59 + kToolbarHeight / 2, 0.1));
+      expect(
+        areaIndicador.right,
+        lessThanOrEqualTo(largura - EstadoSincronizacao.recuoDireitaCabecalho),
+      );
       await capturarTela(tester, 'sincronizacao_inicio_$largura');
       await tester.longPress(indicador);
       await tester.pumpAndSettle();

@@ -8,6 +8,18 @@ class PendenciasImpressao extends StatelessWidget {
   final FilaImpressao fila;
   final Future<void> Function(String id) reenviar;
 
+  static List<Map<String, dynamic>> _produtos(Object? valor) {
+    if (valor is! List) return const [];
+    return [
+      for (final produto in valor)
+        if (produto is Map)
+          {
+            for (final entrada in produto.entries)
+              if (entrada.key != null) entrada.key.toString(): entrada.value,
+          }
+    ];
+  }
+
   Future<void> _confirmar(
       BuildContext context, ImpressaoPendente item, bool reimprimir) async {
     final confirmou = await showDialog<bool>(
@@ -59,7 +71,7 @@ class PendenciasImpressao extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final item = fila.itens[index];
                     final dados = item.dados;
-                    final produtos = (dados['produtos'] as List?) ?? [];
+                    final produtos = _produtos(dados['produtos']);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

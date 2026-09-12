@@ -387,4 +387,28 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+
+  testWidgets('tela de sincronizacao abre mesmo com pendencia incompleta',
+      (tester) async {
+    sync.pendencias = [
+      {
+        'id': 'pendencia-quebrada',
+        'atendimento': '104',
+        'estado': 'pendente',
+        'dados': '{json-invalido',
+        'impressoes': '[{"idRequisicao":"p1"}',
+      }
+    ];
+
+    await tester.pumpWidget(
+        MaterialApp(home: PendenciasSincronizacao(sincronizador: sync)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Envio dos pedidos'), findsOneWidget);
+    expect(find.text('Atendimento 104'), findsOneWidget);
+    expect(
+        find.text('Nao foi possivel detalhar os itens salvos neste registro.'),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

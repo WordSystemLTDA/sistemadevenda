@@ -6,6 +6,7 @@ import 'sincronizador.dart';
 
 class EstadoSincronizacao extends StatelessWidget {
   static const double espacoNoCabecalho = 52;
+  static const double recuoDireitaCabecalho = 8;
 
   final GlobalKey<NavigatorState>? navigatorKey;
   final bool flutuante;
@@ -51,14 +52,15 @@ class EstadoSincronizacao extends StatelessWidget {
               : sync.pendencias.isNotEmpty
                   ? sync.pendencias.length
                   : impressoes;
-          final abrirPendencias = () => navigatorKey?.currentState?.push(
-              MaterialPageRoute<void>(
-                  builder: (_) =>
-                      PendenciasSincronizacao(sincronizador: sync)));
+          void abrirPendencias() => navigatorKey?.currentState?.push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PendenciasSincronizacao(sincronizador: sync),
+                ),
+              );
           if (flutuante) {
             final corFundo = atencao
-                ? cs.errorContainer.withOpacity(0.95)
-                : cs.surface.withOpacity(0.58);
+                ? cs.errorContainer.withValues(alpha: 0.95)
+                : cs.surface.withValues(alpha: 0.58);
             final corIcone = atencao ? cs.onErrorContainer : cs.onSurface;
             return Tooltip(
               message: texto,
@@ -68,13 +70,13 @@ class EstadoSincronizacao extends StatelessWidget {
                   Material(
                     color: corFundo,
                     elevation: atencao ? 4 : 1,
-                    shadowColor: cs.shadow.withOpacity(0.18),
+                    shadowColor: cs.shadow.withValues(alpha: 0.18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: BorderSide(
                         color: atencao
-                            ? cs.error.withOpacity(0.45)
-                            : cs.outlineVariant.withOpacity(0.35),
+                            ? cs.error.withValues(alpha: 0.45)
+                            : cs.outlineVariant.withValues(alpha: 0.35),
                       ),
                     ),
                     child: InkWell(
@@ -138,6 +140,37 @@ class EstadoSincronizacao extends StatelessWidget {
 class PendenciasSincronizacao extends StatelessWidget {
   final Sincronizador sincronizador;
   const PendenciasSincronizacao({super.key, required this.sincronizador});
+
+  static Map<String, dynamic> _mapa(Object? valor) {
+    if (valor is Map) {
+      return {
+        for (final entrada in valor.entries)
+          if (entrada.key != null) entrada.key.toString(): entrada.value,
+      };
+    }
+    if (valor is String && valor.trim().isNotEmpty) {
+      try {
+        final decodificado = jsonDecode(valor);
+        if (decodificado is Map) return _mapa(decodificado);
+      } catch (_) {
+        return const {};
+      }
+    }
+    return const {};
+  }
+
+  static List<Object?> _lista(Object? valor) {
+    if (valor is List) return valor;
+    if (valor is String && valor.trim().isNotEmpty) {
+      try {
+        final decodificado = jsonDecode(valor);
+        if (decodificado is List) return decodificado;
+      } catch (_) {
+        return const [];
+      }
+    }
+    return const [];
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -205,14 +238,17 @@ class PendenciasSincronizacao extends StatelessWidget {
       );
 
   Widget _pedido(BuildContext context, Map<String, Object?> op) {
-    final dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
-    final mensagens = jsonDecode(op['impressoes'] as String) as List;
-    final comprovante = mensagens.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(mensagens.first as String) as Map<String, dynamic>;
+    final dados = _mapa(op['dados']);
+    final mensagens = _lista(op['impressoes']);
+    final comprovante =
+        mensagens.map(_mapa).firstWhere((m) => m.isNotEmpty, orElse: () => {});
     final conflito = op['estado'] == 'conflito';
     final rascunho = op['estado'] == 'rascunho';
     final cs = Theme.of(context).colorScheme;
+    final produtos = _lista(dados['produtos'])
+        .map(_mapa)
+        .where((item) => item.isNotEmpty)
+        .toList();
     return Card(
       color: conflito || rascunho ? cs.errorContainer : cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -231,7 +267,12 @@ class PendenciasSincronizacao extends StatelessWidget {
                       'Confira este pedido com o responsavel.')
                   : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
               const Divider(),
-              for (final item in (dados['produtos'] as List? ?? [])) ...[
+              if (produtos.isEmpty)
+                Text(
+                  'Nao foi possivel detalhar os itens salvos neste registro.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              for (final item in produtos) ...[
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: Text(item['nome']?.toString() ?? 'Produto')),
                   const SizedBox(width: 12),
@@ -240,12 +281,12 @@ class PendenciasSincronizacao extends StatelessWidget {
                 if ((item['observacao'] ?? '').toString().isNotEmpty)
                   Text(item['observacao'].toString()),
                 for (final opcao
-                    in (item['opcoesPacotesListaFinal'] as List? ?? []))
-                  if ((opcao['dados'] as List? ?? []).isNotEmpty)
+                    in _lista(item['opcoesPacotesListaFinal']).map(_mapa))
+                  if (_lista(opcao['dados']).isNotEmpty)
                     Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          '${opcao['titulo'] ?? 'Opcoes'}: ${(opcao['dados'] as List).map((d) => '${d['quantidade'] == null ? '' : '${d['quantidade']}x '}${d['nome']}').join(', ')}',
+                          '${opcao['titulo'] ?? 'Opcoes'}: ${_lista(opcao['dados']).map(_mapa).map((d) => '${d['quantidade'] == null ? '' : '${d['quantidade']}x '}${d['nome'] ?? ''}'.trim()).where((nome) => nome.isNotEmpty).join(', ')}',
                           style: Theme.of(context).textTheme.bodySmall,
                         )),
                 const SizedBox(height: 8),

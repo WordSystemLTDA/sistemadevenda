@@ -21,9 +21,30 @@ class ImpressaoPendente {
       this.tentativas = 0,
       this.ultimaTentativa});
 
-  late final Map<String, dynamic> dados =
-      Map.unmodifiable(jsonDecode(mensagem) as Map<String, dynamic>);
-  late final String id = dados['idRequisicao'].toString();
+  static Map<String, dynamic> _decodificarMensagem(String mensagem) {
+    try {
+      final dados = jsonDecode(mensagem);
+      if (dados is Map) {
+        return Map.unmodifiable({
+          for (final entrada in dados.entries)
+            if (entrada.key != null) entrada.key.toString(): entrada.value,
+        });
+      }
+    } catch (_) {
+      return const {};
+    }
+    return const {};
+  }
+
+  static EstadoImpressao _estado(String? nome) {
+    for (final estado in EstadoImpressao.values) {
+      if (estado.name == nome) return estado;
+    }
+    return EstadoImpressao.erro;
+  }
+
+  late final Map<String, dynamic> dados = _decodificarMensagem(mensagem);
+  late final String id = dados['idRequisicao']?.toString() ?? '';
 
   Map<String, dynamic> toMap() => {
         'mensagem': mensagem,
@@ -35,8 +56,8 @@ class ImpressaoPendente {
       };
 
   factory ImpressaoPendente.fromMap(Map<String, dynamic> map) =>
-      ImpressaoPendente(map['mensagem'] as String,
-          estado: EstadoImpressao.values.byName(map['estado'] as String),
+      ImpressaoPendente(map['mensagem']?.toString() ?? '{}',
+          estado: _estado(map['estado']?.toString()),
           servidor: map['servidor'] as String? ?? '',
           tentativas: map['tentativas'] as int? ?? 0,
           ultimaTentativa:
@@ -69,7 +90,8 @@ class FilaImpressao extends ChangeNotifier {
   Future<void> _salvar(List<ImpressaoPendente> itens) async {
     final banco = BancoLocal.instancia;
     if (banco != null) {
-      await banco.gravar(chave, jsonEncode(itens.map((e) => e.toMap()).toList()));
+      await banco.gravar(
+          chave, jsonEncode(itens.map((e) => e.toMap()).toList()));
       _itens = itens;
       _notificar();
       return;
@@ -94,13 +116,25 @@ class FilaImpressao extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final banco = BancoLocal.instancia;
     if (banco != null) await banco.migrarPreferencia(chave, chave);
-    final salvo = banco == null ? prefs.getString(chave) : await banco.ler(chave);
-    final itens = salvo == null
-        ? <ImpressaoPendente>[]
-        : (jsonDecode(salvo) as List)
-            .map((e) =>
-                ImpressaoPendente.fromMap(Map<String, dynamic>.from(e as Map)))
-            .toList();
+    final salvo =
+        banco == null ? prefs.getString(chave) : await banco.ler(chave);
+    final itens = <ImpressaoPendente>[];
+    if (salvo != null) {
+      try {
+        final salvos = jsonDecode(salvo);
+        if (salvos is List) {
+          for (final itemSalvo in salvos) {
+            if (itemSalvo is! Map) continue;
+            final item =
+                ImpressaoPendente.fromMap(Map<String, dynamic>.from(itemSalvo));
+            if (item.id.trim().isNotEmpty) itens.add(item);
+          }
+        }
+      } catch (_) {
+        await banco?.gravar(chave, '[]');
+        if (banco == null) await prefs.remove(chave);
+      }
+    }
     final antigas = prefs.getStringList(chaveLegada) ?? [];
     final outras = <String>[];
     for (final mensagem in antigas) {
@@ -144,7 +178,9 @@ class FilaImpressao extends ChangeNotifier {
           if (item.dados['idRequisicao'] == null || item.id.trim().isEmpty) {
             throw ArgumentError('Impressao sem identificador.');
           }
-          if (await BancoLocal.instancia?.ler('impressaoConfirmada:${item.id}') != null) {
+          if (await BancoLocal.instancia
+                  ?.ler('impressaoConfirmada:${item.id}') !=
+              null) {
             continue;
           }
           final index = proximos.indexWhere((e) => e.id == item.id);
@@ -201,9 +237,10 @@ class FilaImpressao extends ChangeNotifier {
         if (banco != null) {
           final proximos = _itens.where((e) => e.id != id).toList();
           await banco.db.transaction((tx) async {
-            await BancoLocal.gravarDocumento(tx, 'impressaoConfirmada:$id', 'true');
-            await BancoLocal.gravarDocumento(tx, chave,
-                jsonEncode(proximos.map((e) => e.toMap()).toList()));
+            await BancoLocal.gravarDocumento(
+                tx, 'impressaoConfirmada:$id', 'true');
+            await BancoLocal.gravarDocumento(
+                tx, chave, jsonEncode(proximos.map((e) => e.toMap()).toList()));
           });
           _itens = proximos;
           _notificar();

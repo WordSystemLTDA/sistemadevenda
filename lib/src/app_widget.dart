@@ -14,8 +14,10 @@ class AppWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const appBarTheme = AppBarThemeData(
-      actionsPadding:
-          EdgeInsets.only(right: EstadoSincronizacao.espacoNoCabecalho),
+      actionsPadding: EdgeInsets.only(
+        right: EstadoSincronizacao.espacoNoCabecalho +
+            EstadoSincronizacao.recuoDireitaCabecalho,
+      ),
     );
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: context.read<ThemeController>(),
@@ -42,7 +44,8 @@ class AppWidget extends StatelessWidget {
                   child ?? const SizedBox.shrink(),
                   Positioned(
                     top: MediaQuery.paddingOf(context).top,
-                    right: MediaQuery.paddingOf(context).right,
+                    right: MediaQuery.paddingOf(context).right +
+                        EstadoSincronizacao.recuoDireitaCabecalho,
                     width: EstadoSincronizacao.espacoNoCabecalho,
                     height: kToolbarHeight,
                     child: Center(
