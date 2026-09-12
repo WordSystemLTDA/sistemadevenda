@@ -78,10 +78,13 @@ class ServicoFinalizarPagamento {
       'valorAPagarOriginal': valorAPagarOriginal,
     };
 
-    final sync = Sincronizador.instancia;
-    if (sync != null && tipo == TipoCardapio.balcao &&
-        (id.isEmpty || id == '0' || id.startsWith('venda-local:'))) {
-      try {
+    try {
+      final sync = Sincronizador.instancia;
+      if (sync != null &&
+          tipo == TipoCardapio.balcao &&
+          (id.startsWith('venda-local:') ||
+              ((id.isEmpty || id == '0') &&
+                  await sync.prepararAberturasOffline()))) {
         final dados = jsonDecode(jsonEncode(campos)) as Map<String, dynamic>;
         dados['produtos'] = produtos.map((p) => p.toMap()).toList();
         if (id.startsWith('venda-local:')) {
@@ -89,28 +92,44 @@ class ServicoFinalizarPagamento {
           return (true, 'Pagamento salvo no aparelho.', id);
         }
         await sync.configurar();
-        final nomeCliente = await AtendimentosLocais(sync.banco, sync.escopo).nomeCliente(cliente);
+        final nomeCliente = await AtendimentosLocais(sync.banco, sync.escopo)
+            .nomeCliente(cliente);
         final mensagens = Impressao.prepararComprovanteDePedido(
-            produtos: produtos, tipoTela: tipo, tipodeentrega: tipodeentrega,
+            produtos: produtos,
+            tipoTela: tipo,
+            tipodeentrega: tipodeentrega,
             nomeCliente: nomeCliente.isEmpty ? obs : nomeCliente,
-            nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', comanda: 'Balcão', numeroPedido: '');
+            nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '',
+            comanda: 'Balcão',
+            numeroPedido: '');
         final idLocal = await sync.guardarVenda(
-            contexto: ContextoCarrinho(empresa: idEmpresa!, tipo: 'balcao', idAtendimento: id),
-            itens: produtos, dados: dados, impressoes: mensagens);
+            contexto: ContextoCarrinho(
+                empresa: idEmpresa!, tipo: 'balcao', idAtendimento: id),
+            itens: produtos,
+            dados: dados,
+            impressoes: mensagens);
         return (true, 'Venda salva no aparelho.', idLocal);
-      } catch (erro) {
-        return (false, erro is StateError ? erro.message.toString() : 'Nao foi possivel salvar a venda. Os produtos continuam no carrinho.', '0');
       }
+
+      var response = await dio.cliente.post(
+          '${tipo.nomeSimplificado}/pagar_pedido.php',
+          data: jsonEncode(campos));
+
+      var jsonData = response.data;
+      bool sucesso = jsonData['sucesso'];
+      String mensagem = jsonData['mensagem'];
+      String idVenda = jsonData['idVenda'] ?? '0';
+
+      return (sucesso, mensagem, idVenda);
+    } catch (erro) {
+      return (
+        false,
+        erro is StateError
+            ? erro.message.toString()
+            : 'Nao foi possivel confirmar o pagamento. Confira o servidor antes de tentar novamente.',
+        id
+      );
     }
-
-    var response = await dio.cliente.post('${tipo.nomeSimplificado}/pagar_pedido.php', data: jsonEncode(campos));
-
-    var jsonData = response.data;
-    bool sucesso = jsonData['sucesso'];
-    String mensagem = jsonData['mensagem'];
-    String idVenda = jsonData['idVenda'] ?? '0';
-
-    return (sucesso, mensagem, idVenda);
   }
 
   Future<List<BancoPixModelo>> listarBancoPix() async {
@@ -149,7 +168,8 @@ class ServicoFinalizarPagamento {
   Future<BancosAtivosPdvModelo> listarBancos() async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
-    var response = await dio.cliente.get('/tela_nfe_saida/listar_bancos.php?id_empresa=$idEmpresa&id_usuario=$idUsuario');
+    var response = await dio.cliente.get(
+        '/tela_nfe_saida/listar_bancos.php?id_empresa=$idEmpresa&id_usuario=$idUsuario');
 
     var jsonData = response.data;
 

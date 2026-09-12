@@ -175,10 +175,13 @@ class ServicoMesas {
   Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(
       String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
-    if (sync != null) {
+    if (sync != null && await sync.prepararAberturasOffline()) {
       final atendimento = await sync.abrirAtendimento(tipo: 'mesa',
           idMesa: idMesa, idCliente: idCliente, obs: obs);
       return (sucesso: true, idcomandapedido: atendimento);
+    }
+    if (sync != null && dio.cache?.servidorDisponivel == false) {
+      throw StateError('O servidor precisa receber a atualizacao de abertura offline.');
     }
     const url = 'mesas/inserir_mesa_ocupada.php';
 

@@ -11,9 +11,36 @@
   A primeira entrada e a primeira preparacao dos dados precisam de conexao.
 - Uma sessao ja autenticada pode ser retomada offline no mesmo servidor/empresa/usuario.
   Rejeicao de autenticacao pelo servidor nao e tratada como falta de rede.
-- Abertura/edicao cadastral de atendimentos, pagamentos, fechamento, exclusoes e
-  cadastros continuam sendo operacoes online. Nao ha reserva offline de uma mesa livre.
-  Delivery/balcao nao usam a nova fila de lancamento de produtos.
+- Mesas e comandas livres na ultima consulta podem ser abertas offline. A abertura,
+  cliente, observacao e produtos ficam salvos no aparelho e aparecem nas listas locais.
+- Novas vendas de balcao, seus produtos e pagamentos podem ser registrados offline.
+  Pagamentos seguintes permanecem vinculados a identidade local da venda original.
+- Edicao cadastral, fechamento, exclusoes, cancelamentos, delivery e pagamentos de
+  atendimentos preexistentes continuam online. Abrir offline nao reserva o recurso
+  nos outros aparelhos: a confirmacao depende da verificacao no servidor.
+
+## Aberturas e vendas offline
+
+A API anuncia `abertura_offline: 1` em `sincronizacao/estado.php` e fornece as
+versoes de mesas/comandas e o caixa atual. E necessario conectar uma vez depois
+de atualizar a API para preparar esses dados. Sem essa capacidade, o app preserva
+as aberturas online antigas, mas nao inventa uma reserva offline sem verificacao.
+
+Cada abertura recebe uma identidade `local:` persistente. A sincronizacao confirma
+a abertura antes de enviar os produtos. O servidor devolve o ID e a versao reais;
+os produtos fazem referencia ao recibo original, nunca apenas ao numero da mesa ou
+comanda. O numero definitivo do pedido e aplicado ao comprovante apos confirmacao.
+
+A versao do recurso inclui seu historico. Se ele foi ocupado, encerrado ou alterado
+enquanto o celular estava desconectado, a abertura fica em conflito, mesmo que o
+recurso esteja livre novamente. Os produtos dependentes nao sao enviados nem
+impressos automaticamente. Arquivar a abertura nao libera esses produtos.
+
+Vendas de balcao recebem identidade `venda-local:`. O recibo, os itens e o pagamento
+sao gravados na mesma transacao no servidor. O caixa capturado na preparacao e
+comparado com o atual: troca de caixa gera conflito. Pagamentos de uma venda
+cancelada ou com abertura em conflito tambem exigem conferencia. Nao se deve
+registrar manualmente a mesma venda no servidor enquanto ela estiver pendente.
 
 ## Seguranca e sincronizacao
 
@@ -73,6 +100,11 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
    `comandas/inserir_produtos.php`, `mesas/inserir_produtos.php`,
    `funcoes/sabores/inserir.php`, `cardapio/listar_por_id_comanda.php` e
    `categorias/listar.php`, todos em `api_restaurantes_venda/api1/`.
+   Para abertura e venda offline, incluir tambem
+   `sincronizacao/{aberturas,vendas}.php` e `balcao/pagar_pedido.php`.
+   Essa extensao reutiliza `garcom_operacoes`; nao exige nova alteracao de schema.
+   Na instalacao local atual, a API fica em um repositorio Git separado do aplicativo:
+   atualizar somente o repositorio Flutter nao atualiza o servidor PHP.
 3. Se a conexao usar `api6` (URL online do aplicativo), disponibilizar o mesmo contrato
    nessa versao. Essa arvore nao esta presente neste checkout e nao foi publicada.
 4. Manter o servidor desktop com recibos/confirmacoes duraveis do protocolo de impressao 2.
@@ -91,8 +123,14 @@ banco, resposta perdida, conflitos, separacao de contas, erro de disco e layouts
 em `/private/tmp/garcom-mariadb-test/`, socket exclusivo e o schema canonico provisionado.
 Recusa outro datadir. Ele insere fixtures sinteticas e valida transacao, rollback de
 complementos, concorrencia, mesa/comanda e resposta repetida apos fechamento.
+Tambem cobre abertura offline, recurso reutilizado, vendas, pagamentos parciais,
+cancelamento e mudanca de caixa. A suite Flutter verifica a ordem das dependencias,
+compatibilidade online com API antiga, perda de resposta e recibos incompletos.
 
 Homologacao manual obrigatoria: desligar Wi-Fi apos carregar o atendimento; montar
 pizza completa e finalizar; reiniciar o app; reconectar; conferir um unico lancamento
 e comprovante. Repetir encerrando/reabrindo a comanda pela bancada antes da reconexao:
 o pedido antigo deve ficar em conflito, sem itens nem impressao na nova comanda.
+Repetir com uma mesa/comanda inicialmente livre, abertura offline seguida de itens,
+e com uma nova venda de balcao. Conferir a numeracao definitiva e um unico
+comprovante apos reconectar. A impressora fisica ainda requer essa homologacao.

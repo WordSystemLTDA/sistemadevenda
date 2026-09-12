@@ -164,10 +164,13 @@ class ServicoComandas {
   Future<({bool sucesso, String? idcomandapedido})> inserirComandaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
-    if (sync != null) {
+    if (sync != null && await sync.prepararAberturasOffline()) {
       final atendimento = await sync.abrirAtendimento(tipo: 'comanda', idComanda: id,
           idMesa: idMesa, idCliente: idCliente, obs: obs);
       return (sucesso: true, idcomandapedido: atendimento);
+    }
+    if (sync != null && dio.cache?.servidorDisponivel == false) {
+      throw StateError('O servidor precisa receber a atualizacao de abertura offline.');
     }
     const url = 'comandas/inserir_comanda_ocupada.php';
 
