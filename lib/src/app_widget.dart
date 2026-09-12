@@ -13,6 +13,10 @@ class AppWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const appBarTheme = AppBarThemeData(
+      actionsPadding:
+          EdgeInsets.only(right: EstadoSincronizacao.espacoNoCabecalho),
+    );
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: context.read<ThemeController>(),
       builder: (context, state, _) {
@@ -24,10 +28,11 @@ class AppWidget extends StatelessWidget {
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
                 useMaterial3: true,
+                appBarTheme: appBarTheme,
               ),
               // themeMode: ThemeMode.dark,
               themeMode: state,
-              darkTheme: ThemeData.dark(),
+              darkTheme: ThemeData.dark().copyWith(appBarTheme: appBarTheme),
               debugShowCheckedModeBanner: false,
               initialRoute: "login",
               navigatorKey: navigatorKey,
@@ -36,11 +41,15 @@ class AppWidget extends StatelessWidget {
                 child: Stack(children: [
                   child ?? const SizedBox.shrink(),
                   Positioned(
-                    top: MediaQuery.paddingOf(context).top + 58,
-                    right: 12,
-                    child: EstadoSincronizacao(
-                      navigatorKey: navigatorKey,
-                      flutuante: true,
+                    top: MediaQuery.paddingOf(context).top,
+                    right: MediaQuery.paddingOf(context).right,
+                    width: EstadoSincronizacao.espacoNoCabecalho,
+                    height: kToolbarHeight,
+                    child: Center(
+                      child: EstadoSincronizacao(
+                        navigatorKey: navigatorKey,
+                        flutuante: true,
+                      ),
                     ),
                   ),
                 ]),

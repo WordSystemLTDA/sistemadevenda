@@ -5,6 +5,8 @@ import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
 import 'sincronizador.dart';
 
 class EstadoSincronizacao extends StatelessWidget {
+  static const double espacoNoCabecalho = 52;
+
   final GlobalKey<NavigatorState>? navigatorKey;
   final bool flutuante;
   const EstadoSincronizacao(

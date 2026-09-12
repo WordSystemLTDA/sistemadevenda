@@ -10,6 +10,8 @@ import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
+import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -19,7 +21,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'atendimento_test.dart'
-    show ConfigBigchefTeste, ConfigTeste, ServerTeste;
+    show
+        ComandasTeste,
+        ConfigBigchefTeste,
+        ConfigTeste,
+        MesasTeste,
+        ServerTeste;
+import '../suporte/captura_tela.dart';
 
 class BancoVisual extends Fake implements Database {}
 
@@ -63,6 +71,8 @@ class ModuloLoginVisual extends Module {
   final server = ServerTeste();
   final api = DioCliente();
   final tema = ThemeController();
+  final comandas = ProvedorComanda(ComandasTeste());
+  final mesas = ProvedorMesas(MesasTeste());
   late final sync = SincronizadorVisual(api, usuario, server);
 
   @override
@@ -70,6 +80,8 @@ class ModuloLoginVisual extends Module {
     i.addInstance<UsuarioProvedor>(usuario);
     i.addInstance<Server>(server);
     i.addInstance<ThemeController>(tema);
+    i.addInstance<ProvedorComanda>(comandas);
+    i.addInstance<ProvedorMesas>(mesas);
     i.addInstance<ConfigProvider>(ConfigProvider());
     i.addInstance<ServicoAutenticacao>(AutenticacaoVisual(usuario, sync));
     i.addInstance<ServicoConfigBigchef>(ConfigBigchefTeste());
@@ -78,6 +90,8 @@ class ModuloLoginVisual extends Module {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(carregarFontesDeTeste);
   late ModuloLoginVisual modulo;
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -99,17 +113,24 @@ void main() {
     modulo.api.cliente.close(force: true);
     modulo.usuario.dispose();
     modulo.tema.dispose();
+    modulo.comandas.dispose();
+    modulo.mesas.dispose();
     Modular.destroy();
   });
 
-  for (final largura in [393.0, 1024.0]) {
+  for (final largura in [320.0, 393.0, 1024.0]) {
     testWidgets('login e navegacao com icone flutuante na largura $largura',
         (tester) async {
       tester.view.physicalSize = Size(largura, 852);
       tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 59);
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const app.AppWidget());
+      addTearDown(tester.view.resetPadding);
+      await tester.pumpWidget(const RepaintBoundary(
+        key: ValueKey('captura'),
+        child: app.AppWidget(),
+      ));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'atendente');
       await tester.enterText(find.byType(TextField).last, 'senha-teste');
@@ -121,6 +142,11 @@ void main() {
 
       final indicador = find.byTooltip('Pedidos sincronizados');
       expect(indicador, findsOneWidget);
+      final areaIndicador = tester.getRect(indicador);
+      expect(areaIndicador.top, greaterThanOrEqualTo(59));
+      expect(areaIndicador.bottom, lessThanOrEqualTo(59 + kToolbarHeight));
+      expect(areaIndicador.center.dy, closeTo(59 + kToolbarHeight / 2, 0.1));
+      await capturarTela(tester, 'sincronizacao_inicio_$largura');
       await tester.longPress(indicador);
       await tester.pumpAndSettle();
       expect(find.text('Pedidos sincronizados'), findsOneWidget);
@@ -131,17 +157,51 @@ void main() {
       await tester.tap(indicador);
       await tester.pumpAndSettle();
       expect(find.text('Envio dos pedidos'), findsOneWidget);
+      final sincronizar = find.byTooltip('Sincronizar agora');
+      expect(tester.getRect(sincronizar).right,
+          lessThanOrEqualTo(tester.getRect(indicador).left));
       app.navigatorKey!.currentState!.pop();
       await tester.pumpAndSettle();
       expect(find.text('Início'), findsOneWidget);
+
+      for (final pagina in ['Comandas', 'Mesas']) {
+        await tester.tap(find.text(pagina));
+        await tester.pumpAndSettle();
+        final menu = find.widgetWithIcon(IconButton, Icons.more_horiz);
+        final areaMenu = tester.getRect(menu);
+        expect(areaMenu.right, lessThanOrEqualTo(areaIndicador.left));
+        expect(areaMenu.center.dy, closeTo(areaIndicador.center.dy, 0.1));
+        expect(tester.getRect(find.byType(TextField)).overlaps(areaIndicador),
+            isFalse);
+        expect(tester.takeException(), isNull);
+        await capturarTela(tester, 'sincronizacao_${pagina}_$largura');
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        expect(
+            find.text(
+                pagina == 'Comandas' ? 'Todas as comandas' : 'Todas as mesas'),
+            findsOneWidget);
+        await tester.tap(menu);
+        await tester.pumpAndSettle();
+        app.navigatorKey!.currentState!.pop();
+        await tester.pumpAndSettle();
+      }
 
       modulo.sync.mostrarEstado(conectado: false);
       modulo.tema.value = ThemeMode.dark;
       await tester.pumpAndSettle();
       expect(find.byTooltip('Sem conexao com o servidor'), findsOneWidget);
       expect(find.text('Início'), findsOneWidget);
+      await tester.tap(find.text('Comandas'));
+      await tester.pumpAndSettle();
+      expect(
+          tester
+              .getRect(find.widgetWithIcon(IconButton, Icons.more_horiz))
+              .right,
+          lessThanOrEqualTo(areaIndicador.left));
+      await capturarTela(tester, 'sincronizacao_comandas_escuro_$largura');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   }
 }
