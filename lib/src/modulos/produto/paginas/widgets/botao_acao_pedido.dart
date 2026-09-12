@@ -53,18 +53,16 @@ class BotaoAcaoPedido extends StatelessWidget {
             onTap: carregando ? null : onPressed,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: carregando
-                  ? Center(
-                      child: SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: corTexto,
-                        ),
-                      ),
-                    )
-                  : LayoutBuilder(builder: (context, constraints) {
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Preserva a altura do rotulo, inclusive quando ocupa duas linhas.
+                  Visibility(
+                    visible: !carregando,
+                    maintainSize: true,
+                    maintainAnimation: true,
+                    maintainState: true,
+                    child: LayoutBuilder(builder: (context, constraints) {
                       final estiloRotulo = TextStyle(
                           color: corTexto,
                           fontWeight: FontWeight.w700,
@@ -161,6 +159,22 @@ class BotaoAcaoPedido extends StatelessWidget {
                         seta,
                       ]);
                     }),
+                  ),
+                  if (carregando)
+                    Positioned.fill(
+                      child: Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: corTexto,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
