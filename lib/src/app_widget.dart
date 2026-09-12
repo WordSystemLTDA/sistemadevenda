@@ -31,11 +31,16 @@ class AppWidget extends StatelessWidget {
               debugShowCheckedModeBanner: false,
               initialRoute: "login",
               navigatorKey: navigatorKey,
-              builder: (context, child) => Column(children: [
-                Expanded(child: child ?? const SizedBox.shrink()),
-                SafeArea(
-                    top: false,
-                    child: EstadoSincronizacao(navigatorKey: navigatorKey)),
+              builder: (context, child) => Stack(children: [
+                child ?? const SizedBox.shrink(),
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 58,
+                  right: 12,
+                  child: EstadoSincronizacao(
+                    navigatorKey: navigatorKey,
+                    flutuante: true,
+                  ),
+                ),
               ]),
               routes: {
                 'login': (context) {

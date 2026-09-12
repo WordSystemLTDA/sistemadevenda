@@ -6,7 +6,9 @@ import 'sincronizador.dart';
 
 class EstadoSincronizacao extends StatelessWidget {
   final GlobalKey<NavigatorState>? navigatorKey;
-  const EstadoSincronizacao({super.key, this.navigatorKey});
+  final bool flutuante;
+  const EstadoSincronizacao(
+      {super.key, this.navigatorKey, this.flutuante = false});
 
   @override
   Widget build(BuildContext context) {
@@ -37,24 +39,88 @@ class EstadoSincronizacao extends StatelessWidget {
                               : !sync.catalogoPronto
                                   ? 'Preparando cardapio no aparelho'
                                   : 'Pedidos sincronizados';
+          final icon = atencao
+              ? Icons.error_outline
+              : sync.online
+                  ? Icons.cloud_done_outlined
+                  : Icons.cloud_off_outlined;
+          final quantidadeAvisos = sync.conflitos > 0
+              ? sync.conflitos
+              : sync.pendencias.isNotEmpty
+                  ? sync.pendencias.length
+                  : impressoes;
+          final abrirPendencias = () => navigatorKey?.currentState?.push(
+              MaterialPageRoute<void>(
+                  builder: (_) =>
+                      PendenciasSincronizacao(sincronizador: sync)));
+          if (flutuante) {
+            final corFundo = atencao
+                ? cs.errorContainer.withOpacity(0.95)
+                : cs.surface.withOpacity(0.58);
+            final corIcone = atencao ? cs.onErrorContainer : cs.onSurface;
+            return Tooltip(
+              message: texto,
+              child: Opacity(
+                opacity: atencao || quantidadeAvisos > 0 ? 1 : 0.58,
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Material(
+                    color: corFundo,
+                    elevation: atencao ? 4 : 1,
+                    shadowColor: cs.shadow.withOpacity(0.18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(
+                        color: atencao
+                            ? cs.error.withOpacity(0.45)
+                            : cs.outlineVariant.withOpacity(0.35),
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: abrirPendencias,
+                      child: SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: Icon(icon, size: 22, color: corIcone),
+                      ),
+                    ),
+                  ),
+                  if (quantidadeAvisos > 0)
+                    Positioned(
+                      top: -5,
+                      right: -5,
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(minWidth: 18, minHeight: 18),
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        decoration: BoxDecoration(
+                          color: atencao ? cs.error : cs.primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          quantidadeAvisos > 9 ? '9+' : '$quantidadeAvisos',
+                          style: TextStyle(
+                            color: atencao ? cs.onError : cs.onPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                ]),
+              ),
+            );
+          }
           return Material(
             color: atencao ? cs.errorContainer : cs.surfaceContainerLow,
             child: InkWell(
-              onTap: () => navigatorKey?.currentState?.push(
-                  MaterialPageRoute<void>(
-                      builder: (_) =>
-                          PendenciasSincronizacao(sincronizador: sync))),
+              onTap: abrirPendencias,
               child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(children: [
-                    Icon(
-                        atencao
-                            ? Icons.error_outline
-                            : sync.online
-                                ? Icons.cloud_done_outlined
-                                : Icons.cloud_off_outlined,
-                        size: 19),
+                    Icon(icon, size: 19),
                     const SizedBox(width: 8),
                     Expanded(
                         child:
