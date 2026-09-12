@@ -137,6 +137,29 @@ void main() {
     expect(provedor.produtos.map((p) => p.id), ['Agua', 'Coca']);
   });
 
+  test('limpar busca com falha restaura a ultima categoria carregada',
+      () async {
+    final carregarCategoria = provedor.listarProdutosPorCategoria('0');
+    servico.categorias.last.resposta
+        .complete([produto('Agua'), produto('Coca')]);
+    await carregarCategoria;
+
+    final pesquisar = provedor.listarProdutosPorNome('qq9', '0', '0');
+    servico.pesquisas.last.resposta.complete([produto('Verona')..codigo = '9']);
+    await pesquisar;
+    expect(provedor.produtos.map((p) => p.id), ['Verona']);
+
+    provedor.prepararPesquisa('');
+    final limpar = provedor.listarProdutosPorCategoria('0');
+    expect(provedor.produtos.map((p) => p.id), ['Agua', 'Coca']);
+    servico.categorias.last.resposta.completeError(Exception('Sem conexao'));
+    await limpar;
+
+    expect(provedor.erro, isNull);
+    expect(provedor.carregando, isFalse);
+    expect(provedor.produtos.map((p) => p.id), ['Agua', 'Coca']);
+  });
+
   test('resetar ignora consultas pendentes', () async {
     final consulta = provedor.listarProdutosPorCategoria('0');
     provedor.resetarTudo();

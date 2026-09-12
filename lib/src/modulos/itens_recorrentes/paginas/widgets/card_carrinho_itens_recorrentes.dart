@@ -1,7 +1,7 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/botao_editar_produto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
@@ -77,10 +77,8 @@ class _CardCarrinhoItensRecorrentesState
     var item = widget.item;
     final nomeExibicao = _nomeExibicaoItem(item);
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(5),
-      ),
+    return CardConferenciaCarrinho(
+      conferido: item.conferidoNoCarrinho,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -248,8 +246,13 @@ class _CardCarrinhoItensRecorrentesState
               ),
             ),
           ),
-          BotaoEditarProdutoCarrinho(
-              item: item, index: widget.index, recorrentes: true),
+          AcoesProdutoCarrinho(
+            item: item,
+            index: widget.index,
+            recorrentes: true,
+            aoConferir: (conferido) => provedorItensRecorrentes
+                .definirConferencia(item, widget.index, conferido),
+          ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(

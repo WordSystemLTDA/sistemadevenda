@@ -4,7 +4,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/botao_editar_produto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -309,10 +309,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
     var item = widget.item;
     final nomeExibicao = _nomeExibicaoItem(item);
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(5),
-      ),
+    return CardConferenciaCarrinho(
+      conferido: item.conferidoNoCarrinho,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -433,7 +431,12 @@ class _CardCarrinhoState extends State<CardCarrinho>
               ),
             ),
           ),
-          BotaoEditarProdutoCarrinho(item: item, index: widget.index),
+          AcoesProdutoCarrinho(
+            item: item,
+            index: widget.index,
+            aoConferir: (conferido) => carrinhoProvedor.definirConferencia(
+                item, widget.index, conferido),
+          ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(

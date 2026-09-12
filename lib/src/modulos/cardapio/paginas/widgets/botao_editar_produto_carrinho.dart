@@ -14,12 +14,14 @@ class BotaoEditarProdutoCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
   final int index;
   final bool recorrentes;
+  final EdgeInsetsGeometry padding;
 
   const BotaoEditarProdutoCarrinho({
     super.key,
     required this.item,
     required this.index,
     this.recorrentes = false,
+    this.padding = const EdgeInsets.fromLTRB(10, 0, 10, 10),
   });
 
   @override
@@ -80,7 +82,7 @@ class _BotaoEditarProdutoCarrinhoState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      padding: widget.padding,
       child: SizedBox(
         width: double.infinity,
         child: FilledButton.tonalIcon(
@@ -92,8 +94,10 @@ class _BotaoEditarProdutoCarrinhoState
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             backgroundColor: cs.primaryContainer,
             foregroundColor: cs.onPrimaryContainer,
-            textStyle:
-                const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            textStyle: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),

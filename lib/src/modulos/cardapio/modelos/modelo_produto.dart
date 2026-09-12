@@ -53,6 +53,7 @@ class Modelowordprodutos {
   ModeloDescontoProduto? descontoProduto;
   String? habilsepardelivery;
   int? limiteSaboresBorda;
+  bool conferidoNoCarrinho;
 
   Modelowordprodutos({
     required this.id,
@@ -98,6 +99,7 @@ class Modelowordprodutos {
     this.descontoProduto,
     this.habilsepardelivery,
     this.limiteSaboresBorda,
+    this.conferidoNoCarrinho = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -146,12 +148,14 @@ class Modelowordprodutos {
       'descontoProduto': descontoProduto?.toMap(),
       'habilsepardelivery': habilsepardelivery,
       'limiteSaboresBorda': limiteSaboresBorda,
+      'conferidoNoCarrinho': conferidoNoCarrinho,
     };
   }
 
   factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
     return Modelowordprodutos(
       id: map['id'] as String,
+      conferidoNoCarrinho: map['conferidoNoCarrinho'] == true,
       limiteSaboresBorda: (map['limiteSaboresBorda'] as num?)?.toInt(),
       hashprodutos:
           map['hashprodutos'] != null ? map['hashprodutos'] as String : null,

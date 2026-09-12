@@ -101,7 +101,8 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     bool recorrentes = false,
   }) {
     final assinatura = jsonEncode(original.toMap());
-    final copia = Modelowordprodutos.fromMap(editado.toMap());
+    final copia = Modelowordprodutos.fromMap(editado.toMap())
+      ..conferidoNoCarrinho = false;
     return alterar(contexto, (itens) {
       // Confere dentro da mesma escrita para nao sobrescrever outro item.
       if (index < 0 ||
@@ -111,6 +112,25 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
             'O item do carrinho foi alterado. Abra a edição novamente.');
       }
       itens[index] = copia;
+    }, recorrentes: recorrentes);
+  }
+
+  Future<bool> definirConferencia(
+    ContextoCarrinho contexto,
+    int index,
+    Modelowordprodutos original,
+    bool conferido, {
+    bool recorrentes = false,
+  }) {
+    final assinatura = jsonEncode(original.toMap());
+    return alterar(contexto, (itens) {
+      // A marcacao vale somente para o item e a versao que o usuario conferiu.
+      if (index < 0 ||
+          index >= itens.length ||
+          jsonEncode(itens[index].toMap()) != assinatura) {
+        throw StateError('O item do carrinho foi alterado. Confira novamente.');
+      }
+      itens[index].conferidoNoCarrinho = conferido;
     }, recorrentes: recorrentes);
   }
 

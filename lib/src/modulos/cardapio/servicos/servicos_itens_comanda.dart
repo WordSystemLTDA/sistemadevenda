@@ -55,13 +55,15 @@ class ServicosItensComanda {
     observacao, {
     required ContextoCarrinho contexto,
   }) async {
-    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    final copia = Modelowordprodutos.fromMap(produto.toMap())
+      ..conferidoNoCarrinho = false;
     return armazenamento.alterar(contexto, (itens) => itens.insert(0, copia));
   }
 
   Future<bool> editar(Modelowordprodutos produto, int index,
       {required ContextoCarrinho contexto}) async {
-    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    final copia = Modelowordprodutos.fromMap(produto.toMap())
+      ..conferidoNoCarrinho = false;
     return armazenamento.alterar(contexto, (itens) => itens[index] = copia);
   }
 

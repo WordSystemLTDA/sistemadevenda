@@ -94,7 +94,8 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
       }
       return sucesso;
     }
-    final copia = Modelowordprodutos.fromMap(produto.toMap());
+    final copia = Modelowordprodutos.fromMap(produto.toMap())
+      ..conferidoNoCarrinho = false;
     return _servico.armazenamento.alterar(_contextoPorId(idComandaPedido),
         (itens) {
       if (index < 0 || index >= itens.length || itens[index].id != copia.id) {
@@ -111,15 +112,30 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
 
   Future<bool> setarItemCarrinho(
           String idComandaPedido, int index, double quantidade) =>
-      _servico.armazenamento.alterar(_contextoPorId(idComandaPedido),
-          (itens) => itens[index].quantidade = quantidade,
+      _servico.armazenamento.alterar(
+          _contextoPorId(idComandaPedido),
+          (itens) => itens[index]
+            ..quantidade = quantidade
+            ..conferidoNoCarrinho = false,
           recorrentes: true);
 
   Future<bool> inserir(String idComandaPedido, Modelowordprodutos produto) {
-    final copia = Modelowordprodutos.fromMap(produto.toMap())..quantidade = 1;
+    final copia = Modelowordprodutos.fromMap(produto.toMap())
+      ..quantidade = 1
+      ..conferidoNoCarrinho = false;
     return _servico.armazenamento.alterar(
         _contextoPorId(idComandaPedido), (itens) => itens.add(copia),
         recorrentes: true);
+  }
+
+  Future<bool> definirConferencia(
+      Modelowordprodutos item, int index, bool conferido) async {
+    final alvo = _contexto;
+    if (alvo == null) return false;
+    final sucesso = await _servico.armazenamento
+        .definirConferencia(alvo, index, item, conferido, recorrentes: true);
+    if (alvo == _contexto) await listarComandasPedidos(alvo.idAtendimento);
+    return sucesso;
   }
 
   @override

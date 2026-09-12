@@ -158,6 +158,16 @@ class ProvedorCarrinho extends ChangeNotifier {
     return res;
   }
 
+  Future<bool> definirConferencia(
+      Modelowordprodutos item, int index, bool conferido) async {
+    final alvo = _contexto;
+    if (alvo == null) return false;
+    final sucesso = await _servico.armazenamento
+        .definirConferencia(alvo, index, item, conferido);
+    if (alvo == _contexto) await listarComandasPedidos();
+    return sucesso;
+  }
+
   Future<bool> lancarPedido(
       dynamic idMesa,
       dynamic idComanda,

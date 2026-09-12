@@ -25,7 +25,10 @@ class ProvedorProdutos extends ChangeNotifier {
   bool erroAoCarregarMais = false;
   String? erro;
   String _pesquisa = '';
+  bool _limpouPesquisaAgora = false;
   final Map<String, Modelowordprodutos> _produtosCompletosPorId = {};
+  final Map<String, List<Modelowordprodutos>> _produtosPorCategoria = {};
+  final Map<String, bool> _temMaisPorCategoria = {};
   List<Modelowordprodutos> _produtos = [];
   List<Modelowordprodutos> get produtos => _produtos;
   set produtos(List<Modelowordprodutos> value) {
@@ -37,19 +40,24 @@ class ProvedorProdutos extends ChangeNotifier {
     _requisicao++;
     paginas.clear();
     _produtosCompletosPorId.clear();
+    _produtosPorCategoria.clear();
+    _temMaisPorCategoria.clear();
     _produtos = [];
     carregando = false;
     carregandoMais = false;
     temMais = true;
     erro = null;
     _pesquisa = '';
+    _limpouPesquisaAgora = false;
     notifyListeners();
   }
 
   void prepararPesquisa(String pesquisa) {
     // Invalida a resposta anterior ainda durante a digitacao/debounce.
     _requisicao++;
-    _pesquisa = pesquisa.trim();
+    final novaPesquisa = pesquisa.trim();
+    _limpouPesquisaAgora = _pesquisa.isNotEmpty && novaPesquisa.isEmpty;
+    _pesquisa = novaPesquisa;
     carregando = true;
     carregandoMais = false;
     erro = null;
@@ -70,11 +78,18 @@ class ProvedorProdutos extends ChangeNotifier {
     }
     final requisicao = ++_requisicao;
     final pagina = carregarMais ? (paginas[category] ?? 1) + 1 : 1;
+    final restaurarCategoria = !carregarMais && _limpouPesquisaAgora;
+    final cacheCategoria = _produtosPorCategoria[category];
+    _limpouPesquisaAgora = false;
     _pesquisa = '';
     carregando = !carregarMais;
     carregandoMais = carregarMais;
     erro = null;
     erroAoCarregarMais = false;
+    if (restaurarCategoria) {
+      _produtos = [...?cacheCategoria];
+      temMais = _temMaisPorCategoria[category] ?? true;
+    }
     notifyListeners();
     try {
       final res = await _produtoService.listarPorCategoria(category, pagina);
@@ -85,10 +100,17 @@ class ProvedorProdutos extends ChangeNotifier {
       _produtos = carregarMais ? [...produtos, ...novos] : novos;
       paginas[category] = pagina;
       temMais = res.length >= _itensPorPagina && novos.isNotEmpty;
+      _produtosPorCategoria[category] = [..._produtos];
+      _temMaisPorCategoria[category] = temMais;
     } catch (_) {
       if (requisicao != _requisicao) return;
-      erro = 'Não foi possível carregar os produtos.';
-      erroAoCarregarMais = carregarMais;
+      if (restaurarCategoria && cacheCategoria != null) {
+        erro = null;
+        erroAoCarregarMais = false;
+      } else {
+        erro = 'Não foi possível carregar os produtos.';
+        erroAoCarregarMais = carregarMais;
+      }
     } finally {
       if (requisicao == _requisicao) {
         carregando = false;
