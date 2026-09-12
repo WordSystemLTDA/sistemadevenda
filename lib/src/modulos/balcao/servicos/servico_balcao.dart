@@ -11,6 +11,9 @@ import 'package:app/src/modulos/balcao/modelos/retorno_listar_por_id_balcao.dart
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 class ServicoBalcao {
   final DioCliente dio;
@@ -24,7 +27,9 @@ class ServicoBalcao {
     final empresa = usuarioProvedor.usuario!.empresa;
     final id = usuarioProvedor.usuario!.id;
 
-    var response = await dio.cliente.post('/$caminhoAPI/listar.php', queryParameters: {
+    List<dynamic> lista = [];
+    try {
+      final response = await dio.cliente.post('/$caminhoAPI/listar.php', queryParameters: {
       'id_empresa': empresa,
       'id_usuario': id,
       'pagina': pagina,
@@ -33,15 +38,41 @@ class ServicoBalcao {
       'dataInicio': dataInicio,
       'dataFim': dataFim,
       'hora': hora,
-    });
-
-    if (response.data.isNotEmpty) {
-      return List<ModeloVendasBalcao>.from(response.data.map((elemento) {
-        return ModeloVendasBalcao.fromMap(elemento);
-      }));
+      });
+      lista = List<dynamic>.from(response.data);
+    } on DioException catch (e) {
+      if (!CacheConsultas.falhaDeConexao(e) || Sincronizador.instancia == null) rethrow;
     }
-
-    return [];
+    final vendas = lista.map((e) => ModeloVendasBalcao.fromMap(e)).toList();
+    final sync = Sincronizador.instancia;
+    if (sync != null && pagina == 1) {
+      final pendentes = await sync.banco.operacoes(sync.escopo);
+      for (final op in pendentes.where((op) => op['acao'] == 'venda')) {
+        final dados = AtendimentosLocais.dados(op);
+        if (dados['id_venda_origem'] != null) continue;
+        final data = DateTime.fromMillisecondsSinceEpoch(op['criado'] as int);
+        final dia = data.toIso8601String().substring(0, 10);
+        if (dia.compareTo(dataInicio) < 0 || dia.compareTo(dataFim) > 0) continue;
+        final cliente = await AtendimentosLocais(sync.banco, sync.escopo).nomeCliente(dados['cliente']?.toString() ?? '0');
+        final obs = dados['obs']?.toString() ?? '';
+        final nome = cliente.isEmpty ? (obs.isEmpty ? 'Sem Cliente' : obs) : cliente;
+        if (pesquisa.isNotEmpty && !nome.toLowerCase().contains(pesquisa.toLowerCase())) continue;
+        final resposta = AtendimentosLocais.recibo(op);
+        if (vendas.any((v) => v.id == resposta['idVenda'])) continue;
+        vendas.insert(0, ModeloVendasBalcao(
+          id: op['atendimento'] as String, nomecliente: nome,
+          numeropedido: resposta['numeroPedido']?.toString() ?? '',
+          quantidadeProdutos: (dados['produtos'] as List? ?? []).length.toString(),
+          pagamento: '', subtotal: dados['subTotal'].toString(),
+          status: 'Aguardando envio', nomeusuariocompleto: usuarioProvedor.usuario?.nome ?? '',
+          nomeusuario: usuarioProvedor.usuario?.nome ?? '', dataHora: data.toIso8601String(),
+          valorTotalF: dados['subTotal'].toString(), tamanhoLista: 1,
+          idtipodeentrega: dados['tipodeentrega']?.toString() ?? '', tipodeentrega: '',
+          nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', observacaoDoPedido: obs,
+        ));
+      }
+    }
+    return vendas;
   }
 
   Future<RetornoListarPorIdBalcao> listarPorId(String idVenda) async {
@@ -66,6 +97,20 @@ class ServicoBalcao {
   }
 
   Future<List<ModeloHistoricoPagamentos>> listarHistoricoPagamentos(String id, TipoCardapio tipo) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null && id.startsWith('venda-local:')) {
+      final operacoes = await sync.banco.db.query('operacoes',
+          where: "escopo = ? AND atendimento = ? AND acao = 'venda' AND estado <> 'arquivado'",
+          whereArgs: [sync.escopo, id], orderBy: 'criado, rowid');
+      final total = operacoes.fold<double>(0, (soma, op) => soma +
+          (double.tryParse(AtendimentosLocais.dados(op)['valor_lancamento'].toString()) ?? 0));
+      return operacoes.map((op) {
+        final dados = AtendimentosLocais.dados(op);
+        return ModeloHistoricoPagamentos(id: op['id'] as String,
+            valor: dados['valor_lancamento'].toString(), pagamento: 'Pagamento salvo',
+            somaValorHistorico: total.toStringAsFixed(2));
+      }).toList();
+    }
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 

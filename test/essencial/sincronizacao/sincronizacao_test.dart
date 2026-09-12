@@ -7,6 +7,11 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
+import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
@@ -38,6 +43,7 @@ void main() {
   var conectado = false;
   var perderResposta = false;
   var conflito = false;
+  var conflitoAbertura = false;
   final aplicados = <String>{};
   final tentativas = <Map<String, dynamic>>[];
   const contexto = ContextoCarrinho(
@@ -47,6 +53,7 @@ void main() {
     conectado = false;
     perderResposta = false;
     conflito = false;
+    conflitoAbertura = false;
     aplicados.clear();
     tentativas.clear();
     SharedPreferences.setMockInitialValues({
@@ -76,7 +83,8 @@ void main() {
         return;
       }
       if (pedido != null) {
-        if (conflito && pedido['dados']['id_comanda_pedido'] == '104') {
+        if ((conflito && pedido['dados']['id_comanda_pedido'] == '104') ||
+            (conflitoAbertura && pedido['acao'] == 'abertura')) {
           handler.reject(DioException(
               requestOptions: options,
               type: DioExceptionType.badResponse,
@@ -100,6 +108,11 @@ void main() {
               'protocolo': 1,
               'sucesso': true,
               'id_operacao': pedido['id_operacao']
+              ,if (pedido['acao'] == 'abertura') ...{
+                'id_comanda_pedido': '201', 'versao_atendimento': 'nova-versao', 'numeroPedido': '31',
+              },
+              if (pedido['dados']['id_abertura'] != null) 'numeroPedido': '31',
+              if (pedido['acao'] == 'venda') ...{'idVenda': '301', 'numeroPedido': '32'},
             }));
         return;
       }
@@ -121,6 +134,13 @@ void main() {
     await banco.gravar(
         'estado:${sync.escopo}',
         jsonEncode({
+          'abertura_offline': 1, 'caixa_id': '0',
+          'recursos': {
+            for (final tipo in ['mesa', 'comanda']) '$tipo:5': {
+              'id': '5', 'nome': '5', 'codigo': '5', 'ativo': 'Sim', 'livre': true,
+              'versao': 'livre-original-$tipo',
+            },
+          },
           'atendimentos': {
             '104': {'versao': 'versao-original'},
             '106': {'versao': 'versao-outra'},
@@ -201,6 +221,108 @@ void main() {
     expect(aplicados, hasLength(1));
     expect(tentativas.map((p) => p['id_operacao']).toSet(), hasLength(1));
     expect(socket.filaImpressao.itens, hasLength(1));
+  });
+
+  for (final tipo in ['mesa', 'comanda']) {
+    test('abre $tipo offline, permite produtos e imprime apos confirmar abertura', () async {
+      Sincronizador.instancia = sync;
+      final id = tipo == 'mesa'
+          ? (await ServicoMesas(api, usuario).inserirMesaOcupada('5', '0', 'Bruno')).idcomandapedido
+          : (await ServicoComandas(api, usuario).inserirComandaOcupada('5', '0', '0', 'Bruno')).idcomandapedido!;
+      final tela = await ServicoCardapio(api, usuario).listarPorId(id, TipoCardapio.values.byName(tipo), 'Não');
+      expect(tela.id, id);
+      expect(tela.observacaoDoPedido, 'Bruno');
+      final alvo = ContextoCarrinho(empresa: '32', tipo: tipo, idAtendimento: id, idRecurso: '5');
+      final item = produto(id: '5', codigo: '5', nome: 'Pizza', computador: 'Cozinha');
+      await ArmazenamentoCarrinhos.instancia.alterar(alvo, (itens) => itens.add(item));
+      await sync.guardarPedido(contexto: alvo, itens: [item], idMesa: tipo == 'mesa' ? '5' : '0',
+          idComanda: tipo == 'comanda' ? '5' : '0', idCliente: '0',
+          impressoes: [jsonEncode({'idRequisicao': 'nova-$tipo', 'tipoImpressao': '1', 'numeroPedido': ''})]);
+      await sync.enviarPendentes();
+      expect(await banco.operacoes(sync.escopo), hasLength(2));
+      expect(socket.filaImpressao.itens, isEmpty);
+      final lista = await AtendimentosLocais(banco, sync.escopo).projetarLista([
+        {'titulo': 'Livres', tipo == 'mesa' ? 'mesas' : 'comandas': [
+          {'id': '5', 'nome': '5', 'codigo': '5', 'ativo': 'Sim',
+            tipo == 'mesa' ? 'mesaOcupada' : 'comandaOcupada': false}
+        ]}
+      ], tipo, '');
+      expect(lista.first['titulo'], 'Ocupadas');
+      expect(lista.first[tipo == 'mesa' ? 'mesas' : 'comandas'].single['idComandaPedido'], id);
+      conectado = true;
+      await sync.tentarNovamente();
+      expect(await banco.operacoes(sync.escopo), isEmpty);
+      expect(aplicados, hasLength(2));
+      expect(socket.filaImpressao.itens.single.dados['numeroPedido'], '31');
+      final enviados = tentativas.where((p) => p['acao'] == 'produtos');
+      expect(enviados.single['dados']['id_abertura'], id.substring(6));
+    });
+  }
+
+  test('abertura conflitante preserva itens, nao imprime e arquivar nao libera dependentes', () async {
+    final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
+    await guardar(alvo: ContextoCarrinho(empresa: '32', tipo: 'comanda', idAtendimento: id, idRecurso: '5'));
+    conectado = true;
+    conflitoAbertura = true;
+    await sync.tentarNovamente();
+    expect(aplicados, isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+    final fila = await banco.operacoes(sync.escopo);
+    expect(fila, hasLength(2));
+    expect(fila.map((e) => e['estado']), everyElement('conflito'));
+    await sync.arquivarConflito(id.substring(6));
+    conflitoAbertura = false;
+    await sync.tentarNovamente();
+    expect(aplicados, isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+    expect(AtendimentosLocais.dados((await banco.operacoes(sync.escopo)).single)['produtos'], hasLength(1));
+  });
+
+  test('duplo toque nao abre duas comandas locais no mesmo recurso', () async {
+    final resultados = await Future.wait([0, 1].map((_) async {
+      try { return await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5'); }
+      on StateError { return null; }
+    }));
+    expect(resultados.whereType<String>(), hasLength(1));
+    await sync.enviarPendentes();
+    expect(await banco.operacoes(sync.escopo), hasLength(1));
+  });
+
+  test('reinicio e resposta perdida da abertura preservam dependencia e identidade', () async {
+    final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
+    await guardar(alvo: ContextoCarrinho(empresa: '32', tipo: 'comanda', idAtendimento: id, idRecurso: '5'));
+    conectado = true;
+    perderResposta = true;
+    await sync.tentarNovamente();
+    expect(socket.filaImpressao.itens, isEmpty);
+    sync.dispose();
+    await banco.db.close();
+    banco = await BancoLocal.abrir(factory: databaseFactoryFfi, path: '${pasta.path}/pedidos.db');
+    BancoLocal.instancia = banco;
+    sync = Sincronizador(api, usuario, socket, banco: banco);
+    await sync.configurar();
+    await sync.tentarNovamente();
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, hasLength(2));
+    expect(socket.filaImpressao.itens, hasLength(1));
+  });
+
+  test('venda offline e pagamento seguinte sobrevivem sem duplicar impressao', () async {
+    const alvo = ContextoCarrinho(empresa: '32', tipo: 'balcao', idAtendimento: '0');
+    final item = produto(id: '5', codigo: '5', nome: 'Pizza', computador: 'Cozinha');
+    await ArmazenamentoCarrinhos.instancia.alterar(alvo, (itens) => itens.add(item));
+    final id = await sync.guardarVenda(contexto: alvo, itens: [item],
+        dados: {'produtos': [item.toMap()], 'empresa': '32', 'id_usuario': '1', 'valor_lancamento': '10'},
+        impressoes: [jsonEncode({'idRequisicao': 'venda-1', 'tipoImpressao': '1'})]);
+    await sync.guardarPagamentoVenda(id, {'empresa': '32', 'id_usuario': '1', 'valor_lancamento': '20'});
+    await sync.enviarPendentes();
+    expect(await ArmazenamentoCarrinhos.instancia.listar(alvo), isEmpty);
+    expect(await banco.operacoes(sync.escopo), hasLength(2));
+    conectado = true;
+    await sync.tentarNovamente();
+    expect(aplicados, hasLength(2));
+    expect(socket.filaImpressao.itens.single.dados['numeroPedido'], '32');
+    expect(socket.filaImpressao.itens.single.dados['comanda'], 'Balcão 301');
   });
 
   test(

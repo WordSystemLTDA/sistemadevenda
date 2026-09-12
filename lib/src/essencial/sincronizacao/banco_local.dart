@@ -102,8 +102,10 @@ class BancoLocal {
     required List<String> impressoes,
     required String destino,
     bool recorrentes = false,
+    String acao = 'produtos',
+    String? idOperacao,
   }) async {
-    final id = novoId();
+    final id = idOperacao ?? novoId();
     final campo = recorrentes ? 'recorrentes' : 'itens';
     await db.transaction((tx) async {
       final carrinhos =
@@ -121,7 +123,7 @@ class BancoLocal {
         'id': id,
         'escopo': escopo,
         'atendimento': atendimento,
-        'acao': 'produtos',
+        'acao': acao,
         'estado': 'pendente',
         'dados': jsonEncode(dados),
         'impressoes': jsonEncode(impressoes),

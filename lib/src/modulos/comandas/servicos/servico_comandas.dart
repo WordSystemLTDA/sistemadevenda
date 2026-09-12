@@ -1,4 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
@@ -23,8 +25,11 @@ class ServicoComandas {
       },
     );
 
-    if (response.data.isNotEmpty) {
-      final grupos = List<ModeloComandas>.from(response.data.map((elemento) {
+    final sync = Sincronizador.instancia;
+    final lista = sync == null ? response.data : await AtendimentosLocais(sync.banco, sync.escopo)
+        .projetarLista(List<dynamic>.from(response.data), 'comanda', pesquisa);
+    if (lista.isNotEmpty) {
+      final grupos = List<ModeloComandas>.from(lista.map((elemento) {
         return ModeloComandas.fromMap(elemento);
       }));
       if (consulta == _consultaCarrinhos) {
@@ -158,6 +163,12 @@ class ServicoComandas {
 
   Future<({bool sucesso, String? idcomandapedido})> inserirComandaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null) {
+      final atendimento = await sync.abrirAtendimento(tipo: 'comanda', idComanda: id,
+          idMesa: idMesa, idCliente: idCliente, obs: obs);
+      return (sucesso: true, idcomandapedido: atendimento);
+    }
     const url = 'comandas/inserir_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -183,6 +194,8 @@ class ServicoComandas {
 
   Future<bool> editarComandaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null) id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;

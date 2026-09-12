@@ -138,6 +138,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   }
 
   void finalizar() async {
+    if (finalizando.value) return;
     finalizando.value = true;
     // final modelo = context.read<ProvedoresTelaNfeSaida>().venda;
 
@@ -172,6 +173,21 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             );
 
     if (sucesso) {
+      if (idvenda.startsWith('venda-local:')) {
+        await carrinhoProvedor.listarComandasPedidos();
+        finalizando.value = false;
+        if (!mounted) return;
+        if (widget.valor >= double.parse(widget.totalReceber)) {
+          provedorBalcao.observacaoDoPedido = '';
+          FeedbackUsuario.pedidoFinalizado();
+          Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+        } else {
+          provedor.idVenda = idvenda;
+          provedor.valor = double.parse(widget.totalReceber) - widget.valor;
+          Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+        }
+        return;
+      }
       provedorBalcao.observacaoDoPedido = '';
 
       if (widget.valor >= double.parse(widget.totalReceber)) {

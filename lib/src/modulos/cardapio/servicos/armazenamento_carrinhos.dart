@@ -110,14 +110,18 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     required List<String> impressoes,
     required String destino,
     bool recorrentes = false,
+    String acao = 'produtos',
+    String? idOperacao,
+    String? atendimentoOperacao,
   }) => _executar((_) async {
     final banco = BancoLocal.instancia;
     if (banco == null) throw StateError('Banco local indisponivel.');
     final id = await banco.guardarPedido(
       escopo: escopo, chaveCarrinho: contexto.chave,
-      atendimento: contexto.idAtendimento,
+      atendimento: atendimentoOperacao ?? contexto.idAtendimento,
       itens: itens.map((e) => e.toMap()).toList(), dados: dados,
       impressoes: impressoes, destino: destino, recorrentes: recorrentes,
+      acao: acao, idOperacao: idOperacao,
     );
     notifyListeners();
     return id;

@@ -289,7 +289,7 @@ class _CardComandaState extends State<CardComanda> {
                                 ),
                               ),
                             ],
-                            if (item.idComandaPedido != null) ...[
+                            if (item.idComandaPedido != null && !item.idComandaPedido!.startsWith('local:')) ...[
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),

@@ -9,6 +9,10 @@ import 'package:app/src/modulos/finalizar_pagamento/modelos/bancos_ativos_pdv_mo
 import 'package:app/src/modulos/finalizar_pagamento/modelos/modelo_datas_vendas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:dio/dio.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 
 class ServicoFinalizarPagamento {
   final DioCliente dio;
@@ -73,6 +77,31 @@ class ServicoFinalizarPagamento {
       'produtos': produtos.toList(),
       'valorAPagarOriginal': valorAPagarOriginal,
     };
+
+    final sync = Sincronizador.instancia;
+    if (sync != null && tipo == TipoCardapio.balcao &&
+        (id.isEmpty || id == '0' || id.startsWith('venda-local:'))) {
+      try {
+        final dados = jsonDecode(jsonEncode(campos)) as Map<String, dynamic>;
+        dados['produtos'] = produtos.map((p) => p.toMap()).toList();
+        if (id.startsWith('venda-local:')) {
+          await sync.guardarPagamentoVenda(id, dados);
+          return (true, 'Pagamento salvo no aparelho.', id);
+        }
+        await sync.configurar();
+        final nomeCliente = await AtendimentosLocais(sync.banco, sync.escopo).nomeCliente(cliente);
+        final mensagens = Impressao.prepararComprovanteDePedido(
+            produtos: produtos, tipoTela: tipo, tipodeentrega: tipodeentrega,
+            nomeCliente: nomeCliente.isEmpty ? obs : nomeCliente,
+            nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', comanda: 'Balcão', numeroPedido: '');
+        final idLocal = await sync.guardarVenda(
+            contexto: ContextoCarrinho(empresa: idEmpresa!, tipo: 'balcao', idAtendimento: id),
+            itens: produtos, dados: dados, impressoes: mensagens);
+        return (true, 'Venda salva no aparelho.', idLocal);
+      } catch (erro) {
+        return (false, erro is StateError ? erro.message.toString() : 'Nao foi possivel salvar a venda. Os produtos continuam no carrinho.', '0');
+      }
+    }
 
     var response = await dio.cliente.post('${tipo.nomeSimplificado}/pagar_pedido.php', data: jsonEncode(campos));
 

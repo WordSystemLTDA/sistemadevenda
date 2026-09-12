@@ -51,7 +51,7 @@ function esperarConflito($pdo, $entrada) {
 
 $pdo = conectarTeste();
 foreach (['garcom_operacoes', 'itens_venda_sabores_de_bordas', 'itens_venda_pizza',
-    'itens_venda', 'comandas_pedidos', 'usuarios', 'produtos', 'permissoes_empresa', 'empresas', 'sabores_de_bordas'] as $tabela) {
+    'itens_venda', 'comandas_pedidos', 'comandas', 'mesa', 'usuarios', 'produtos', 'permissoes_empresa', 'empresas', 'sabores_de_bordas'] as $tabela) {
     $pdo->exec("DELETE FROM `$tabela`");
 }
 fixture($pdo, 'usuarios', ['id' => 1, 'empresa' => 32, 'ativo' => 'Sim']);
@@ -156,3 +156,114 @@ garcomOperacao($pdo, $outro);
 garcomOperacao($pdo, $outro);
 verificar($pdo->query('SELECT COUNT(*) FROM itens_venda WHERE id_comanda_pedido = 106')->fetchColumn() == 1, 'Pedido da mesa duplicado');
 echo "OK: mesa usa a mesma transacao e recibo idempotente\n";
+
+fixture($pdo, 'comandas', ['id' => 20, 'empresa' => 32, 'nome' => '20', 'ativo' => 'Sim']);
+fixture($pdo, 'mesa', ['id' => 20, 'empresa' => 32, 'nome' => '20', 'ativo' => 'Sim']);
+$nova = ['empresa' => '32', 'id_usuario' => '1', 'id_operacao' => str_repeat('f', 48),
+    'acao' => 'abertura', 'dados' => ['tipo' => 'comanda', 'id_comanda' => '20',
+    'id_mesa' => '20', 'id_cliente' => '0', 'obs' => "Cliente d'Agua",
+    'recursos' => [
+        'comanda:20' => garcomRecurso($pdo, '32', 'comanda', '20')['versao'],
+        'mesa:20' => garcomRecurso($pdo, '32', 'mesa', '20')['versao']]]];
+$abertura = garcomOperacao($pdo, $nova);
+verificar(garcomOperacao($pdo, $nova) === $abertura, 'Abertura repetida nao recuperou recibo');
+verificar($pdo->query("SELECT COUNT(*) FROM comandas_pedidos WHERE id_comanda = 20")->fetchColumn() == 1, 'Abertura duplicada');
+$dependente = $entrada;
+$dependente['id_operacao'] = str_repeat('1', 48);
+$dependente['dados']['id_comanda_pedido'] = 'local:' . $nova['id_operacao'];
+$dependente['dados']['id_abertura'] = $nova['id_operacao'];
+$dependente['dados']['id_comanda'] = '20';
+$dependente['dados']['id_mesa'] = '20';
+unset($dependente['dados']['versao_atendimento']);
+$reciboItens = garcomOperacao($pdo, $dependente);
+verificar($reciboItens['id_comanda_pedido'] === $abertura['id_comanda_pedido'], 'Itens foram para outra abertura');
+verificar($reciboItens['numeroPedido'] === $abertura['numeroPedido'], 'Numero de impressao incorreto');
+echo "OK: abertura offline e produtos dependentes recebem identidade e numero definitivos, sem duplicar\n";
+
+$pdo->prepare("UPDATE comandas_pedidos SET status = 'Finalizada' WHERE id = ?")->execute([$abertura['id_comanda_pedido']]);
+verificar(garcomOperacao($pdo, $nova) === $abertura, 'Reenvio reabriu atendimento encerrado');
+verificar(garcomOperacao($pdo, $dependente) === $reciboItens, 'Reenvio de item confirmado falhou apos fechamento');
+$dependente['id_operacao'] = str_repeat('2', 48);
+esperarConflito($pdo, $dependente);
+$nova['id_operacao'] = str_repeat('3', 48);
+esperarConflito($pdo, $nova);
+echo "OK: recurso usado e liberado novamente invalida abertura antiga; produtos nao reabrem comanda\n";
+
+$nova['dados']['recursos'] = [
+    'comanda:20' => garcomRecurso($pdo, '32', 'comanda', '20')['versao'],
+    'mesa:20' => garcomRecurso($pdo, '32', 'mesa', '20')['versao']];
+$outraAbertura = garcomOperacao($pdo, $nova);
+esperarConflito($pdo, $dependente);
+verificar($pdo->query('SELECT COUNT(*) FROM itens_venda WHERE id_comanda_pedido = ' . (int)$outraAbertura['id_comanda_pedido'])->fetchColumn() == 0,
+    'Pedido atrasado foi para atendimento novo');
+echo "OK: comanda reutilizada nao recebe produtos do atendimento local anterior\n";
+
+fixture($pdo, 'mesa', ['id' => 21, 'empresa' => 32, 'nome' => '21', 'ativo' => 'Sim']);
+$novaMesa = ['empresa' => '32', 'id_usuario' => '1', 'id_operacao' => str_repeat('4', 48),
+    'acao' => 'abertura', 'dados' => ['tipo' => 'mesa', 'id_mesa' => '21', 'id_comanda' => '0',
+    'id_cliente' => '0', 'recursos' => ['mesa:21' => garcomRecurso($pdo, '32', 'mesa', '21')['versao']]]];
+$primeira = garcomOperacao($pdo, $novaMesa);
+$novaMesa['id_operacao'] = str_repeat('5', 48);
+esperarConflito($pdo, $novaMesa);
+verificar($pdo->query('SELECT COUNT(*) FROM comandas_pedidos WHERE id_mesa = 21')->fetchColumn() == 1, 'Disputa gerou duas mesas abertas');
+echo "OK: abertura de mesa funciona e segundo aparelho nao ocupa o mesmo recurso\n";
+
+foreach (['vendas', 'movimentacoes', 'contas_receber', 'caixa', 'despesas', 'banco_pix', 'caixa_turno'] as $tabela) {
+    $pdo->exec("DELETE FROM `$tabela`");
+}
+fixture($pdo, 'despesas', ['id' => 1, 'empresa' => 32, 'nome' => 'Venda']);
+fixture($pdo, 'despesas', ['id' => 2, 'empresa' => 32, 'nome' => 'Contas à Receber']);
+$venda = ['empresa' => '32', 'id_usuario' => '1', 'id_operacao' => str_repeat('6', 48),
+    'acao' => 'venda', 'dados' => [
+        'id' => '0', 'id_comanda' => '0', 'id_mesa' => '0', 'cliente' => '0',
+        'caixa_id' => '0', 'valor_original' => '144.00', 'valor_lancamento' => '20.00',
+        'pagamentoSelecionado' => 1, 'quantidadePessoas' => 0, 'subTotal' => '144.00',
+        'parcelas' => '0', 'parcelasLista' => [], 'dataLancamento' => '2026-09-12',
+        'valortroco' => '0', 'tipo' => 'Balcão', 'id_endereco' => '0',
+        'obs' => "Pedido d'Agua", 'tipodeentrega' => '1', 'produtos' => [$produto]]];
+$produto['observacao'] = "Sem cebola d'Agua";
+$venda['dados']['produtos'] = [$produto];
+$reciboVenda = garcomOperacao($pdo, $venda);
+verificar(garcomOperacao($pdo, $venda) === $reciboVenda, 'Venda repetida nao recuperou recibo');
+verificar($pdo->query('SELECT COUNT(*) FROM vendas')->fetchColumn() == 1, 'Venda duplicada');
+verificar($pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn() == 1, 'Pagamento duplicado');
+verificar($pdo->query("SELECT COUNT(*) FROM itens_venda WHERE tipo_status = 'Balcão'")->fetchColumn() == 1, 'Itens de venda duplicados');
+verificar($pdo->query("SELECT observacao FROM itens_venda WHERE tipo_status = 'Balcão'")->fetchColumn() === $produto['observacao'], 'Observacao da venda incorreta');
+echo "OK: venda offline grava itens, bordas, observacao e pagamento uma unica vez\n";
+
+$pagamento = $venda;
+$pagamento['id_operacao'] = str_repeat('7', 48);
+$pagamento['dados']['id_venda_origem'] = $venda['id_operacao'];
+$pagamento['dados']['valor_lancamento'] = '124.00';
+$pagamento['dados']['produtos'] = [];
+$segundoPagamento = garcomOperacao($pdo, $pagamento);
+verificar(garcomOperacao($pdo, $pagamento) === $segundoPagamento, 'Pagamento parcial duplicado');
+verificar($pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn() == 2, 'Pagamento complementar nao registrado uma vez');
+verificar($pdo->query('SELECT SUM(valor) FROM movimentacoes')->fetchColumn() == 144, 'Soma dos pagamentos incorreta');
+echo "OK: pagamentos parciais offline usam a mesma venda e recibos independentes\n";
+$pagamento['id_operacao'] = str_repeat('8', 48);
+$pdo->prepare("UPDATE vendas SET status = 'Cancelada' WHERE id = ?")->execute([$reciboVenda['idVenda']]);
+esperarConflito($pdo, $pagamento);
+verificar($pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn() == 2, 'Venda cancelada recebeu pagamento');
+echo "OK: pagamento atrasado de venda cancelada fica em conflito\n";
+
+$falhaVenda = $venda;
+$falhaVenda['id_operacao'] = str_repeat('9', 48);
+$falhaVenda['dados']['produtos'][] = $produto;
+$pdoFalha = conectarTeste();
+$pdoFalha->falharNoSegundo = true;
+try {
+    garcomOperacao($pdoFalha, $falhaVenda);
+    throw new LogicException('Falha da venda nao ocorreu');
+} catch (RuntimeException $e) {
+    verificar(!($e instanceof LogicException), $e->getMessage());
+}
+verificar($pdo->query('SELECT COUNT(*) FROM vendas')->fetchColumn() == 1, 'Venda parcial ficou gravada');
+verificar($pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn() == 2, 'Rollback da venda criou pagamento');
+echo "OK: falha em produto reverte venda, complementos e pagamento\n";
+
+fixture($pdo, 'caixa', ['id' => 9, 'empresa' => 32, 'usuario_ab' => 1, 'status' => 'Aberto']);
+$venda['id_operacao'] = str_repeat('0', 48);
+esperarConflito($pdo, $venda);
+verificar($pdo->query('SELECT COUNT(*) FROM vendas')->fetchColumn() == 1, 'Venda foi registrada no caixa errado');
+echo "OK: mudanca de caixa impede lancamento financeiro em sessao diferente\n";

@@ -186,7 +186,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
             if (!resposta.sucesso) {
               if (context.mounted) {
-                _mostrarErro('Ocorreu um erro');
+                _mostrarErro(provedorMesas.erro ?? 'Nao foi possivel abrir a mesa.');
               }
             }
           }
@@ -243,7 +243,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
             if (!resposta.sucesso) {
               if (context.mounted) {
-                _mostrarErro('Ocorreu um erro');
+                _mostrarErro(_state.erro ?? 'Nao foi possivel abrir a comanda.');
               }
             }
           }

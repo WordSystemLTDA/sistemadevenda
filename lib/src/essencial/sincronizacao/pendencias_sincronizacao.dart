@@ -259,6 +259,7 @@ class PendenciasSincronizacao extends StatelessWidget {
             children: [
               Text(
                   comprovante['comanda']?.toString() ??
+                      (dados['detalhe'] is Map ? 'Abertura: ${dados['detalhe']['nome']}' : null) ??
                       'Atendimento ${op['atendimento']}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
@@ -267,7 +268,11 @@ class PendenciasSincronizacao extends StatelessWidget {
                       'Confira este pedido com o responsavel.')
                   : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
               const Divider(),
-              if (produtos.isEmpty)
+              if (op['acao'] == 'abertura') ...[
+                Text('Cliente: ${dados['detalhe']?['nomeCliente'] ?? ''}'),
+                if ((dados['obs'] ?? '').toString().isNotEmpty) Text(dados['obs'].toString()),
+              ],
+              if (produtos.isEmpty && op['acao'] != 'abertura')
                 Text(
                   'Nao foi possivel detalhar os itens salvos neste registro.',
                   style: Theme.of(context).textTheme.bodySmall,

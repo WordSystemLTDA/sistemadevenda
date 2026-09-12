@@ -1,4 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
@@ -23,8 +25,11 @@ class ServicoMesas {
       },
     );
 
-    if (response.data.isNotEmpty) {
-      final grupos = List<MesasModel>.from(response.data.map((elemento) {
+    final sync = Sincronizador.instancia;
+    final lista = sync == null ? response.data : await AtendimentosLocais(sync.banco, sync.escopo)
+        .projetarLista(List<dynamic>.from(response.data), 'mesa', pesquisa);
+    if (lista.isNotEmpty) {
+      final grupos = List<MesasModel>.from(lista.map((elemento) {
         return MesasModel.fromMap(elemento);
       }));
       if (consulta == _consultaCarrinhos) {
@@ -145,6 +150,8 @@ class ServicoMesas {
 
   Future<bool> editarMesaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null) id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -167,6 +174,12 @@ class ServicoMesas {
 
   Future<({bool sucesso, String idcomandapedido})> inserirMesaOcupada(
       String idMesa, String idCliente, String obs) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null) {
+      final atendimento = await sync.abrirAtendimento(tipo: 'mesa',
+          idMesa: idMesa, idCliente: idCliente, obs: obs);
+      return (sucesso: true, idcomandapedido: atendimento);
+    }
     const url = 'mesas/inserir_mesa_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;

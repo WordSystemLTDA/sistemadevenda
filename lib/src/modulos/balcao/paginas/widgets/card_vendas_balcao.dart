@@ -10,6 +10,8 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 
 class CardVendasBalcao extends StatefulWidget {
   final ModeloVendasBalcao item;
@@ -64,6 +66,12 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
             Expanded(
               child: InkWell(
                 onTap: () {
+                  if (item.id.startsWith('venda-local:')) {
+                    final sync = Sincronizador.instancia;
+                    if (sync != null) Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => PendenciasSincronizacao(sincronizador: sync)));
+                    return;
+                  }
                   Navigator.push(context, MaterialPageRoute(builder: (context) {
                     return PaginaDetalhesDaVendaBalcao(idVenda: item.id);
                   }));
@@ -94,6 +102,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                           Text(item.nomeusuario, style: const TextStyle(fontSize: 12)),
+                          if (item.id.startsWith('venda-local:'))
+                            Text(item.status, style: const TextStyle(fontSize: 12)),
                           Text(DateFormat('dd/MM/yyyy hh:ss').format(DateTime.parse(item.dataHora)), style: const TextStyle(fontSize: 12)),
                           const SizedBox(height: 5),
                           Text(item.tipodeentrega, style: const TextStyle(fontSize: 12)),
@@ -105,7 +115,7 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                 ),
               ),
             ),
-            Card(
+            if (!item.id.startsWith('venda-local:')) Card(
               margin: EdgeInsets.zero,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
               child: Column(

@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'banco_local.dart';
+import 'atendimentos_locais.dart';
 import 'cache_consultas.dart';
 import 'execucao_segundo_plano.dart';
 
@@ -140,6 +141,10 @@ class Sincronizador extends ChangeNotifier {
         !['mesa', 'comanda'].contains(contexto.tipo)) {
       throw StateError('O atendimento nao pertence a esta conexao.');
     }
+    final abertura = await AtendimentosLocais(banco, escopo).abertura(contexto.idAtendimento);
+    if (abertura != null && ['conflito', 'arquivado'].contains(abertura['estado'])) {
+      throw StateError('A abertura deste atendimento precisa de conferencia.');
+    }
     final estadoSalvo = await banco.ler('estado:$escopo');
     final atendimento = estadoSalvo == null
         ? null
@@ -148,7 +153,7 @@ class Sincronizador extends ChangeNotifier {
     final versao =
         await banco.ler('versao:$escopo:${contexto.idAtendimento}') ??
             atendimento?['versao'];
-    if (versao == null) {
+    if (versao == null && abertura == null) {
       throw StateError('Aguarde a primeira sincronizacao deste atendimento.');
     }
     await ArmazenamentoCarrinhos.instancia.finalizarDuravel(
@@ -159,6 +164,7 @@ class Sincronizador extends ChangeNotifier {
         'produtos': itens.map((e) => e.toMap()).toList(),
         'id_comanda_pedido': contexto.idAtendimento,
         'versao_atendimento': versao,
+        if (abertura != null) 'id_abertura': abertura['id'],
         'id_comanda': idComanda,
         'id_mesa': idMesa,
         'tipo': contexto.tipo,
@@ -170,6 +176,102 @@ class Sincronizador extends ChangeNotifier {
       destino: destino,
       recorrentes: recorrentes,
     );
+    await _recarregarPendencias();
+    _notificar();
+    unawaited(enviarPendentes());
+  }
+
+  Future<String> abrirAtendimento({required String tipo, String idMesa = '0',
+    String idComanda = '0', String idCliente = '0', String obs = ''}) async {
+    await configurar();
+    if (escopo.isEmpty) throw StateError('Entre na sua conta para abrir o atendimento.');
+    idMesa = idMesa.isEmpty ? '0' : idMesa;
+    idComanda = idComanda.isEmpty ? '0' : idComanda;
+    idCliente = idCliente.isEmpty ? '0' : idCliente;
+    var estado = jsonDecode(await banco.ler('estado:$escopo') ?? '{}') as Map;
+    if (estado['abertura_offline'] != 1 && api.cache?.servidorDisponivel != false) {
+      final resposta = await api.cliente.get('sincronizacao/estado.php',
+          queryParameters: {'empresa': usuario.usuario!.empresa, 'id_usuario': usuario.usuario!.id},
+          options: _opcoes(servidor));
+      if (resposta.data is Map) {
+        estado = resposta.data as Map;
+        await banco.gravar('estado:$escopo', jsonEncode(estado));
+      }
+    }
+    if (estado['abertura_offline'] != 1) {
+      throw StateError('Conecte uma vez ao servidor atualizado para preparar as aberturas offline.');
+    }
+    final recursos = estado['recursos'] as Map? ?? {};
+    final versoes = <String, String>{};
+    for (final entrada in {'mesa': idMesa, 'comanda': idComanda}.entries) {
+      if (entrada.value == '0') continue;
+      final chave = '${entrada.key}:${entrada.value}';
+      final recurso = recursos[chave] as Map?;
+      if (recurso == null || recurso['livre'] != true || recurso['ativo'] != 'Sim') {
+        throw StateError('Esta mesa ou comanda nao esta livre na ultima atualizacao.');
+      }
+      versoes[chave] = recurso['versao'].toString();
+    }
+    final locais = AtendimentosLocais(banco, escopo);
+    final recurso = recursos['$tipo:${tipo == 'mesa' ? idMesa : idComanda}'] as Map;
+    final id = await locais.abrir({
+      'tipo': tipo, 'empresa': usuario.usuario!.empresa, 'id_usuario': usuario.usuario!.id,
+      'id_mesa': idMesa, 'id_comanda': idComanda, 'id_cliente': idCliente, 'obs': obs,
+      'recursos': versoes,
+      'detalhe': {
+        'nome': recurso['nome']?.toString() ?? '', 'codigo': recurso['codigo']?.toString() ?? '',
+        'idMesa': idMesa, 'idComanda': idComanda, 'idCliente': idCliente,
+        'nomeMesa': (recursos['mesa:$idMesa'] as Map?)?['nome']?.toString() ?? '',
+        'nomeCliente': await locais.nomeCliente(idCliente), 'observacaoDoPedido': obs,
+        'dataAbertura': DateTime.now().toIso8601String(), 'nomeEmpresa': usuario.usuario!.nomeEmpresa ?? '',
+        'somaValorHistorico': '0', 'nomelancamento': [], 'valorentrega': '0',
+      }
+    }, destino);
+    await _recarregarPendencias();
+    _notificar();
+    aoAtualizarTelas?.call();
+    unawaited(enviarPendentes());
+    return id;
+  }
+
+  Future<String> guardarVenda({required ContextoCarrinho contexto,
+    required List<Modelowordprodutos> itens, required Map<String, dynamic> dados,
+    required List<String> impressoes}) async {
+    await configurar();
+    if (escopo.isEmpty || contexto.empresa != usuario.usuario?.empresa || contexto.tipo != 'balcao') {
+      throw StateError('Venda sem conta ou carrinho valido.');
+    }
+    final id = BancoLocal.novoId();
+    final estado = jsonDecode(await banco.ler('estado:$escopo') ?? '{}') as Map;
+    if (!estado.containsKey('caixa_id')) {
+      throw StateError('Conecte uma vez ao servidor atualizado para preparar as vendas offline.');
+    }
+    dados['caixa_id'] = estado['caixa_id'];
+    await ArmazenamentoCarrinhos.instancia.finalizarDuravel(
+        escopo: escopo, contexto: contexto, itens: itens, dados: dados,
+        impressoes: impressoes, destino: destino, acao: 'venda', idOperacao: id,
+        atendimentoOperacao: 'venda-local:$id');
+    await _recarregarPendencias();
+    _notificar();
+    unawaited(enviarPendentes());
+    return 'venda-local:$id';
+  }
+
+  Future<void> guardarPagamentoVenda(String idVenda, Map<String, dynamic> dados) async {
+    await configurar();
+    final origem = (await banco.db.query('operacoes',
+        where: 'escopo = ? AND atendimento = ? AND acao = ?',
+        whereArgs: [escopo, idVenda, 'venda'], orderBy: 'criado, rowid', limit: 1)).firstOrNull;
+    if (origem == null || ['conflito', 'arquivado'].contains(origem['estado'])) {
+      throw StateError('A venda original precisa de conferencia.');
+    }
+    final original = AtendimentosLocais.dados(origem);
+    dados.addAll({'id_venda_origem': origem['id'], 'caixa_id': original['caixa_id'], 'produtos': []});
+    await banco.db.insert('operacoes', {
+      'id': BancoLocal.novoId(), 'escopo': escopo, 'atendimento': idVenda,
+      'acao': 'venda', 'estado': 'pendente', 'dados': jsonEncode(dados),
+      'impressoes': '[]', 'destino': destino, 'criado': DateTime.now().millisecondsSinceEpoch,
+    });
     await _recarregarPendencias();
     _notificar();
     unawaited(enviarPendentes());
@@ -236,6 +338,14 @@ class Sincronizador extends ChangeNotifier {
       await enviarPendentes();
       if (alvo != escopo || usuario.usuario == null) return;
       await _atualizarConsultas(alvo, url, empresa!, idUsuario!);
+      for (final rota in ['listar_banco_pix', 'listar_datas_vendas', 'listar_bancos']) {
+        if (alvo != escopo) return;
+        final resposta = await api.cliente.get('tela_nfe_saida/$rota.php',
+            queryParameters: rota == 'listar_bancos'
+                ? {'id_empresa': empresa, 'id_usuario': idUsuario} : {'empresa': empresa},
+            options: _opcoes(url));
+        await banco.guardarConsulta(alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
+      }
       if (alvo != escopo) return;
       ultimaAtualizacao = DateTime.now();
       aoAtualizarTelas?.call();
@@ -277,9 +387,17 @@ class Sincronizador extends ChangeNotifier {
   }
 
   Future<void> arquivarConflito(String id) async {
-    await banco.db.update('operacoes', {'estado': 'arquivado'},
-        where: 'id = ? AND escopo = ? AND estado = ?',
-        whereArgs: [id, escopo, 'conflito']);
+    await banco.db.transaction((tx) async {
+      final operacao = (await tx.query('operacoes', where: 'id = ? AND escopo = ? AND estado = ?',
+          whereArgs: [id, escopo, 'conflito'])).firstOrNull;
+      if (operacao == null) return;
+      await tx.update('operacoes', {'estado': 'arquivado'}, where: 'id = ?', whereArgs: [id]);
+      if (operacao['acao'] == 'abertura') {
+        await tx.update('operacoes', {'estado': 'conflito', 'erro': 'A abertura original foi arquivada. Confira os produtos antes de arquivar.'},
+            where: "escopo = ? AND atendimento = ? AND estado = 'pendente'",
+            whereArgs: [escopo, operacao['atendimento']]);
+      }
+    });
     await _recarregarPendencias();
     _notificar();
   }
@@ -304,6 +422,16 @@ class Sincronizador extends ChangeNotifier {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
       final id = op['id'] as String;
       final atendimento = op['atendimento'] as String;
+      if (op['acao'] == 'produtos' && AtendimentosLocais.local(atendimento)) {
+        final abertura = await AtendimentosLocais(banco, alvo).abertura(atendimento);
+        if (abertura == null || ['conflito', 'arquivado'].contains(abertura['estado'])) {
+          await banco.atualizarOperacao(id, {'estado': 'conflito',
+            'erro': 'A abertura original nao foi confirmada. Confira este pedido.'});
+          bloqueados.add(atendimento);
+          continue;
+        }
+        if (abertura['estado'] != 'concluido') continue;
+      }
       if (op['estado'] == 'conflito' || bloqueados.contains(atendimento)) {
         bloqueados.add(atendimento);
         continue;
@@ -355,6 +483,10 @@ class Sincronizador extends ChangeNotifier {
             resultado['sucesso'] != true) {
           throw StateError('O servidor nao confirmou o pedido com seguranca.');
         }
+        if (op['acao'] == 'abertura' &&
+            (resultado['id_comanda_pedido'] == null || resultado['versao_atendimento'] == null)) {
+          throw StateError('O servidor nao confirmou a identidade da abertura.');
+        }
         await banco.atualizarOperacao(id, {
           'estado': 'registrado',
           'resposta': jsonEncode(resultado),
@@ -363,15 +495,21 @@ class Sincronizador extends ChangeNotifier {
         });
       }
       if (alvo != escopo || usuario.usuario == null) return;
-      final mensagens =
-          List<String>.from(jsonDecode(op['impressoes'] as String));
+      final atual = (await banco.db.query('operacoes', where: 'id = ?', whereArgs: [id])).single;
+      final recibo = AtendimentosLocais.recibo(atual);
+      final mensagens = List<String>.from(jsonDecode(op['impressoes'] as String)).map((mensagem) {
+        final dados = jsonDecode(mensagem) as Map<String, dynamic>;
+        if (recibo['numeroPedido'] != null) dados['numeroPedido'] = recibo['numeroPedido'];
+        if (op['acao'] == 'venda') dados['comanda'] = 'Balcão ${recibo['idVenda']}';
+        return jsonEncode(dados);
+      }).toList();
       // O comprovante so entra na fila depois do commit confirmado no servidor.
       await socket.filaImpressao
           .registrar(mensagens, servidor: op['destino'] as String);
       await banco.atualizarOperacao(id, {'estado': 'concluido', 'erro': null});
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
-        'tipo': jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
+        'tipo': op['acao'] == 'venda' ? 'Balcão' : jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
             ? 'Mesa'
             : 'Comanda'
       }));

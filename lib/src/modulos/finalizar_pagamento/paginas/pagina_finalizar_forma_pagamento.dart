@@ -247,6 +247,21 @@ class _PaginaFinalizarFormaPagamentoState
                             );
 
                         if (sucesso) {
+                          if (idvenda.startsWith('venda-local:')) {
+                            await carrinhoProvedor.listarComandasPedidos();
+                            finalizando.value = false;
+                            if (!context.mounted) return;
+                            if ((double.tryParse(_dinheiroController.text) ?? 0) >= widget.totalReceber) {
+                              provedorBalcao.observacaoDoPedido = '';
+                              FeedbackUsuario.pedidoFinalizado();
+                              Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+                            } else {
+                              provedor.idVenda = idvenda;
+                              provedor.valor = widget.totalReceber - (double.tryParse(_dinheiroController.text) ?? 0);
+                              Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+                            }
+                            return;
+                          }
                           provedorBalcao.observacaoDoPedido = '';
 
                           if (double.parse(_dinheiroController.text) >=

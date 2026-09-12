@@ -51,7 +51,7 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Ocorreu um erro ao abrir a mesa'),
+        content: Text(_state.erro ?? 'Nao foi possivel abrir a mesa.'),
         backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

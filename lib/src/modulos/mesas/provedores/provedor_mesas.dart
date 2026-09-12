@@ -75,8 +75,8 @@ class ProvedorMesas extends ChangeNotifier {
         listarMesas('');
       }
       return res;
-    } catch (_) {
-      erro = _mensagemFalha;
+    } catch (e) {
+      erro = e is StateError ? e.message.toString() : _mensagemFalha;
       notifyListeners();
       return (sucesso: false, idcomandapedido: '');
     }

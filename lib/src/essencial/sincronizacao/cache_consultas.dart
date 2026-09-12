@@ -42,7 +42,7 @@ class CacheConsultas extends Interceptor {
 
   bool _permitido(RequestOptions opcoes) {
     if (escopo.isEmpty ||
-        opcoes.method != 'GET' ||
+        (opcoes.method != 'GET' && caminho(opcoes) != 'balcao/listar.php') ||
         opcoes.extra['semCache'] == true ||
         opcoes.baseUrl != servidor) {
       return false;
@@ -52,6 +52,10 @@ class CacheConsultas extends Interceptor {
       return false;
     }
     final rota = caminho(opcoes);
+    if (['tela_nfe_saida/listar_banco_pix.php', 'tela_nfe_saida/listar_datas_vendas.php',
+      'tela_nfe_saida/listar_bancos.php', 'balcao/listar.php'].contains(rota)) {
+      return true;
+    }
     if (rota == 'cardapio/listar_por_id.php') {
       return ['Mesa', 'Comanda'].contains(parametros['tipo']) &&
           parametros['imprimir'] != 'true';

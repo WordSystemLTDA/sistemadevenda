@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -22,6 +24,31 @@ class ServicoCardapio {
       {String? codigoQrcode}) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
+
+    final sync = Sincronizador.instancia;
+    if (sync != null && AtendimentosLocais.local(id)) {
+      final locais = AtendimentosLocais(sync.banco, sync.escopo);
+      final abertura = await locais.abertura(id);
+      final detalhe = await locais.detalhe(id);
+      final real = abertura == null ? null : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+      if (real != null && !['conflito', 'arquivado'].contains(abertura!['estado'])) {
+        try {
+          final remoto = await listarPorId(real.toString(), tipo, mostraritens);
+          if (remoto.id == real.toString()) {
+            remoto.id = id;
+            await ArmazenamentoCarrinhos.instancia.atualizarStatus(empresa ?? '', id, remoto.status);
+            return remoto;
+          }
+        } on DioException catch (e) {
+          if (!CacheConsultas.falhaDeConexao(e)) rethrow;
+        }
+      }
+      return Modeloworddadoscardapio.fromMap(detalhe);
+    }
+    if (sync != null && tipo == TipoCardapio.balcao && (id == '0' || id.isEmpty)) {
+      return Modeloworddadoscardapio(id: '0', nome: 'Balcão', status: 'Andamento',
+          nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', produtos: [], valorTotal: '0');
+    }
 
     final response = await dio.cliente.get(
         'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
@@ -192,6 +219,12 @@ class ServicoCardapio {
         return (sucesso: false,
             mensagem: 'Este atendimento tem pedidos aguardando envio ou conferencia. Resolva as pendencias antes de fechar.');
       }
+    }
+    if (sincronizador != null && AtendimentosLocais.local(idComandaPedido)) {
+      final abertura = await AtendimentosLocais(sincronizador.banco, sincronizador.escopo).abertura(idComandaPedido);
+      final real = abertura == null ? null : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+      if (real == null) return (sucesso: false, mensagem: 'Aguarde o envio da abertura antes de fechar.');
+      idComandaPedido = real.toString();
     }
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
