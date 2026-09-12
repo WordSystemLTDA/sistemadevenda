@@ -34,3 +34,37 @@ class TituloOpcoesCarrinho extends StatelessWidget {
     );
   }
 }
+
+class TotalOpcoesCarrinho extends StatelessWidget {
+  final Modelowordprodutos item;
+
+  const TotalOpcoesCarrinho({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+      child: Column(
+        children: [
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          LinhaValor(
+            descricao: const Text(
+              'Total',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            valor: Text(
+              (double.tryParse(item.valorVenda) ?? 0).obterReal(),
+              key: const ValueKey('total_opcoes_carrinho'),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

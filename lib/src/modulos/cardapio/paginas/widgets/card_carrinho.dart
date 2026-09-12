@@ -503,6 +503,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                     ],
                   );
                 }),
+                if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty)
+                  TotalOpcoesCarrinho(item: item),
               ],
             ),
           ),

@@ -319,6 +319,8 @@ class _CardCarrinhoItensRecorrentesState
                     ],
                   );
                 }),
+                if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty)
+                  TotalOpcoesCarrinho(item: item),
               ],
             ),
           ),

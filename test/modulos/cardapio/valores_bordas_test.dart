@@ -244,6 +244,9 @@ void main() {
               tester.widget<Text>(find.byKey(ValueKey('subtotal_opcao_$id')));
           expect(texto.data, contains(valor));
         }
+        final total = tester
+            .widget<Text>(find.byKey(const ValueKey('total_opcoes_carrinho')));
+        expect(total.data, contains('78,00'));
         await capturarTela(
             tester, 'subtotais_${recorrente}_${largura}_$escala');
         expect(tester.takeException(), isNull);

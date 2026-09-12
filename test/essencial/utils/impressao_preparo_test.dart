@@ -69,6 +69,33 @@ ModeloOpcoesPacotes saboresPizza() => ModeloOpcoesPacotes(
       ],
     );
 
+ModeloOpcoesPacotes bordas(List<String> nomes) => ModeloOpcoesPacotes(
+      id: 6,
+      titulo: 'Selecione as Bordas',
+      obrigatorio: false,
+      dados: nomes.indexed
+          .map((borda) => ModeloDadosOpcoesPacotes(
+                id: borda.$1.toString(),
+                nome: borda.$2,
+                valor: '0',
+              ))
+          .toList(),
+    );
+
+ModeloOpcoesPacotes adicionais(List<String> nomes) => ModeloOpcoesPacotes(
+      id: 7,
+      titulo: 'Selecione os Adicionais',
+      obrigatorio: false,
+      dados: nomes.indexed
+          .map((adicional) => ModeloDadosOpcoesPacotes(
+                id: adicional.$1.toString(),
+                nome: adicional.$2,
+                valor: '0',
+                quantidade: 1,
+              ))
+          .toList(),
+    );
+
 class ServidorTeste extends Fake implements Server {
   final mensagens = <Map<String, dynamic>>[];
 
@@ -165,12 +192,51 @@ void main() {
           dados[usarListaFinal ? 'opcoesPacotesListaFinal' : 'opcoesPacotes']
               as List;
       final sabores = opcoes.single['dados'] as List;
-      expect(sabores.first['nome'], '7 - Calabresa');
-      expect(sabores.last['nome'], 'Chocolate');
-      expect(sabores.first['quantimaximaselecao'], '1/2');
+      expect(sabores.first['nome'], '7 - (1/2) Calabresa');
+      expect(sabores.last['nome'], '(1/2) Chocolate');
+      expect(sabores.first['quantimaximaselecao'], isNull);
       expect(sabores.first['valor'], '25');
     });
   }
+
+  test('bordas da pizza imprimem titulo curto e proporcao de cada sabor', () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        bordas(['Cheddar', 'Doce de Leite']),
+      ];
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    expect(opcoes.single['titulo'], 'Bordas (2)');
+    final dadosBordas = opcoes.single['dados'] as List;
+    expect(
+      dadosBordas.map((borda) => borda['nome']),
+      ['(1/2) Cheddar', '(1/2) Doce de Leite'],
+    );
+  });
+
+  test('adicionais imprimem titulo curto', () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        adicionais(['Milho', 'Ervilha']),
+      ];
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    expect(opcoes.single['titulo'], 'Adicionais');
+  });
+
+  test('borda unica imprime como inteira e nao duplica proporcao', () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        bordas(['Cheddar']),
+      ];
+    final primeira = DadosImpressaoPreparo.produto(pizza);
+    final segunda =
+        DadosImpressaoPreparo.produto(Modelowordprodutos.fromMap(primeira));
+    final borda =
+        ((segunda['opcoesPacotesListaFinal'] as List).single['dados'] as List)
+            .single;
+    expect(borda['nome'], '(1) Cheddar');
+  });
 
   test('combos formatam produtos internos sem alterar complementos', () {
     final combo = produto(nome: 'Combo', imprimirCodigo: 'Não')
@@ -242,8 +308,24 @@ void main() {
       expect(enviados.first['observacao'], 'Sem cebola');
       expect(
           enviados.first['opcoesPacotesListaFinal'][0]['dados'], hasLength(2));
+      expect(servidor.mensagens.map((mensagem) => mensagem['local']).toSet(),
+          {'Sem Mesa'});
       expect(servidor.mensagens.map((e) => e['idRequisicao']).toSet(),
           hasLength(3));
+    });
+
+    test('local vazio vira Sem Mesa e local informado e preservado', () async {
+      final mensagensSemMesa = Impressao.prepararComprovanteDePedido(
+        produtos: [produto()],
+        local: '',
+      );
+      expect(jsonDecode(mensagensSemMesa.single)['local'], 'Sem Mesa');
+
+      final mensagensComMesa = Impressao.prepararComprovanteDePedido(
+        produtos: [produto()],
+        local: 'Mesa 4',
+      );
+      expect(jsonDecode(mensagensComMesa.single)['local'], 'Mesa 4');
     });
 
     for (final agruparPorDestino in [true, false]) {

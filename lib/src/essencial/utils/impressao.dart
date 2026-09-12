@@ -26,6 +26,11 @@ class Impressao {
     return (nomeComputadorDestino ?? '').trim();
   }
 
+  static String _normalizarLocal(String local) {
+    final localNormalizado = local.trim();
+    return localNormalizado.isEmpty ? 'Sem Mesa' : localNormalizado;
+  }
+
   static Map<String, List<Modelowordprodutos>>
       _agruparProdutosPorComputadorDestino(
     List<Modelowordprodutos> produtos,
@@ -63,6 +68,7 @@ class Impressao {
   }) {
     if (!enviarDeVolta || produtos.isEmpty) return [];
     final usuario = Modular.get<UsuarioProvedor>();
+    final localImpressao = _normalizarLocal(local);
     final grupos = <String, List<Modelowordprodutos>>{};
     for (final produto in produtos) {
       final destino = _normalizarNomeComputadorDestino(
@@ -84,7 +90,7 @@ class Impressao {
               'nomeCliente': nomeCliente,
               'nomeEmpresa': nomeEmpresa,
               'tipodeentrega': tipodeentrega,
-              'local': local,
+              'local': localImpressao,
               'nomeUsuario': usuario.usuario?.nome ?? '',
               'idEmpresa': usuario.usuario?.empresa ?? '0',
               'idUsuario': usuario.usuario?.id ?? '1',
