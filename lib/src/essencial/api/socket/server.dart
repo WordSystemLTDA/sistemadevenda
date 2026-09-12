@@ -179,16 +179,27 @@ class Server extends ChangeNotifier {
   int _tentativaReconexao = 0;
   Timer? _temporizadorReconexao;
   Completer<bool>? _conexaoEmAndamento;
+  HttpClient? _clienteConexao;
+  int _geracaoConexao = 0;
   bool _reenviandoMensagensPendentes = false;
   bool _novoEnvioSolicitado = false;
 
   static const Duration _timeoutConexao = Duration(seconds: 8);
+  static const Duration _timeoutFechamento = Duration(seconds: 1);
   static const int _maximoMensagensPendentes = 200;
   static const String _chaveMensagensPendentes =
       'fila_mensagens_socket_pendentes';
 
   Future<bool> connect(String ip, String porta) async {
     if (_descartado) return false;
+    ip = ip.trim();
+    final portaConvertida = int.tryParse(porta.trim());
+    if (ip.isEmpty ||
+        portaConvertida == null ||
+        portaConvertida <= 0 ||
+        portaConvertida > 65535) {
+      return false;
+    }
     unawaited(filaImpressao.carregar().then((_) {
       if (!_descartado && filaImpressao.itens.isNotEmpty) {
         _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
@@ -201,27 +212,24 @@ class Server extends ChangeNotifier {
           error: erro, stackTrace: stack);
     }));
     if (_conexaoEmAndamento != null) {
-      return _conexaoEmAndamento!.future;
+      if (hostname == ip && port == portaConvertida) {
+        return _conexaoEmAndamento!.future;
+      }
+      _cancelarTentativaConexao();
+    }
+    if (connected &&
+        channel != null &&
+        hostname == ip &&
+        port == portaConvertida) {
+      return true;
     }
 
     final Completer<bool> completer = Completer<bool>();
     _conexaoEmAndamento = completer;
+    final geracao = ++_geracaoConexao;
+    HttpClient? cliente;
 
     try {
-      final int? portaConvertida = int.tryParse(porta);
-      if (portaConvertida == null || portaConvertida <= 0) {
-        completer.complete(false);
-        return false;
-      }
-
-      if (connected &&
-          channel != null &&
-          hostname == ip &&
-          port == portaConvertida) {
-        completer.complete(true);
-        return true;
-      }
-
       _desconexaoIntencional = false;
       _atualizarFilaImpressao();
       hostname = ip;
@@ -230,26 +238,26 @@ class Server extends ChangeNotifier {
       _temporizadorReconexao = null;
 
       await _encerrarCanalAtual();
+      if (!_tentativaConexaoAtual(geracao)) return false;
 
+      cliente = HttpClient()..connectionTimeout = _timeoutConexao;
+      _clienteConexao = cliente;
       final WebSocket socket = await WebSocket.connect(
-        'ws://$ip:$portaConvertida',
-      ).timeout(_timeoutConexao);
+        Uri(scheme: 'ws', host: ip, port: portaConvertida).toString(),
+        customClient: cliente,
+      ).timeout(_timeoutConexao, onTimeout: () {
+        cliente?.close(force: true);
+        throw TimeoutException(
+            'O servidor local nao respondeu.', _timeoutConexao);
+      });
+      if (!_tentativaConexaoAtual(geracao)) {
+        unawaited(socket.close());
+        return false;
+      }
       socket.pingInterval = const Duration(seconds: 5);
 
       final WebSocketChannel canalConexao = IOWebSocketChannel(socket);
       channel = canalConexao;
-      await canalConexao.ready;
-
-      hostname = ip;
-      port = portaConvertida;
-      connected = true;
-      _consultasImpressao.clear();
-      _tentativaReconexao = 0;
-      notifyListeners();
-
-      unawaited(_enviarHandshakeRede());
-      unawaited(_reenviarMensagensPendentes());
-
       canalConexao.stream.listen(
         (message) {
           if (!identical(channel, canalConexao)) {
@@ -277,20 +285,47 @@ class Server extends ChangeNotifier {
         cancelOnError: true,
       );
 
-      completer.complete(true);
+      await canalConexao.ready.timeout(_timeoutConexao);
+      if (!_tentativaConexaoAtual(geracao) || !identical(channel, canalConexao)) {
+        return false;
+      }
+      connected = true;
+      _consultasImpressao.clear();
+      _tentativaReconexao = 0;
+      notifyListeners();
+
+      unawaited(_enviarHandshakeRede());
+      unawaited(_reenviarMensagensPendentes());
+
+      if (!completer.isCompleted) completer.complete(true);
       return true;
     } catch (e, stackTrace) {
       log('Excecao ao conectar', error: e, stackTrace: stackTrace);
-      _processarQuedaConexao();
-      completer.complete(false);
+      if (_tentativaConexaoAtual(geracao)) _processarQuedaConexao();
       return false;
     } finally {
-      _conexaoEmAndamento = null;
+      cliente?.close(force: true);
+      if (identical(_clienteConexao, cliente)) _clienteConexao = null;
+      if (!completer.isCompleted) completer.complete(false);
+      if (identical(_conexaoEmAndamento, completer)) _conexaoEmAndamento = null;
     }
+  }
+
+  bool _tentativaConexaoAtual(int geracao) =>
+      !_descartado && !_desconexaoIntencional && geracao == _geracaoConexao;
+
+  void _cancelarTentativaConexao() {
+    _geracaoConexao++;
+    _clienteConexao?.close(force: true);
+    _clienteConexao = null;
+    final tentativa = _conexaoEmAndamento;
+    _conexaoEmAndamento = null;
+    if (tentativa != null && !tentativa.isCompleted) tentativa.complete(false);
   }
 
   Future<void> disconnect() async {
     _desconexaoIntencional = true;
+    _cancelarTentativaConexao();
     _tentativaReconexao = 0;
     _temporizadorReconexao?.cancel();
     _temporizadorReconexao = null;
@@ -306,13 +341,13 @@ class Server extends ChangeNotifier {
     channel = null;
     connected = false;
 
-    if (haviaConexao) {
+    if (haviaConexao && !_descartado) {
       notifyListeners();
     }
 
     if (canalAtual != null) {
       try {
-        await canalAtual.sink.close();
+        await canalAtual.sink.close().timeout(_timeoutFechamento);
       } catch (_) {
         // Ignora erro no fechamento do canal.
       }
@@ -321,12 +356,7 @@ class Server extends ChangeNotifier {
 
   void _processarQuedaConexao() {
     final bool haviaConexao = channel != null || connected;
-    channel = null;
-    connected = false;
-
-    if (haviaConexao) {
-      notifyListeners();
-    }
+    if (haviaConexao) unawaited(_encerrarCanalAtual());
 
     if (_desconexaoIntencional || _descartado) {
       log('Reconexao ignorada: desconexao intencional.');
@@ -400,8 +430,10 @@ class Server extends ChangeNotifier {
   }
 
   Future<void> _enviarHandshakeRede() async {
+    final canal = channel;
     final String nomeDispositivo = await _obterNomeDispositivo();
     final String? ip = await _obterIpLocal();
+    if (_descartado || !connected || !identical(channel, canal)) return;
 
     final Map<String, dynamic> mensagem = <String, dynamic>{
       'tipo': 'Rede',
@@ -795,6 +827,8 @@ class Server extends ChangeNotifier {
   @override
   void dispose() {
     _descartado = true;
+    _cancelarTentativaConexao();
+    unawaited(_encerrarCanalAtual());
     _temporizadorReconexao?.cancel();
     _retentativaImpressao?.cancel();
     _avisoImpressao?.cancel();

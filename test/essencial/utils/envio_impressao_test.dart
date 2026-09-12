@@ -26,7 +26,10 @@ class SaidaTeste extends Fake implements WebSocketSink {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({
+        'conexao':
+            jsonEncode({'tipoConexao': 'local', 'servidor': '', 'porta': ''}),
+      }));
 
   test(
       'ACK antigo de recebimento nao apaga comprovante sem impressao confirmada',

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:app/src/essencial/api/conexao.dart';
@@ -17,13 +18,24 @@ class ServicoAutenticacao {
   final UsuarioProvedor usuarioProvedor;
   ServicoAutenticacao(this.dio, this.usuarioProvedor);
 
-  Future<bool> entrar(String? usuario, String? senha, {bool permitirSessaoSalva = false}) async {
+  Future<bool> entrar(
+    String? usuario,
+    String? senha, {
+    bool permitirSessaoSalva = false,
+    CancelToken? cancelToken,
+    Duration tempoLimite = const Duration(seconds: 8),
+  }) async {
     if (usuario == null || senha == null || usuario.isEmpty || senha.isEmpty) {
       return false;
     }
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final servidor = (await Apis().getConexao()).servidor;
     final banco = BancoLocal.instancia;
+    final cancelamento = CancelToken();
+    if (cancelToken?.isCancelled == true) return false;
+    if (cancelToken != null) {
+      unawaited(cancelToken.whenCancel.then(cancelamento.cancel));
+    }
 
     var campos = {
       "usuario": usuario,
@@ -31,41 +43,72 @@ class ServicoAutenticacao {
     };
 
     try {
-      final response = await dio.cliente.post(
+      final response = await dio.cliente
+          .post(
         'autenticacao/entrar.php',
         options: Options(headers: {
           HttpHeaders.contentTypeHeader: "application/json",
+        }, extra: {
+          'servidorFixo': servidor
         }),
+        cancelToken: cancelamento,
         data: jsonEncode(campos),
-      );
+      )
+          .timeout(tempoLimite, onTimeout: () {
+        if (cancelamento.isCancelled) throw cancelamento.cancelError!;
+        // Cancela a requisicao real antes de recuperar a sessao offline.
+        cancelamento.cancel('Tempo limite para conectar ao servidor.');
+        throw DioException(
+          requestOptions: RequestOptions(path: 'autenticacao/entrar.php'),
+          type: DioExceptionType.receiveTimeout,
+          message: 'O servidor nao respondeu a tempo.',
+        );
+      });
+
+      if (cancelamento.isCancelled) return false;
 
       Map result = response.data;
       bool sucesso = result['sucesso'];
       dynamic dados = result['resultado'];
 
       if (response.statusCode == 200 && sucesso == true) {
-        await prefs.setString(ConfigSharedPreferences.usuario, jsonEncode(dados));
-        await banco?.gravar('sessao:$servidor', jsonEncode({
-          'id': dados['id'], 'empresa': dados['empresa'], 'autorizada': true,
-        }));
+        await prefs.setString(
+            ConfigSharedPreferences.usuario, jsonEncode(dados));
+        await banco?.gravar(
+            'sessao:$servidor',
+            jsonEncode({
+              'id': dados['id'],
+              'empresa': dados['empresa'],
+              'autorizada': true,
+            }));
+        if (cancelToken?.isCancelled == true) return false;
         usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
         return sucesso;
       } else {
-        if (permitirSessaoSalva) await banco?.gravar('sessao:$servidor', '{"autorizada":false}');
+        if (permitirSessaoSalva) {
+          await banco?.gravar('sessao:$servidor', '{"autorizada":false}');
+        }
         return false;
       }
     } on DioException catch (erro) {
-      if (permitirSessaoSalva && [401, 403].contains(erro.response?.statusCode)) {
+      if (cancelToken?.isCancelled == true) return false;
+      if (permitirSessaoSalva &&
+          [401, 403].contains(erro.response?.statusCode)) {
         await banco?.gravar('sessao:$servidor', '{"autorizada":false}');
       }
-      if (permitirSessaoSalva && CacheConsultas.falhaDeConexao(erro) && banco != null) {
+      if (permitirSessaoSalva &&
+          CacheConsultas.falhaDeConexao(erro) &&
+          banco != null) {
         final salvo = prefs.getString(ConfigSharedPreferences.usuario);
         final autorizacao = await banco.ler('sessao:$servidor');
         if (salvo != null && autorizacao != null) {
           final dados = jsonDecode(salvo) as Map<String, dynamic>;
           final sessao = jsonDecode(autorizacao) as Map<String, dynamic>;
-          if (sessao['autorizada'] == true && sessao['id'] == dados['id'] &&
-              sessao['empresa'] == dados['empresa'] && dados['email'] == usuario) {
+          if (cancelToken?.isCancelled != true &&
+              sessao['autorizada'] == true &&
+              sessao['id'] == dados['id'] &&
+              sessao['empresa'] == dados['empresa'] &&
+              dados['email'] == usuario) {
             usuarioProvedor.setUsuario(UsuarioModelo.fromMap(dados));
             return true;
           }
