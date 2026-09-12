@@ -127,16 +127,16 @@ class _PaginaInicioState extends State<PaginaInicio> {
 
     final ConfigSharedPreferences config = ConfigSharedPreferences();
     var conexao = await config.getConexao();
+    if (!mounted || conexao == null) return;
 
-    await server.connect(conexao!.servidor, conexao.porta).then((sucesso) {
+    await server.connect(conexao.servidor, conexao.porta).then((sucesso) {
       if (sucesso == false) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                'Não foi possível conectar ao servidor ${conexao.servidor}:${conexao.porta}, mude a conexão e a porta e tente novamente'),
-            backgroundColor: Colors.red,
+            content: const Text(
+                'Canal da cozinha desconectado. A reconexão será automática.'),
             showCloseIcon: true,
-            duration: const Duration(hours: 1),
+            duration: const Duration(seconds: 6),
           ));
         }
       }

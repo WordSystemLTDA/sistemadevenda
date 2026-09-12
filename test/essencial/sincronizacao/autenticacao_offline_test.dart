@@ -82,6 +82,25 @@ void main() {
     expect(usuario.usuario?.empresa, '32');
   });
 
+  test('sessao salva retoma online sem depender do canal de impressao',
+      () async {
+    expect(
+        await servico.entrar('teste', 'senha-teste', permitirSessaoSalva: true),
+        isTrue);
+    expect(usuario.usuario?.id, '1');
+    expect(usuario.usuario?.empresa, '32');
+  });
+
+  test('sem usuario salvo nao recupera sessao offline depois de sair',
+      () async {
+    await (await SharedPreferences.getInstance()).remove('usuario');
+    conectado = false;
+    expect(
+        await servico.entrar('teste', 'senha-teste', permitirSessaoSalva: true),
+        isFalse);
+    expect(usuario.usuario, isNull);
+  });
+
   test('entrada manual sem rede nao autentica credenciais novas pelo cache',
       () async {
     conectado = false;

@@ -26,6 +26,7 @@ class Sincronizador extends ChangeNotifier {
   Timer? _timer;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
+  Future<void>? _retentativaManual;
   final revisaoCatalogo = ValueNotifier<int>(0);
   Future<void>? _configurando;
   String escopo = '';
@@ -45,9 +46,15 @@ class Sincronizador extends ChangeNotifier {
   Sincronizador(this.api, this.usuario, this.socket, {BancoLocal? banco})
       : banco = banco ?? BancoLocal.instancia!;
 
-  bool get sincronizando => _emAndamento != null;
+  bool get sincronizando =>
+      _emAndamento != null || _enviando != null || _retentativaManual != null;
   int get conflitos =>
       pendencias.where((e) => e['estado'] == 'conflito').length;
+  int get impressoesPendentes => socket.filaImpressao.itens
+      .where((p) =>
+          p.servidor == destino &&
+          p.dados['idEmpresa']?.toString() == usuario.usuario?.empresa)
+      .length;
 
   void iniciar() {
     instancia = this;
@@ -67,6 +74,7 @@ class Sincronizador extends ChangeNotifier {
     online = false;
     erro = null;
     catalogoPronto = false;
+    ultimaAtualizacao = null;
     _notificar();
     solicitar();
   }
@@ -110,6 +118,7 @@ class Sincronizador extends ChangeNotifier {
     final novo = BancoLocal.escopo(url, conta.empresa ?? '', conta.id ?? '');
     if (novo == escopo) return;
     escopo = novo;
+    ultimaAtualizacao = null;
     servidor = url;
     destino = conexao == null ? '' : '${conexao.servidor}:${conexao.porta}';
     banco.servidor = url;
@@ -382,11 +391,14 @@ class Sincronizador extends ChangeNotifier {
   Future<void> sincronizar() {
     if (_descartado) return Future.value();
     _solicitada = false;
-    return _emAndamento ??= _sincronizar().whenComplete(() {
+    if (_emAndamento != null) return _emAndamento!;
+    final execucao = _emAndamento = _sincronizar().whenComplete(() {
       _emAndamento = null;
       _notificar();
       if (_solicitada && !_descartado) solicitar();
     });
+    _notificar();
+    return execucao;
   }
 
   Options _opcoes(String url) => Options(
@@ -422,6 +434,8 @@ class Sincronizador extends ChangeNotifier {
     try {
       await configurar();
       if (escopo.isEmpty) return;
+      // A recuperacao da cozinha nao depende das consultas do cardapio.
+      unawaited(socket.processarImpressoesPendentes());
       alvo = escopo;
       final url = servidor;
       final empresa = usuario.usuario!.empresa;
@@ -462,7 +476,6 @@ class Sincronizador extends ChangeNotifier {
               const Duration(minutes: 2)) {
         await _carregarCatalogo(alvo, url, empresa, idUsuario);
       }
-      await socket.processarImpressoesPendentes();
     } on DioException catch (e) {
       if (alvo != escopo) return;
       online = false;
@@ -807,14 +820,33 @@ class Sincronizador extends ChangeNotifier {
     aoAtualizarTelas?.call();
   }
 
-  Future<void> tentarNovamente() async {
-    for (final op in await banco.operacoes(escopo)) {
-      if (op['estado'] != 'conflito') {
-        await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+  Future<void> tentarNovamente() {
+    if (_descartado) return Future.value();
+    if (_retentativaManual != null) return _retentativaManual!;
+    final tentativa = _retentativaManual = _tentarNovamente().whenComplete(() {
+      _retentativaManual = null;
+      _notificar();
+    });
+    _notificar();
+    return tentativa;
+  }
+
+  Future<void> _tentarNovamente() async {
+    await configurar();
+    if (escopo.isEmpty || _descartado) return;
+    final impressao =
+        socket.processarImpressoesPendentes(reconectarAgora: true);
+    try {
+      for (final op in await banco.operacoes(escopo)) {
+        if (op['estado'] != 'conflito') {
+          await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+        }
       }
+      await sincronizar();
+      await enviarPendentes();
+    } finally {
+      await impressao;
     }
-    await sincronizar();
-    await enviarPendentes();
   }
 
   void _notificar() {

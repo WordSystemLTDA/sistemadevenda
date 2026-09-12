@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -25,8 +26,16 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../utils/impressao_preparo_test.dart' show produto;
 
 class SocketOfflineTeste extends Server {
+  final recuperacoes = <bool>[];
+  Completer<void>? tentativaManual;
+
   @override
-  Future<void> processarImpressoesPendentes() async {}
+  Future<void> processarImpressoesPendentes(
+      {bool reconectarAgora = false}) async {
+    recuperacoes.add(reconectarAgora);
+    if (reconectarAgora) await tentativaManual?.future;
+  }
+
   @override
   bool write(String message) => false;
 }
@@ -205,6 +214,41 @@ void main() {
         ]);
     await sync.enviarPendentes();
   }
+
+  test('falha na API nao impede recuperacao automatica do canal da cozinha',
+      () async {
+    await sync.sincronizar();
+    expect(sync.online, isFalse);
+    expect(socket.recuperacoes, [false]);
+    expect(sync.sincronizando, isFalse);
+  });
+
+  test('trocar conta nao mostra horario da sincronizacao anterior', () async {
+    sync.ultimaAtualizacao = DateTime(2026, 9, 12);
+    usuario.setUsuario(UsuarioModelo(id: '2', empresa: '33'));
+    await sync.configurar();
+    expect(sync.ultimaAtualizacao, isNull);
+  });
+
+  test('tentar novamente recupera impressao sem API e agrupa toques repetidos',
+      () async {
+    socket.tentativaManual = Completer<void>();
+    final estados = <bool>[];
+    sync.addListener(() => estados.add(sync.sincronizando));
+    final primeira = sync.tentarNovamente();
+    final segunda = sync.tentarNovamente();
+    expect(segunda, same(primeira));
+    expect(sync.sincronizando, isTrue);
+    await sync.sincronizar();
+    expect(socket.recuperacoes.where((imediata) => imediata), hasLength(1));
+    expect(sync.online, isFalse);
+    expect(sync.sincronizando, isTrue);
+    socket.tentativaManual!.complete();
+    await primeira;
+    expect(sync.sincronizando, isFalse);
+    expect(estados.first, isTrue);
+    expect(estados.last, isFalse);
+  });
 
   for (final recorrentes in [false, true]) {
     test(

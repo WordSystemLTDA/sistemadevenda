@@ -81,6 +81,16 @@ O app diferencia pendencia de pedido de pendencia de impressao. Uma impressora f
 sem papel ou sem energia ainda exige intervencao; ACK nao garante papel entregue.
 Nao enviar manualmente o mesmo pedido pela bancada sem antes conferir sua pendencia.
 
+O indicador do cabecalho observa tanto a API quanto o socket: API online com o canal
+da cozinha desconectado nao aparece como sucesso completo. A tela de envio informa
+separadamente servidor de dados, canal da cozinha, disponibilidade do cardapio offline
+e horario da ultima atualizacao desta sessao. Conflitos aparecem antes do diagnostico.
+
+`Sincronizar agora` tenta recuperar o canal da cozinha imediatamente, sem aguardar
+as consultas da API e sem criar uma segunda via. Toques repetidos compartilham a mesma
+tentativa. A recuperacao automatica tambem independe do sucesso da consulta de catalogo.
+Desconexao intencional continua sendo respeitada pelo processamento da fila.
+
 ## Tela apagada
 
 O app nao desconecta intencionalmente o socket ao ficar inativo. No iOS, cada envio
@@ -134,3 +144,29 @@ o pedido antigo deve ficar em conflito, sem itens nem impressao na nova comanda.
 Repetir com uma mesa/comanda inicialmente livre, abertura offline seguida de itens,
 e com uma nova venda de balcao. Conferir a numeracao definitiva e um unico
 comprovante apos reconectar. A impressora fisica ainda requer essa homologacao.
+
+## Auditoria de 12/09/2026
+
+- Suite completa do aplicativo: 328 testes aprovados, incluindo 12 novos testes.
+- API em MariaDB descartavel, sem conexao TCP: 17 cenarios aprovados.
+- Nucleo desktop de impressao: 9 testes aprovados, sem acessar impressora fisica.
+- Analise estatica dos 10 arquivos Dart alterados/adicionados: sem problemas.
+- Compilacao iOS debug sem assinatura: concluida em `build/ios/iphoneos/Runner.app`.
+- Consulta de estado ao servidor local: HTTP 200 em 173 ms; protocolo e capacidade
+  de abertura offline presentes. Nenhum pedido real foi criado ou alterado.
+- Canal WebSocket local: conectado em 57 ms e mantido por 60 segundos, com ping a
+  cada 5 segundos, sem comandos de pedido ou impressao. E uma observacao pontual,
+  nao uma garantia de disponibilidade continua da rede.
+- Testes com socket de loopback validaram queda real, reconexao automatica e
+  recebimento de atualizacao de comanda, alem de nova tentativa manual imediata.
+- Retomada de sessao online/offline, reabertura do aplicativo, pausa/retorno e
+  falha do monitor de rede foram verificados em testes automatizados. Sair da
+  conta continua exigindo autenticacao; nao libera credenciais novas offline.
+- Capturas conferidas em `build/validacao_ui`, com telefone pequeno, tablet e
+  fonte ampliada. Indicador permanece no cabecalho; conflitos aparecem primeiro.
+
+Nao houve instalacao desta compilacao no iPhone nem teste com driver/impressora
+fisicos. Antes de liberar a versao para atendimento, executar a homologacao manual
+acima com uma comanda de teste e conferir papel, quantidade, sabores, bordas,
+adicionais, mesa, observacoes e ausencia de lancamentos/comprovantes duplicados.
+Nao desinstalar o aplicativo para atualizar enquanto houver pedidos pendentes.

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
@@ -33,7 +34,11 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
     sincronizador.iniciar();
     WidgetsBinding.instance.addObserver(this);
     // Wi-Fi sem internet ainda pode alcancar o servidor local pelo IP.
-    _rede = Connectivity().onConnectivityChanged.listen((_) => _retomar());
+    _rede = Connectivity().onConnectivityChanged.listen((_) => _retomar(),
+        onError: (Object erro, StackTrace stack) {
+      log('Falha ao observar a rede', error: erro, stackTrace: stack);
+      _retomar();
+    });
     _retomar();
   }
 
@@ -45,13 +50,17 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   }
 
   Future<void> _retomar() => _conectando ??= () async {
-        final conexao = await ConfigSharedPreferences().getConexao();
-        if (!mounted) return;
         sincronizador.solicitar();
-        if (conexao != null &&
-            conexao.servidor.isNotEmpty &&
-            conexao.porta.isNotEmpty) {
-          await server.connect(conexao.servidor, conexao.porta);
+        try {
+          final conexao = await ConfigSharedPreferences().getConexao();
+          if (!mounted) return;
+          if (conexao != null &&
+              conexao.servidor.isNotEmpty &&
+              conexao.porta.isNotEmpty) {
+            await server.connect(conexao.servidor, conexao.porta);
+          }
+        } catch (erro, stack) {
+          log('Falha ao retomar a conexao', error: erro, stackTrace: stack);
         }
       }()
           .whenComplete(() => _conectando = null);

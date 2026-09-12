@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
+import 'package:intl/intl.dart';
 import 'sincronizador.dart';
 
 class EstadoSincronizacao extends StatelessWidget {
@@ -18,17 +19,12 @@ class EstadoSincronizacao extends StatelessWidget {
     final sync = Sincronizador.instancia;
     if (sync == null) return const SizedBox.shrink();
     return ListenableBuilder(
-        listenable: Listenable.merge([sync, sync.socket.filaImpressao]),
+        listenable: Listenable.merge([sync, sync.socket]),
         builder: (context, _) {
           if (sync.escopo.isEmpty) return const SizedBox.shrink();
           final cs = Theme.of(context).colorScheme;
           final atencao = sync.conflitos > 0 || sync.erro != null;
-          final impressoes = sync.socket.filaImpressao.itens
-              .where((p) =>
-                  p.servidor == sync.destino &&
-                  p.dados['idEmpresa']?.toString() ==
-                      sync.usuario.usuario?.empresa)
-              .length;
+          final impressoes = sync.impressoesPendentes;
           final texto = sync.conflitos > 0
               ? '${sync.conflitos} pedido(s) para conferir'
               : sync.pendencias.isNotEmpty
@@ -39,14 +35,24 @@ class EstadoSincronizacao extends StatelessWidget {
                           ? 'Verificar sincronizacao'
                           : !sync.online
                               ? 'Sem conexao com o servidor'
-                              : !sync.catalogoPronto
-                                  ? 'Preparando cardapio no aparelho'
-                                  : 'Pedidos sincronizados';
+                              : !sync.socket.connected
+                                  ? 'Canal da cozinha desconectado'
+                                  : sync.sincronizando
+                                      ? 'Sincronizando pedidos e dados'
+                                      : !sync.catalogoPronto
+                                          ? 'Preparando cardapio no aparelho'
+                                          : 'Pedidos sincronizados';
           final icon = atencao
               ? Icons.error_outline
-              : sync.online
-                  ? Icons.cloud_done_outlined
-                  : Icons.cloud_off_outlined;
+              : !sync.online
+                  ? Icons.cloud_off_outlined
+                  : !sync.socket.connected
+                      ? Icons.print_disabled_outlined
+                      : impressoes > 0
+                          ? Icons.print_outlined
+                          : sync.sincronizando || sync.pendencias.isNotEmpty
+                              ? Icons.sync
+                              : Icons.cloud_done_outlined;
           final quantidadeAvisos = sync.conflitos > 0
               ? sync.conflitos
               : sync.pendencias.isNotEmpty
@@ -174,7 +180,7 @@ class PendenciasSincronizacao extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: sincronizador,
+        listenable: Listenable.merge([sincronizador, sincronizador.socket]),
         builder: (context, _) {
           final cs = Theme.of(context).colorScheme;
           return Scaffold(
@@ -192,6 +198,44 @@ class PendenciasSincronizacao extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(sincronizador.erro!,
                         style: TextStyle(color: cs.error))),
+              for (final op in sincronizador.pendencias) _pedido(context, op),
+              ListTile(
+                leading: Icon(sincronizador.online
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined),
+                title: const Text('Servidor de dados'),
+                subtitle: Text(sincronizador.online
+                    ? (sincronizador.sincronizando
+                        ? 'Atualizando dados'
+                        : 'Conectado')
+                    : 'Sem conexao'),
+              ),
+              ListTile(
+                leading: Icon(sincronizador.socket.connected
+                    ? Icons.print_outlined
+                    : Icons.print_disabled_outlined),
+                title: const Text('Canal da cozinha'),
+                subtitle: Text(sincronizador.socket.connected
+                    ? 'Conectado'
+                    : 'Aguardando reconexao'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.restaurant_menu),
+                title: const Text('Cardapio offline'),
+                subtitle: Text(sincronizador.catalogoPronto
+                    ? 'Disponivel no aparelho'
+                    : 'Primeira sincronizacao pendente'),
+              ),
+              if (sincronizador.ultimaAtualizacao != null)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'Ultima atualizacao: ${DateFormat('dd/MM HH:mm').format(sincronizador.ultimaAtualizacao!)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              const Divider(),
               if (sincronizador.pendencias.isEmpty)
                 const ListTile(
                     leading: Icon(Icons.cloud_done_outlined),
@@ -199,6 +243,9 @@ class PendenciasSincronizacao extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.print_outlined),
                 title: const Text('Conferir impressoes'),
+                subtitle: Text(sincronizador.impressoesPendentes == 0
+                    ? 'Nenhuma confirmacao pendente'
+                    : '${sincronizador.impressoesPendentes} aguardando confirmacao'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => PendenciasImpressao(
@@ -211,7 +258,6 @@ class PendenciasSincronizacao extends StatelessWidget {
                           },
                         ))),
               ),
-              for (final op in sincronizador.pendencias) _pedido(context, op),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: sincronizador.rascunhosBloqueados(),
                 builder: (context, snapshot) => Column(children: [
@@ -259,7 +305,9 @@ class PendenciasSincronizacao extends StatelessWidget {
             children: [
               Text(
                   comprovante['comanda']?.toString() ??
-                      (dados['detalhe'] is Map ? 'Abertura: ${dados['detalhe']['nome']}' : null) ??
+                      (dados['detalhe'] is Map
+                          ? 'Abertura: ${dados['detalhe']['nome']}'
+                          : null) ??
                       'Atendimento ${op['atendimento']}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
@@ -270,7 +318,8 @@ class PendenciasSincronizacao extends StatelessWidget {
               const Divider(),
               if (op['acao'] == 'abertura') ...[
                 Text('Cliente: ${dados['detalhe']?['nomeCliente'] ?? ''}'),
-                if ((dados['obs'] ?? '').toString().isNotEmpty) Text(dados['obs'].toString()),
+                if ((dados['obs'] ?? '').toString().isNotEmpty)
+                  Text(dados['obs'].toString()),
               ],
               if (produtos.isEmpty && op['acao'] != 'abertura')
                 Text(

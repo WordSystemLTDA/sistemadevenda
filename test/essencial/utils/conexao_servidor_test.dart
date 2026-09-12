@@ -143,4 +143,80 @@ void main() {
         isTrue);
     expect(server.connected, isTrue);
   });
+
+  test('queda real do socket reconecta sozinha e volta a receber atualizacoes',
+      () async {
+    final local = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final sockets = <WebSocket>[];
+    final reconectou = Completer<void>();
+    final atualizou = Completer<String>();
+    local.listen((request) async {
+      final socket = await WebSocketTransformer.upgrade(request);
+      sockets.add(socket);
+      socket.listen((_) {});
+      if (sockets.length == 2) reconectou.complete();
+    });
+    final server = Server()
+      ..aoAtualizarDados = (tipo) {
+        if (!atualizou.isCompleted) atualizou.complete(tipo);
+      };
+    addTearDown(() async {
+      server.dispose();
+      for (final socket in sockets) {
+        unawaited(socket.close());
+      }
+      await local.close(force: true);
+    });
+    expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
+    await sockets.first.close();
+    await reconectou.future.timeout(const Duration(seconds: 6));
+    sockets.last.add(jsonEncode({'tipo': 'Comanda'}));
+    expect(
+        await atualizou.future.timeout(const Duration(seconds: 2)), 'Comanda');
+    expect(server.connected, isTrue);
+    expect(sockets, hasLength(2));
+  });
+
+  test('tentativa manual reabre canal imediatamente e respeita sair da conta',
+      () async {
+    final local = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final sockets = <WebSocket>[];
+    local.listen((request) async {
+      final socket = await WebSocketTransformer.upgrade(request);
+      sockets.add(socket);
+      socket.listen((_) {});
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'conexao',
+        jsonEncode({
+          'tipoConexao': 'local',
+          'servidor': '127.0.0.1',
+          'porta': '${local.port}',
+        }));
+    final server = Server();
+    addTearDown(() async {
+      server.dispose();
+      for (final socket in sockets) {
+        unawaited(socket.close());
+      }
+      await local.close(force: true);
+    });
+    expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
+    final desconectou = Completer<void>();
+    server.addListener(() {
+      if (!server.connected && !desconectou.isCompleted) desconectou.complete();
+    });
+    await sockets.first.close();
+    await desconectou.future.timeout(const Duration(seconds: 2));
+    await server
+        .processarImpressoesPendentes(reconectarAgora: true)
+        .timeout(const Duration(seconds: 1));
+    expect(server.connected, isTrue);
+    expect(sockets, hasLength(2));
+    await server.disconnect();
+    await server.processarImpressoesPendentes(reconectarAgora: true);
+    expect(server.connected, isFalse);
+    expect(sockets, hasLength(2));
+  });
 }

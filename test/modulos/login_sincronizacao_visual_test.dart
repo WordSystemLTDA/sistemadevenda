@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/src/app_widget.dart' as app;
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -32,6 +34,13 @@ import '../suporte/captura_tela.dart';
 
 class BancoVisual extends Fake implements Database {}
 
+class ServerVisual extends ServerTeste {
+  void mostrarConexao(bool valor) {
+    connected = valor;
+    notifyListeners();
+  }
+}
+
 class SincronizadorVisual extends Sincronizador {
   SincronizadorVisual(super.api, super.usuario, super.socket)
       : super(banco: BancoLocal(BancoVisual()));
@@ -40,6 +49,7 @@ class SincronizadorVisual extends Sincronizador {
     escopo = 'sessao-teste';
     online = conectado;
     catalogoPronto = true;
+    socket.connected = conectado;
     notifyListeners();
   }
 
@@ -69,7 +79,7 @@ class AutenticacaoVisual extends Fake implements ServicoAutenticacao {
 
 class ModuloLoginVisual extends Module {
   final usuario = UsuarioProvedor();
-  final server = ServerTeste();
+  final server = ServerVisual();
   final api = DioCliente();
   final tema = ThemeController();
   final comandas = ProvedorComanda(ComandasTeste());
@@ -119,6 +129,66 @@ void main() {
     Modular.destroy();
   });
 
+  testWidgets('reabrir o aplicativo com sessao salva entra automaticamente',
+      (tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'usuario',
+        jsonEncode({
+          'id': '1',
+          'empresa': '1',
+          'email': 'atendente',
+          'senha': 'senha-teste',
+        }));
+    for (var abertura = 0; abertura < 2; abertura++) {
+      app.navigatorKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(const app.AppWidget());
+      await tester.pumpAndSettle();
+      expect(find.text('Início'), findsOneWidget);
+      expect(find.text('Entrar'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+  for (final escala in [1.0, 2.0]) {
+    testWidgets('estado da cozinha atualiza sem mudar API, fonte $escala',
+        (tester) async {
+      tester.view.physicalSize = const Size(320, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      modulo.usuario.setUsuario(UsuarioModelo(id: '1', empresa: '1'));
+      modulo.sync.mostrarEstado();
+      modulo.sync.ultimaAtualizacao = DateTime(2026, 9, 12, 20, 30);
+      await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(escala)),
+          child: child!,
+        ),
+        home: RepaintBoundary(
+          key: const ValueKey('captura'),
+          child: PendenciasSincronizacao(sincronizador: modulo.sync),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('Conectado'), findsNWidgets(2));
+      modulo.server.mostrarConexao(false);
+      await tester.pumpAndSettle();
+      expect(find.text('Conectado'), findsOneWidget);
+      expect(find.text('Aguardando reconexao'), findsOneWidget);
+      expect(find.text('Disponivel no aparelho'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capturarTela(tester, 'diagnostico_sincronizacao_320_fonte_$escala');
+      modulo.server.mostrarConexao(true);
+      await tester.pumpAndSettle();
+      expect(find.text('Conectado'), findsNWidgets(2));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   for (final largura in [320.0, 393.0, 1024.0]) {
     testWidgets('login e navegacao com icone flutuante na largura $largura',
         (tester) async {
@@ -151,6 +221,13 @@ void main() {
         areaIndicador.right,
         lessThanOrEqualTo(largura - EstadoSincronizacao.recuoDireitaCabecalho),
       );
+      modulo.server.mostrarConexao(false);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Canal da cozinha desconectado'), findsOneWidget);
+      expect(find.byIcon(Icons.print_disabled_outlined), findsOneWidget);
+      modulo.server.mostrarConexao(true);
+      await tester.pumpAndSettle();
+      expect(indicador, findsOneWidget);
       await capturarTela(tester, 'sincronizacao_inicio_$largura');
       await tester.longPress(indicador);
       await tester.pumpAndSettle();

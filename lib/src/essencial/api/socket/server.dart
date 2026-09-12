@@ -89,10 +89,19 @@ class Server extends ChangeNotifier {
           servidor: hostname.isEmpty ? '' : '$hostname:$port',
           estado: EstadoImpressao.aguardandoPedido);
 
-  Future<void> processarImpressoesPendentes() async {
+  Future<void> processarImpressoesPendentes(
+      {bool reconectarAgora = false}) async {
     if (_descartado || _desconexaoIntencional) return;
     try {
       await filaImpressao.carregar();
+      if (!connected) {
+        if (reconectarAgora) {
+          final conexao = await ConfigSharedPreferences().getConexao();
+          if (conexao != null && !_descartado && !_desconexaoIntencional) {
+            await connect(conexao.servidor, conexao.porta);
+          }
+        }
+      }
       if (!connected) {
         if (_conexaoEmAndamento == null && _temporizadorReconexao == null) {
           if (hostname.isNotEmpty && port > 0) {
@@ -286,7 +295,8 @@ class Server extends ChangeNotifier {
       );
 
       await canalConexao.ready.timeout(_timeoutConexao);
-      if (!_tentativaConexaoAtual(geracao) || !identical(channel, canalConexao)) {
+      if (!_tentativaConexaoAtual(geracao) ||
+          !identical(channel, canalConexao)) {
         return false;
       }
       connected = true;
@@ -816,8 +826,8 @@ class Server extends ChangeNotifier {
         return;
       }
 
-      AtualizacaoDeTela().call(dados);
       aoAtualizarDados?.call(dados.tipo);
+      AtualizacaoDeTela().call(dados);
       notifyListeners();
     } catch (e, stackTrace) {
       log('erro em onData', error: e, stackTrace: stackTrace);
