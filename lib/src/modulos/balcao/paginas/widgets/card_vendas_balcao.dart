@@ -68,8 +68,15 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                 onTap: () {
                   if (item.id.startsWith('venda-local:')) {
                     final sync = Sincronizador.instancia;
-                    if (sync != null) Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => PendenciasSincronizacao(sincronizador: sync)));
+                    if (sync != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              PendenciasSincronizacao(sincronizador: sync),
+                        ),
+                      );
+                    }
                     return;
                   }
                   Navigator.push(context, MaterialPageRoute(builder: (context) {
@@ -88,26 +95,37 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                         ),
                       ),
                       child: VerticalDivider(
-                        color: item.status == 'Concluída' ? Colors.green : Colors.red,
+                        color: item.status == 'Concluída'
+                            ? Colors.green
+                            : Colors.red,
                         thickness: 5,
                       ),
                     ),
-                    Expanded(child: Padding(
+                    Expanded(
+                        child: Padding(
                       padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                              item.nomecliente,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                          Text(item.nomeusuario, style: const TextStyle(fontSize: 12)),
+                            item.nomecliente,
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          Text(item.nomeusuario,
+                              style: const TextStyle(fontSize: 12)),
                           if (item.id.startsWith('venda-local:'))
-                            Text(item.status, style: const TextStyle(fontSize: 12)),
-                          Text(DateFormat('dd/MM/yyyy hh:ss').format(DateTime.parse(item.dataHora)), style: const TextStyle(fontSize: 12)),
+                            Text(item.status,
+                                style: const TextStyle(fontSize: 12)),
+                          Text(
+                              DateFormat('dd/MM/yyyy hh:ss')
+                                  .format(DateTime.parse(item.dataHora)),
+                              style: const TextStyle(fontSize: 12)),
                           const SizedBox(height: 5),
-                          Text(item.tipodeentrega, style: const TextStyle(fontSize: 12)),
-                          Text((double.tryParse(item.subtotal) ?? 0).obterReal()),
+                          Text(item.tipodeentrega,
+                              style: const TextStyle(fontSize: 12)),
+                          Text((double.tryParse(item.subtotal) ?? 0)
+                              .obterReal()),
                         ],
                       ),
                     )),
@@ -115,191 +133,240 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                 ),
               ),
             ),
-            if (!item.id.startsWith('venda-local:')) Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return ModalCancelarVenda(
-                              aoSalvar: (justificativa) async {
-                                await cancelarVenda(justificativa);
-                              },
-                            );
-                          },
-                        );
-                      },
-                      child: const SizedBox(width: 50, child: Icon(Icons.delete_outline_outlined)),
-                    ),
-                  ),
-                  Expanded(
-                    child: MenuAnchor(
-                      builder: (BuildContext context, MenuController controller, Widget? child) {
-                        return SizedBox(
-                          width: 50,
-                          child: InkWell(
-                            borderRadius: const BorderRadius.only(bottomRight: Radius.circular(10)),
-                            onTap: () {
-                              if (controller.isOpen) {
-                                controller.close();
-                              } else {
-                                controller.open();
-                              }
+            if (!item.id.startsWith('venda-local:'))
+              Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(5)),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return ModalCancelarVenda(
+                                aoSalvar: (justificativa) async {
+                                  await cancelarVenda(justificativa);
+                                },
+                              );
                             },
-                            child: const Icon(Icons.more_vert),
-                          ),
-                        );
-                      },
-                      menuChildren: [
-                        MenuItemButton(
-                          onPressed: () async {
-                            var informacoes = await servico.listarPorId(widget.item.id);
-
-                            await Impressao.comprovanteDePedido(
-                              local: "",
-                              tipoTela: TipoCardapio.balcao,
-                              comanda: "Balcão ${item.id}",
-                              numeroPedido: item.numeropedido,
-                              nomeCliente: (item.nomecliente) == 'Sem Cliente' && (item.observacaoDoPedido ?? '').isNotEmpty ? (item.observacaoDoPedido ?? '') : (item.nomecliente),
-                              nomeEmpresa: item.nomeEmpresa,
-                              produtos: informacoes.produtos,
-                              tipodeentrega: informacoes.informacoes.tipodeentrega,
-                            );
-
-                            // if (sucessoAoImprimir == false) {
-                            //   if (context.mounted) {
-                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            //       backgroundColor: Colors.red,
-                            //     ));
-                            //   }
-                            // }
-                          },
-                          child: const Row(
-                            children: [
-                              SizedBox(width: 15),
-                              Text("Imprimir Preparo"),
-                              SizedBox(width: 15),
-                            ],
-                          ),
-                        ),
-                        MenuItemButton(
-                          onPressed: () async {
-                            var informacoes = await servico.listarPorId(widget.item.id);
-                            var parcelas = await servico.listarFinanceiroVenda(widget.item.id);
-
-                            final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
-                            final newDuration = ConfigSistema.formatarHora(duration);
-
-                            Impressao.comprovanteDeConsumo(
-                              // tipoImpressao: '2',
-                              // : TipoCardapio.balcao,
-                              // nomeCliente: item.nomecliente,
-
-                              valorentrega: informacoes.informacoes.valorentrega,
-                              nomeEmpresa: item.nomeEmpresa,
-                              produtos: informacoes.produtos,
-                              nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                                return ModeloNomeLancamento(
-                                    nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
-                              })),
-                              somaValorHistorico: informacoes.informacoes.subtotal,
-                              cnpjEmpresa: informacoes.informacoes.docempresa,
-                              celularEmpresa: informacoes.informacoes.celularcliente,
-                              enderecoEmpresa: informacoes.informacoes.enderecoempresa,
-                              permanencia: newDuration,
-                              local: '',
-                              total: informacoes.informacoes.subtotal,
-                              numeroPedido: informacoes.informacoes.numerodopedido,
-                              tipodeentrega: informacoes.informacoes.tipodeentrega,
-                            );
-
-                            // if (sucessoAoImprimir == false) {
-                            //   if (context.mounted) {
-                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            //       backgroundColor: Colors.red,
-                            //     ));
-                            //   }
-                            // }
-                          },
-                          child: const Row(
-                            children: [
-                              SizedBox(width: 15),
-                              Text("Comprovante da Conta"),
-                              SizedBox(width: 15),
-                            ],
-                          ),
-                        ),
-                        MenuItemButton(
-                          onPressed: () async {
-                            var informacoes = await servico.listarPorId(widget.item.id);
-                            var parcelas = await servico.listarFinanceiroVenda(widget.item.id);
-
-                            final duration = DateTime.now().difference(DateTime.parse(widget.item.dataHora));
-                            final newDuration = ConfigSistema.formatarHora(duration);
-
-                            Impressao.comprovanteDoEntregador(
-                              // tipoImpressao: '3',
-                              // tipo: TipoCardapio.balcao,
-                              nomeCliente: item.nomecliente,
-                              nomeEmpresa: item.nomeEmpresa,
-                              produtos: informacoes.produtos,
-                              nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                                return ModeloNomeLancamento(
-                                    nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
-                              })),
-                              somaValorHistorico: informacoes.informacoes.subtotal,
-                              cnpjEmpresa: informacoes.informacoes.docempresa,
-                              celularEmpresa: informacoes.informacoes.celularcliente,
-                              enderecoEmpresa: informacoes.informacoes.enderecoempresa,
-                              permanencia: newDuration,
-                              // local: '',
-                              total: informacoes.informacoes.subtotal,
-                              numeroPedido: informacoes.informacoes.numerodopedido,
-                              tipodeentrega: informacoes.informacoes.tipodeentrega,
-                              // '
-                              celularCliente: informacoes.informacoes.celularcliente,
-                              enderecoCliente: informacoes.informacoes.enderecoenderecocliente,
-                              valortroco: informacoes.informacoes.valortroco,
-                              valorentrega: informacoes.informacoes.valorentrega,
-                              bairroCliente: informacoes.informacoes.nomebairro,
-                              cidadeCliente: informacoes.informacoes.nomecidade,
-                              complementoCliente: informacoes.informacoes.complementoenderecocliente,
-                              numeroCliente: informacoes.informacoes.numeroenderecocliente,
-                            );
-
-                            // if (sucessoAoImprimir == false) {
-                            //   if (context.mounted) {
-                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                            //       backgroundColor: Colors.red,
-                            //     ));
-                            //   }
-                            // }
-                          },
-                          child: const Row(
-                            children: [
-                              SizedBox(width: 15),
-                              Text("Comprovante do Entregador"),
-                              SizedBox(width: 15),
-                            ],
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                        child: const SizedBox(
+                            width: 50,
+                            child: Icon(Icons.delete_outline_outlined)),
+                      ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: MenuAnchor(
+                        builder: (BuildContext context,
+                            MenuController controller, Widget? child) {
+                          return SizedBox(
+                            width: 50,
+                            child: InkWell(
+                              borderRadius: const BorderRadius.only(
+                                  bottomRight: Radius.circular(10)),
+                              onTap: () {
+                                if (controller.isOpen) {
+                                  controller.close();
+                                } else {
+                                  controller.open();
+                                }
+                              },
+                              child: const Icon(Icons.more_vert),
+                            ),
+                          );
+                        },
+                        menuChildren: [
+                          MenuItemButton(
+                            onPressed: () async {
+                              var informacoes =
+                                  await servico.listarPorId(widget.item.id);
+
+                              await Impressao.comprovanteDePedido(
+                                local: "",
+                                tipoTela: TipoCardapio.balcao,
+                                comanda: "Balcão ${item.id}",
+                                numeroPedido: item.numeropedido,
+                                nomeCliente:
+                                    (item.nomecliente) == 'Sem Cliente' &&
+                                            (item.observacaoDoPedido ?? '')
+                                                .isNotEmpty
+                                        ? (item.observacaoDoPedido ?? '')
+                                        : (item.nomecliente),
+                                nomeEmpresa: item.nomeEmpresa,
+                                produtos: informacoes.produtos,
+                                tipodeentrega:
+                                    informacoes.informacoes.tipodeentrega,
+                              );
+
+                              // if (sucessoAoImprimir == false) {
+                              //   if (context.mounted) {
+                              //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                              //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                              //       backgroundColor: Colors.red,
+                              //     ));
+                              //   }
+                              // }
+                            },
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 15),
+                                Text("Imprimir Preparo"),
+                                SizedBox(width: 15),
+                              ],
+                            ),
+                          ),
+                          MenuItemButton(
+                            onPressed: () async {
+                              var informacoes =
+                                  await servico.listarPorId(widget.item.id);
+                              var parcelas = await servico
+                                  .listarFinanceiroVenda(widget.item.id);
+
+                              final duration = DateTime.now().difference(
+                                  DateTime.parse(widget.item.dataHora));
+                              final newDuration =
+                                  ConfigSistema.formatarHora(duration);
+
+                              Impressao.comprovanteDeConsumo(
+                                // tipoImpressao: '2',
+                                // : TipoCardapio.balcao,
+                                // nomeCliente: item.nomecliente,
+
+                                valorentrega:
+                                    informacoes.informacoes.valorentrega,
+                                nomeEmpresa: item.nomeEmpresa,
+                                produtos: informacoes.produtos,
+                                nomelancamento: List<ModeloNomeLancamento>.from(
+                                    parcelas.map((elemento) {
+                                  return ModeloNomeLancamento(
+                                      nome: elemento.entradaMov,
+                                      valor: UtilBrasilFields
+                                              .converterMoedaParaDouble(
+                                                  elemento.valorMovF)
+                                          .toStringAsExponential(2));
+                                })),
+                                somaValorHistorico:
+                                    informacoes.informacoes.subtotal,
+                                cnpjEmpresa: informacoes.informacoes.docempresa,
+                                celularEmpresa:
+                                    informacoes.informacoes.celularcliente,
+                                enderecoEmpresa:
+                                    informacoes.informacoes.enderecoempresa,
+                                permanencia: newDuration,
+                                local: '',
+                                total: informacoes.informacoes.subtotal,
+                                numeroPedido:
+                                    informacoes.informacoes.numerodopedido,
+                                tipodeentrega:
+                                    informacoes.informacoes.tipodeentrega,
+                              );
+
+                              // if (sucessoAoImprimir == false) {
+                              //   if (context.mounted) {
+                              //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                              //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                              //       backgroundColor: Colors.red,
+                              //     ));
+                              //   }
+                              // }
+                            },
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 15),
+                                Text("Comprovante da Conta"),
+                                SizedBox(width: 15),
+                              ],
+                            ),
+                          ),
+                          MenuItemButton(
+                            onPressed: () async {
+                              var informacoes =
+                                  await servico.listarPorId(widget.item.id);
+                              var parcelas = await servico
+                                  .listarFinanceiroVenda(widget.item.id);
+
+                              final duration = DateTime.now().difference(
+                                  DateTime.parse(widget.item.dataHora));
+                              final newDuration =
+                                  ConfigSistema.formatarHora(duration);
+
+                              Impressao.comprovanteDoEntregador(
+                                // tipoImpressao: '3',
+                                // tipo: TipoCardapio.balcao,
+                                nomeCliente: item.nomecliente,
+                                nomeEmpresa: item.nomeEmpresa,
+                                produtos: informacoes.produtos,
+                                nomelancamento: List<ModeloNomeLancamento>.from(
+                                    parcelas.map((elemento) {
+                                  return ModeloNomeLancamento(
+                                      nome: elemento.entradaMov,
+                                      valor: UtilBrasilFields
+                                              .converterMoedaParaDouble(
+                                                  elemento.valorMovF)
+                                          .toStringAsExponential(2));
+                                })),
+                                somaValorHistorico:
+                                    informacoes.informacoes.subtotal,
+                                cnpjEmpresa: informacoes.informacoes.docempresa,
+                                celularEmpresa:
+                                    informacoes.informacoes.celularcliente,
+                                enderecoEmpresa:
+                                    informacoes.informacoes.enderecoempresa,
+                                permanencia: newDuration,
+                                // local: '',
+                                total: informacoes.informacoes.subtotal,
+                                numeroPedido:
+                                    informacoes.informacoes.numerodopedido,
+                                tipodeentrega:
+                                    informacoes.informacoes.tipodeentrega,
+                                // '
+                                celularCliente:
+                                    informacoes.informacoes.celularcliente,
+                                enderecoCliente: informacoes
+                                    .informacoes.enderecoenderecocliente,
+                                valortroco: informacoes.informacoes.valortroco,
+                                valorentrega:
+                                    informacoes.informacoes.valorentrega,
+                                bairroCliente:
+                                    informacoes.informacoes.nomebairro,
+                                cidadeCliente:
+                                    informacoes.informacoes.nomecidade,
+                                complementoCliente: informacoes
+                                    .informacoes.complementoenderecocliente,
+                                numeroCliente: informacoes
+                                    .informacoes.numeroenderecocliente,
+                              );
+
+                              // if (sucessoAoImprimir == false) {
+                              //   if (context.mounted) {
+                              //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                              //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
+                              //       backgroundColor: Colors.red,
+                              //     ));
+                              //   }
+                              // }
+                            },
+                            child: const Row(
+                              children: [
+                                SizedBox(width: 15),
+                                Text("Comprovante do Entregador"),
+                                SizedBox(width: 15),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

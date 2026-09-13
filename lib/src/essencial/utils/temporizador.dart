@@ -14,7 +14,9 @@ class Temporizador {
     String minuto = duracao.inMinutes.remainder(60).toString().padLeft(2, '0');
     String segungo = duracao.inSeconds.remainder(60).toString().padLeft(2, '0');
 
-    return (int.parse(hora) * 60 * 60 + int.parse(minuto) * 60 + int.parse(segungo));
+    return (int.parse(hora) * 60 * 60 +
+        int.parse(minuto) * 60 +
+        int.parse(segungo));
   }
 
   int converterDataParaSegundo(String value) {
@@ -39,7 +41,7 @@ class Temporizador {
     return diferenca;
   }
 
-  String converterParaHora(seconds) {
+  String converterParaHora(int seconds) {
     int p1 = seconds % 60;
     int p2 = seconds ~/ 60;
     int p3 = p2 % 60;
@@ -69,11 +71,13 @@ class Temporizador {
 
     final horaAbertura = converterParaSegundo(hora);
     final dataAbertura = converterDataParaSegundo(data);
-    final horaAtual = converterParaSegundo(DateFormat.Hms().format(DateTime.now()));
+    final horaAtual =
+        converterParaSegundo(DateFormat.Hms().format(DateTime.now()));
     final dataAtual = converterDataParaSegundo(DateTime.now().toString());
     // final diferenca = retornarDiferenca(horaCadastro + dataCadastro, horaAtual);
     // final diferenca = retornarDiferenca(horaAbertura, horaAtual);
-    final diferenca = retornarDiferenca(horaAbertura + dataAbertura, horaAtual + dataAtual);
+    final diferenca =
+        retornarDiferenca(horaAbertura + dataAbertura, horaAtual + dataAtual);
 
     final horaFormatada = converterParaHora(diferenca);
 
