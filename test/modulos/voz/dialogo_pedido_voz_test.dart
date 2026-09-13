@@ -12,9 +12,11 @@ import 'pedido_falado_test.dart' show pizzaDetalhada;
 class GravadorTeste extends Fake implements GravadorVoz {
   int inicios = 0, conclusoes = 0, cancelamentos = 0, descartes = 0;
   Object? erro;
+  Completer<void>? inicioPendente;
   @override
   Future<void> iniciar() async {
     inicios++;
+    if (inicioPendente != null) await inicioPendente!.future;
     if (erro != null) throw erro!;
   }
 
@@ -37,10 +39,14 @@ class GravadorTeste extends Fake implements GravadorVoz {
 
 class VozTeste extends Fake implements ServicoPedidoVoz {
   int chamadas = 0, descartes = 0;
+  int verificacoes = 0;
+  Completer<void>? verificacaoPendente;
   Object? erro;
   Completer<({String texto, Modelowordprodutos item})>? espera;
   @override
   Future<void> verificar() async {
+    verificacoes++;
+    if (verificacaoPendente != null) await verificacaoPendente!.future;
     if (erro != null) throw erro!;
   }
 
@@ -115,7 +121,7 @@ void main() {
       await tester.tap(find.text('Gravar pedido'));
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
-      expect(find.text('Gravando'), findsOneWidget);
+      expect(find.textContaining('Gravando'), findsOneWidget);
       expect(find.text('Concluir e enviar'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'pedido_voz_${tamanho.width.toInt()}');
@@ -181,6 +187,21 @@ void main() {
     expect(gravador.inicios, 0);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('toques repetidos nao abrem verificacoes concorrentes',
+      (tester) async {
+    servico.erro = const FalhaPedidoVoz('Configure a API.');
+    await abrir(tester);
+    servico.erro = null;
+    servico.verificacaoPendente = Completer<void>();
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pump();
+    expect(servico.verificacoes, 2); // Inicial e uma unica repeticao.
+    servico.verificacaoPendente!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Gravar pedido'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('limite de tempo cancela em vez de enviar fala cortada',
       (tester) async {
     await abrir(tester);
@@ -202,6 +223,40 @@ void main() {
     expect(gravador.cancelamentos, 1);
     expect(servico.chamadas, 0);
     expect(resultado, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('sair enquanto aguarda permissao impede gravacao tardia',
+      (tester) async {
+    gravador.inicioPendente = Completer<void>();
+    await abrir(tester);
+    await tester.tap(find.text('Gravar pedido'));
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(find.textContaining('interrompido'), findsOneWidget);
+    expect(tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+        isNull);
+    gravador.inicioPendente!.complete();
+    await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    expect(find.textContaining('Gravando'), findsNothing);
+    expect(gravador.cancelamentos, greaterThanOrEqualTo(1));
+    expect(servico.chamadas, 0);
+    expect(resultado, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('permissao nativa inactive permite continuar ao retornar',
+      (tester) async {
+    gravador.inicioPendente = Completer<void>();
+    await abrir(tester);
+    await tester.tap(find.text('Gravar pedido'));
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    gravador.inicioPendente!.complete();
+    await tester.pump();
+    expect(find.textContaining('Gravando'), findsOneWidget);
+    expect(gravador.cancelamentos, 0);
     await tester.pumpWidget(const SizedBox());
   });
 }

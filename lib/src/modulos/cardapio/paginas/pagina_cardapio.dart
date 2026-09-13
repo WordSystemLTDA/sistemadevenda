@@ -19,6 +19,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:brasil_fields/brasil_fields.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -220,6 +221,12 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     final esperado = carrinhoProvedor.contexto;
     final usuario = provedor.usuarioProvedor.usuario;
     try {
+      if (kIsWeb ||
+          ![TargetPlatform.android, TargetPlatform.iOS]
+              .contains(defaultTargetPlatform)) {
+        throw const FalhaPedidoVoz(
+            'O pedido por voz está disponível no aplicativo para Android e iPhone.');
+      }
       if (esperado == null ||
           !esperado.valido ||
           !['mesa', 'comanda'].contains(esperado.tipo) ||
