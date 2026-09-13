@@ -40,7 +40,7 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
     servico = widget.servico ??
         ServicoIndicadores(
             Modular.get<DioCliente>(), Modular.get<UsuarioProvedor>());
-    _definirPeriodo(1);
+    _definirPeriodoSelecionado(1);
     WidgetsBinding.instance.addObserver(this);
     servico.usuarios.addListener(_trocarUsuario);
     _carregar();
@@ -53,10 +53,17 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
     });
   }
 
-  void _definirPeriodo(int dias) {
-    fim = dataOperacionalIndicadores(DateTime.now());
-    inicio = DateTime(fim.year, fim.month, fim.day - dias + 1);
-    periodo = dias;
+  void _definirPeriodoSelecionado(int valor) {
+    final hojeOperacional = dataOperacionalIndicadores(DateTime.now());
+    if (valor == -1) {
+      fim = DateTime(
+          hojeOperacional.year, hojeOperacional.month, hojeOperacional.day - 1);
+      inicio = fim;
+    } else {
+      fim = hojeOperacional;
+      inicio = DateTime(fim.year, fim.month, fim.day - valor + 1);
+    }
+    periodo = valor;
   }
 
   void _trocarUsuario() {
@@ -87,7 +94,7 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
     cancelamento?.cancel();
     cancelamento = CancelToken();
     final atual = ++consulta;
-    if (periodo > 0) _definirPeriodo(periodo);
+    if (periodo != 0) _definirPeriodoSelecionado(periodo);
     setState(() {
       carregando = true;
       erro = null;
@@ -200,6 +207,9 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
                                                         value: 1,
                                                         child: Text('Hoje')),
                                                     DropdownMenuItem(
+                                                        value: -1,
+                                                        child: Text('Ontem')),
+                                                    DropdownMenuItem(
                                                         value: 7,
                                                         child: Text(
                                                             'Últimos 7 dias')),
@@ -219,7 +229,8 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
                                                       return;
                                                     }
                                                     setState(() {
-                                                      _definirPeriodo(valor);
+                                                      _definirPeriodoSelecionado(
+                                                          valor);
                                                       dados = null;
                                                     });
                                                     _carregar();

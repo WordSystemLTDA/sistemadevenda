@@ -18,6 +18,7 @@ class IndicadoresTeste extends Fake implements ServicoIndicadores {
   String? erro;
   bool offline = false;
   int chamadas = 0;
+  final periodos = <DateTimeRange>[];
   final pendentes = <Completer<ModeloIndicadores>>[];
   bool aguardar = false;
 
@@ -25,6 +26,7 @@ class IndicadoresTeste extends Fake implements ServicoIndicadores {
   Future<ModeloIndicadores> consultar(DateTime inicio, DateTime fim,
       {CancelToken? cancelToken}) async {
     chamadas++;
+    periodos.add(DateTimeRange(start: inicio, end: fim));
     if (aguardar) {
       final completer = Completer<ModeloIndicadores>();
       pendentes.add(completer);
@@ -150,6 +152,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(servico.chamadas, 2);
     expect(find.text('Movimento por dia'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('opcao ontem usa o dia operacional anterior', (tester) async {
+    await abrir(tester);
+    await tester.tap(find.text('Hoje'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ontem').last);
+    await tester.pumpAndSettle();
+    final esperado = dataOperacionalIndicadores(DateTime.now())
+        .subtract(const Duration(days: 1));
+    expect(servico.periodos.last.start, esperado);
+    expect(servico.periodos.last.end, esperado);
+    expect(find.text('Ontem'), findsOneWidget);
+    expect(servico.chamadas, 2);
     await tester.pumpWidget(const SizedBox());
   });
 
