@@ -628,7 +628,7 @@ void main() {
     await mostrar(tester, find.byKey(const ValueKey('abrir_edicao_opcao_7')));
     await tester.tap(find.byKey(const ValueKey('abrir_edicao_opcao_7')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.tap(find.byTooltip('Aumentar Milho'));
     await tester.pumpAndSettle();
     expect(edicao.valorUnitario, 78);
     await tester.tap(find.byKey(const Key('salvar_etapa_produto')));

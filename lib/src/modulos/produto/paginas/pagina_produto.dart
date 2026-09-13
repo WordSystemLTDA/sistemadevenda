@@ -1,4 +1,4 @@
-import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
@@ -44,6 +44,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
   Modelowordprodutos? itemProduto;
   bool carregando = false;
+  String? erroConsulta;
   TextEditingController obsController = TextEditingController();
   String _baseHostImagens = 'https://bigchef.com.br';
 
@@ -75,12 +76,12 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     });
   }
 
-  void listar() async {
-    if (carregando == false) {
-      setState(() {
-        carregando = true;
-      });
-    }
+  Future<void> listar() async {
+    if (carregando) return;
+    setState(() {
+      carregando = true;
+      erroConsulta = null;
+    });
 
     var inicioServico = Modular.get<ServicoProduto>();
     final idTamanhoPizza =
@@ -88,6 +89,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     await inicioServico
         .listarPorId(widget.produto.id, idTamanhoPizza)
         .then((value) {
+      if (!mounted) return;
       itemProduto = value;
       if (value != null) {
         if (widget.valorVenda == null) {
@@ -147,10 +149,12 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           _provedorProduto.calcularValorVenda(false, '0');
         }
       }
+    }).catchError((Object erro) {
+      if (mounted) {
+        setState(() => erroConsulta = 'Não foi possível carregar o produto.');
+      }
     }).whenComplete(() {
-      setState(() {
-        carregando = false;
-      });
+      if (mounted) setState(() => carregando = false);
     });
   }
 
@@ -342,7 +346,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                 Icon(Icons.inventory_2_outlined,
                     size: 64, color: cs.onSurface.withValues(alpha: 0.4)),
                 const SizedBox(height: 12),
-                Text('Produto não existe', style: theme.textTheme.titleMedium),
+                Text(erroConsulta ?? 'Produto não existe',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium),
+                if (erroConsulta != null) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                      onPressed: listar,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Tentar novamente')),
+                ],
               ],
             ),
           ),
@@ -383,8 +396,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               _quantidadeAdicionaisSelecionados;
 
           return Scaffold(
-            backgroundColor:
-                isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+            backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
               elevation: 0,
@@ -429,12 +441,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               ),
             ),
             body: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 140),
+              padding: const EdgeInsets.only(bottom: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // HERO: Imagem + Preço/Quantidade
-                  _HeroProduto(
+                  _ResumoProduto(
                     foto: itemProduto!.foto,
                     baseHost: _baseHostImagens,
                     descricao: itemProduto!.descricao,
@@ -444,8 +455,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     onDiminuir: _provedorProduto.aoDiminuirQuantidade,
                     onAumentar: _provedorProduto.aoAumentarQuantidade,
                   ),
-
-                  // Seções: opções/pacotes
                   if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
                     ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
                       if (opcoesPacote.id == 6) return const SizedBox();
@@ -455,7 +464,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                        child: _SecaoCard(
+                        child: _SecaoProduto(
                           icon: _iconePorTipo(opcoesPacote.id),
                           titulo: opcoesPacote.titulo,
                           contagem: count,
@@ -464,7 +473,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: count,
-                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                            padding: const EdgeInsets.only(bottom: 8),
                             itemBuilder: (context, index) {
                               if (opcoesPacote.id == 2) {
                                 return CardKit(
@@ -482,17 +491,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                       );
                     }),
                   ],
-
-                  // Observação
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                    child: _SecaoCard(
+                    child: _SecaoProduto(
                       icon: Icons.edit_note_rounded,
                       titulo: 'Observação do Produto',
                       contagem: null,
                       obrigatorio: false,
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: TextField(
                           controller: obsController,
                           maxLines: 4,
@@ -556,7 +563,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 }
 
-class _HeroProduto extends StatelessWidget {
+class _ResumoProduto extends StatelessWidget {
   final String foto;
   final String baseHost;
   final String descricao;
@@ -566,7 +573,7 @@ class _HeroProduto extends StatelessWidget {
   final VoidCallback onDiminuir;
   final VoidCallback onAumentar;
 
-  const _HeroProduto({
+  const _ResumoProduto({
     required this.foto,
     required this.baseHost,
     required this.descricao,
@@ -579,181 +586,69 @@ class _HeroProduto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : cs.outline.withValues(alpha: 0.12),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            LayoutBuilder(builder: (context, constraints) {
-              final empilhar = constraints.maxWidth < 240 ||
-                  MediaQuery.textScalerOf(context).scale(16) > 22;
-              final larguraImagem = constraints.maxWidth < 320 ? 88.0 : 120.0;
-              final resumoPreco = Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _StepperQuantidade(
-                    quantidade: quantidade,
-                    onDiminuir: onDiminuir,
-                    onAumentar: onAumentar,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Preço unit.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurface.withValues(alpha: 0.55),
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  Text(
-                    precoExibido,
-                    style: TextStyle(
-                      color: Colors.green.shade600,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Total',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurface.withValues(alpha: 0.55),
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  Text(
-                    total,
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              );
-              final imagem = Hero(
-                tag: 'foto_$foto',
-                child: Container(
-                  width: larguraImagem,
-                  height: larguraImagem,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : cs.primaryContainer.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: foto.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(16),
-                          child:
-                              Image.asset(Assets.boxAsset, fit: BoxFit.contain),
-                        )
-                      : CachedNetworkImage(
-                          fit: BoxFit.contain,
-                          fadeOutDuration: const Duration(milliseconds: 100),
-                          placeholder: (context, url) => const Center(
-                            child: SizedBox(
-                              height: 28,
-                              width: 28,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Icon(
-                            Icons.image_not_supported_outlined,
-                            color: cs.onSurface.withValues(alpha: 0.4),
-                          ),
-                          imageUrl: UrlImagem.montarUrlImagem(
-                            foto: foto,
-                            baseHost: baseHost,
-                          ),
-                        ),
-                ),
-              );
-              if (empilhar) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    imagem,
-                    const SizedBox(height: 14),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: resumoPreco,
-                    ),
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  imagem,
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: resumoPreco,
-                    ),
-                  ),
-                ],
-              );
-            }),
-            if (descricao.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 16, color: cs.onSurface.withValues(alpha: 0.55)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        descricao,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          height: 1.35,
-                          color: cs.onSurface.withValues(alpha: 0.72),
-                        ),
-                      ),
-                    ),
-                  ],
+    final cs = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: VisualAtendimento.superficie(context),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            if (foto.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl:
+                      UrlImagem.montarUrlImagem(foto: foto, baseHost: baseHost),
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.contain,
+                  placeholder: (_, url) => const SizedBox.square(dimension: 64),
+                  errorWidget: (_, url, error) =>
+                      const Icon(Icons.restaurant_outlined, size: 32),
                 ),
               ),
+              const SizedBox(width: 12),
             ],
+            Expanded(
+                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Preço unit.',
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 4),
+                Text(precoExibido,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
+              ],
+            )),
+          ]),
+          const SizedBox(height: 16),
+          Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _StepperQuantidade(
+                    quantidade: quantidade,
+                    onDiminuir: onDiminuir,
+                    onAumentar: onAumentar),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Total',
+                      style:
+                          TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+                  Text(total,
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: VisualAtendimento.verde(context))),
+                ]),
+              ]),
+          if (descricao.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(descricao,
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
           ],
-        ),
+        ]),
       ),
     );
   }
@@ -771,94 +666,39 @@ class _StepperQuantidade extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final podeDiminuir = quantidade > 1;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : cs.primaryContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepperBotao(
-            icon: Icons.remove_rounded,
-            enabled: podeDiminuir,
-            color: Colors.red.shade400,
-            onTap: onDiminuir,
+  Widget build(BuildContext context) => SizedBox(
+        width: 144,
+        height: 48,
+        child: Row(children: [
+          IconButton(
+            tooltip: 'Diminuir quantidade do produto',
+            onPressed: quantidade > 1 ? onDiminuir : null,
+            icon: const Icon(Icons.remove_circle_outline),
           ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            transitionBuilder: (child, anim) =>
-                ScaleTransition(scale: anim, child: child),
-            child: Container(
-              key: ValueKey(quantidade),
-              constraints: const BoxConstraints(minWidth: 36),
-              alignment: Alignment.center,
-              child: Text(
-                quantidade.toString(),
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-            ),
+          Expanded(
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('$quantidade',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w600)))),
+          IconButton(
+            tooltip: 'Aumentar quantidade do produto',
+            onPressed: onAumentar,
+            icon: Icon(Icons.add_circle_outline,
+                color: VisualAtendimento.verde(context)),
           ),
-          _StepperBotao(
-            icon: Icons.add_rounded,
-            enabled: true,
-            color: Colors.green.shade600,
-            onTap: onAumentar,
-          ),
-        ],
-      ),
-    );
-  }
+        ]),
+      );
 }
 
-class _StepperBotao extends StatelessWidget {
-  final IconData icon;
-  final bool enabled;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _StepperBotao({
-    required this.icon,
-    required this.enabled,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: enabled ? color : Colors.grey.shade400,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: enabled ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
-}
-
-class _SecaoCard extends StatelessWidget {
+class _SecaoProduto extends StatelessWidget {
   final IconData icon;
   final String titulo;
   final int? contagem;
   final bool obrigatorio;
   final Widget child;
 
-  const _SecaoCard({
+  const _SecaoProduto({
     required this.icon,
     required this.titulo,
     required this.contagem,
@@ -868,94 +708,30 @@ class _SecaoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : cs.outline.withValues(alpha: 0.12),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: cs.primaryContainer.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 16, color: cs.onPrimaryContainer),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    titulo,
+    final cs = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, size: 20, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(titulo,
                     style: const TextStyle(
-                        fontSize: 14.5, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                if (contagem != null) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$contagem',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                      ),
-                    ),
-                  ),
-                ],
-                if (obrigatorio) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Obrigatório',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.red,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          child,
-        ],
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+                if (obrigatorio)
+                  Text('Obrigatório',
+                      style: TextStyle(fontSize: 12, color: cs.error)),
+              ])),
+          if (contagem != null)
+            Text('$contagem',
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        ]),
       ),
-    );
+      child,
+    ]);
   }
 }

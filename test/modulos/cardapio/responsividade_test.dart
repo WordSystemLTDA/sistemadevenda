@@ -191,7 +191,8 @@ void main() {
             of: find.byType(CardOpcoesPacotes).last,
             matching: find.byIcon(Icons.add_circle_outline)));
         final card = tester.getRect(find.byType(CardOpcoesPacotes).last);
-        expect((menos.dx + mais.dx) / 2, closeTo(card.center.dx, 1));
+        expect(mais.dx, closeTo(card.right - 32, 1));
+        expect(menos.dy, closeTo(mais.dy, 1));
         expect(mais.dx - menos.dx, lessThan(110));
       }
       await capturarTela(tester, 'responsivo_opcoes_$cenario');

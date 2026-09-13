@@ -20,6 +20,9 @@ import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finaliza
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
+import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinho extends StatefulWidget {
@@ -261,10 +264,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
           tipodeentrega: _tipoDeEntrega,
           comanda: dadosPedido.nome ?? '',
           numeroPedido: dadosPedido.numeroPedido ?? '',
-          nomeCliente: (dadosPedido.nomeCliente ?? '').trim().isEmpty ||
-                  dadosPedido.nomeCliente == 'Sem Cliente'
-              ? (dadosPedido.observacaoDoPedido ?? '')
-              : dadosPedido.nomeCliente!,
+          nomeCliente: nomeClienteAtendimento(
+              dadosPedido.nomeCliente, dadosPedido.observacaoDoPedido,
+              vazio: ''),
           nomeEmpresa: dadosPedido.nomeEmpresa ?? '',
           local: tipo == TipoCardapio.mesa ? '' : dadosPedido.nomeMesa ?? '',
         ),
@@ -369,7 +371,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
             }
           },
           child: Scaffold(
-            backgroundColor: cs.surface,
+            backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
               elevation: 0,
@@ -421,18 +423,22 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                   ),
               ],
             ),
-            floatingActionButtonLocation:
-                FloatingActionButtonLocation.centerFloat,
-            floatingActionButtonAnimator:
-                FloatingActionButtonAnimator.noAnimation,
-            floatingActionButton: (carregando ||
+            bottomNavigationBar: (carregando ||
                     (itens.isEmpty && !_finalizacao.pedidoRegistrado))
                 ? null
-                : _BotaoFinalizar(
-                    isLoading: isLoading,
-                    total: carrinhoProvedor.itensCarrinho.precoTotal,
-                    onTap: _finalizar,
-                  ),
+                : SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                      child: BotaoAcaoPedido(
+                        carregando: isLoading,
+                        rotulo: 'Finalizar',
+                        iconeRotulo: Icons.check_circle_outline_rounded,
+                        total: carrinhoProvedor.itensCarrinho.precoTotal
+                            .obterReal(),
+                        onPressed: _finalizar,
+                      ),
+                    )),
             body: IgnorePointer(
               ignoring: isLoading || _finalizacao.pedidoRegistrado,
               child: carregando
@@ -441,7 +447,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                       ? _EstadoVazio(cs: cs)
                       : ListView.builder(
                           itemCount: itens.length + 1,
-                          padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
+                          padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
                           itemBuilder: (context, posicao) {
                             if (posicao == 0) {
                               return Padding(
@@ -458,7 +464,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                                             fontSize: 17,
                                             fontWeight: FontWeight.w700)),
                                     const SizedBox(height: 4),
-                                    Text('Novos itens',
+                                    Text(
+                                        'Novos itens - ${itens.where((item) => item.conferidoNoCarrinho).length}/${itens.length} conferidos',
                                         style: TextStyle(
                                             color: cs.onSurfaceVariant,
                                             fontSize: 13)),
@@ -535,77 +542,6 @@ class _EstadoVazio extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BotaoFinalizar extends StatelessWidget {
-  final bool isLoading;
-  final double total;
-  final VoidCallback onTap;
-
-  const _BotaoFinalizar({
-    required this.isLoading,
-    required this.total,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final width = MediaQuery.of(context).size.width;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: SizedBox(
-        width: width - 28,
-        height: 56,
-        child: FilledButton(
-          onPressed: isLoading ? null : onTap,
-          style: FilledButton.styleFrom(
-            backgroundColor: cs.primary,
-            foregroundColor: cs.onPrimary,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            elevation: 3,
-          ),
-          child: isLoading
-              ? SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.4, color: cs.onPrimary),
-                )
-              : Row(
-                  children: [
-                    Icon(Icons.check_circle_outline_rounded,
-                        size: 22, color: cs.onPrimary),
-                    const SizedBox(width: 10),
-                    const Text('Finalizar',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2)),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: cs.onPrimary.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        total.obterReal(),
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
       ),
     );
   }

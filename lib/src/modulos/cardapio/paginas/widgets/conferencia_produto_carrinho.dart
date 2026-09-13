@@ -2,6 +2,7 @@ import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_editar_produto_carrinho.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 
 class CardConferenciaCarrinho extends StatelessWidget {
   final bool conferido;
@@ -17,16 +18,21 @@ class CardConferenciaCarrinho extends StatelessWidget {
   Widget build(BuildContext context) {
     final escuro = Theme.of(context).brightness == Brightness.dark;
     return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
       color: conferido
           ? (escuro ? const Color(0xFF19372B) : const Color(0xFFEDF8F0))
-          : null,
-      surfaceTintColor: conferido ? Colors.transparent : null,
+          : VisualAtendimento.superficie(context),
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
           color: conferido
               ? (escuro ? const Color(0xFF4C9F73) : const Color(0xFF8AC5A0))
-              : Colors.transparent,
+              : Theme.of(context)
+                  .colorScheme
+                  .outlineVariant
+                  .withValues(alpha: 0.6),
         ),
       ),
       child: child,

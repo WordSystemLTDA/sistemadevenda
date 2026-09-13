@@ -7,6 +7,7 @@ import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardOpcoesPacotes extends StatefulWidget {
@@ -75,242 +76,153 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
         .join('|');
   }
 
+  void _alterarQuantidade(int diferenca) {
+    final selecionado = _provedorProduto
+        .retornarDadosPorID(
+            [widget.opcoesPacote.id], widget.kit, widget.idProduto)
+        .where((dado) => dado.id == widget.item.id)
+        .firstOrNull;
+    if (selecionado == null) {
+      if (diferenca > 0) _selecionarItem(context);
+      return;
+    }
+    final quantidade = selecionado.quantidade ?? 1;
+    if (quantidade + diferenca < 1) {
+      _selecionarItem(context);
+      return;
+    }
+    setState(() => selecionado.quantidade = quantidade + diferenca);
+    FeedbackUsuario.selecaoAlterada();
+    _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
+  }
+
   @override
   Widget build(BuildContext context) {
-    var item = widget.item;
-    var opcoesPacote = widget.opcoesPacote;
+    final item = widget.item;
+    final grupo = widget.opcoesPacote;
+    final cs = Theme.of(context).colorScheme;
+    final selecionado = _provedorProduto
+        .retornarDadosPorID([grupo.id], widget.kit, widget.idProduto)
+        .where((dado) => dado.id == item.id)
+        .firstOrNull;
+    final ativo = selecionado != null;
+    final adicional = grupo.id == 7;
+    final cor = VisualAtendimento.verde(context);
+    final valor = double.tryParse(item.valor ?? '') ?? 0;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Stack(
-        children: [
-          Card(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color.fromARGB(255, 50, 50, 50)
-                : null,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-            margin: EdgeInsets.zero,
-            child: InkWell(
-              onTap: () => _selecionarItem(context),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      if (!widget.compacto &&
-                          item.foto != null &&
-                          item.foto!.isNotEmpty &&
-                          opcoesPacote.id == 7) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8.0),
-                          child: CachedNetworkImage(
-                            width: 70,
-                            height: 70,
-                            fit: BoxFit.contain,
-                            fadeOutDuration: const Duration(milliseconds: 100),
-                            placeholder: (context, url) => const SizedBox(
-                              height: 70,
-                              width: 70,
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.error),
-                            imageUrl: item.foto!,
-                          ),
-                        ),
-                      ],
-                      if ((widget.compacto && opcoesPacote.id == 7) ||
-                          opcoesPacote.id == 8 ||
-                          opcoesPacote.id == 5 ||
-                          opcoesPacote.id == 6) ...[
-                        Checkbox(
-                          value: _provedorProduto
-                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
-                                  widget.idProduto)
-                              .where((element) => element.id == item.id)
-                              .isNotEmpty,
-                          onChanged: (bool? value) {
-                            _selecionarItem(context);
-                          },
-                        ),
-                      ],
-                      if (opcoesPacote.id == 1 ||
-                          opcoesPacote.id == 4 ||
-                          opcoesPacote.id == 11) ...[
-                        Radio<bool>(
-                          value: true,
-                          groupValue: _provedorProduto
-                              .retornarDadosPorID([opcoesPacote.id], widget.kit,
-                                  widget.idProduto)
-                              .where((element) => element.id == item.id)
-                              .isNotEmpty,
-                          onChanged: (bool? value) {
-                            _selecionarItem(context);
-
-                            // if (sucesso == false) {
-                            //   ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            //   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            //     content: Text('Máximo de produtos cortesia já escolhidos.'),
-                            //     backgroundColor: Colors.red,
-                            //   ));
-                            // } else {
-                            //   if (_provedorProduto.listaCortesias.firstOrNull != null) {
-                            //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                            //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            //       content: Text("${_provedorProduto.listaCortesias.length}/${_provedorProduto.listaCortesias.first.quantimaximaselecao} Selecionados"),
-                            //       behavior: SnackBarBehavior.floating,
-                            //     ));
-                            //   }
-                            // }
-                          },
-                        ),
-                      ],
-                      if (!widget.compacto &&
-                          opcoesPacote.id == 7 &&
-                          _provedorProduto.retornarDadosPorID(
-                            [7],
-                            widget.kit,
-                            widget.idProduto,
-                          ).any((dado) => dado.id == item.id))
-                        const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Icon(Icons.check_circle,
-                              size: 24, color: Colors.green),
-                        ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                          child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 4),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(item.nome,
-                                      style: const TextStyle(fontSize: 15)),
-                                  if (item.valor != null &&
-                                      double.parse(item.valor ?? '0') > 0) ...[
-                                    Text(
-                                      double.parse(item.valor ?? '0')
-                                          .obterReal(),
-                                      style: const TextStyle(
-                                          fontSize: 15, color: Colors.green),
-                                    ),
-                                  ],
-                                ],
-                              ))),
-                    ],
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        key: ValueKey('opcao_${grupo.id}_${item.id}'),
+        color: ativo
+            ? Color.alphaBlend(cor.withValues(alpha: 0.07),
+                VisualAtendimento.superficie(context))
+            : VisualAtendimento.superficie(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+              color: ativo
+                  ? cor.withValues(alpha: 0.6)
+                  : cs.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _selecionarItem(context),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final temFoto = !widget.compacto &&
+                adicional &&
+                item.foto?.isNotEmpty == true &&
+                constraints.maxWidth >= 400;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              child: Row(children: [
+                if (temFoto) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: CachedNetworkImage(
+                      imageUrl: item.foto!,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      placeholder: (_, url) =>
+                          const SizedBox.square(dimension: 44),
+                      errorWidget: (_, url, error) =>
+                          const Icon(Icons.restaurant_outlined),
+                    ),
                   ),
-                  if (opcoesPacote.id == 7 &&
-                      _provedorProduto
-                          .retornarDadosPorID(
-                              [opcoesPacote.id], widget.kit, widget.idProduto)
-                          .where((element) => element.id == item.id)
-                          .isNotEmpty) ...[
-                    Align(
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(
-                                  width: 44, height: 44),
-                              onPressed: () {
-                                if (_provedorProduto
-                                        .retornarDadosPorID([opcoesPacote.id],
-                                            widget.kit, widget.idProduto)
-                                        .firstWhere(
-                                            (element) => element.id == item.id)
-                                        .quantidade! >
-                                    1) {
-                                  setState(() {
-                                    _provedorProduto
-                                        .retornarDadosPorID([opcoesPacote.id],
-                                            widget.kit, widget.idProduto)
-                                        .firstWhere(
-                                            (element) => element.id == item.id)
-                                        .quantidade = _provedorProduto
-                                            .retornarDadosPorID(
-                                                [opcoesPacote.id],
-                                                widget.kit,
-                                                widget.idProduto)
-                                            .firstWhere((element) =>
-                                                element.id == item.id)
-                                            .quantidade! -
-                                        1;
-                                  });
-                                  FeedbackUsuario.selecaoAlterada();
-                                  _provedorProduto.calcularValorVenda(
-                                      widget.kit, widget.idProduto);
-                                }
-                              },
-                              icon: Icon(
-                                Icons.remove_circle_outline,
-                                size: 30,
-                                color: _provedorProduto
-                                            .retornarDadosPorID(
-                                                [opcoesPacote.id],
-                                                widget.kit,
-                                                widget.idProduto)
-                                            .firstWhere((element) =>
-                                                element.id == item.id)
-                                            .quantidade ==
-                                        1
-                                    ? Colors.grey
-                                    : Colors.red,
-                              ),
-                            ),
-                            Text(
-                              _provedorProduto
-                                  .retornarDadosPorID([opcoesPacote.id],
-                                      widget.kit, widget.idProduto)
-                                  .firstWhere(
-                                      (element) => element.id == item.id)
-                                  .quantidade
-                                  .toString(),
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(
-                                  width: 44, height: 44),
-                              onPressed: () {
-                                setState(() {
-                                  _provedorProduto
-                                      .retornarDadosPorID([opcoesPacote.id],
-                                          widget.kit, widget.idProduto)
-                                      .firstWhere(
-                                          (element) => element.id == item.id)
-                                      .quantidade = _provedorProduto
-                                          .retornarDadosPorID([opcoesPacote.id],
-                                              widget.kit, widget.idProduto)
-                                          .firstWhere((element) =>
-                                              element.id == item.id)
-                                          .quantidade! +
-                                      1;
-                                });
-
-                                FeedbackUsuario.selecaoAlterada();
-                                _provedorProduto.calcularValorVenda(
-                                    widget.kit, widget.idProduto);
-                              },
-                              icon: const Icon(
-                                Icons.add_circle_outline,
-                                size: 30,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ],
-                        )),
-                  ]
+                  const SizedBox(width: 8),
                 ],
-              ),
-            ),
-          ),
-        ],
+                if (!adicional)
+                  if ([1, 4, 11].contains(grupo.id))
+                    Radio<bool>(
+                        value: true,
+                        groupValue: ativo,
+                        onChanged: (_) => _selecionarItem(context))
+                  else
+                    Checkbox(
+                        value: ativo,
+                        onChanged: (_) => _selecionarItem(context)),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.nome,
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w500)),
+                        if (valor > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(valor.obterReal(),
+                              style: TextStyle(
+                                  fontSize: 13, color: cs.onSurfaceVariant)),
+                        ],
+                      ]),
+                ),
+                if (adicional) ...[
+                  const SizedBox(width: 6),
+                  Semantics(
+                    label: 'Quantidade de ${item.nome}',
+                    value: '${selecionado?.quantidade ?? 0}',
+                    child: SizedBox(
+                      key: ValueKey('quantidade_adicional_${item.id}'),
+                      width: 128,
+                      height: 48,
+                      child: Row(children: [
+                        IconButton(
+                          tooltip: 'Diminuir ${item.nome}',
+                          constraints: const BoxConstraints.tightFor(
+                              width: 48, height: 48),
+                          padding: EdgeInsets.zero,
+                          onPressed:
+                              ativo ? () => _alterarQuantidade(-1) : null,
+                          icon:
+                              const Icon(Icons.remove_circle_outline, size: 24),
+                        ),
+                        SizedBox(
+                            width: 32,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('${selecionado?.quantidade ?? 0}',
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                            )),
+                        IconButton(
+                          tooltip: 'Aumentar ${item.nome}',
+                          constraints: const BoxConstraints.tightFor(
+                              width: 48, height: 48),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _alterarQuantidade(1),
+                          icon: Icon(Icons.add_circle_outline,
+                              size: 24, color: cor),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ],
+              ]),
+            );
+          }),
+        ),
       ),
     );
   }

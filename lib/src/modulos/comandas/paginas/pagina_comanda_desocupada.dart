@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -31,7 +32,8 @@ class PaginaComandaDesocupada extends StatefulWidget {
   });
 
   @override
-  State<PaginaComandaDesocupada> createState() => _PaginaComandaDesocupadaState();
+  State<PaginaComandaDesocupada> createState() =>
+      _PaginaComandaDesocupadaState();
 }
 
 class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
@@ -43,6 +45,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
   bool carregando = true;
   bool salvando = false;
+  String? erroConsulta;
 
   Modeloworddadoscardapio? dados;
 
@@ -52,7 +55,8 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
 
   final ProvedorComanda _state = Modular.get<ProvedorComanda>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
-  final ServicoConfigBigchef servicoConfigBigchef = Modular.get<ServicoConfigBigchef>();
+  final ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   ModeloConfigBigchef? configBigchef;
 
   @override
@@ -76,40 +80,45 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     super.dispose();
   }
 
-  void listarDados() async {
-    await servicoConfigBigchef.listar().then((value) {
-      setState(() {
-        configBigchef = value;
-      });
-    });
+  Future<void> listarDados() async {
+    try {
+      final value = await servicoConfigBigchef.listar();
+      if (mounted) setState(() => configBigchef = value);
+    } catch (_) {
+      // A abertura continua disponivel quando a configuracao nao esta em cache.
+    }
   }
 
-  Future<void> listarPorCodigoQrcode() async {
-    await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda, 'Não').then((value) {
-      setState(() {
-        dados = value;
-        _clienteSearchController.text = value.nomeCliente!;
-        _mesaDestinoSearchController.text = value.nomeMesa!;
-        _obsconstroller.text = value.observacaoDoPedido!;
-        idCliente = value.idCliente!;
-        idMesa = value.idMesa!;
-        carregando = false;
-      });
-    });
-  }
+  Future<void> listarPorCodigoQrcode() => listarComandasPedidos();
 
   Future<void> listarComandasPedidos() async {
-    await servicoCardapio.listarPorId(widget.idComandaPedido!, TipoCardapio.comanda, 'Não').then((value) {
+    setState(() {
+      carregando = true;
+      erroConsulta = null;
+    });
+    try {
+      final value = await servicoCardapio.listarPorId(
+          widget.idComandaPedido!, widget.tipo, 'Não');
+      if (!mounted) return;
+      if (value.id != widget.idComandaPedido) {
+        throw StateError('Atendimento diferente do solicitado.');
+      }
       setState(() {
         dados = value;
-        _clienteSearchController.text = value.nomeCliente!;
-        _mesaDestinoSearchController.text = value.nomeMesa!;
-        _obsconstroller.text = value.observacaoDoPedido!;
-        idCliente = value.idCliente!;
-        idMesa = value.idMesa!;
-        carregando = false;
+        _clienteSearchController.text = value.nomeCliente ?? '';
+        _mesaDestinoSearchController.text = value.nomeMesa ?? '';
+        _obsconstroller.text = value.observacaoDoPedido ?? '';
+        idCliente = value.idCliente ?? '0';
+        idMesa = value.idMesa ?? '0';
       });
-    });
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => erroConsulta = 'Não foi possível carregar o atendimento.');
+      }
+    } finally {
+      if (mounted) setState(() => carregando = false);
+    }
   }
 
   void _mostrarErro(String mensagem) {
@@ -125,142 +134,90 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   }
 
   Future<void> _salvar() async {
-    if (salvando) return;
-
-    setState(() {
-      salvando = true;
-    });
-
-    final Server server = Modular.get<Server>();
-    final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
-
-    if (widget.tipo == TipoCardapio.mesa) {
-      final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
-      if (widget.idComandaPedido != null) {
-        await provedorMesas.editarMesaOcupada(widget.idComandaPedido!, id, idCliente, _obsconstroller.text).then((sucesso) {
-          if (context.mounted) {
-            if (sucesso) {
-              server.write(jsonEncode({
-                'tipo': 'Mesa',
-                'nomeConexao': usuarioProvedor.usuario!.nome,
-              }));
-
-              Navigator.pop(context);
-              Navigator.pop(context);
+    if (salvando || erroConsulta != null) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => salvando = true);
+    final server = Modular.get<Server>();
+    final editando = widget.idComandaPedido != null;
+    final mesa = widget.tipo == TipoCardapio.mesa;
+    String? novoAtendimento;
+    try {
+      if (mesa) {
+        final provedor = Modular.get<ProvedorMesas>();
+        if (editando) {
+          final sucesso = await provedor.editarMesaOcupada(
+              widget.idComandaPedido!, id, idCliente, _obsconstroller.text);
+          if (!sucesso) {
+            if (mounted) {
+              _mostrarErro(provedor.erro ?? 'Não foi possível salvar a mesa.');
             }
-
-            if (!sucesso) {
-              _mostrarErro('Ocorreu um erro');
-            }
+            return;
           }
-        });
+        } else {
+          final resposta = await provedor.inserirMesaOcupada(
+              id, idCliente, _obsconstroller.text);
+          if (!resposta.sucesso) {
+            if (mounted) {
+              _mostrarErro(provedor.erro ?? 'Não foi possível abrir a mesa.');
+            }
+            return;
+          }
+          novoAtendimento = resposta.idcomandapedido;
+        }
       } else {
-        await provedorMesas.inserirMesaOcupada(id, idCliente, _obsconstroller.text).then((resposta) async {
-          if (context.mounted) {
-            provedorComanda.listarMesas('');
-
-            if (resposta.sucesso) {
-              server.write(jsonEncode({
-                'tipo': 'Mesa',
-                'nomeConexao': usuarioProvedor.usuario!.nome,
-              }));
-              Navigator.pop(context);
-              if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
-                if (context.mounted) {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) {
-                      return PaginaCardapio(
-                        nomeAtendimento: widget.nome,
-                        tipo: TipoCardapio.mesa,
-                        idComanda: '0',
-                        idMesa: id,
-                        idCliente: idCliente,
-                        id: resposta.idcomandapedido,
-                      );
-                    },
-                  ));
-                }
-              } else {
-                Navigator.pop(context);
-              }
+        if (editando) {
+          final sucesso = await _state.editarComandaOcupada(
+              widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text);
+          if (!sucesso) {
+            if (mounted) {
+              _mostrarErro(_state.erro ?? 'Não foi possível salvar a comanda.');
             }
-
-            if (!resposta.sucesso) {
-              if (context.mounted) {
-                _mostrarErro(provedorMesas.erro ?? 'Nao foi possivel abrir a mesa.');
-              }
-            }
+            return;
           }
-        });
+        } else {
+          final resposta = await _state.inserirComandaOcupada(
+              id, idMesa, idCliente, _obsconstroller.text);
+          if (!resposta.sucesso) {
+            if (mounted) {
+              _mostrarErro(_state.erro ?? 'Não foi possível abrir a comanda.');
+            }
+            return;
+          }
+          novoAtendimento = resposta.idcomandapedido;
+        }
       }
-    } else {
-      if (widget.idComandaPedido != null) {
-        await _state.editarComandaOcupada(widget.idComandaPedido!, idMesa, idCliente, _obsconstroller.text).then((sucesso) {
-          if (context.mounted) {
-            if (sucesso) {
-              server.write(jsonEncode({
-                'tipo': 'Comanda',
-                'nomeConexao': usuarioProvedor.usuario!.nome,
-              }));
-              Navigator.pop(context);
-              Navigator.pop(context);
-            }
-
-            if (!sucesso) {
-              _mostrarErro('Ocorreu um erro');
-            }
-          }
-        });
+      server.write(jsonEncode({
+        'tipo': mesa ? 'Mesa' : 'Comanda',
+        'nomeConexao': usuarioProvedor.usuario?.nome ?? '',
+      }));
+      if (!mounted) return;
+      if (!editando && configBigchef?.abrircomandadireto == 'Sim') {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (_) => PaginaCardapio(
+            nomeAtendimento: widget.nome,
+            tipo: widget.tipo,
+            idComanda: mesa ? '0' : id,
+            idMesa: mesa ? id : '0',
+            idCliente: idCliente,
+            id: novoAtendimento,
+          ),
+        ));
       } else {
-        await _state.inserirComandaOcupada(id, idMesa, idCliente, _obsconstroller.text).then((resposta) async {
-          if (context.mounted) {
-            provedorComanda.listarComandas('');
-
-            if (resposta.sucesso) {
-              server.write(jsonEncode({
-                'tipo': 'Comanda',
-                'nomeConexao': usuarioProvedor.usuario!.nome,
-              }));
-
-              Navigator.pop(context);
-              if (configBigchef != null && configBigchef!.abrircomandadireto == 'Sim') {
-                if (context.mounted) {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) {
-                      return PaginaCardapio(
-                        nomeAtendimento: widget.nome,
-                        tipo: TipoCardapio.comanda,
-                        idComanda: id,
-                        idMesa: '0',
-                        idCliente: idCliente,
-                        id: resposta.idcomandapedido,
-                      );
-                    },
-                  ));
-                }
-              } else {
-                Navigator.pop(context);
-              }
-            }
-
-            if (!resposta.sucesso) {
-              if (context.mounted) {
-                _mostrarErro(_state.erro ?? 'Nao foi possivel abrir a comanda.');
-              }
-            }
-          }
-        });
+        Navigator.pop(context, true);
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        salvando = false;
-      });
+    } catch (_) {
+      if (mounted) {
+        _mostrarErro(
+            'Não foi possível concluir. Verifique as pendências de sincronização.');
+      }
+    } finally {
+      if (mounted) setState(() => salvando = false);
     }
   }
 
-  IconData get _iconeTipo => widget.tipo == TipoCardapio.mesa ? Icons.table_bar_outlined : Icons.fact_check_outlined;
+  IconData get _iconeTipo => widget.tipo == TipoCardapio.mesa
+      ? Icons.table_bar_outlined
+      : Icons.fact_check_outlined;
 
   String get _labelAcao {
     final editando = widget.idComandaPedido != null;
@@ -271,7 +228,9 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   }
 
   String get _labelHero {
-    return widget.idComandaPedido != null ? 'EDITAR ${widget.tipo.nome.toUpperCase()}' : 'NOVA ${widget.tipo.nome.toUpperCase()}';
+    return widget.idComandaPedido != null
+        ? 'EDITAR ${widget.tipo.nome.toUpperCase()}'
+        : 'NOVA ${widget.tipo.nome.toUpperCase()}';
   }
 
   @override
@@ -284,178 +243,171 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-        backgroundColor: cs.surface,
+        backgroundColor: VisualAtendimento.superficie(context),
         appBar: AppBar(
           backgroundColor: cs.inversePrimary,
           elevation: 0,
-          title: Text(widget.tipo.nome, style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text(widget.tipo.nome,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-        floatingActionButton: carregando
+        bottomNavigationBar: carregando || erroConsulta != null
             ? null
-            : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 54,
+            : SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      16, 10, 16, 12 + MediaQuery.viewInsetsOf(context).bottom),
                   child: FilledButton.icon(
                     onPressed: salvando ? null : _salvar,
                     icon: salvando
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary),
-                          )
-                        : const Icon(Icons.check_rounded, size: 20),
-                    label: Text(
-                      salvando ? 'Salvando...' : _labelAcao,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2),
-                    ),
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.check_rounded),
+                    label: Text(salvando ? 'Salvando...' : _labelAcao),
                     style: FilledButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      foregroundColor: cs.onPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 4,
+                      minimumSize: const Size(0, 52),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      textStyle: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),
               ),
         body: carregando
             ? const Center(child: CircularProgressIndicator())
-            : GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 100),
-                  children: [
-                    _HeroCard(icone: _iconeTipo, label: _labelHero, nome: widget.nome),
-                    const SizedBox(height: 16),
-                    if (mostrarMesaDestino) ...[
-                      const _LabelCampo(icone: Icons.table_bar_outlined, texto: 'Mesa de destino', opcional: true),
-                      const SizedBox(height: 8),
-                      _SeletorGenerico(
-                        valor: mesaSelecionada,
-                        hint: 'Selecionar mesa',
-                        iconePreenchido: Icons.table_restaurant_rounded,
-                        listar: _state.listarMesas,
-                        itensExtras: const [
-                          {'nome': 'Sem Mesa', 'id': '0'}
+            : erroConsulta != null
+                ? Center(
+                    child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(erroConsulta!, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                              onPressed: listarComandasPedidos,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Tentar novamente')),
+                        ])))
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                      children: [
+                        _IdentificacaoAtendimento(
+                            icone: _iconeTipo,
+                            label: _labelHero,
+                            nome: widget.nome),
+                        const SizedBox(height: 16),
+                        if (mostrarMesaDestino) ...[
+                          const _LabelCampo(
+                              icone: Icons.table_bar_outlined,
+                              texto: 'Mesa de destino',
+                              opcional: true),
+                          const SizedBox(height: 8),
+                          _SeletorGenerico(
+                            valor: mesaSelecionada,
+                            hint: 'Selecionar mesa',
+                            iconePreenchido: Icons.table_restaurant_rounded,
+                            listar: _state.listarMesas,
+                            itensExtras: const [
+                              {'nome': 'Sem Mesa', 'id': '0'}
+                            ],
+                            iconeItem: Icons.table_bar_outlined,
+                            onSelecionar: (id, nome) {
+                              setState(() {
+                                idMesa = id;
+                                _mesaDestinoSearchController.text = nome;
+                              });
+                            },
+                            onLimpar: () {
+                              setState(() {
+                                idMesa = '0';
+                                _mesaDestinoSearchController.clear();
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 18),
                         ],
-                        iconeItem: Icons.table_bar_outlined,
-                        onSelecionar: (id, nome) {
-                          setState(() {
-                            idMesa = id;
-                            _mesaDestinoSearchController.text = nome;
-                          });
-                        },
-                        onLimpar: () {
-                          setState(() {
-                            idMesa = '0';
-                            _mesaDestinoSearchController.clear();
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 18),
-                    ],
-                    const _LabelCampo(icone: Icons.person_outline_rounded, texto: 'Cliente', opcional: true),
-                    const SizedBox(height: 8),
-                    _SeletorCliente(
-                      valor: clienteSelecionado,
-                      listar: _state.listarClientes,
-                      onSelecionar: (id, nome) {
-                        setState(() {
-                          idCliente = id;
-                          _clienteSearchController.text = nome;
-                        });
-                      },
-                      onLimpar: () {
-                        setState(() {
-                          idCliente = '0';
-                          _clienteSearchController.clear();
-                        });
-                      },
-                      onCadastrar: (id, nome) {
-                        setState(() {
-                          idCliente = id;
-                          _clienteSearchController.text = nome;
-                        });
-                      },
+                        const _LabelCampo(
+                            icone: Icons.person_outline_rounded,
+                            texto: 'Cliente',
+                            opcional: true),
+                        const SizedBox(height: 8),
+                        _SeletorCliente(
+                          valor: clienteSelecionado,
+                          listar: _state.listarClientes,
+                          onSelecionar: (id, nome) {
+                            setState(() {
+                              idCliente = id;
+                              _clienteSearchController.text = nome;
+                            });
+                          },
+                          onLimpar: () {
+                            setState(() {
+                              idCliente = '0';
+                              _clienteSearchController.clear();
+                            });
+                          },
+                          onCadastrar: (id, nome) {
+                            setState(() {
+                              idCliente = id;
+                              _clienteSearchController.text = nome;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        const _LabelCampo(
+                            icone: Icons.notes_rounded,
+                            texto: 'Nome / observação',
+                            opcional: true),
+                        const SizedBox(height: 8),
+                        _CampoObservacao(controller: _obsconstroller),
+                      ],
                     ),
-                    const SizedBox(height: 18),
-                    const _LabelCampo(icone: Icons.notes_rounded, texto: 'Observação', opcional: true),
-                    const SizedBox(height: 8),
-                    _CampoObservacao(controller: _obsconstroller),
-                  ],
-                ),
-              ),
+                  ),
       ),
     );
   }
 }
 
-class _HeroCard extends StatelessWidget {
+class _IdentificacaoAtendimento extends StatelessWidget {
   final IconData icone;
   final String label;
   final String nome;
 
-  const _HeroCard({required this.icone, required this.label, required this.nome});
+  const _IdentificacaoAtendimento(
+      {required this.icone, required this.label, required this.nome});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant),
-        boxShadow: [
-          BoxShadow(color: cs.shadow.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2)),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icone, size: 28, color: cs.onPrimaryContainer),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  nome,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(children: [
+        Icon(icone, size: 32, color: VisualAtendimento.azul(context)),
+        const SizedBox(width: 14),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurfaceVariant,
+                  letterSpacing: 0)),
+          const SizedBox(height: 6),
+          Text(nome,
+              style:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+        ])),
+      ]),
     );
   }
 }
@@ -465,24 +417,34 @@ class _LabelCampo extends StatelessWidget {
   final String texto;
   final bool opcional;
 
-  const _LabelCampo({required this.icone, required this.texto, this.opcional = false});
+  const _LabelCampo(
+      {required this.icone, required this.texto, this.opcional = false});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Row(
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 4,
       children: [
         Icon(icone, size: 18, color: cs.onSurfaceVariant),
         const SizedBox(width: 8),
         Text(
           texto,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface, letterSpacing: 0.1),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
+              letterSpacing: 0),
         ),
         if (opcional) ...[
           const SizedBox(width: 6),
           Text(
             '(opcional)',
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: cs.onSurfaceVariant),
           ),
         ],
       ],
@@ -522,13 +484,13 @@ class _SeletorGenerico extends StatelessWidget {
       builder: (BuildContext context, SearchController c) {
         return Material(
           color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           child: InkWell(
             onTap: () => c.openView(),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: cs.outlineVariant),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -547,8 +509,10 @@ class _SeletorGenerico extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: temSelecionado ? FontWeight.w600 : FontWeight.w500,
-                        color: temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
+                        fontWeight:
+                            temSelecionado ? FontWeight.w600 : FontWeight.w500,
+                        color:
+                            temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -556,7 +520,8 @@ class _SeletorGenerico extends StatelessWidget {
                     IconButton(
                       tooltip: 'Limpar',
                       onPressed: onLimpar,
-                      icon: Icon(Icons.close_rounded, size: 18, color: cs.onSurfaceVariant),
+                      icon: Icon(Icons.close_rounded,
+                          size: 18, color: cs.onSurfaceVariant),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
@@ -574,7 +539,8 @@ class _SeletorGenerico extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
-                child: Text('Nada encontrado', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
+                child: Text('Nada encontrado',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
               ),
             ),
           ];
@@ -588,7 +554,8 @@ class _SeletorGenerico extends StatelessWidget {
                     onSelecionar(e['id'].toString(), e['nome'].toString());
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         Container(
@@ -597,7 +564,8 @@ class _SeletorGenerico extends StatelessWidget {
                             color: cs.primaryContainer,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(iconeItem, size: 18, color: cs.onPrimaryContainer),
+                          child: Icon(iconeItem,
+                              size: 18, color: cs.onPrimaryContainer),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -606,13 +574,15 @@ class _SeletorGenerico extends StatelessWidget {
                             children: [
                               Text(
                                 e['nome'].toString(),
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 'ID: ${e['id']}',
-                                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+                                style: TextStyle(
+                                    fontSize: 11.5, color: cs.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -654,20 +624,22 @@ class _SeletorCliente extends StatelessWidget {
       builder: (BuildContext context, SearchController c) {
         return Material(
           color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           child: InkWell(
             onTap: () => c.openView(),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: cs.outlineVariant),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
                   Icon(
-                    temSelecionado ? Icons.person_rounded : Icons.search_rounded,
+                    temSelecionado
+                        ? Icons.person_rounded
+                        : Icons.search_rounded,
                     size: 20,
                     color: temSelecionado ? cs.primary : cs.onSurfaceVariant,
                   ),
@@ -679,8 +651,10 @@ class _SeletorCliente extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: temSelecionado ? FontWeight.w600 : FontWeight.w500,
-                        color: temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
+                        fontWeight:
+                            temSelecionado ? FontWeight.w600 : FontWeight.w500,
+                        color:
+                            temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -688,7 +662,8 @@ class _SeletorCliente extends StatelessWidget {
                     IconButton(
                       tooltip: 'Limpar',
                       onPressed: onLimpar,
-                      icon: Icon(Icons.close_rounded, size: 18, color: cs.onSurfaceVariant),
+                      icon: Icon(Icons.close_rounded,
+                          size: 18, color: cs.onSurfaceVariant),
                       visualDensity: VisualDensity.compact,
                     )
                   else
@@ -701,7 +676,8 @@ class _SeletorCliente extends StatelessWidget {
                         tooltip: 'Cadastrar cliente',
                         onPressed: () async {
                           final result = await Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const InserirCliente()),
+                            MaterialPageRoute(
+                                builder: (context) => const InserirCliente()),
                           );
                           if (result is Map && result['idcliente'] != null) {
                             onCadastrar(
@@ -710,7 +686,8 @@ class _SeletorCliente extends StatelessWidget {
                             );
                           }
                         },
-                        icon: Icon(Icons.person_add_alt_1_rounded, size: 18, color: cs.onPrimaryContainer),
+                        icon: Icon(Icons.person_add_alt_1_rounded,
+                            size: 18, color: cs.onPrimaryContainer),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -728,7 +705,8 @@ class _SeletorCliente extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
-                child: Text('Nenhum cliente encontrado', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
+                child: Text('Nenhum cliente encontrado',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
               ),
             ),
           ];
@@ -742,7 +720,8 @@ class _SeletorCliente extends StatelessWidget {
                     onSelecionar(e['id'].toString(), e['nome'].toString());
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         Container(
@@ -751,7 +730,8 @@ class _SeletorCliente extends StatelessWidget {
                             color: cs.primaryContainer,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.person_outline_rounded, size: 18, color: cs.onPrimaryContainer),
+                          child: Icon(Icons.person_outline_rounded,
+                              size: 18, color: cs.onPrimaryContainer),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -760,13 +740,15 @@ class _SeletorCliente extends StatelessWidget {
                             children: [
                               Text(
                                 e['nome'].toString(),
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 'ID: ${e['id']}',
-                                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+                                style: TextStyle(
+                                    fontSize: 11.5, color: cs.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -792,17 +774,17 @@ class _CampoObservacao extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: cs.outlineVariant),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: TextField(
         controller: controller,
         maxLines: 5,
-        minLines: 4,
+        minLines: 3,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
-          hintText: 'Digite aqui alguma observação...',
+          hintText: 'Nome do cliente ou observação para o preparo',
           hintStyle: TextStyle(color: cs.onSurfaceVariant, fontSize: 13.5),
           border: InputBorder.none,
           isDense: true,

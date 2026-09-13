@@ -13,6 +13,7 @@ import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
@@ -227,7 +228,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final corFundo = isDark ? const Color(0xFF111827) : const Color(0xFFF6F7F9);
+    final corFundo = VisualAtendimento.fundo(context);
 
     return Scaffold(
       backgroundColor: corFundo,
@@ -246,7 +247,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
                   isDark ? const Color(0xFF1F2937) : Colors.white),
               elevation: const WidgetStatePropertyAll(6),
               shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
             builder: (BuildContext context, MenuController controller,
@@ -508,13 +509,13 @@ class _BotaoAcao extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: cor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           child: SizedBox(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             child: Icon(icone, color: cor, size: 22),
           ),
         ),
@@ -545,19 +546,16 @@ class _BarraAbas extends StatelessWidget {
   }
 
   Tab _aba(BuildContext context, String nome, int quantidade) => Tab(
-        height: (MediaQuery.textScalerOf(context).scale(13) * 1.5 +
-                MediaQuery.textScalerOf(context).scale(12) * 1.5 +
-                12)
-            .clamp(56, double.infinity),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(nome,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            Text('$quantidade', style: const TextStyle(fontSize: 12)),
-          ],
-        ),
+        height: (MediaQuery.textScalerOf(context).scale(13) * 1.5 + 20)
+            .clamp(48, double.infinity),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(
+              child: Text(nome,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600))),
+          const SizedBox(width: 5),
+          Text('$quantidade', style: const TextStyle(fontSize: 12)),
+        ]),
       );
 }
 

@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_car
 import 'package:app/src/modulos/cardapio/paginas/widgets/titulo_opcoes_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CardCarrinho extends StatefulWidget {
@@ -320,15 +321,22 @@ class _CardCarrinhoState extends State<CardCarrinho>
             child: InkWell(
               onTap: _expandOnChanged,
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (item.conferidoNoCarrinho) ...[
+                      StatusAtendimento(
+                          texto: 'Conferido com o cliente',
+                          cor: VisualAtendimento.verde(context),
+                          icone: Icons.check_circle_outline),
+                      const SizedBox(height: 10),
+                    ],
                     LinhaValor(
                       descricao: Text(nomeExibicao,
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w500)),
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                       valor: Text(
                         (double.parse(item.valorVenda) *
                                 item.quantidade!.toInt())
@@ -336,8 +344,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                         textAlign: TextAlign.end,
                         style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.primary),
+                            fontWeight: FontWeight.w700,
+                            color: VisualAtendimento.verde(context)),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -368,7 +376,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                       overflowAlignment: OverflowBarAlignment.end,
                       spacing: 8,
                       children: [
-                        TextButton(
+                        TextButton.icon(
+                          icon: const Icon(Icons.edit_note_rounded, size: 20),
                           onPressed: () {
                             showModalBottomSheet(
                               isScrollControlled: true,
@@ -381,7 +390,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                               ),
                             );
                           },
-                          child: const Text('Observação'),
+                          label: const Text('Observação'),
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -427,6 +436,15 @@ class _CardCarrinhoState extends State<CardCarrinho>
                         ),
                       ],
                     ),
+                    if (item.observacao?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: 6),
+                      Text(item.observacao!,
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
+                    ],
                   ],
                 ),
               ),

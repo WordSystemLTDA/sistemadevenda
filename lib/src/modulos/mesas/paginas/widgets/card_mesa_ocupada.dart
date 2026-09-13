@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:app/src/essencial/widgets/card_resumo_atendimento.dart';
+import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -175,409 +177,74 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
   Widget build(BuildContext context) {
     final item = widget.item;
     final ocupada = item.mesaOcupada;
-    final emFechamento = item.fechamento == true;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String decorrido(String? valor) {
+      final data = DateTime.tryParse(valor ?? '');
+      return data == null
+          ? '...'
+          : ConfigSistema.formatarHora(DateTime.now().difference(data));
+    }
 
-    final Color corStatus = !ocupada
-        ? const Color(0xFF22C55E)
-        : emFechamento
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
-
-    final String labelStatus = !ocupada
-        ? 'Livre'
-        : emFechamento
-            ? 'Em fechamento'
-            : 'Ocupada';
-
-    final Color corCardBase = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final Color corBorda =
-        isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE5E7EB);
-    final Color corSubtle =
-        isDark ? Colors.grey[400]! : const Color(0xFF6B7280);
-
-    final compacto = MediaQuery.sizeOf(context).width /
-            (MediaQuery.textScalerOf(context).scale(16) / 16) <
-        380;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: corCardBase,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: corBorda, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _abrir,
-          borderRadius: BorderRadius.circular(14),
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    color: corStatus,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomLeft: Radius.circular(14),
-                    ),
-                  ),
-                ),
+    return CardResumoAtendimento(
+      nome: item.nome,
+      cliente: nomeClienteAtendimento(item.nomeCliente, item.obs),
+      codigo: item.codigo,
+      atendimento: item.idComandaPedido,
+      ocupada: ocupada,
+      fechamento: item.fechamento == true,
+      tipoMesa: true,
+      total:
+          usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
+                  'Sim'
+              ? (double.tryParse(item.valor ?? '0') ?? 0).obterReal()
+              : null,
+      onAbrir: _abrir,
+      tempo: ocupada
+          ? StreamBuilder<String>(
+              stream: tempoLancadoController.stream,
+              initialData: decorrido(item.dataAbertura),
+              builder: (_, snapshot) => Text('Aberta há ${snapshot.data}'),
+            )
+          : Text(DateTime.tryParse(item.ultimaVezAbertoDataHora ?? '') != null
+              ? 'Última abertura: ${decorrido(item.ultimaVezAbertoDataHora)}'
+              : 'Nunca utilizada'),
+      ultimoPedido: !ocupada
+          ? null
+          : StreamBuilder<String>(
+              stream: dataUltimoPedidoLancadoController.stream,
+              initialData: decorrido(item.dataultimopedido),
+              builder: (_, snapshot) => Text(
+                  DateTime.tryParse(item.dataultimopedido ?? '') != null
+                      ? 'Último pedido há ${snapshot.data}'
+                      : 'Nenhum item lançado'),
+            ),
+      menu: !ocupada
+          ? null
+          : MenuAnchor(
+              builder: (context, controller, child) => IconButton(
+                tooltip: 'Opções da mesa',
+                onPressed: () =>
+                    controller.isOpen ? controller.close() : controller.open(),
+                icon: const Icon(Icons.more_vert, size: 20),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 8, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                            child: Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            _BadgeStatus(cor: corStatus, label: labelStatus),
-                            Text(
-                              item.nome,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                            if (item.codigo.isNotEmpty && !ocupada) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6)
-                                      .withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.qr_code,
-                                        size: 12, color: Color(0xFF3B82F6)),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                        child: Text(
-                                      "Código: ${item.codigo}",
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF3B82F6),
-                                      ),
-                                    )),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            if (item.idComandaPedido != null && !item.idComandaPedido!.startsWith('local:')) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: corStatus.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '#${item.idComandaPedido}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: corStatus,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        )),
-                        if (ocupada)
-                          MenuAnchor(
-                            builder: (context, controller, child) {
-                              return IconButton(
-                                tooltip: 'Opções da mesa',
-                                visualDensity: VisualDensity.compact,
-                                iconSize: 20,
-                                onPressed: () => controller.isOpen
-                                    ? controller.close()
-                                    : controller.open(),
-                                icon: Icon(Icons.more_vert, color: corSubtle),
-                              );
-                            },
-                            menuChildren: [
-                              MenuItemButton(
-                                onPressed: () {},
-                                leadingIcon:
-                                    Icon(Icons.tag, size: 18, color: corSubtle),
-                                child: Text('ID: ${item.id}'),
-                              ),
-                              MenuItemButton(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          PaginaDetalhesPedido(
-                                        idComandaPedido: item.idComandaPedido,
-                                        idMesa: item.id,
-                                        tipo: TipoCardapio.mesa,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                leadingIcon: const Icon(
-                                    Icons.table_restaurant_outlined,
-                                    size: 18,
-                                    color: Color(0xFF3B82F6)),
-                                child: const Text('Abrir Mesa'),
-                              ),
-                            ],
-                          )
-                        else
-                          const SizedBox(width: 8),
-                      ],
+              menuChildren: [
+                MenuItemButton(
+                    onPressed: null,
+                    leadingIcon: const Icon(Icons.tag, size: 18),
+                    child: Text('ID: ${item.id}')),
+                MenuItemButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => PaginaDetalhesPedido(
+                      idComandaPedido: item.idComandaPedido,
+                      idMesa: item.id,
+                      tipo: TipoCardapio.mesa,
                     ),
-                    if (!ocupada) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.history_rounded,
-                              size: 14, color: corSubtle),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              DateTime.tryParse(
-                                          item.ultimaVezAbertoDataHora ?? '') !=
-                                      null
-                                  ? 'Última abertura: ${ConfigSistema.formatarHora(DateTime.now().difference(DateTime.parse(item.ultimaVezAbertoDataHora!)))}'
-                                  : 'Nunca utilizada',
-                              style: TextStyle(fontSize: 12, color: corSubtle),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (ocupada) ...[
-                      const SizedBox(height: 3),
-                      Flex(
-                        direction: compacto ? Axis.vertical : Axis.horizontal,
-                        crossAxisAlignment: compacto
-                            ? CrossAxisAlignment.stretch
-                            : CrossAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            flex: compacto ? 0 : 1,
-                            child: _LinhaInfo(
-                              icone: Icons.person_outline_rounded,
-                              texto: () {
-                                if ((item.nomeCliente ?? '').isEmpty &&
-                                    (item.obs ?? '').isNotEmpty) {
-                                  return item.obs!;
-                                }
-                                if ((item.nomeCliente ?? '').isNotEmpty) {
-                                  return item.nomeCliente!;
-                                }
-                                return 'Sem cliente';
-                              }(),
-                              textoCor: isDark
-                                  ? Colors.grey[100]
-                                  : const Color(0xFF111827),
-                              bold: true,
-                              corIcone: corSubtle,
-                            ),
-                          ),
-                          if (item.codigo.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6)
-                                    .withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.qr_code,
-                                      size: 12, color: Color(0xFF3B82F6)),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                      child: Text(
-                                    "Código: ${item.codigo}",
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF3B82F6),
-                                    ),
-                                  )),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      StreamBuilder<String>(
-                        stream: tempoLancadoController.stream,
-                        initialData: '...',
-                        builder: (context, snapshot) {
-                          return _LinhaInfo(
-                            icone: Icons.schedule_rounded,
-                            texto: 'Aberta há ${snapshot.data!}',
-                            corIcone: corSubtle,
-                            textoCor: corSubtle,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      Flex(
-                        direction: compacto ? Axis.vertical : Axis.horizontal,
-                        crossAxisAlignment: compacto
-                            ? CrossAxisAlignment.stretch
-                            : CrossAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            flex: compacto ? 0 : 1,
-                            child: StreamBuilder<String>(
-                              stream: dataUltimoPedidoLancadoController.stream,
-                              initialData: '...',
-                              builder: (context, snapshot) {
-                                final temData = DateTime.tryParse(
-                                        item.dataultimopedido ?? '') !=
-                                    null;
-                                return _LinhaInfo(
-                                  icone: Icons.restaurant_menu_rounded,
-                                  texto: temData
-                                      ? 'Último pedido há ${snapshot.data!}'
-                                      : 'Nenhum item lançado',
-                                  corIcone: corSubtle,
-                                  textoCor: corSubtle,
-                                );
-                              },
-                            ),
-                          ),
-                          if (usuarioProvedor.usuario?.configuracoes
-                                  ?.habilitarVerValorTotalNoApp ==
-                              'Sim') ...[
-                            Text(
-                              double.parse(item.valor ?? '0').obterReal(),
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: corStatus,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ] else ...[
-                            // const BadgeValorOculto(compact: true),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ],
+                  )),
+                  leadingIcon:
+                      const Icon(Icons.receipt_long_outlined, size: 18),
+                  child: const Text('Abrir Mesa'),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BadgeStatus extends StatelessWidget {
-  final Color cor;
-  final String label;
-  const _BadgeStatus({required this.cor, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: cor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: cor,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                    color: cor.withValues(alpha: 0.5),
-                    blurRadius: 4,
-                    spreadRadius: 1),
               ],
             ),
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-              child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: cor,
-              letterSpacing: 0.3,
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-}
-
-class _LinhaInfo extends StatelessWidget {
-  final IconData icone;
-  final String texto;
-  final Color? corIcone;
-  final Color? textoCor;
-  final bool bold;
-  const _LinhaInfo({
-    required this.icone,
-    required this.texto,
-    this.corIcone,
-    this.textoCor,
-    this.bold = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icone, size: 14, color: corIcone),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            texto,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-              color: textoCor,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

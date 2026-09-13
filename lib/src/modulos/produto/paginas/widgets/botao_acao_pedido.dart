@@ -32,24 +32,13 @@ class BotaoAcaoPedido extends StatelessWidget {
         width: double.infinity,
         constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: cs.primary,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(8),
             onTap: carregando ? null : onPressed,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

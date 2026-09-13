@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
+import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -43,7 +45,8 @@ class PaginaDetalhesPedido extends StatefulWidget {
   State<PaginaDetalhesPedido> createState() => _PaginaDetalhesPedidoState();
 }
 
-class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with WidgetsBindingObserver {
+class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
+    with WidgetsBindingObserver {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
@@ -95,25 +98,32 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
     if (!mounted || carregando) return;
     setState(() => carregando = true);
     try {
-      final value = await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não', codigoQrcode: widget.codigoQrcode);
+      final value = await servicoCardapio.listarPorId(
+          widget.idComandaPedido ?? '0', widget.tipo, 'Não',
+          codigoQrcode: widget.codigoQrcode);
       if (!mounted) return;
       erroConsulta = null;
       dados = value;
       idComanda = value.idComanda ?? '0';
       idComandaPedido = value.id ?? '0';
       idMesa = value.idMesa ?? '0';
+      idCliente = value.idCliente ?? '0';
     } catch (_) {
       if (!mounted) return;
       erroConsulta = 'Não foi possível atualizar o atendimento.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(erroConsulta!),
-        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarComandasPedidos),
+        action: SnackBarAction(
+            label: 'Tentar novamente', onPressed: listarComandasPedidos),
       ));
     } finally {
       if (mounted) setState(() => carregando = false);
     }
     if (!mounted) return;
-    if (erroConsulta == null && dados?.id != null && widget.abrirModalFecharDireto == true && !_fechamentoDiretoExibido) {
+    if (erroConsulta == null &&
+        dados?.id != null &&
+        widget.abrirModalFecharDireto == true &&
+        !_fechamentoDiretoExibido) {
       _fechamentoDiretoExibido = true;
       fechar();
     }
@@ -131,7 +141,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           backgroundColor: cs.surfaceContainerHigh,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
@@ -151,12 +162,15 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(titulo, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                      child: Text(titulo,
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-                Text(mensagem, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
+                Text(mensagem,
+                    style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 22),
                 Wrap(
                   alignment: WrapAlignment.end,
@@ -166,8 +180,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                       child: const Text('Cancelar'),
                     ),
@@ -178,8 +194,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                       style: FilledButton.styleFrom(
                         backgroundColor: corAcao,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ],
@@ -195,15 +213,18 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
   void fechar() async {
     if (dados!.status == 'Fechamento') return;
     final ok = await _confirmar(
-      titulo: 'Fechar comanda',
-      mensagem: 'Deseja realmente fechar essa comanda? O comprovante de consumo será impresso em seguida.',
+      titulo: 'Fechar ${widget.tipo.nome.toLowerCase()}',
+      mensagem:
+          'Deseja realmente fechar essa ${widget.tipo.nome.toLowerCase()}? O comprovante de consumo será impresso em seguida.',
       corAcao: Theme.of(context).colorScheme.error,
       iconeAcao: Icons.print_outlined,
       labelAcao: 'Fechar',
     );
     if (ok != true || !mounted) return;
 
-    await servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Fechamento').then((value) async {
+    await servicoCardapio
+        .fecharAbrirComanda(idComandaPedido, 'Fechamento')
+        .then((value) async {
       if (!mounted) return;
       if (value.sucesso) {
         Modular.get<Server>().write(jsonEncode({'tipo': widget.tipo.nome}));
@@ -211,14 +232,18 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(value.mensagem),
-          backgroundColor: value.sucesso ? _corAndamento : Theme.of(context).colorScheme.error,
+          backgroundColor: value.sucesso
+              ? _corAndamento
+              : Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
       if (!value.sucesso) return;
       final abertura = DateTime.tryParse(dados!.dataAbertura ?? '');
-      final newDuration = abertura == null ? '' : ConfigSistema.formatarHora(DateTime.now().difference(abertura));
+      final newDuration = abertura == null
+          ? ''
+          : ConfigSistema.formatarHora(DateTime.now().difference(abertura));
       Impressao.comprovanteDeConsumo(
         tipodeentrega: dados!.tipodeentrega ?? '',
         valorentrega: dados!.valorentrega ?? '',
@@ -233,7 +258,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
         local: dados!.nome!,
         total: dados!.valorTotal!,
         numeroPedido: dados!.numeroPedido!,
-        nomeCliente: (dados!.nomeCliente == '' ? null : dados!.nomeCliente) ?? 'Sem Cliente',
+        nomeCliente: (dados!.nomeCliente == '' ? null : dados!.nomeCliente) ??
+            'Sem Cliente',
       );
       if (widget.tipo == TipoCardapio.mesa) {
         provedorMesas.listarMesas('');
@@ -247,15 +273,18 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
   void abrir() async {
     if (dados!.status == 'Andamento') return;
     final ok = await _confirmar(
-      titulo: 'Reabrir comanda',
-      mensagem: 'Deseja realmente reabrir essa comanda?',
+      titulo: 'Reabrir ${widget.tipo.nome.toLowerCase()}',
+      mensagem:
+          'Deseja realmente reabrir essa ${widget.tipo.nome.toLowerCase()}?',
       corAcao: _corAndamento,
       iconeAcao: Icons.lock_open_rounded,
       labelAcao: 'Reabrir',
     );
     if (ok != true || !mounted) return;
 
-    servicoCardapio.fecharAbrirComanda(idComandaPedido, 'Andamento').then((value) {
+    servicoCardapio
+        .fecharAbrirComanda(idComandaPedido, 'Andamento')
+        .then((value) {
       if (!mounted) return;
       if (value.sucesso) {
         Modular.get<Server>().write(jsonEncode({'tipo': widget.tipo.nome}));
@@ -263,7 +292,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(value.mensagem),
-          backgroundColor: value.sucesso ? _corAndamento : Theme.of(context).colorScheme.error,
+          backgroundColor: value.sucesso
+              ? _corAndamento
+              : Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -296,37 +327,47 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
 
     if (dados == null) {
       return Scaffold(
-        backgroundColor: cs.surface,
+        backgroundColor: VisualAtendimento.superficie(context),
         appBar: AppBar(
           backgroundColor: cs.inversePrimary,
-          title: Text('Detalhes da $nomeTipo', style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text('Detalhes da $nomeTipo',
+              style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
-        body: Center(child: erroConsulta == null || carregando
-            ? const CircularProgressIndicator()
-            : Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(erroConsulta!, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(onPressed: listarComandasPedidos, icon: const Icon(Icons.refresh), label: const Text('Tentar novamente')),
-              ]))),
+        body: Center(
+            child: erroConsulta == null || carregando
+                ? const CircularProgressIndicator()
+                : Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(erroConsulta!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                          onPressed: listarComandasPedidos,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Tentar novamente')),
+                    ]))),
       );
     }
 
     if (dados!.id == null) {
       return Scaffold(
-        backgroundColor: cs.surface,
+        backgroundColor: VisualAtendimento.superficie(context),
         appBar: AppBar(
           backgroundColor: cs.inversePrimary,
-          title: Text('Detalhes da $nomeTipo', style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text('Detalhes da $nomeTipo',
+              style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.not_listed_location_outlined, size: 56, color: cs.onSurfaceVariant),
+              Icon(Icons.not_listed_location_outlined,
+                  size: 56, color: cs.onSurfaceVariant),
               const SizedBox(height: 14),
               Text(
                 'Não foi possível encontrar essa $nomeTipo',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -335,14 +376,16 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
     }
 
     final emFechamento = dados!.status == 'Fechamento';
-    final corStatus = emFechamento ? _corFechamento : _corAndamento;
+    final corStatus =
+        emFechamento ? _corFechamento : VisualAtendimento.verde(context);
     final labelStatus = emFechamento ? 'Em fechamento' : 'Em andamento';
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: VisualAtendimento.superficie(context),
       appBar: AppBar(
         backgroundColor: cs.inversePrimary,
-        title: Text('Detalhes da $nomeTipo', style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text('Detalhes da $nomeTipo',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
         elevation: 0,
       ),
       body: Stack(
@@ -424,15 +467,21 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                     _avisoFechamento();
                     return;
                   }
-                  if (idComanda != '0') {
-                    Navigator.of(context).push(MaterialPageRoute(
+                  final idRecurso =
+                      widget.tipo == TipoCardapio.mesa ? idMesa : idComanda;
+                  if (idRecurso != '0') {
+                    Navigator.of(context)
+                        .push(MaterialPageRoute(
                       builder: (context) => PaginaComandaDesocupada(
-                        id: idComanda,
+                        id: idRecurso,
                         idComandaPedido: idComandaPedido,
                         nome: dados!.nome!,
                         tipo: widget.tipo,
                       ),
-                    ));
+                    ))
+                        .then((_) {
+                      if (mounted) listarComandasPedidos();
+                    });
                   }
                 },
               ),
@@ -457,13 +506,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
     );
   }
 
-  String _resolverCliente() {
-    if ((dados!.nomeCliente ?? '').isEmpty && (dados!.observacaoDoPedido ?? '').isNotEmpty) {
-      return dados!.observacaoDoPedido!;
-    }
-    if ((dados!.nomeCliente ?? '').isNotEmpty) return dados!.nomeCliente!;
-    return 'Sem cliente';
-  }
+  String _resolverCliente() =>
+      nomeClienteAtendimento(dados!.nomeCliente, dados!.observacaoDoPedido);
 }
 
 class _CabecalhoComanda extends StatelessWidget {
@@ -486,101 +530,45 @@ class _CabecalhoComanda extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant),
-        boxShadow: [
-          BoxShadow(color: cs.shadow.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: corStatus.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: corStatus,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: corStatus.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1)],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        statusLabel,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: corStatus, letterSpacing: 0.3),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (numeroPedido != null && numeroPedido!.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '#$numeroPedido',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              nome,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: cs.onSurface),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.person_outline_rounded, size: 16, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    cliente,
-                    style: TextStyle(fontSize: 13.5, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Icon(Icons.timelapse_rounded, size: 16, color: cs.onSurfaceVariant),
-                Text('Tempo aberta:', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                TempoAberto(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 6, 2, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusAtendimento(texto: statusLabel, cor: corStatus),
+              if (numeroPedido?.isNotEmpty == true)
+                Text('#$numeroPedido',
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+            ]),
+        const SizedBox(height: 16),
+        Text(nome,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.person_outline_rounded,
+              size: 20, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(child: Text(cliente, style: const TextStyle(fontSize: 15))),
+        ]),
+        const SizedBox(height: 12),
+        Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Icon(Icons.schedule_rounded,
+                  size: 18, color: cs.onSurfaceVariant),
+              Text('Tempo aberta:',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+              TempoAberto(
                   dataAbertura: dataAbertura,
-                  textStyle: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: cs.onSurface),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+                  textStyle: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
+            ]),
+      ]),
     );
   }
 }
@@ -592,132 +580,52 @@ class _AcoesGrid extends StatelessWidget {
   final VoidCallback onPedidos;
   final VoidCallback onEditar;
 
-  const _AcoesGrid({
-    required this.tipo,
-    required this.onAdicionar,
-    required this.onItensRecorrentes,
-    required this.onPedidos,
-    required this.onEditar,
-  });
+  const _AcoesGrid(
+      {required this.tipo,
+      required this.onAdicionar,
+      required this.onItensRecorrentes,
+      required this.onPedidos,
+      required this.onEditar});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final nomeTipo = tipo.nome;
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.40,
-      children: [
-        _CardAcao(
-          icone: Icons.add_circle_outline_rounded,
-          titulo: 'Adicionar',
-          descricao: 'Lançar itens no pedido',
-          cor: cs.primary,
-          fundoIcone: cs.primaryContainer,
-          corIcone: cs.onPrimaryContainer,
-          onTap: onAdicionar,
-        ),
-        _CardAcao(
-          icone: Icons.replay_circle_filled_outlined,
-          titulo: 'Itens recorrentes',
-          descricao: 'Lançar itens frequentes',
-          cor: cs.secondary,
-          fundoIcone: cs.secondaryContainer,
-          corIcone: cs.onSecondaryContainer,
-          onTap: onItensRecorrentes,
-        ),
-        _CardAcao(
-          icone: Icons.shopping_basket_outlined,
-          titulo: 'Pedidos',
-          descricao: 'Acompanhar pedidos',
-          cor: cs.tertiary,
-          fundoIcone: cs.tertiaryContainer,
-          corIcone: cs.onTertiaryContainer,
-          onTap: onPedidos,
-        ),
-        _CardAcao(
-          icone: Icons.edit_outlined,
-          titulo: 'Editar $nomeTipo',
-          descricao: 'Cliente, mesa, observação',
-          cor: cs.primary,
-          fundoIcone: cs.primary.withValues(alpha: 0.12),
-          corIcone: cs.primary,
-          onTap: onEditar,
-        ),
-      ],
-    );
-  }
-}
-
-class _CardAcao extends StatelessWidget {
-  final IconData icone;
-  final String titulo;
-  final String descricao;
-  final Color cor;
-  final Color fundoIcone;
-  final Color corIcone;
-  final VoidCallback onTap;
-
-  const _CardAcao({
-    required this.icone,
-    required this.titulo,
-    required this.descricao,
-    required this.cor,
-    required this.fundoIcone,
-    required this.corIcone,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: cs.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: cs.outlineVariant),
-            boxShadow: [
-              BoxShadow(color: cs.shadow.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
-            ],
-          ),
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: fundoIcone, borderRadius: BorderRadius.circular(10)),
-                child: Icon(icone, size: 22, color: corIcone),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                titulo,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1, color: cs.onSurface),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                descricao,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
-              ),
-            ],
-          ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      FilledButton.icon(
+        onPressed: onAdicionar,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Adicionar produtos'),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 54),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          textStyle: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
-    );
+      const SizedBox(height: 12),
+      for (final acao in [
+        (Icons.history_rounded, 'Itens recorrentes', onItensRecorrentes),
+        (Icons.receipt_long_outlined, 'Pedidos', onPedidos),
+        (Icons.edit_outlined, 'Editar ${tipo.nome}', onEditar),
+      ]) ...[
+        ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          minLeadingWidth: 28,
+          leading: Icon(acao.$1, color: cs.primary),
+          title: Text(acao.$2,
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+          trailing:
+              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+          onTap: acao.$3,
+        ),
+        const Divider(height: 1),
+      ],
+    ]);
   }
 }
 
@@ -727,143 +635,48 @@ class _PainelConta extends StatelessWidget {
   final VoidCallback onFechar;
   final VoidCallback onAbrir;
 
-  const _PainelConta({
-    required this.emFechamento,
-    required this.total,
-    required this.onFechar,
-    required this.onAbrir,
-  });
+  const _PainelConta(
+      {required this.emFechamento,
+      required this.total,
+      required this.onFechar,
+      required this.onAbrir});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant),
-        boxShadow: [
-          BoxShadow(color: cs.shadow.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.receipt_long_rounded, size: 18, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  'Conta',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant, letterSpacing: 1.1),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
-                  Text(
-                    double.parse(total).obterReal(),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                      color: _corAndamento,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(
-                      'total',
-                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ] else ...[
-                  BadgeValorOculto(
-                    compact: false,
-                    label: 'Valor total oculto',
-                  ),
-                ]
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _BotaoConta(
-                    icone: Icons.print_outlined,
-                    label: 'Fechar',
-                    cor: cs.error,
-                    desabilitado: emFechamento,
-                    onTap: onFechar,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _BotaoConta(
-                    icone: Icons.lock_open_rounded,
-                    label: 'Reabrir',
-                    cor: _corAndamento,
-                    desabilitado: !emFechamento,
-                    onTap: onAbrir,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BotaoConta extends StatelessWidget {
-  final IconData icone;
-  final String label;
-  final Color cor;
-  final bool desabilitado;
-  final VoidCallback onTap;
-
-  const _BotaoConta({
-    required this.icone,
-    required this.label,
-    required this.cor,
-    required this.desabilitado,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final fundo = desabilitado ? cs.surfaceContainerHighest : cor.withValues(alpha: 0.14);
-    final corConteudo = desabilitado ? cs.onSurfaceVariant : cor;
-
-    return Material(
-      color: fundo,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: desabilitado ? null : onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 52,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icone, size: 20, color: corConteudo),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: corConteudo, letterSpacing: 0.2),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Conta',
+            style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
+        const SizedBox(height: 6),
+        if (usuarioProvedor
+                .usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
+            'Sim')
+          Text((double.tryParse(total) ?? 0).obterReal(),
+              style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: VisualAtendimento.verde(context)))
+        else
+          const BadgeValorOculto(compact: false, label: 'Valor total oculto'),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const ValueKey('acao_conta'),
+          onPressed: emFechamento ? onAbrir : onFechar,
+          icon: Icon(
+              emFechamento ? Icons.lock_open_rounded : Icons.print_outlined),
+          label: Text(emFechamento ? 'Reabrir' : 'Fechar conta'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor:
+                emFechamento ? VisualAtendimento.verde(context) : cs.primary,
+            minimumSize: const Size(0, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
-      ),
+      ]),
     );
   }
 }

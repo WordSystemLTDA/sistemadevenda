@@ -18,6 +18,7 @@ import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_reco
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
@@ -550,22 +551,25 @@ class _PaginaCarrinhoItensRecorrentesState
         throw StateError('O carrinho nao tem produtos pendentes.');
       }
       final sucesso = await _finalizacao.executar(
-        registrarPedidoDuravel: Sincronizador.instancia == null ? null : (mensagens) =>
-            Sincronizador.instancia!.guardarPedido(
-              contexto: provedorItensRecorrentes.contexto!, itens: itens,
-              idMesa: widget.idMesa, idComanda: widget.idComanda,
-              idCliente: dadosPedido.idCliente ?? '0', impressoes: mensagens,
-              recorrentes: true),
+        registrarPedidoDuravel: Sincronizador.instancia == null
+            ? null
+            : (mensagens) => Sincronizador.instancia!.guardarPedido(
+                contexto: provedorItensRecorrentes.contexto!,
+                itens: itens,
+                idMesa: widget.idMesa,
+                idComanda: widget.idComanda,
+                idCliente: dadosPedido.idCliente ?? '0',
+                impressoes: mensagens,
+                recorrentes: true),
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
           tipodeentrega: '',
           comanda: dadosPedido.nome ?? '',
           numeroPedido: dadosPedido.numeroPedido ?? '',
-          nomeCliente: (dadosPedido.nomeCliente ?? '').trim().isEmpty ||
-                  dadosPedido.nomeCliente == 'Sem Cliente'
-              ? (dadosPedido.observacaoDoPedido ?? '')
-              : dadosPedido.nomeCliente!,
+          nomeCliente: nomeClienteAtendimento(
+              dadosPedido.nomeCliente, dadosPedido.observacaoDoPedido,
+              vazio: ''),
           nomeEmpresa: dadosPedido.nomeEmpresa ?? '',
           local: tipo == TipoCardapio.mesa ? '' : dadosPedido.nomeMesa ?? '',
         ),
@@ -619,8 +623,9 @@ class _PaginaCarrinhoItensRecorrentesState
           ..showSnackBar(SnackBar(
             content: Text(_finalizacao.pedidoRegistrado
                 ? 'Finalizacao pendente. Toque em Finalizar novamente para concluir sem lancar os produtos outra vez.'
-                : erro is StateError ? erro.message.toString()
-                : 'Nao foi possivel finalizar. Confira a conexao e tente novamente.'),
+                : erro is StateError
+                    ? erro.message.toString()
+                    : 'Nao foi possivel finalizar. Confira a conexao e tente novamente.'),
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Tentar',
