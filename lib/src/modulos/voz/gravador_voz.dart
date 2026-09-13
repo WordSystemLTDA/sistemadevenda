@@ -6,13 +6,33 @@ import 'pedido_falado.dart';
 class GravadorVoz {
   final AudioRecorder _gravador = AudioRecorder();
   Directory? _pasta;
+  int _operacao = 0;
+  bool _encerrado = false;
+
+  void _validar(int operacao) {
+    if (_encerrado || operacao != _operacao) {
+      throw const FalhaPedidoVoz('Gravação cancelada.');
+    }
+  }
 
   Future<void> iniciar() async {
-    if (!await _gravador.hasPermission()) {
+    final operacao = ++_operacao;
+    _validar(operacao);
+    final permitido = await _gravador.hasPermission();
+    _validar(operacao);
+    if (!permitido) {
       throw const FalhaPedidoVoz(
           'Microfone sem permissão. Libere o acesso nos ajustes do celular.');
     }
     _pasta ??= await (await getTemporaryDirectory()).createTemp('pedido_voz_');
+    if (_encerrado || operacao != _operacao) {
+      final pasta = _pasta;
+      _pasta = null;
+      if (pasta != null && await pasta.exists()) {
+        await pasta.delete(recursive: true);
+      }
+      _validar(operacao);
+    }
     await _gravador.start(
         const RecordConfig(
             encoder: AudioEncoder.aacLc,
@@ -33,9 +53,14 @@ class GravadorVoz {
     return caminho;
   }
 
-  Future<void> cancelar() => _gravador.cancel();
+  Future<void> cancelar() {
+    ++_operacao;
+    return _gravador.cancel();
+  }
 
   Future<void> dispose() async {
+    _encerrado = true;
+    ++_operacao;
     try {
       await _gravador.dispose();
     } finally {

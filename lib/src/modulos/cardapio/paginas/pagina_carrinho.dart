@@ -345,6 +345,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       }
     } catch (erro) {
       if (mounted) {
+        setState(() => isLoading = false);
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(

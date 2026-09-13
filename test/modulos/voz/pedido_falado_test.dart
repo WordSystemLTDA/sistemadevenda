@@ -207,7 +207,8 @@ void main() {
         throwsA(isA<FalhaPedidoVoz>()));
   });
   test('preco invalido nao vira zero', () {
-    catalogo.first.tamanhosPizza = fixture.sabor('1', 'Queijos', 'NaN').tamanhosPizza;
+    catalogo.first.tamanhosPizza =
+        fixture.sabor('1', 'Queijos', 'NaN').tamanhosPizza;
     expect(
         () => montador.montar(
             PedidoFalado.fromMap(comandoPizza()), pizzaDetalhada()),
