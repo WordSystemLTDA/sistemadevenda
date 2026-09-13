@@ -2,10 +2,11 @@ import 'dart:developer' as developer;
 
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
-import 'package:app/src/essencial/widgets/linha_valor.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_opcoes_carrinho.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ class _PaginaEditarProdutoCarrinhoState
     extends State<PaginaEditarProdutoCarrinho> {
   EdicaoProdutoCarrinho get edicao => widget.edicao;
   late final TextEditingController _observacao;
+  final _focoObservacao = FocusNode();
   bool _salvando = false;
   bool _iniciando = false;
   bool _permitirSair = false;
@@ -80,6 +82,7 @@ class _PaginaEditarProdutoCarrinhoState
   }
 
   Future<void> _abrirEtapa({int? idOpcao}) async {
+    _focoObservacao.unfocus();
     final rascunho = edicao.criarRascunho();
     final rota = MaterialPageRoute<bool>(
         builder: (_) =>
@@ -148,6 +151,7 @@ class _PaginaEditarProdutoCarrinhoState
   @override
   void dispose() {
     _observacao.dispose();
+    _focoObservacao.dispose();
     edicao.dispose();
     super.dispose();
   }
@@ -155,8 +159,9 @@ class _PaginaEditarProdutoCarrinhoState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final alturaTeclado = MediaQuery.viewInsetsOf(context).bottom;
     return ListenableBuilder(
-      listenable: Listenable.merge([edicao, edicao.produto]),
+      listenable: Listenable.merge([edicao, edicao.produto, _focoObservacao]),
       builder: (context, _) {
         final erro = _iniciando ? null : _erroConfiguracao ?? edicao.erro;
         final carregando = _iniciando || edicao.carregando;
@@ -166,7 +171,8 @@ class _PaginaEditarProdutoCarrinhoState
             if (!didPop) _confirmarSaida();
           },
           child: Scaffold(
-            extendBody: true,
+            extendBody: alturaTeclado == 0,
+            backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               title: const Text('Editar Produto'),
               backgroundColor: cs.inversePrimary,
@@ -176,42 +182,19 @@ class _PaginaEditarProdutoCarrinhoState
                 : SafeArea(
                     top: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          LinhaValor(
-                            descricao: const Text('Total do item'),
-                            valor: Text(edicao.total.obterReal(),
-                                style: TextStyle(
-                                    color: cs.primary,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                          const SizedBox(height: 8),
-                          FilledButton.icon(
-                            key: const Key('salvar_edicao_produto'),
-                            onPressed: _salvando ? null : _salvar,
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(0, 48),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: _salvando
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2))
-                                : const Icon(Icons.check_rounded),
-                            label: Text(
-                                _salvando ? 'Salvando...' : 'Salvar alterações',
-                                textAlign: TextAlign.center),
-                          ),
-                        ],
+                      padding:
+                          EdgeInsets.fromLTRB(16, 8, 16, 12 + alturaTeclado),
+                      child: TextFieldTapRegion(
+                        child: BotaoAcaoPedido(
+                          key: const Key('salvar_edicao_produto'),
+                          rotulo: 'Salvar alterações',
+                          rotuloSemantico:
+                              'Salvar alterações. Total do item: ${edicao.total.obterReal()}',
+                          iconeRotulo: Icons.check_rounded,
+                          total: edicao.total.obterReal(),
+                          carregando: _salvando,
+                          onPressed: _salvar,
+                        ),
                       ),
                     ),
                   ),
@@ -236,74 +219,96 @@ class _PaginaEditarProdutoCarrinhoState
                     : AbsorbPointer(
                         absorbing: _salvando,
                         child: ListView(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: EdgeInsets.only(
-                            bottom: MediaQuery.paddingOf(context).bottom +
-                                MediaQuery.textScalerOf(context).scale(88),
+                            bottom: alturaTeclado > 0
+                                ? 16
+                                : MediaQuery.paddingOf(context).bottom +
+                                    MediaQuery.textScalerOf(context).scale(88),
                           ),
                           children: [
-                            ListTile(
-                              leading: Icon(
-                                  edicao.pizza
-                                      ? Icons.local_pizza_outlined
-                                      : Icons.fastfood_outlined,
-                                  color: cs.primary),
-                              title: Text(
-                                  edicao.pizza
-                                      ? 'Pizza ${edicao.cardapio.tamanhosPizza!.nomedotamanho}'
-                                      : edicao.original.nome,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text(
-                                  '${(edicao.original.quantidade ?? 1).toStringAsFixed(0)}x · ${edicao.valorUnitario.obterReal()} cada'),
-                            ),
-                            const Divider(height: 1),
-                            if (edicao.pizza)
-                              ExpansionTile(
-                                key: const PageStorageKey('editar_sabores'),
-                                initiallyExpanded: true,
-                                leading: const Icon(Icons.local_pizza_outlined),
-                                title: Text(
-                                    'Sabores da pizza (${edicao.cardapio.saboresPizzaSelecionados.length})'),
-                                childrenPadding:
-                                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                                expandedCrossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
-                                children: [
-                                  for (final sabor in edicao
-                                      .cardapio.saboresPizzaSelecionados)
-                                    Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 6),
-                                        child: Text(
-                                            '${sabor.imprimirCodigoProdutoPreparo == 'Sim' && sabor.codigo.isNotEmpty ? '${sabor.codigo} - ' : ''}(1/${edicao.cardapio.saboresPizzaSelecionados.length}) ${sabor.nome}')),
-                                  OutlinedButton.icon(
-                                    key: const Key('alterar_sabores_pizza'),
-                                    icon: const Icon(Icons.edit_outlined,
-                                        size: 18),
-                                    label: const Text('Alterar sabores'),
-                                    onPressed: () => _abrirEtapa(),
-                                  ),
-                                ],
-                              ),
+                            _resumoProduto(),
+                            const SizedBox(height: 12),
+                            if (edicao.pizza) _secaoSabores(),
                             for (final opcao in edicao.opcoes)
                               if ((opcao.dados?.isNotEmpty ?? false) ||
                                   (opcao.produtos?.isNotEmpty ?? false))
                                 _secaoOpcoes(opcao),
-                            const Divider(height: 1),
                             Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: TextField(
-                                key: const Key('observacao_edicao_produto'),
-                                controller: _observacao,
-                                minLines: 2,
-                                maxLines: 5,
-                                onChanged: (texto) =>
-                                    setState(() => edicao.observacao = texto),
-                                decoration: const InputDecoration(
-                                  labelText: 'Observação',
-                                  alignLabelWithHint: true,
-                                  border: OutlineInputBorder(),
-                                ),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    Icon(Icons.edit_note_rounded,
+                                        size: 22, color: cs.primary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text('Observação',
+                                          style: TextStyle(
+                                              color: cs.onSurface,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                  ]),
+                                  const SizedBox(height: 10),
+                                  Semantics(
+                                    label: 'Observação do produto',
+                                    child: TextField(
+                                      key: const Key(
+                                          'observacao_edicao_produto'),
+                                      controller: _observacao,
+                                      focusNode: _focoObservacao,
+                                      minLines: 2,
+                                      maxLines: 5,
+                                      scrollPadding: const EdgeInsets.fromLTRB(
+                                          20, 20, 20, 64),
+                                      keyboardType: TextInputType.multiline,
+                                      textInputAction: TextInputAction.done,
+                                      onSubmitted: (_) =>
+                                          _focoObservacao.unfocus(),
+                                      onTapUpOutside: (_) =>
+                                          _focoObservacao.unfocus(),
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      style: const TextStyle(fontSize: 15),
+                                      onChanged: (texto) => setState(
+                                          () => edicao.observacao = texto),
+                                      decoration: InputDecoration(
+                                        suffixIcon: _focoObservacao.hasFocus
+                                            ? IconButton(
+                                                tooltip: 'Fechar teclado',
+                                                onPressed:
+                                                    _focoObservacao.unfocus,
+                                                icon: Icon(
+                                                    Icons
+                                                        .keyboard_hide_outlined,
+                                                    color: cs.primary),
+                                              )
+                                            : const SizedBox.square(
+                                                dimension: 48),
+                                        hintText: edicao.pizza
+                                            ? 'Ex.: bem assada, cortar em 8'
+                                            : 'Ex.: sem cebola, molho à parte',
+                                        filled: true,
+                                        fillColor: VisualAtendimento.superficie(
+                                            context),
+                                        contentPadding:
+                                            const EdgeInsets.all(14),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                        enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                                color: cs.outlineVariant)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -315,6 +320,142 @@ class _PaginaEditarProdutoCarrinhoState
     );
   }
 
+  Widget _resumoProduto() {
+    final cs = Theme.of(context).colorScheme;
+    final quantidade = edicao.original.quantidade ?? 1;
+    final textoQuantidade = quantidade == quantidade.roundToDouble()
+        ? quantidade.toStringAsFixed(0)
+        : quantidade.toString().replaceAll('.', ',');
+    return ColoredBox(
+      color: VisualAtendimento.superficie(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Row(
+          children: [
+            _iconeSecao(
+                edicao.pizza
+                    ? Icons.local_pizza_outlined
+                    : Icons.fastfood_outlined,
+                cs.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    edicao.pizza
+                        ? 'Pizza ${edicao.cardapio.tamanhosPizza!.nomedotamanho}'
+                        : edicao.original.nome,
+                    style: TextStyle(
+                        color: cs.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                      '$textoQuantidade×  ${edicao.valorUnitario.obterReal()} cada',
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _iconeSecao(IconData icone, Color cor) => Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+            color: cor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(8)),
+        child: Icon(icone, size: 23, color: cor),
+      );
+
+  Widget _secaoEditavel({
+    required Key chave,
+    required String titulo,
+    required String tooltip,
+    required IconData icone,
+    required Color cor,
+    required List<Widget> resumo,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: VisualAtendimento.superficie(context),
+      child: InkWell(
+        key: chave,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _iconeSecao(icone, cor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: Text(titulo,
+                          style: TextStyle(
+                              color: cs.onSurface,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                    DefaultTextStyle.merge(
+                      style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 14,
+                          height: 1.4),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: resumo),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: tooltip,
+                onPressed: onTap,
+                style: IconButton.styleFrom(
+                  fixedSize: const Size.square(48),
+                  foregroundColor: cor,
+                  backgroundColor: cor.withValues(alpha: 0.10),
+                  side: BorderSide(color: cor.withValues(alpha: 0.25)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.edit_outlined, size: 22),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _secaoSabores() => _secaoEditavel(
+        chave: const Key('alterar_sabores_pizza'),
+        titulo:
+            'Sabores da pizza (${edicao.cardapio.saboresPizzaSelecionados.length})',
+        tooltip: 'Alterar tamanho e sabores',
+        icone: Icons.local_pizza_outlined,
+        cor: VisualAtendimento.azul(context),
+        resumo: [
+          for (final sabor in edicao.cardapio.saboresPizzaSelecionados)
+            Text(
+                '${sabor.imprimirCodigoProdutoPreparo == 'Sim' && sabor.codigo.isNotEmpty ? '${sabor.codigo} - ' : ''}(1/${edicao.cardapio.saboresPizzaSelecionados.length}) ${sabor.nome}'),
+        ],
+        onTap: () => _abrirEtapa(),
+      );
+
   Widget _secaoOpcoes(ModeloOpcoesPacotes opcao) {
     final selecionados =
         edicao.produto.retornarDadosPorID([opcao.id], false, '0');
@@ -324,23 +465,35 @@ class _PaginaEditarProdutoCarrinhoState
       8 => 'Itens para retirar',
       _ => opcao.titulo,
     };
-    return ListTile(
-      key: ValueKey('abrir_edicao_opcao_${opcao.id}'),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      leading: Icon(switch (opcao.id) {
-        6 => Icons.donut_large_outlined,
-        8 => Icons.remove_circle_outline,
-        _ => Icons.tune,
-      }),
-      title: Text('$titulo (${selecionados.length})'),
-      subtitle: Text(selecionados.isEmpty
-          ? 'Nenhum selecionado'
-          : selecionados
-              .map((d) =>
-                  '${opcao.id == 7 ? '${d.quantidade ?? 1}x ' : ''}${d.nome}')
-              .join(', ')),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => _abrirEtapa(idOpcao: opcao.id),
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+        _secaoEditavel(
+          chave: ValueKey('abrir_edicao_opcao_${opcao.id}'),
+          titulo: '$titulo (${selecionados.length})',
+          tooltip: 'Editar ${titulo.toLowerCase()}',
+          icone: switch (opcao.id) {
+            6 => Icons.donut_large_outlined,
+            8 => Icons.remove_circle_outline,
+            _ => Icons.tune,
+          },
+          cor: switch (opcao.id) {
+            7 => VisualAtendimento.verde(context),
+            8 => cs.error,
+            _ => cs.primary,
+          },
+          resumo: [
+            Text(selecionados.isEmpty
+                ? 'Nenhum selecionado'
+                : selecionados
+                    .map((d) =>
+                        '${opcao.id == 7 ? '${d.quantidade ?? 1}x ' : ''}${d.nome}')
+                    .join(', ')),
+          ],
+          onTap: () => _abrirEtapa(idOpcao: opcao.id),
+        ),
+      ],
     );
   }
 }

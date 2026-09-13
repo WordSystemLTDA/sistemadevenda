@@ -505,7 +505,7 @@ void main() {
       salvo = p;
       return true;
     });
-    await tester.tap(find.byKey(const Key('alterar_sabores_pizza')));
+    await tester.tap(find.byTooltip('Alterar tamanho e sabores'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('sabor_edicao_Mussarela')));
     await tester.pumpAndSettle();
@@ -601,7 +601,7 @@ void main() {
       salvo = produto;
       return true;
     });
-    await tester.tap(find.byKey(const ValueKey('abrir_edicao_opcao_6')));
+    await tester.tap(find.byTooltip('Editar bordas'));
     await tester.pumpAndSettle();
     expect(find.byType(ListaBordas), findsOneWidget);
     expect(find.text('Salvar (2)'), findsOneWidget);
@@ -914,6 +914,89 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  for (final (tamanho, escala, teclado) in [
+    (const Size(320, 568), 1.0, 250.0),
+    (const Size(390, 844), 1.0, 320.0),
+    (const Size(320, 844), 2.0, 300.0),
+  ]) {
+    testWidgets(
+        'salva observacao com teclado aberto em $tamanho e fonte $escala',
+        (tester) async {
+      tester.view.physicalSize = tamanho;
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = escala;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      Modelowordprodutos? salvo;
+      var chamadas = 0;
+      await abrirEditor(tester, criar(api.pizza()), (produto) async {
+        chamadas++;
+        salvo = produto;
+        return true;
+      });
+      final campo = find.byKey(const Key('observacao_edicao_produto'));
+      await mostrar(tester, campo);
+      await tester.enterText(campo, 'Bem assada, cortar em 8');
+      tester.view.viewInsets = FakeViewPadding(bottom: teclado);
+      await tester.pumpAndSettle();
+
+      final salvar = find.byKey(const Key('salvar_edicao_produto'));
+      final areaSalvar = tester.getRect(salvar);
+      expect(areaSalvar.bottom, lessThanOrEqualTo(tamanho.height - teclado));
+      expect(tester.getRect(campo).bottom, lessThanOrEqualTo(areaSalvar.top));
+      expect(salvar.hitTestable(), findsOneWidget);
+      expect(tester.widget<TextField>(campo).focusNode!.hasFocus, isTrue);
+      await capturarTela(tester,
+          'editar_produto_teclado_${tamanho.width}_${tamanho.height}_$escala');
+
+      await tester.tap(salvar);
+      await tester.pumpAndSettle();
+      expect(chamadas, 1);
+      expect(salvo!.observacao, 'Bem assada, cortar em 8');
+      expect(find.text('Abrir edição'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('fecha teclado pelo botao, pela tecla concluir e pelo toque fora',
+      (tester) async {
+    var chamadas = 0;
+    final edicao = criar(api.pizza());
+    await abrirEditor(tester, edicao, (_) async {
+      chamadas++;
+      return true;
+    });
+    final campo = find.byKey(const Key('observacao_edicao_produto'));
+    await mostrar(tester, campo);
+    await tester.enterText(campo, 'Sem cebola');
+    await tester.pumpAndSettle();
+    final foco = tester.widget<TextField>(campo).focusNode!;
+    expect(foco.hasFocus, isTrue);
+    await tester.tap(find.byTooltip('Fechar teclado'));
+    await tester.pumpAndSettle();
+    expect(foco.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+
+    await tester.showKeyboard(campo);
+    await tester.pumpAndSettle();
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(foco.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+
+    await tester.showKeyboard(campo);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Observação'));
+    await tester.pumpAndSettle();
+    expect(foco.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(edicao.observacao, 'Sem cebola');
+    expect(chamadas, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
       'cancelar edicao descarta rascunho e salvar com erro permite tentar novamente',
