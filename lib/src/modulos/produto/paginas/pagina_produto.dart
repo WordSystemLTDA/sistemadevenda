@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/sugestoes_observacao.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
@@ -46,11 +47,13 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   bool carregando = false;
   String? erroConsulta;
   TextEditingController obsController = TextEditingController();
+  final _focoObservacao = FocusNode();
   String _baseHostImagens = 'https://bigchef.com.br';
 
   @override
   void initState() {
     super.initState();
+    if (widget.editar) obsController.text = widget.produto.observacao ?? '';
     _carregarBaseHostImagens();
 
     if (widget.editar == false) {
@@ -64,6 +67,13 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           double.parse(widget.produto.valorVenda);
       _provedorProduto.calcularValorVenda(false, '0');
     }
+  }
+
+  @override
+  void dispose() {
+    obsController.dispose();
+    _focoObservacao.dispose();
+    super.dispose();
   }
 
   Future<void> _carregarBaseHostImagens() async {
@@ -334,6 +344,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final alturaTeclado = MediaQuery.viewInsetsOf(context).bottom;
 
     if (itemProduto == null) {
       if (carregando == false) {
@@ -375,7 +386,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         }
       },
       child: AnimatedBuilder(
-        animation: _provedorProduto,
+        animation: Listenable.merge([_provedorProduto, _focoObservacao]),
         builder: (context, _) {
           final faixaPreco =
               (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
@@ -396,7 +407,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               _quantidadeAdicionaisSelecionados;
 
           return Scaffold(
-            extendBody: true,
+            extendBody: alturaTeclado == 0,
             backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
@@ -427,8 +438,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
             bottomNavigationBar: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                child: BotaoAcaoPedido(
+                padding: EdgeInsets.fromLTRB(14, 8, 14, 12 + alturaTeclado),
+                child: TextFieldTapRegion(
+                    child: BotaoAcaoPedido(
+                  key: const Key('adicionar_produto_carrinho'),
                   rotulo: quantidadeAdicionaisSelecionados > 0
                       ? 'Adicionar ao ($quantidadeAdicionaisSelecionados)'
                       : 'Adicionar ao',
@@ -438,13 +451,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                   quantidade: _provedorProduto.quantidade,
                   total: total,
                   onPressed: inserirNoCarrinho,
-                ),
+                )),
               ),
             ),
             body: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: EdgeInsets.only(
-                bottom: MediaQuery.paddingOf(context).bottom +
-                    MediaQuery.textScalerOf(context).scale(88),
+                bottom: alturaTeclado > 0
+                    ? 16
+                    : MediaQuery.paddingOf(context).bottom +
+                        MediaQuery.textScalerOf(context).scale(88),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,41 +518,64 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                       titulo: 'Observação do Produto',
                       contagem: null,
                       obrigatorio: false,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: TextField(
-                          controller: obsController,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            alignLabelWithHint: true,
-                            hintText: "Ex.: Sem cebola, ponto da carne...",
-                            hintStyle: TextStyle(
-                              fontWeight: FontWeight.w300,
-                              color: cs.onSurface.withValues(alpha: 0.5),
-                            ),
-                            filled: true,
-                            fillColor: isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : cs.surface,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: cs.outline.withValues(alpha: 0.3),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            key: const Key('observacao_adicionais_produto'),
+                            controller: obsController,
+                            focusNode: _focoObservacao,
+                            minLines: 2,
+                            maxLines: 4,
+                            textCapitalization: TextCapitalization.sentences,
+                            keyboardType: TextInputType.multiline,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _focoObservacao.unfocus(),
+                            onTapUpOutside: (_) => _focoObservacao.unfocus(),
+                            scrollPadding:
+                                const EdgeInsets.fromLTRB(20, 20, 20, 64),
+                            decoration: InputDecoration(
+                              suffixIcon: _focoObservacao.hasFocus
+                                  ? IconButton(
+                                      tooltip: 'Ocultar teclado',
+                                      onPressed: _focoObservacao.unfocus,
+                                      icon: const Icon(
+                                          Icons.keyboard_hide_outlined),
+                                    )
+                                  : null,
+                              alignLabelWithHint: true,
+                              hintText: "Ex.: Sem cebola, ponto da carne...",
+                              hintStyle: TextStyle(
+                                fontWeight: FontWeight.w300,
+                                color: cs.onSurface.withValues(alpha: 0.5),
                               ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: cs.outline.withValues(alpha: 0.25),
+                              filled: true,
+                              fillColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : cs.surface,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: cs.outline.withValues(alpha: 0.3),
+                                ),
                               ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  BorderSide(color: cs.primary, width: 1.4),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: cs.outline.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                    BorderSide(color: cs.primary, width: 1.4),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          SugestoesObservacao(controller: obsController),
+                          const SizedBox(height: 12),
+                        ],
                       ),
                     ),
                   ),

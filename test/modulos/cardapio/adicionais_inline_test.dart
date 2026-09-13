@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/provedores/observacoes_rapidas.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -28,6 +29,85 @@ class ProdutosLentos extends fixture.ProdutosComAdicionaisTeste {
 
 void main() {
   setUpAll(carregarFontesDeTeste);
+  for (final (tamanho, teclado) in [
+    (const Size(320, 568), 260.0),
+    (const Size(393, 852), 320.0),
+    (const Size(800, 900), 340.0),
+  ]) {
+    testWidgets('adiciona observacao com teclado aberto em $tamanho',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({
+        ObservacoesRapidas.chave: ['Cortar em 8']
+      });
+      final usuario = UsuarioProvedor()
+        ..setUsuario(UsuarioModelo(
+            empresa: '32', configuracoes: fixture.ConfiguracoesTeste('media')));
+      final cardapio = ProvedorCardapio(fixture.CategoriasTeste(), usuario);
+      final produtos = ProdutosLentos();
+      Modular.init(fixture.ModuloTeste(cardapio, usuario, produtos));
+      tester.view.physicalSize = tamanho;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        tester.view.resetViewInsets();
+        Modular.destroy();
+        cardapio.dispose();
+        usuario.dispose();
+      });
+      Modelowordprodutos? salvo;
+      await tester.pumpWidget(RepaintBoundary(
+        key: const ValueKey('captura'),
+        child: MaterialApp(
+            home: Builder(
+                builder: (context) => Scaffold(
+                        body: TextButton(
+                      child: const Text('Produto'),
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (_) => PaginaProduto(
+                                    produto: produtos.produtos.first,
+                                    inserirEmItensRecorrentes: (produto) =>
+                                        salvo = produto,
+                                  ))),
+                    )))),
+      ));
+      await tester.tap(find.text('Produto'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+          find.widgetWithText(ActionChip, 'Cortar em 8'), 180,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.widgetWithText(ActionChip, 'Cortar em 8'));
+      final campo = find.byKey(const Key('observacao_adicionais_produto'));
+      expect(tester.widget<TextField>(campo).controller!.text, 'Cortar em 8');
+      await tester.ensureVisible(campo);
+      await tester.enterText(campo, 'Cortar em 8, sem sal');
+      tester.view.viewInsets = FakeViewPadding(bottom: teclado);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(campo);
+      await tester.pumpAndSettle();
+      final botao = find.byKey(const Key('adicionar_produto_carrinho'));
+      expect(tester.getRect(botao).bottom,
+          lessThanOrEqualTo(tamanho.height - teclado));
+      expect(botao.hitTestable(), findsOneWidget);
+      expect(find.byTooltip('Ocultar teclado'), findsOneWidget);
+      await capturarTela(tester, 'adicionais_teclado_${tamanho.width.toInt()}');
+      await tester.tap(botao);
+      await tester.pumpAndSettle();
+      expect(salvo!.observacao, 'Cortar em 8, sem sal');
+      expect(
+          salvo!.opcoesPacotesListaFinal!
+              .where((o) => o.id == 11)
+              .single
+              .dados!
+              .single
+              .nome,
+          'Cortar em 8, sem sal');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   for (final largura in [320.0, 393.0, 800.0]) {
     testWidgets(
         'pagina de adicionais permite repetir consulta e mantem linhas em $largura',
