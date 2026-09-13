@@ -51,6 +51,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
 
   Modeloworddadoscardapio? dados;
   bool carregando = false;
+  String? erroConsulta;
+  bool _fechamentoDiretoExibido = false;
   String idComanda = '0';
   String idComandaPedido = '0';
   String idMesa = '0';
@@ -90,18 +92,31 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
   }
 
   Future<void> listarComandasPedidos() async {
+    if (!mounted || carregando) return;
     setState(() => carregando = true);
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não', codigoQrcode: widget.codigoQrcode).then((value) {
+    try {
+      final value = await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', widget.tipo, 'Não', codigoQrcode: widget.codigoQrcode);
+      if (!mounted) return;
+      erroConsulta = null;
       dados = value;
       idComanda = value.idComanda ?? '0';
       idComandaPedido = value.id ?? '0';
       idMesa = value.idMesa ?? '0';
-    });
-
+    } catch (_) {
+      if (!mounted) return;
+      erroConsulta = 'Não foi possível atualizar o atendimento.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(erroConsulta!),
+        action: SnackBarAction(label: 'Tentar novamente', onPressed: listarComandasPedidos),
+      ));
+    } finally {
+      if (mounted) setState(() => carregando = false);
+    }
     if (!mounted) return;
-
-    setState(() => carregando = false);
-    if (widget.abrirModalFecharDireto == true) fechar();
+    if (erroConsulta == null && dados?.id != null && widget.abrirModalFecharDireto == true && !_fechamentoDiretoExibido) {
+      _fechamentoDiretoExibido = true;
+      fechar();
+    }
   }
 
   Future<bool?> _confirmar({
@@ -143,8 +158,10 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                 const SizedBox(height: 14),
                 Text(mensagem, style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -154,7 +171,6 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                       ),
                       child: const Text('Cancelar'),
                     ),
-                    const SizedBox(width: 8),
                     FilledButton.icon(
                       onPressed: () => Navigator.pop(ctx, true),
                       icon: Icon(iconeAcao, size: 18),
@@ -200,8 +216,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
-      final duration = DateTime.now().difference(DateTime.parse(dados!.dataAbertura!));
-      final newDuration = ConfigSistema.formatarHora(duration);
+      if (!value.sucesso) return;
+      final abertura = DateTime.tryParse(dados!.dataAbertura ?? '');
+      final newDuration = abertura == null ? '' : ConfigSistema.formatarHora(DateTime.now().difference(abertura));
       Impressao.comprovanteDeConsumo(
         tipodeentrega: dados!.tipodeentrega ?? '',
         valorentrega: dados!.valorentrega ?? '',
@@ -284,7 +301,13 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
           backgroundColor: cs.inversePrimary,
           title: Text('Detalhes da $nomeTipo', style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(child: erroConsulta == null || carregando
+            ? const CircularProgressIndicator()
+            : Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(erroConsulta!, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(onPressed: listarComandasPedidos, icon: const Icon(Icons.refresh), label: const Text('Tentar novamente')),
+              ]))),
       );
     }
 
@@ -333,6 +356,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                 statusLabel: labelStatus,
                 corStatus: corStatus,
                 numeroPedido: dados!.numeroPedido,
+                dataAbertura: dados!.dataAbertura,
               ),
               const SizedBox(height: 14),
               _AcoesGrid(
@@ -446,6 +470,7 @@ class _CabecalhoComanda extends StatelessWidget {
   final String statusLabel;
   final Color corStatus;
   final String? numeroPedido;
+  final String? dataAbertura;
 
   const _CabecalhoComanda({
     required this.nome,
@@ -453,6 +478,7 @@ class _CabecalhoComanda extends StatelessWidget {
     required this.statusLabel,
     required this.corStatus,
     this.numeroPedido,
+    this.dataAbertura,
   });
 
   @override
@@ -538,13 +564,14 @@ class _CabecalhoComanda extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Icon(Icons.timelapse_rounded, size: 16, color: cs.onSurfaceVariant),
-                const SizedBox(width: 6),
                 Text('Tempo aberta:', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
-                const SizedBox(width: 6),
                 TempoAberto(
+                  dataAbertura: dataAbertura,
                   textStyle: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: cs.onSurface),
                 ),
               ],

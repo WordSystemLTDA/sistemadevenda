@@ -10,6 +10,8 @@ import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
+import 'package:app/src/modulos/indicadores/modelo_indicadores.dart';
+import 'package:app/src/modulos/indicadores/pagina_indicadores.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -305,6 +307,19 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado> with TickerProvid
                             trailing: Text('${server.filaImpressao.itens.length}'),
                             onTap: () => server.abrirPendenciasImpressao(context),
                           ),
+                          if (podeVerIndicadores(usuarioProvedor.usuario))
+                            ListTile(
+                              leading: const Icon(Icons.bar_chart_outlined),
+                              title: const Text('Indicadores'),
+                              onTap: () {
+                                final navigator = Navigator.of(context);
+                                navigator.pop();
+                                navigator.push(MaterialPageRoute(
+                                  settings: const RouteSettings(name: 'PaginaIndicadores'),
+                                  builder: (_) => const PaginaIndicadores(),
+                                ));
+                              },
+                            ),
                           ListTile(
                             leading: const Icon(Icons.text_snippet),
                             title: const Text('Cadastrar'),

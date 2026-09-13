@@ -15,6 +15,8 @@ import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
 import 'package:app/src/modulos/comandos_nfc/paginas/pagina_comandos_nfc.dart';
 import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
+import 'package:app/src/modulos/indicadores/modelo_indicadores.dart';
+import 'package:app/src/modulos/indicadores/pagina_indicadores.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -244,6 +246,16 @@ class _PaginaInicioState extends State<PaginaInicio> {
                             ));
                           },
                         ),
+                        if (podeVerIndicadores(context.read<UsuarioProvedor>().usuario))
+                          CardHome(
+                            nome: 'Indicadores',
+                            cor: const Color(0xFF2869A8),
+                            icone: const Icon(Icons.bar_chart_outlined, size: 40),
+                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(name: 'PaginaIndicadores'),
+                              builder: (_) => const PaginaIndicadores(),
+                            )),
+                          ),
                         if (configBigchef?.autenticarcomtag == 'Sim')
                           CardHome(
                             nome: 'Comandos NFC',
