@@ -54,8 +54,7 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
   }
 
   void _definirPeriodo(int dias) {
-    final agora = DateTime.now();
-    fim = DateTime(agora.year, agora.month, agora.day);
+    fim = dataOperacionalIndicadores(DateTime.now());
     inicio = DateTime(fim.year, fim.month, fim.day - dias + 1);
     periodo = dias;
   }
@@ -252,6 +251,11 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
                                     '${DateFormat('dd/MM/yyyy').format(inicio)} a ${DateFormat('dd/MM/yyyy').format(fim)}',
                                     style:
                                         TextStyle(color: cs.onSurfaceVariant)),
+                                const SizedBox(height: 4),
+                                Text('Dia operacional: 05:00 às 04:59',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: cs.onSurfaceVariant)),
                                 SizedBox(
                                     height: 12,
                                     child: carregando

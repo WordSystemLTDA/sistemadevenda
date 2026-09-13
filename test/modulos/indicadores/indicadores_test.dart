@@ -102,6 +102,13 @@ void main() {
     expect(diasEntreDatas(DateTime(2024, 2, 28), DateTime(2024, 3, 1)), 2);
   });
 
+  test('hoje operacional muda somente as 5 horas da manha', () {
+    expect(dataOperacionalIndicadores(DateTime(2026, 9, 13, 4, 59)),
+        DateTime(2026, 9, 12));
+    expect(dataOperacionalIndicadores(DateTime(2026, 9, 13, 5)),
+        DateTime(2026, 9, 13));
+  });
+
   group('consulta autenticada e cache', () {
     late DioCliente api;
     late BancoLocal banco;

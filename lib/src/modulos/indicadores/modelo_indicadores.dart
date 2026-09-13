@@ -3,6 +3,15 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 bool podeVerIndicadores(UsuarioModelo? usuario) =>
     ['0', '1'].contains(usuario?.nivel?.trim());
 
+const int horaInicioDiaOperacionalIndicadores = 5;
+
+DateTime dataOperacionalIndicadores(DateTime agora) {
+  final data = DateTime(agora.year, agora.month, agora.day);
+  return agora.hour < horaInicioDiaOperacionalIndicadores
+      ? data.subtract(const Duration(days: 1))
+      : data;
+}
+
 // Dias civis nao devem perder uma coluna em periodos historicos com horario de verao.
 int diasEntreDatas(DateTime inicio, DateTime fim) =>
     DateTime.utc(fim.year, fim.month, fim.day)

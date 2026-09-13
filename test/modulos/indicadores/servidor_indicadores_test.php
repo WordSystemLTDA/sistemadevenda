@@ -48,12 +48,12 @@ echo "OK: autenticacao, nivel autoritativo, revogacao, empresa e SQL injection\n
 foreach ([['2026-02-31','2026-03-01'], ['2026-09-13','2026-09-12'], ['2026-01-01','2026-04-01'], ['','2026-09-12']] as $datas) {
     recusar(fn() => indicadoresPeriodo(['inicio' => $datas[0], 'fim' => $datas[1]]), 422);
 }
-verificar(indicadoresPeriodo(['inicio' => '2024-02-29', 'fim' => '2024-02-29'])[1] === '2024-03-01', 'Bissexto');
+verificar(indicadoresPeriodo(['inicio' => '2024-02-29', 'fim' => '2024-02-29'])[3] === '2024-03-01 05:00:00', 'Bissexto');
 verificar(indicadoresConsultar($pdo, 32, $entrada)['grupos'] === [], 'Periodo vazio');
 echo "OK: datas, periodo vazio, limite de 90 dias e ano bissexto\n";
 
 foreach ([
-    [1,32,5,3,'Andamento','2026-09-12','00:00:00'],
+    [1,32,5,3,'Andamento','2026-09-12','05:00:00'],
     [2,32,5,3,'Finalizada','2026-09-12','19:30:00'],
     [3,32,0,4,'Fechamento','2026-09-12','23:59:59'],
     [4,32,6,0,'Cancelada','2026-09-12','19:35:00'],
@@ -61,24 +61,31 @@ foreach ([
     [6,32,8,0,'Andamento','2026-09-13','00:00:00'],
     [7,32,9,0,'Andamento','2026-09-11','23:59:59'],
     [8,32,10,0,'Transferida','2026-09-12','19:30:00'],
+    [9,32,11,0,'Andamento','2026-09-12','04:59:59'],
+    [10,32,12,0,'Andamento','2026-09-13','05:00:00'],
 ] as $linha) {
     fixture($pdo, 'comandas_pedidos', array_combine(['id','empresa','id_comanda','id_mesa','status','data_abertura','hora_abertura'], $linha));
 }
 foreach ([[1,32,1,60.10],[2,32,1,12],[3,32,2,85],[4,32,3,25],[5,32,4,99],[6,33,1,1000]] as $linha) {
     fixture($pdo, 'itens_venda', array_combine(['id','empresa','id_comanda_pedido','total'], $linha));
 }
-foreach ([[1,32,'Balcão',0,'Concluída',40.20],[2,32,'Comanda',2,'Concluída',85],[3,32,'Balcão',2,'Concluída',85],
-    [4,33,'Balcão',0,'Concluída',1000],[5,32,'Delivery',0,'Concluída',200], [6,32,'Balcão',0,'Cancelada',70]] as $linha) {
-    fixture($pdo, 'vendas', array_merge(array_combine(['id','empresa','tipo_de_finalizarcao','id_comanda_pedido','status','subtotal'], $linha), ['data_lanc' => '2026-09-12', 'hora_lanc' => '19:00:00']));
+foreach ([[1,32,'Balcão',0,'Concluída',40.20,'2026-09-12','19:00:00'],[2,32,'Comanda',2,'Concluída',85,'2026-09-12','19:00:00'],[3,32,'Balcão',2,'Concluída',85,'2026-09-12','19:00:00'],
+    [4,33,'Balcão',0,'Concluída',1000,'2026-09-12','19:00:00'],[5,32,'Delivery',0,'Concluída',200,'2026-09-12','19:00:00'],
+    [6,32,'Balcão',0,'Cancelada',70,'2026-09-12','19:00:00'],[7,32,'Balcão',0,'Concluída',10,'2026-09-13','02:00:00'],
+    [8,32,'Balcão',0,'Concluída',99,'2026-09-12','04:00:00']] as $linha) {
+    fixture($pdo, 'vendas', array_combine(['id','empresa','tipo_de_finalizarcao','id_comanda_pedido','status','subtotal','data_lanc','hora_lanc'], $linha));
 }
 $antes = [];
 foreach (['comandas_pedidos','itens_venda','vendas'] as $tabela) $antes[$tabela] = $pdo->query("SELECT * FROM `$tabela` ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 $relatorio = indicadoresConsultar($pdo, 32, $entrada);
 $validos = array_values(array_filter($relatorio['grupos'], fn($g) => $g['status'] !== 'Cancelada'));
-verificar(array_sum(array_column($validos, 'quantidade')) === 4, 'Contagem duplicou mesa/comanda/venda ou cruzou empresa/data');
-verificar(array_sum(array_column($validos, 'consumo_centavos')) === 22230, 'Consumo deve usar itens e subtotal, sem cancelados ou empresa alheia');
-verificar(array_sum(array_column($relatorio['grupos'], 'quantidade')) === 6, 'Cancelamentos separados');
-verificar(count(array_filter($validos, fn($g) => $g['hora'] === 0)) === 1, 'Inicio inclusivo');
+verificar($relatorio['inicio_operacional'] === '2026-09-12 05:00:00' && $relatorio['fim_operacional_exclusivo'] === '2026-09-13 05:00:00', 'Janela operacional incorreta');
+verificar(array_sum(array_column($validos, 'quantidade')) === 6, 'Contagem duplicou mesa/comanda/venda ou cruzou empresa/data');
+verificar(array_sum(array_column($validos, 'consumo_centavos')) === 23230, 'Consumo deve usar itens e subtotal, sem cancelados ou empresa alheia');
+verificar(array_sum(array_column($relatorio['grupos'], 'quantidade')) === 8, 'Cancelamentos separados');
+verificar(count(array_filter($validos, fn($g) => $g['hora'] === 5)) === 1, 'Inicio operacional inclusivo');
+verificar(count(array_filter($validos, fn($g) => $g['hora'] === 0 && $g['dia'] === '2026-09-12')) === 1, 'Madrugada deve permanecer no dia operacional anterior');
+verificar(count(array_filter($validos, fn($g) => $g['hora'] === 2 && $g['canal'] === 'Balcao' && $g['dia'] === '2026-09-12')) === 1, 'Venda de balcao na madrugada deve ficar no dia operacional anterior');
 verificar(count(array_filter($validos, fn($g) => $g['hora'] === 23 && $g['canal'] === 'Mesa')) === 1, 'Final do dia inclusivo');
 foreach ($antes as $tabela => $linhas) verificar($linhas === $pdo->query("SELECT * FROM `$tabela` ORDER BY id")->fetchAll(PDO::FETCH_ASSOC), 'Consulta alterou pedidos');
 echo "OK: agregado real, centavos, canais, reabertura, limites de data e nenhuma escrita em pedidos\n";
