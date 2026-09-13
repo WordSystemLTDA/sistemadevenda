@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:app/src/modulos/transferencias/servico_transferencias.dart';
+import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 
@@ -372,6 +374,37 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
             ],
           ),
         ),
+      );
+    }
+
+    if (dados!.status == 'Transferida') {
+      final alvo = AlvoTransferencia(
+          id: widget.tipo == TipoCardapio.mesa ? idMesa : idComanda,
+          atendimento: idComandaPedido,
+          nome: dados!.nome ?? nomeTipo,
+          tipo: widget.tipo == TipoCardapio.mesa ? 'mesa' : 'comanda');
+      return Scaffold(
+        backgroundColor: VisualAtendimento.superficie(context),
+        appBar: AppBar(
+            backgroundColor: cs.inversePrimary,
+            title: Text('Detalhes da $nomeTipo')),
+        body: ListView(padding: const EdgeInsets.all(24), children: [
+          Icon(Icons.drive_file_move_outline,
+              size: 40, color: VisualAtendimento.azul(context)),
+          const SizedBox(height: 16),
+          const Text('Atendimento transferido',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          const Text(
+              'Os pedidos foram movidos para outro atendimento. Esta origem não recebe novos itens.',
+              textAlign: TextAlign.center),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+              onPressed: () => abrirHistoricoTransferencias(context, alvo),
+              icon: const Icon(Icons.history),
+              label: const Text('Histórico de transferências')),
+        ]),
       );
     }
 

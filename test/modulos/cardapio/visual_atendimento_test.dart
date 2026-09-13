@@ -31,6 +31,7 @@ class ConfigVisual extends ConfiguracoesTeste {
 class DadosVisual extends Fake implements ServicoCardapio {
   bool falhar = false;
   bool fechamento = false;
+  bool transferida = false;
   TipoCardapio? consultado;
   Completer<Modeloworddadoscardapio>? pendente;
   @override
@@ -49,7 +50,11 @@ class DadosVisual extends Fake implements ServicoCardapio {
             observacaoDoPedido: 'Bruno Masson',
             nome: '${tipo.nome}: 4',
             nomeMesa: '',
-            status: fechamento ? 'Fechamento' : 'Andamento',
+            status: transferida
+                ? 'Transferida'
+                : fechamento
+                    ? 'Fechamento'
+                    : 'Andamento',
             numeroPedido: '46',
             valorTotal: '167.00',
             dataAbertura: DateTime.now()
@@ -172,6 +177,18 @@ void main() {
   }
 
   for (final tipo in [TipoCardapio.mesa, TipoCardapio.comanda]) {
+    testWidgets('$tipo transferida nao oferece lancamento ou fechamento',
+        (tester) async {
+      modulo.dados.transferida = true;
+      await abrir(
+          tester, PaginaDetalhesPedido(idComandaPedido: '104', tipo: tipo));
+      expect(find.text('Atendimento transferido'), findsOneWidget);
+      expect(find.text('Histórico de transferências'), findsOneWidget);
+      expect(find.text('Adicionar produtos'), findsNothing);
+      expect(find.text('Fechar conta'), findsNothing);
+      expect(find.text('Reabrir'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
     for (final (tela, escala, escuro) in [
       (const Size(393, 852), 1.0, false),
       (const Size(320, 568), 2.0, false),

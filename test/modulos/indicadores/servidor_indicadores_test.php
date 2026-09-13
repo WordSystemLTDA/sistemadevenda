@@ -60,6 +60,7 @@ foreach ([
     [5,33,7,0,'Andamento','2026-09-12','19:35:00'],
     [6,32,8,0,'Andamento','2026-09-13','00:00:00'],
     [7,32,9,0,'Andamento','2026-09-11','23:59:59'],
+    [8,32,10,0,'Transferida','2026-09-12','19:30:00'],
 ] as $linha) {
     fixture($pdo, 'comandas_pedidos', array_combine(['id','empresa','id_comanda','id_mesa','status','data_abertura','hora_abertura'], $linha));
 }
