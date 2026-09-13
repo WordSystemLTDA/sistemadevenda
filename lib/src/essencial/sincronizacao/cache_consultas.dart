@@ -17,9 +17,32 @@ class CacheConsultas extends Interceptor {
   bool servidorDisponivel = true;
   DateTime? _ultimaFalha;
   final Set<String> _atualizando = {};
+  int _geracaoAtendimento = 0;
   void Function()? aoAtualizar;
 
   CacheConsultas(this.cliente, this.banco);
+
+  static bool _atendimento(String rota) =>
+      rota.startsWith('mesas/') ||
+      rota.startsWith('comandas/') ||
+      rota.startsWith('cardapio/') ||
+      rota.startsWith('itens_recorrentes/');
+
+  Future<void> invalidarAtendimentos() async {
+    _geracaoAtendimento++;
+    final linhas = await banco.db.query('consultas',
+        columns: ['chave'], where: 'escopo = ?', whereArgs: [escopo]);
+    await banco.db.transaction((tx) async {
+      for (final linha in linhas) {
+        final chaveConsulta = linha['chave'] as String;
+        if (_atendimento((jsonDecode(chaveConsulta) as List).first as String)) {
+          await tx.delete('consultas',
+              where: 'escopo = ? AND chave = ?',
+              whereArgs: [escopo, chaveConsulta]);
+        }
+      }
+    });
+  }
 
   void confirmarConexao() {
     servidorDisponivel = true;
@@ -76,6 +99,7 @@ class CacheConsultas extends Interceptor {
     if (!_permitido(options)) return handler.next(options);
     final alvo = escopo;
     options.extra['escopoCache'] = alvo;
+    options.extra['geracaoAtendimento'] = _geracaoAtendimento;
     try {
       final consulta = await banco.consulta(alvo, chave(options));
       Object? dados =
@@ -114,6 +138,9 @@ class CacheConsultas extends Interceptor {
     final alvo = response.requestOptions.extra['escopoCache'] as String?;
     if (alvo != null &&
         alvo == escopo &&
+        (!_atendimento(caminho(response.requestOptions)) ||
+            response.requestOptions.extra['geracaoAtendimento'] ==
+                _geracaoAtendimento) &&
         response.extra['cacheLocal'] != true &&
         response.statusCode == 200 &&
         (response.data is List || response.data is Map) &&

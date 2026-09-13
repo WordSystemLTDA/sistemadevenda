@@ -64,12 +64,22 @@ class CardResumoAtendimento extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     StatusAtendimento(
-                        texto: !ocupada ? 'Livre' : fechamento ? 'Em fechamento' : 'Ocupada',
+                        texto: !ocupada
+                            ? 'Livre'
+                            : fechamento
+                                ? 'Em fechamento'
+                                : 'Ocupada',
                         cor: cor),
-                    Text(nome, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(nome,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     if (ocupada && atendimento != null)
-                      Text(atendimento!.startsWith('local:') ? 'No aparelho' : '#$atendimento',
-                          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+                      Text(
+                          atendimento!.startsWith('local:')
+                              ? 'No aparelho'
+                              : '#$atendimento',
+                          style: TextStyle(
+                              fontSize: 11, color: cs.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -86,38 +96,59 @@ class CardResumoAtendimento extends StatelessWidget {
               _Linha(
                   icone: Icons.person_outline_rounded,
                   child: Text(cliente,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500))),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w500))),
             ],
             const SizedBox(height: 6),
             LayoutBuilder(builder: (context, constraints) {
-              final tempos = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _Linha(
-                icone: ocupada ? Icons.schedule_rounded : Icons.history_rounded,
-                child: tempo),
-            if (ultimoPedido != null) ...[
-              const SizedBox(height: 4),
-              _Linha(
-                  icone: Icons.restaurant_menu_rounded, child: ultimoPedido!),
-            ],
-              ]);
+              final tempos = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Linha(
+                        icone: ocupada
+                            ? Icons.schedule_rounded
+                            : Icons.history_rounded,
+                        child: tempo),
+                    if (ultimoPedido != null) ...[
+                      const SizedBox(height: 4),
+                      _Linha(
+                          icone: Icons.restaurant_menu_rounded,
+                          child: ultimoPedido!),
+                    ],
+                  ]);
               if (!ocupada) return tempos;
-              final valores = Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              final valores =
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (mesa?.isNotEmpty == true)
-                  Text(mesa!, textAlign: TextAlign.end,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cor)),
+                  Text(mesa!,
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: cor)),
                 if (total != null)
-                  Text(total!, textAlign: TextAlign.end,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(total!,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700)),
               ]);
-              if (MediaQuery.textScalerOf(context).scale(12) > 17 || constraints.maxWidth < 280) {
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  tempos, const SizedBox(height: 4), valores,
-                ]);
+              if (MediaQuery.textScalerOf(context).scale(12) > 17 ||
+                  constraints.maxWidth < 280) {
+                return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      tempos,
+                      const SizedBox(height: 4),
+                      valores,
+                    ]);
               }
               return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(child: tempos), const SizedBox(width: 8),
-                ConstrainedBox(constraints: BoxConstraints(maxWidth: constraints.maxWidth * .36), child: valores),
+                Expanded(child: tempos),
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxWidth: constraints.maxWidth * .36),
+                    child: valores),
               ]);
             }),
           ]),

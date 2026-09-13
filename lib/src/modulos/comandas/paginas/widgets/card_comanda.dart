@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:app/src/modulos/transferencias/servico_transferencias.dart';
+import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
 import 'package:app/src/essencial/widgets/card_resumo_atendimento.dart';
 import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 
@@ -187,54 +189,65 @@ class _CardComandaState extends State<CardComanda> {
           : ConfigSistema.formatarHora(DateTime.now().difference(data));
     }
 
-    return CardResumoAtendimento(
-      nome: item.nome,
-      cliente: nomeClienteAtendimento(item.nomeCliente, item.obs),
-      codigo: item.codigo,
-      atendimento: item.idComandaPedido,
-      mesa: item.nomeMesa,
-      ocupada: ocupada,
-      fechamento: item.fechamento == true,
-      tipoMesa: false,
-      total:
-          usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
+    final alvo = AlvoTransferencia(
+        id: item.id,
+        atendimento: ocupada ? (item.idComandaPedido ?? '0') : '0',
+        nome: item.nome,
+        tipo: 'comanda',
+        livre: !ocupada,
+        motivo: item.fechamento == true
+            ? 'Reabra a conta antes de transferir.'
+            : '');
+    return AreaTransferencia(
+        alvo: alvo,
+        child: CardResumoAtendimento(
+          nome: item.nome,
+          cliente: nomeClienteAtendimento(item.nomeCliente, item.obs),
+          codigo: item.codigo,
+          atendimento: item.idComandaPedido,
+          mesa: item.nomeMesa,
+          ocupada: ocupada,
+          fechamento: item.fechamento == true,
+          tipoMesa: false,
+          total: usuarioProvedor
+                      .usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
                   'Sim'
               ? (double.tryParse(item.valor ?? '0') ?? 0).obterReal()
               : null,
-      onAbrir: _abrir,
-      tempo: ocupada
-          ? StreamBuilder<String>(
-              stream: tempoLancadoController.stream,
-              initialData: decorrido(item.dataAbertura),
-              builder: (_, snapshot) => Text('Aberta há ${snapshot.data}'),
-            )
-          : Text(DateTime.tryParse(item.ultimaVezAbertoDataHora ?? '') != null
-              ? 'Última abertura: ${decorrido(item.ultimaVezAbertoDataHora)}'
-              : 'Nunca utilizada'),
-      ultimoPedido: !ocupada
-          ? null
-          : StreamBuilder<String>(
-              stream: dataUltimoPedidoLancadoController.stream,
-              initialData: decorrido(item.dataultimopedido),
-              builder: (_, snapshot) => Text(
-                  DateTime.tryParse(item.dataultimopedido ?? '') != null
-                      ? 'Último pedido há ${snapshot.data}'
-                      : 'Nenhum item lançado'),
+          onAbrir: _abrir,
+          tempo: ocupada
+              ? StreamBuilder<String>(
+                  stream: tempoLancadoController.stream,
+                  initialData: decorrido(item.dataAbertura),
+                  builder: (_, snapshot) => Text('Aberta há ${snapshot.data}'),
+                )
+              : Text(DateTime.tryParse(item.ultimaVezAbertoDataHora ?? '') !=
+                      null
+                  ? 'Última abertura: ${decorrido(item.ultimaVezAbertoDataHora)}'
+                  : 'Nunca utilizada'),
+          ultimoPedido: !ocupada
+              ? null
+              : StreamBuilder<String>(
+                  stream: dataUltimoPedidoLancadoController.stream,
+                  initialData: decorrido(item.dataultimopedido),
+                  builder: (_, snapshot) => Text(
+                      DateTime.tryParse(item.dataultimopedido ?? '') != null
+                          ? 'Último pedido há ${snapshot.data}'
+                          : 'Nenhum item lançado'),
+                ),
+          menu: MenuAnchor(
+            builder: (context, controller, child) => IconButton(
+              tooltip: 'Opções da comanda',
+              onPressed: () =>
+                  controller.isOpen ? controller.close() : controller.open(),
+              icon: const Icon(Icons.more_vert, size: 20),
             ),
-      menu: !ocupada
-          ? null
-          : MenuAnchor(
-              builder: (context, controller, child) => IconButton(
-                tooltip: 'Opções da comanda',
-                onPressed: () =>
-                    controller.isOpen ? controller.close() : controller.open(),
-                icon: const Icon(Icons.more_vert, size: 20),
-              ),
-              menuChildren: [
-                MenuItemButton(
-                    onPressed: null,
-                    leadingIcon: const Icon(Icons.tag, size: 18),
-                    child: Text('ID: ${item.id}')),
+            menuChildren: [
+              MenuItemButton(
+                  onPressed: null,
+                  leadingIcon: const Icon(Icons.tag, size: 18),
+                  child: Text('ID: ${item.id}')),
+              if (ocupada)
                 MenuItemButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => PaginaDetalhesPedido(
@@ -247,8 +260,19 @@ class _CardComandaState extends State<CardComanda> {
                       const Icon(Icons.receipt_long_outlined, size: 18),
                   child: const Text('Abrir Comanda'),
                 ),
-              ],
-            ),
-    );
+              MenuItemButton(
+                onPressed: () => abrirTransferencia(context, alvo),
+                leadingIcon:
+                    const Icon(Icons.drive_file_move_outline, size: 18),
+                child: const Text('Transferir / Juntar'),
+              ),
+              MenuItemButton(
+                onPressed: () => abrirHistoricoTransferencias(context, alvo),
+                leadingIcon: const Icon(Icons.history, size: 18),
+                child: const Text('Historico de transferencias'),
+              ),
+            ],
+          ),
+        ));
   }
 }

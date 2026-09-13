@@ -91,6 +91,16 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         return true;
       });
 
+  Future<bool> temRascunhoDeAtendimentos(
+      String empresa, List<String> ids) async {
+    await _fila;
+    final dados = await _ler(await SharedPreferences.getInstance());
+    return dados.values.any((registro) =>
+        registro['empresa'] == empresa &&
+        ids.contains(registro['idAtendimento']) &&
+        (registro['itens'] as List? ?? []).isNotEmpty);
+  }
+
   Future<bool> limpar(ContextoCarrinho contexto, {bool recorrentes = false}) =>
       _executar((prefs) async {
         final dados = await _ler(prefs);
@@ -113,19 +123,25 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     String acao = 'produtos',
     String? idOperacao,
     String? atendimentoOperacao,
-  }) => _executar((_) async {
-    final banco = BancoLocal.instancia;
-    if (banco == null) throw StateError('Banco local indisponivel.');
-    final id = await banco.guardarPedido(
-      escopo: escopo, chaveCarrinho: contexto.chave,
-      atendimento: atendimentoOperacao ?? contexto.idAtendimento,
-      itens: itens.map((e) => e.toMap()).toList(), dados: dados,
-      impressoes: impressoes, destino: destino, recorrentes: recorrentes,
-      acao: acao, idOperacao: idOperacao,
-    );
-    notifyListeners();
-    return id;
-  });
+  }) =>
+      _executar((_) async {
+        final banco = BancoLocal.instancia;
+        if (banco == null) throw StateError('Banco local indisponivel.');
+        final id = await banco.guardarPedido(
+          escopo: escopo,
+          chaveCarrinho: contexto.chave,
+          atendimento: atendimentoOperacao ?? contexto.idAtendimento,
+          itens: itens.map((e) => e.toMap()).toList(),
+          dados: dados,
+          impressoes: impressoes,
+          destino: destino,
+          recorrentes: recorrentes,
+          acao: acao,
+          idOperacao: idOperacao,
+        );
+        notifyListeners();
+        return id;
+      });
 
   Future<bool> substituirItem(
     ContextoCarrinho contexto,
@@ -293,7 +309,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         }
         if (mudou) await _salvar(prefs, dados);
       });
-    } else if (['Finalizada', 'Cancelada'].contains(status)) {
+    } else if (['Finalizada', 'Cancelada', 'Transferida'].contains(status)) {
       await sincronizarRecurso(
           empresa: empresa,
           tipo: 'comanda',
