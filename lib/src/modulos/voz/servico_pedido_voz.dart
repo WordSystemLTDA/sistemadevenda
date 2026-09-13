@@ -25,7 +25,9 @@ class ServicoPedidoVoz {
       _clienteCatalogo ??= (DioCliente(servidor: servidor)
         ..cliente.options.extra['semCache'] = true);
   final _cancelamento = CancelToken();
-  ServicoPedidoVoz({required this.servidor, required this.usuario}) {
+  ServicoPedidoVoz(
+      {required this.servidor, required this.usuario, Dio? clienteVoz})
+      : _clienteVoz = clienteVoz {
     // Capture agora; nao herdar uma conta trocada durante a gravacao.
     _identidade;
   }
@@ -37,9 +39,25 @@ class ServicoPedidoVoz {
         uri.userInfo.isNotEmpty) {
       throw const FalhaPedidoVoz('Endereço do servidor inválido.');
     }
+    if (uri.scheme == 'http' && _hostLocal(uri.host)) return uri.toString();
     return uri
         .replace(scheme: 'https', port: uri.scheme == 'https' ? uri.port : 443)
         .toString();
+  }
+
+  static bool _hostLocal(String host) {
+    if (host == 'localhost' || host == '::1' || host == '[::1]') return true;
+    final partes = host.split('.');
+    if (partes.length != 4 ||
+        partes.any((parte) => !RegExp(r'^(0|[1-9]\d{0,2})$').hasMatch(parte))) {
+      return false;
+    }
+    final ip = partes.map(int.parse).toList();
+    if (ip.any((parte) => parte > 255)) return false;
+    return ip[0] == 10 ||
+        ip[0] == 127 ||
+        (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) ||
+        (ip[0] == 192 && ip[1] == 168);
   }
 
   void _validar() {
@@ -96,14 +114,25 @@ class ServicoPedidoVoz {
           },
           cancelToken: _cancelamento);
       _validar();
-      if (resposta.data is! Map || resposta.data['token'] is! String) {
+      if (resposta.data is! Map ||
+          resposta.data['sucesso'] != true ||
+          resposta.data['protocolo'] != 1 ||
+          resposta.data['token'] is! String ||
+          (resposta.data['token'] as String).isEmpty) {
         throw const FalhaPedidoVoz(
             'Atualize e configure a API de voz no servidor.');
       }
       _token = resposta.data['token'] as String;
-    } on DioException {
+    } on DioException catch (erro) {
+      final dados = erro.response?.data;
+      if (dados is Map &&
+          dados['mensagem'] is String &&
+          (dados['mensagem'] as String).isNotEmpty &&
+          (dados['mensagem'] as String).length < 600) {
+        throw FalhaPedidoVoz(dados['mensagem'] as String);
+      }
       throw const FalhaPedidoVoz(
-          'Voz indisponível. Configure HTTPS e a chave da API da OpenAI no servidor. A assinatura do ChatGPT não ativa esta integração.');
+          'Não consegui conectar ao serviço de voz. Verifique o endereço, a rede e o HTTPS para acesso online.');
     }
     final capacidades = await _requisicao();
     if (abertura != null && capacidades['abertura_voz'] != 1) {

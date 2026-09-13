@@ -229,10 +229,12 @@ void main() {
       ..['adicionais'] = []);
     expect(montador.montar(pedido, agua).valorVenda, '5.00');
   });
-  test('voz usa HTTPS no mesmo servidor sem alterar caminho api1', () {
+  test('voz preserva IP local e exige HTTPS para servidor online', () {
     expect(
         ServicoPedidoVoz.enderecoSeguro('http://192.168.2.113/sistema/api1/'),
-        'https://192.168.2.113/sistema/api1/');
+        'http://192.168.2.113/sistema/api1/');
+    expect(ServicoPedidoVoz.enderecoSeguro('http://restaurante.example/api1/'),
+        'https://restaurante.example/api1/');
     expect(ServicoPedidoVoz.enderecoSeguro('https://restaurante:8443/api/'),
         'https://restaurante:8443/api/');
     expect(
