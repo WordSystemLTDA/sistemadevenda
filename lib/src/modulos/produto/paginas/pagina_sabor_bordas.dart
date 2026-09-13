@@ -156,6 +156,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
           builder: (context, valueProdutoProvedor) {
             final quantidadeBordasSelecionadas = _quantidadeBordasSelecionadas;
             return Scaffold(
+              extendBody: true,
               appBar: AppBar(
                 title: Text("${itemProduto!.nome} ${itemProduto!.tamanho}"),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -175,7 +176,10 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                 ),
               ),
               body: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 100),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.paddingOf(context).bottom +
+                      MediaQuery.textScalerOf(context).scale(88),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

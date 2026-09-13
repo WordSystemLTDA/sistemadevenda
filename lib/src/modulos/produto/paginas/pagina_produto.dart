@@ -396,6 +396,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               _quantidadeAdicionaisSelecionados;
 
           return Scaffold(
+            extendBody: true,
             backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
@@ -441,7 +442,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               ),
             ),
             body: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(context).bottom +
+                    MediaQuery.textScalerOf(context).scale(88),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

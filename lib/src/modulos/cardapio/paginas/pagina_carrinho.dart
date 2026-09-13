@@ -371,6 +371,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
             }
           },
           child: Scaffold(
+            extendBody: true,
             backgroundColor: VisualAtendimento.fundo(context),
             appBar: AppBar(
               backgroundColor: cs.inversePrimary,
@@ -447,7 +448,13 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                       ? _EstadoVazio(cs: cs)
                       : ListView.builder(
                           itemCount: itens.length + 1,
-                          padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
+                          padding: EdgeInsets.fromLTRB(
+                            14,
+                            16,
+                            14,
+                            MediaQuery.paddingOf(context).bottom +
+                                MediaQuery.textScalerOf(context).scale(96),
+                          ),
                           itemBuilder: (context, posicao) {
                             if (posicao == 0) {
                               return Padding(

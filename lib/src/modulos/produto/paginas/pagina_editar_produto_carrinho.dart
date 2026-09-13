@@ -166,6 +166,7 @@ class _PaginaEditarProdutoCarrinhoState
             if (!didPop) _confirmarSaida();
           },
           child: Scaffold(
+            extendBody: true,
             appBar: AppBar(
               title: const Text('Editar Produto'),
               backgroundColor: cs.inversePrimary,
@@ -235,7 +236,10 @@ class _PaginaEditarProdutoCarrinhoState
                     : AbsorbPointer(
                         absorbing: _salvando,
                         child: ListView(
-                          padding: const EdgeInsets.only(bottom: 16),
+                          padding: EdgeInsets.only(
+                            bottom: MediaQuery.paddingOf(context).bottom +
+                                MediaQuery.textScalerOf(context).scale(88),
+                          ),
                           children: [
                             ListTile(
                               leading: Icon(

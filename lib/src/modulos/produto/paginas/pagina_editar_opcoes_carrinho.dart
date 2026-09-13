@@ -164,6 +164,7 @@ class _PaginaEditarOpcoesCarrinhoState
               if (!didPop) _confirmarSaida();
             },
             child: Scaffold(
+              extendBody: true,
               appBar: AppBar(
                 backgroundColor: cs.inversePrimary,
                 title: Text(sabores
@@ -238,7 +239,10 @@ class _PaginaEditarOpcoesCarrinhoState
       Expanded(
           child: ListView(
         controller: _rolagem,
-        padding: const EdgeInsets.only(bottom: 16),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.paddingOf(context).bottom +
+              MediaQuery.textScalerOf(context).scale(88),
+        ),
         children: [
           ListaTamanhosPizza(
             provedor: edicao.cardapio,
@@ -306,7 +310,13 @@ class _PaginaEditarOpcoesCarrinhoState
   }
 
   Widget _listaOpcoes() => ListView(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+        padding: EdgeInsets.fromLTRB(
+          14,
+          12,
+          14,
+          MediaQuery.paddingOf(context).bottom +
+              MediaQuery.textScalerOf(context).scale(88),
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 16),

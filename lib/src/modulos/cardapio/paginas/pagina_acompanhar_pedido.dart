@@ -28,7 +28,8 @@ class PaginaAcompanharPedido extends StatefulWidget {
   State<PaginaAcompanharPedido> createState() => _PaginaAcompanharPedidoState();
 }
 
-class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with WidgetsBindingObserver {
+class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
+    with WidgetsBindingObserver {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
   final Server _server = Modular.get<Server>();
 
@@ -66,7 +67,9 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
   Future<void> listarComandasPedidos() async {
     if (_carregando) return;
     _carregando = true;
-    await servicoCardapio.listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim').then((value) {
+    await servicoCardapio
+        .listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim')
+        .then((value) {
       if (!mounted) return;
       setState(() {
         dados = value;
@@ -120,6 +123,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
     final valorTotal = _valorTotal(produtos);
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: cs.surface,
       appBar: _construirAppBar(cs),
       body: RefreshIndicator(
@@ -127,7 +131,13 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
         child: produtos.isEmpty
             ? _EstadoVazio(cs: cs)
             : ListView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  12,
+                  12,
+                  MediaQuery.paddingOf(context).bottom +
+                      MediaQuery.textScalerOf(context).scale(72),
+                ),
                 children: [
                   _HeroCard(
                     cs: cs,
@@ -138,13 +148,15 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
                     numeroPedido: dados!.numeroPedido,
                   ),
                   const SizedBox(height: 14),
-                  _ResumoChips(cs: cs, totalItens: totalItens, valorTotal: valorTotal),
+                  _ResumoChips(
+                      cs: cs, totalItens: totalItens, valorTotal: valorTotal),
                   const SizedBox(height: 18),
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 8),
                     child: Row(
                       children: [
-                        Icon(Icons.list_alt_rounded, size: 18, color: cs.onSurfaceVariant),
+                        Icon(Icons.list_alt_rounded,
+                            size: 18, color: cs.onSurfaceVariant),
                         const SizedBox(width: 6),
                         Text(
                           'ITENS DO PEDIDO',
@@ -173,7 +185,10 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
                 ],
               ),
       ),
-      bottomNavigationBar: produtos.isEmpty ? null : _RodapeTotal(cs: cs, valorTotal: valorTotal, totalItens: totalItens),
+      bottomNavigationBar: produtos.isEmpty
+          ? null
+          : _RodapeTotal(
+              cs: cs, valorTotal: valorTotal, totalItens: totalItens),
     );
   }
 
@@ -198,11 +213,17 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido> with Wi
             children: [
               Text(
                 'Detalhes da $_nomeTipo',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.1),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1),
               ),
               Text(
                 'Acompanhamento do pedido',
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurfaceVariant),
               ),
             ],
           ),
@@ -243,7 +264,10 @@ class _HeroCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.6)],
+          colors: [
+            cs.primaryContainer,
+            cs.primaryContainer.withValues(alpha: 0.6)
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -279,7 +303,8 @@ class _HeroCard extends StatelessWidget {
                     if (numeroPedido != null && numeroPedido!.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: cs.surface.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(10),
@@ -312,7 +337,9 @@ class _HeroCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Icon(Icons.person_outline_rounded, size: 14, color: cs.onPrimaryContainer.withValues(alpha: 0.85)),
+                    Icon(Icons.person_outline_rounded,
+                        size: 14,
+                        color: cs.onPrimaryContainer.withValues(alpha: 0.85)),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
@@ -342,7 +369,8 @@ class _ResumoChips extends StatelessWidget {
   final int totalItens;
   final double valorTotal;
 
-  const _ResumoChips({required this.cs, required this.totalItens, required this.valorTotal});
+  const _ResumoChips(
+      {required this.cs, required this.totalItens, required this.valorTotal});
 
   @override
   Widget build(BuildContext context) {
@@ -356,7 +384,9 @@ class _ResumoChips extends StatelessWidget {
             valor: totalItens.toString(),
           ),
         ),
-        if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+        if (usuarioProvedor
+                .usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
+            'Sim') ...[
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
@@ -399,7 +429,9 @@ class _Chip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icone, size: 18, color: destaque ? cs.onSecondaryContainer : cs.onSurfaceVariant),
+          Icon(icone,
+              size: 18,
+              color: destaque ? cs.onSecondaryContainer : cs.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -414,7 +446,9 @@ class _Chip extends StatelessWidget {
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
-                    color: destaque ? cs.onSecondaryContainer.withValues(alpha: 0.85) : cs.onSurfaceVariant,
+                    color: destaque
+                        ? cs.onSecondaryContainer.withValues(alpha: 0.85)
+                        : cs.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -442,18 +476,15 @@ class _RodapeTotal extends StatelessWidget {
   final double valorTotal;
   final int totalItens;
 
-  const _RodapeTotal({required this.cs, required this.valorTotal, required this.totalItens});
+  const _RodapeTotal(
+      {required this.cs, required this.valorTotal, required this.totalItens});
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
-          color: cs.surface,
-          border: Border(top: BorderSide(color: cs.outlineVariant, width: 0.6)),
-        ),
         child: Row(
           children: [
             Container(
@@ -462,7 +493,8 @@ class _RodapeTotal extends StatelessWidget {
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.receipt_outlined, color: cs.onPrimaryContainer, size: 18),
+              child: Icon(Icons.receipt_outlined,
+                  color: cs.onPrimaryContainer, size: 18),
             ),
             const SizedBox(width: 10),
             Column(
@@ -471,13 +503,22 @@ class _RodapeTotal extends StatelessWidget {
               children: [
                 Text(
                   'Total ($totalItens ${totalItens == 1 ? "item" : "itens"})',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant),
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 2),
-                if (usuarioProvedor.usuario?.configuracoes?.habilitarVerValorTotalNoApp == 'Sim') ...[
+                if (usuarioProvedor
+                        .usuario?.configuracoes?.habilitarVerValorTotalNoApp ==
+                    'Sim') ...[
                   Text(
                     valorTotal.obterReal(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: cs.primary, letterSpacing: 0.2),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary,
+                        letterSpacing: 0.2),
                   ),
                 ] else ...[
                   BadgeValorOculto(
@@ -511,14 +552,16 @@ class _EstadoVazio extends StatelessWidget {
               color: cs.surfaceContainerHigh,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.receipt_long_outlined, size: 52, color: cs.onSurfaceVariant),
+            child: Icon(Icons.receipt_long_outlined,
+                size: 52, color: cs.onSurfaceVariant),
           ),
         ),
         const SizedBox(height: 16),
         Center(
           child: Text(
             'Nenhum item lançado',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface),
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface),
           ),
         ),
         const SizedBox(height: 4),

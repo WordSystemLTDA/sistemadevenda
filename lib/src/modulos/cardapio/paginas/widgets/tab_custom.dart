@@ -295,7 +295,8 @@ class _TabCustomState extends State<TabCustom>
                     ],
                     SliverToBoxAdapter(
                         child: SizedBox(
-                            height: MediaQuery.paddingOf(context).bottom)),
+                            height: MediaQuery.paddingOf(context).bottom +
+                                MediaQuery.textScalerOf(context).scale(72))),
                   ],
                 ),
               ),

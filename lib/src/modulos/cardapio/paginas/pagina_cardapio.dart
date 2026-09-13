@@ -216,7 +216,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       builder: (context, _) {
         final temCategorias = _tabController != null && _categorias.isNotEmpty;
         return Scaffold(
-          extendBody: false,
+          extendBody: true,
           backgroundColor: cs.surface,
           appBar: AppBar(
             backgroundColor: cs.inversePrimary,
