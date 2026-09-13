@@ -7,6 +7,7 @@ import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:dio/dio.dart';
 
 import 'pedido_falado.dart';
+import 'abertura_falada.dart';
 
 class ServicoPedidoVoz {
   final String servidor;
@@ -78,7 +79,7 @@ class ServicoPedidoVoz {
     }
   }
 
-  Future<void> verificar() async {
+  Future<void> verificar({TipoAberturaVoz? abertura}) async {
     _validar();
     try {
       final resposta = await _voz.post('voz/sessao.php',
@@ -98,7 +99,54 @@ class ServicoPedidoVoz {
       throw const FalhaPedidoVoz(
           'Voz indisponível. Configure HTTPS e a chave da API da OpenAI no servidor. A assinatura do ChatGPT não ativa esta integração.');
     }
-    await _requisicao();
+    final capacidades = await _requisicao();
+    if (abertura != null && capacidades['abertura_voz'] != 1) {
+      throw const FalhaPedidoVoz(
+          'Atualize a API do servidor para abrir mesas e comandas por voz.');
+    }
+  }
+
+  Future<AberturaFalada> interpretarAbertura(
+      String caminho, TipoAberturaVoz tipo) async {
+    final resposta = await _requisicao(
+        audio: FormData.fromMap({
+      'audio': await MultipartFile.fromFile(caminho, filename: 'abertura.m4a'),
+      'finalidade': 'abertura',
+      'tipo_atendimento': tipo.name,
+    }));
+    if (resposta['abertura'] is! Map) {
+      throw const FalhaPedidoVoz('Nao foi possivel entender a abertura.');
+    }
+    return AberturaFalada.fromMap(resposta['abertura'] as Map, tipo);
+  }
+
+  Future<String> localizarClienteCadastrado(String nome) async {
+    _validar();
+    try {
+      final resposta = await _voz.post('voz/clientes.php',
+          data: {'nome': nome},
+          options: Options(headers: {'X-Garcom-Voz': _token}),
+          cancelToken: _cancelamento);
+      _validar();
+      final dados = resposta.data;
+      if (dados is! Map ||
+          dados['sucesso'] != true ||
+          dados['id_cliente'] is! String ||
+          !RegExp(r'^[1-9]\d*$').hasMatch(dados['id_cliente'] as String)) {
+        throw const FalhaPedidoVoz(
+            'Nao foi possivel selecionar o cliente cadastrado.');
+      }
+      return dados['id_cliente'] as String;
+    } on DioException catch (erro) {
+      final dados = erro.response?.data;
+      if (dados is Map &&
+          dados['mensagem'] is String &&
+          (dados['mensagem'] as String).length < 600) {
+        throw FalhaPedidoVoz(dados['mensagem'] as String);
+      }
+      throw const FalhaPedidoVoz(
+          'Nao consegui consultar o cliente. Nenhuma abertura foi enviada.');
+    }
   }
 
   Future<({String texto, Modelowordprodutos item})> interpretar(

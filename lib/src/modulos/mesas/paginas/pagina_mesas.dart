@@ -1,4 +1,6 @@
 import 'package:app/src/essencial/widgets/campo_busca.dart';
+import 'package:app/src/modulos/voz/abertura_falada.dart';
+import 'package:app/src/modulos/voz/botao_abertura_voz.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -291,6 +293,10 @@ class _PaginaMesasState extends State<PaginaMesas> {
                 _CabecalhoBusca(
                   pesquisaController: pesquisaController,
                   onChanged: (_) => setState(() {}),
+                  onAbertoPorVoz: () async {
+                    pesquisaController.clear();
+                    await listarMesas();
+                  },
                   onAbrirModalCodigo: () {
                     showModalBottomSheet(
                       context: context,
@@ -437,6 +443,7 @@ enum _ModoLista { todas, ocupadas, livres }
 
 class _CabecalhoBusca extends StatelessWidget {
   final TextEditingController pesquisaController;
+  final Future<void> Function() onAbertoPorVoz;
   final ValueChanged<String> onChanged;
   final VoidCallback onAbrirModalCodigo;
   final VoidCallback onAbrirScanner;
@@ -444,6 +451,7 @@ class _CabecalhoBusca extends StatelessWidget {
 
   const _CabecalhoBusca({
     required this.pesquisaController,
+    required this.onAbertoPorVoz,
     required this.onChanged,
     required this.onAbrirModalCodigo,
     required this.onAbrirScanner,
@@ -454,28 +462,18 @@ class _CabecalhoBusca extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: CampoBusca(
-              controller: pesquisaController,
-              hintText: 'Buscar mesa ou cliente',
-              onChanged: onChanged,
-            ),
-          ),
-          const SizedBox(width: 8),
+      child: LayoutBuilder(builder: (context, limites) {
+        final busca = CampoBusca(
+          controller: pesquisaController,
+          hintText: 'Buscar mesa ou cliente',
+          onChanged: onChanged,
+        );
+        final acoes = Row(mainAxisSize: MainAxisSize.min, children: [
           _BotaoAcao(
             icone: Icons.keyboard_alt_outlined,
             cor: const Color(0xFF6366F1),
             tooltip: 'Digitar código',
             onTap: onAbrirModalCodigo,
-          ),
-          const SizedBox(width: 8),
-          _BotaoAcao(
-            icone: Icons.qr_code_scanner_rounded,
-            cor: const Color(0xFF3B82F6),
-            tooltip: 'Escanear QR Code',
-            onTap: onAbrirScanner,
           ),
           if (onNfc != null) ...[
             const SizedBox(width: 8),
@@ -486,8 +484,32 @@ class _CabecalhoBusca extends StatelessWidget {
               onTap: onNfc!,
             ),
           ],
-        ],
-      ),
+          const SizedBox(width: 8),
+          _BotaoAcao(
+            icone: Icons.qr_code_scanner_rounded,
+            cor: const Color(0xFF3B82F6),
+            tooltip: 'Escanear QR Code',
+            onTap: onAbrirScanner,
+          ),
+          const SizedBox(width: 8),
+          BotaoAberturaVoz(
+              tipo: TipoAberturaVoz.mesa, onAberto: onAbertoPorVoz),
+        ]);
+        if (limites.maxWidth < (onNfc == null ? 360 : 416)) {
+          return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                busca,
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: acoes),
+              ]);
+        }
+        return Row(children: [
+          Expanded(child: busca),
+          const SizedBox(width: 8),
+          acoes,
+        ]);
+      }),
     );
   }
 }

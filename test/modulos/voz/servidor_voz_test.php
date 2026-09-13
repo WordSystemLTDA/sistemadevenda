@@ -2,6 +2,7 @@
 $base = getenv('API_GARCOM_TESTE') ?: '/Applications/XAMPP/xamppfiles/htdocs/sistema/apis_restaurantes/api_restaurantes_venda/api1';
 require_once $base . '/voz/seguranca.php';
 require_once $base . '/voz/interpretacao.php';
+require_once $base . '/voz/abertura.php';
 $testes = 0;
 function conferir($condicao, $descricao) {
     global $testes;
@@ -42,6 +43,26 @@ conferir(vozExtrairPlano($resposta) === $plano, 'extracao do contrato');
 rejeitar(fn() => vozExtrairPlano(['status'=>'incomplete']), 'resposta truncada');
 rejeitar(fn() => vozExtrairPlano(['status'=>'completed','output'=>[['content'=>[['type'=>'refusal']]]]]), 'recusa');
 rejeitar(fn() => vozExtrairPlano(['status'=>'completed','output'=>[['content'=>[['type'=>'output_text','text'=>'{}']]]]]), 'objeto incompleto');
+foreach (['mesa', 'comanda'] as $tipo) {
+    $requisicao = vozRequisicaoAbertura('Abrir ' . $tipo . ' tres com o nome de Bruno Masson', $tipo);
+    conferir($requisicao['store'] === false, 'abertura nao armazena Responses');
+    conferir($requisicao['text']['format']['strict'] === true, 'abertura estruturada');
+    conferir($requisicao['input'][0]['role'] === 'user', 'fala de abertura como dado');
+    conferir(strpos($requisicao['instructions'], 'cliente_cadastrado APENAS') !== false,
+        'nome livre nao seleciona cadastro implicitamente');
+    $abertura = ['acao'=>'abrir', 'tipo'=>$tipo, 'numero'=>'3', 'mesa_vinculada'=>'',
+        'observacao'=>'Bruno Masson', 'cliente_cadastrado'=>'', 'esclarecimento'=>''];
+    $respostaAbertura = ['status'=>'completed','output'=>[['content'=>[
+        ['type'=>'output_text','text'=>json_encode($abertura)]]]]];
+    conferir(vozExtrairPlano($respostaAbertura, vozSchemaAbertura()) === $abertura, 'contrato de abertura');
+    rejeitar(fn() => vozExtrairPlano($respostaAbertura), 'nao aceitar abertura como pedido de cozinha');
+}
+rejeitar(fn() => vozRequisicaoAbertura('Abrir mesa 3', 'balcao'), 'tipo fora de escopo');
+conferir(!isset(vozSchemaAbertura()['properties']['id_cliente']), 'modelo nao determina ID do cliente');
+conferir(vozClienteUnico([['id'=>700]]) === '700', 'cliente unico selecionado');
+rejeitar(fn() => vozClienteUnico([]), 'cliente inexistente bloqueado');
+rejeitar(fn() => vozClienteUnico([['id'=>700], ['id'=>701]]), 'homonimos bloqueados');
+rejeitar(fn() => vozClienteUnico([['id'=>'0']]), 'cadastro invalido bloqueado');
 $escopo = 'teste:' . bin2hex(random_bytes(16));
 vozLimitarUso($escopo, 1, 1);
 rejeitar(fn() => vozLimitarUso($escopo, 1, 1), 'limite de uso persistente');

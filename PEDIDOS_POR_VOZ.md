@@ -3,6 +3,7 @@
 ## O que foi implementado
 
 - Microfone ao lado dos favoritos no cardapio.
+- Microfone a direita do QR Code nas listas de mesas e comandas.
 - Gravacao iniciada pelo garcom e encerrada em "Concluir e enviar".
 - Uma pizza ou um produto simples por comando. Pizza inclui tamanho, sabores,
   bordas, adicionais e observacao. O calculo usa as regras existentes do app.
@@ -16,6 +17,32 @@
   Gravar mais de 60 segundos cancela, sem enviar uma fala cortada.
 
 ## Ativacao obrigatoria
+
+### Abertura de mesas e comandas
+
+- "Abrir comanda 3 com o nome de Bruno Masson": abre a comanda e grava
+  `Bruno Masson` na observacao, sem criar ou selecionar cadastro de cliente.
+- "Abrir comanda 3 vinculada a mesa 2 com o nome de Bruno Masson": adiciona
+  o vinculo com a mesa 2. A mesa precisa estar disponivel pelas regras existentes.
+- "Abrir mesa 3 com o nome de Bruno Masson": salva o nome na observacao.
+- "Abrir comanda 3 e selecionar o cliente cadastrado Bruno Masson": consulta
+  exatamente o nome completo (nome ou razao social) na empresa autenticada.
+  Clientes inativos, inexistentes e homonimos bloqueiam a abertura automatica.
+
+O comando termina em "Concluir e abrir". O numero falado corresponde ao nome
+visivel da mesa/comanda, nao ao ID do banco ou codigo QR. Uma mesa nao vincula
+outra mesa. O recurso so abre atendimentos livres, nao edita ou reabre contas
+ocupadas. A abertura segue a fila existente com verificacao de versao e sem
+fallback para o endpoint legado. O aviso de abertura salva nao confirma que o
+servidor ja aceitou a operacao; conferir eventuais pendencias/conflitos.
+Nome/observacao respeitam os 100 caracteres da coluna atual; comandos maiores
+sao rejeitados, sem truncar o texto.
+
+Publicar tambem `voz/abertura.php` e `voz/clientes.php`, junto com as alteracoes
+de `voz/pedido.php` e `voz/interpretacao.php`. O app verifica `abertura_voz: 1`
+antes de gravar. Nenhuma tabela ou coluna nova e necessaria.
+
+### Configuracao do servidor
 
 A assinatura do ChatGPT/Codex nao substitui a chave da API. Nao inserir tokens de
 login do ChatGPT, arquivos de autenticacao do Codex ou a chave OpenAI no app.
@@ -74,6 +101,12 @@ A chave nao estava disponivel durante a implementacao. Ainda e necessario valida
 microfone no Android/iPhone, reconhecimento no ruido real do salao e impressao
 fisica num ambiente de homologacao, com a API configurada. O audio de exemplo
 anexado nao foi transcrito pela OpenAI; os testes usam o exemplo escrito.
+
+Validacao leve do contrato de abertura, sem Flutter nem chamadas externas:
+`dart test/modulos/voz/contrato_abertura_check.dart`.
+Os testes de interface e da fila estao em `abertura_voz_test.dart`,
+`dialogo_pedido_voz_test.dart` e `atendimento_test.dart`. A execucao Flutter desta
+etapa ficou impedida por falta de espaco no Mac; repetir apos liberar espaco.
 
 Casos de homologacao: pizza G Mussarela/Calabresa com borda Chocolate e Milho;
 variacao de nomes e sotaques; pausa na fala; duas pizzas iguais; produto inexistente;

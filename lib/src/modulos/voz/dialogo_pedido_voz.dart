@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'gravador_voz.dart';
 import 'pedido_falado.dart';
 import 'servico_pedido_voz.dart';
+import 'abertura_falada.dart';
 
 enum _EtapaVoz { verificando, pronta, iniciando, gravando, interpretando, erro }
 
@@ -11,11 +12,15 @@ class DialogoPedidoVoz extends StatefulWidget {
   final String atendimento;
   final ServicoPedidoVoz servico;
   final GravadorVoz gravador;
+  final TipoAberturaVoz? abertura;
+  final bool descartarServicoAoFechar;
   const DialogoPedidoVoz(
       {super.key,
       required this.atendimento,
       required this.servico,
-      required this.gravador});
+      required this.gravador,
+      this.abertura,
+      this.descartarServicoAoFechar = true});
 
   @override
   State<DialogoPedidoVoz> createState() => _DialogoPedidoVozState();
@@ -47,7 +52,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
       _erro = null;
     });
     try {
-      await widget.servico.verificar();
+      await widget.servico.verificar(abertura: widget.abertura);
       if (mounted) setState(() => _etapa = _EtapaVoz.pronta);
     } catch (erro) {
       _falha(erro);
@@ -107,9 +112,15 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
     try {
       final caminho = await widget.gravador.concluir();
       if (!mounted || operacao != _operacao) return;
-      final resultado = await widget.servico.interpretar(caminho);
+      final Object resultado;
+      if (widget.abertura != null) {
+        resultado =
+            await widget.servico.interpretarAbertura(caminho, widget.abertura!);
+      } else {
+        resultado = (await widget.servico.interpretar(caminho)).item;
+      }
       if (!mounted || operacao != _operacao || _interrompido) return;
-      Navigator.pop(context, resultado.item);
+      Navigator.pop(context, resultado);
     } catch (erro) {
       if (operacao == _operacao) _falha(erro);
     }
@@ -146,7 +157,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
     ++_operacao;
     _tempo?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    widget.servico.dispose();
+    if (widget.descartarServicoAoFechar) widget.servico.dispose();
     unawaited(widget.gravador.dispose().catchError((Object _) {}));
     super.dispose();
   }
@@ -155,6 +166,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final gravando = _etapa == _EtapaVoz.gravando;
+    final abertura = widget.abertura != null;
     final ocupado = [
       _EtapaVoz.verificando,
       _EtapaVoz.iniciando,
@@ -174,9 +186,10 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
                 Row(children: [
                   Icon(Icons.mic_rounded, color: cs.primary),
                   const SizedBox(width: 10),
-                  const Expanded(
-                      child: Text('Pedido por voz',
-                          style: TextStyle(
+                  Expanded(
+                      child: Text(
+                          abertura ? 'Abertura por voz' : 'Pedido por voz',
+                          style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w700))),
                   IconButton(
                       tooltip: 'Cancelar pedido por voz',
@@ -189,13 +202,15 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
                         fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 20),
                 if (_etapa == _EtapaVoz.pronta) ...[
-                  const Text(
-                      'O áudio será enviado à OpenAI para interpretar o pedido. Ao concluir, os itens serão enviados ao preparo.'),
+                  Text(abertura
+                      ? 'O áudio será enviado à OpenAI. Ao concluir, a abertura será salva para sincronização.'
+                      : 'O áudio será enviado à OpenAI para interpretar o pedido. Ao concluir, os itens serão enviados ao preparo.'),
                   const SizedBox(height: 20),
                   FilledButton.icon(
                       onPressed: _iniciar,
                       icon: const Icon(Icons.mic),
-                      label: const Text('Gravar pedido')),
+                      label:
+                          Text(abertura ? 'Gravar comando' : 'Gravar pedido')),
                 ],
                 if (gravando) ...[
                   Wrap(
@@ -225,14 +240,16 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
                   FilledButton.icon(
                       onPressed: _concluir,
                       icon: const Icon(Icons.stop_rounded),
-                      label: const Text('Concluir e enviar')),
+                      label: Text(
+                          abertura ? 'Concluir e abrir' : 'Concluir e enviar')),
                 ],
                 if (ocupado) ...[
                   const LinearProgressIndicator(),
                   const SizedBox(height: 16),
                   Text(switch (_etapa) {
-                    _EtapaVoz.interpretando =>
-                      'Interpretando o pedido e conferindo o cardápio...',
+                    _EtapaVoz.interpretando => abertura
+                        ? 'Interpretando a abertura...'
+                        : 'Interpretando o pedido e conferindo o cardápio...',
                     _EtapaVoz.iniciando => 'Abrindo microfone...',
                     _ => 'Verificando serviço de voz...',
                   }),

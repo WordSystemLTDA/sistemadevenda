@@ -223,6 +223,22 @@ void main() {
     final nome = mesa ? 'mesas' : 'comandas';
     Widget pagina() => mesa ? const PaginaMesas() : const PaginaComandas();
 
+    for (final largura in [320.0, 393.0, 800.0]) {
+      testWidgets('$nome voz ao lado direito do QR Code em $largura',
+          (tester) async {
+        await abrir(tester, pagina(), largura: largura);
+        final qr = find.byTooltip('Escanear QR Code');
+        final voz =
+            find.byTooltip('Abrir ${mesa ? 'mesa' : 'comanda'} por voz');
+        expect(voz, findsOneWidget);
+        expect(tester.getCenter(voz).dy, closeTo(tester.getCenter(qr).dy, 1));
+        expect(tester.getRect(voz).left, greaterThan(tester.getRect(qr).right));
+        expect(tester.getRect(voz).right, lessThanOrEqualTo(largura - 12));
+        expect(tester.getSize(voz).height, greaterThanOrEqualTo(48));
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('$nome renderiza so os cartoes visiveis e busca sem requisicao',
         (tester) async {
       await abrir(tester, pagina());

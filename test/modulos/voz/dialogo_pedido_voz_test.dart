@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/modulos/voz/abertura_falada.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
 import 'package:app/src/modulos/voz/gravador_voz.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../suporte/captura_tela.dart';
 import 'pedido_falado_test.dart' show pizzaDetalhada;
+import 'abertura_voz_test.dart' show comandoAbertura;
 
 class GravadorTeste extends Fake implements GravadorVoz {
   int inicios = 0, conclusoes = 0, cancelamentos = 0, descartes = 0;
@@ -40,12 +42,15 @@ class GravadorTeste extends Fake implements GravadorVoz {
 class VozTeste extends Fake implements ServicoPedidoVoz {
   int chamadas = 0, descartes = 0;
   int verificacoes = 0;
+  int aberturas = 0;
+  TipoAberturaVoz? tipoVerificado;
   Completer<void>? verificacaoPendente;
   Object? erro;
   Completer<({String texto, Modelowordprodutos item})>? espera;
   @override
-  Future<void> verificar() async {
+  Future<void> verificar({TipoAberturaVoz? abertura}) async {
     verificacoes++;
+    tipoVerificado = abertura;
     if (verificacaoPendente != null) await verificacaoPendente!.future;
     if (erro != null) throw erro!;
   }
@@ -60,6 +65,13 @@ class VozTeste extends Fake implements ServicoPedidoVoz {
   }
 
   @override
+  Future<AberturaFalada> interpretarAbertura(
+      String caminho, TipoAberturaVoz tipo) async {
+    aberturas++;
+    return AberturaFalada.fromMap(comandoAbertura(tipo: tipo.name), tipo);
+  }
+
+  @override
   void dispose() {
     descartes++;
   }
@@ -70,13 +82,17 @@ void main() {
   late GravadorTeste gravador;
   late VozTeste servico;
   Modelowordprodutos? resultado;
+  AberturaFalada? resultadoAbertura;
   setUp(() {
     gravador = GravadorTeste();
     servico = VozTeste();
     resultado = null;
+    resultadoAbertura = null;
   });
   Future<void> abrir(WidgetTester tester,
-      {Size tela = const Size(393, 852), double escala = 1}) async {
+      {Size tela = const Size(393, 852),
+      double escala = 1,
+      TipoAberturaVoz? abertura}) async {
     tester.view.physicalSize = tela;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -96,12 +112,19 @@ void main() {
                     tooltip: 'Voz',
                     icon: const Icon(Icons.mic),
                     onPressed: () async {
-                      resultado = await showDialog<Modelowordprodutos>(
+                      final resposta = await showDialog<Object>(
                           context: context,
                           builder: (_) => DialogoPedidoVoz(
                               atendimento: 'Comanda: 10',
+                              abertura: abertura,
                               servico: servico,
                               gravador: gravador));
+                      if (resposta is Modelowordprodutos) {
+                        resultado = resposta;
+                      }
+                      if (resposta is AberturaFalada) {
+                        resultadoAbertura = resposta;
+                      }
                     },
                   ))),
         )));
@@ -130,6 +153,27 @@ void main() {
       expect(gravador.descartes, 1);
       expect(servico.chamadas, 0);
       expect(resultado, isNull);
+    });
+  }
+  for (final tipo in TipoAberturaVoz.values) {
+    testWidgets(
+        'dialogo de ${tipo.name} interpreta abertura sem enviar produtos',
+        (tester) async {
+      await abrir(tester, abertura: tipo, tela: const Size(320, 568));
+      expect(find.text('Abertura por voz'), findsOneWidget);
+      expect(servico.tipoVerificado, tipo);
+      await tester.tap(find.text('Gravar comando'));
+      await tester.pump();
+      await capturarTela(tester, 'abrir_${tipo.name}_voz_320');
+      await tester.tap(find.text('Concluir e abrir'));
+      await tester.pumpAndSettle();
+      expect(resultadoAbertura?.tipo, tipo);
+      expect(resultadoAbertura?.observacao, 'Bruno Masson');
+      expect(resultadoAbertura?.clienteCadastrado, '');
+      expect(servico.aberturas, 1);
+      expect(servico.chamadas, 0);
+      expect(resultado, isNull);
+      expect(tester.takeException(), isNull);
     });
   }
   testWidgets('texto ampliado em celular pequeno', (tester) async {

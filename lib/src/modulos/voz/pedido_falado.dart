@@ -9,12 +9,8 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 
-class FalhaPedidoVoz implements Exception {
-  final String mensagem;
-  const FalhaPedidoVoz(this.mensagem);
-  @override
-  String toString() => mensagem;
-}
+import 'falha_pedido_voz.dart';
+export 'falha_pedido_voz.dart';
 
 class PedidoFalado {
   final bool pizza;
