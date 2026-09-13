@@ -19,7 +19,8 @@ class FuncoesGlobais {
     return numeroVersaoApp.toString();
   }
 
-  static Future<bool> appPrecisaAtualizar(versaoApp, versaoAppIos) async {
+  static Future<bool> appPrecisaAtualizar(
+      String versaoApp, String versaoAppIos) async {
     String numeroVersaoApp = await getVersaoInstalada();
     String numeroVersaoAppServidor = Platform.isIOS ? versaoAppIos : versaoApp;
 
@@ -27,16 +28,19 @@ class FuncoesGlobais {
       numeroVersaoAppServidor += '.0';
     }
 
-    if (Version.parse(numeroVersaoAppServidor) > Version.parse(numeroVersaoApp)) {
+    if (Version.parse(numeroVersaoAppServidor) >
+        Version.parse(numeroVersaoApp)) {
       return true;
     } else {
       return false;
     }
   }
 
-  static void abrirLinkAtualizacao(String atualizacaoAndroid, String atualizacaoIos) async {
+  static void abrirLinkAtualizacao(
+      String atualizacaoAndroid, String atualizacaoIos) async {
     if (Platform.isAndroid) {
-      await launchUrl(Uri.parse(atualizacaoAndroid)).onError((error, stackTrace) {
+      await launchUrl(Uri.parse(atualizacaoAndroid))
+          .onError((error, stackTrace) {
         return false;
       });
     } else if (Platform.isIOS) {
