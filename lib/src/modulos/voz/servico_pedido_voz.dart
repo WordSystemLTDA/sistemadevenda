@@ -14,13 +14,16 @@ class ServicoPedidoVoz {
   final UsuarioProvedor usuario;
   late final _identidade = usuario.usuario;
   String? _token;
-  late final Dio _voz = Dio(BaseOptions(
+  Dio? _clienteVoz;
+  DioCliente? _clienteCatalogo;
+  Dio get _voz => _clienteVoz ??= Dio(BaseOptions(
       baseUrl: enderecoSeguro(servidor),
       connectTimeout: const Duration(seconds: 10),
       sendTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 90)));
-  late final DioCliente _catalogo = DioCliente(servidor: servidor)
-    ..cliente.options.extra['semCache'] = true;
+  DioCliente get _catalogo =>
+      _clienteCatalogo ??= (DioCliente(servidor: servidor)
+        ..cliente.options.extra['semCache'] = true);
   final _cancelamento = CancelToken();
   ServicoPedidoVoz({required this.servidor, required this.usuario}) {
     // Capture agora; nao herdar uma conta trocada durante a gravacao.
@@ -53,7 +56,9 @@ class ServicoPedidoVoz {
   Future<Map> _requisicao({FormData? audio}) async {
     _validar();
     try {
-      final opcoes = Options(headers: {'X-Garcom-Voz': _token});
+      final opcoes = Options(
+          headers: {'X-Garcom-Voz': _token},
+          receiveTimeout: Duration(seconds: audio == null ? 12 : 90));
       final resposta = audio == null
           ? await _voz.get('voz/pedido.php',
               options: opcoes, cancelToken: _cancelamento)
@@ -83,6 +88,7 @@ class ServicoPedidoVoz {
     _validar();
     try {
       final resposta = await _voz.post('voz/sessao.php',
+          options: Options(receiveTimeout: const Duration(seconds: 12)),
           data: {
             'empresa': _identidade!.empresa,
             'id_usuario': _identidade!.id,
@@ -103,6 +109,10 @@ class ServicoPedidoVoz {
     if (abertura != null && capacidades['abertura_voz'] != 1) {
       throw const FalhaPedidoVoz(
           'Atualize a API do servidor para abrir mesas e comandas por voz.');
+    }
+    if (abertura == null && capacidades['destino_voz'] != 1) {
+      throw const FalhaPedidoVoz(
+          'Atualize a API de voz para escolher entre carrinho e cozinha. Nenhum pedido foi enviado.');
     }
   }
 
@@ -149,11 +159,11 @@ class ServicoPedidoVoz {
     }
   }
 
-  Future<({String texto, Modelowordprodutos item})> interpretar(
-      String caminho) async {
+  Future<ResultadoPedidoVoz> interpretar(String caminho) async {
     final resposta = await _requisicao(
         audio: FormData.fromMap({
       'audio': await MultipartFile.fromFile(caminho, filename: 'pedido.m4a'),
+      'destino_voz': '1',
     }));
     if (resposta['pedido'] is! Map) {
       throw const FalhaPedidoVoz(
@@ -199,13 +209,15 @@ class ServicoPedidoVoz {
     }
     return (
       texto: resposta['texto'] as String? ?? '',
+      destino: pedido.destino,
       item: montador.montar(pedido, detalhes)
     );
   }
 
   void dispose() {
+    if (_cancelamento.isCancelled) return;
     _cancelamento.cancel();
-    _voz.close(force: true);
-    _catalogo.cliente.close(force: true);
+    _clienteVoz?.close(force: true);
+    _clienteCatalogo?.cliente.close(force: true);
   }
 }

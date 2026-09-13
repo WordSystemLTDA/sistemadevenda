@@ -15,6 +15,7 @@ class TabCustom extends StatefulWidget {
   final bool finalizar;
   final FavoritosProdutos? favoritos;
   final VoidCallback? onPedidoVoz;
+  final bool vozOcupada;
 
   const TabCustom({
     super.key,
@@ -23,6 +24,7 @@ class TabCustom extends StatefulWidget {
     required this.finalizar,
     this.favoritos,
     this.onPedidoVoz,
+    this.vozOcupada = false,
   });
 
   @override
@@ -170,8 +172,12 @@ class _TabCustomState extends State<TabCustom>
                       tooltip: 'Pedido por voz',
                       style:
                           IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                      onPressed: widget.onPedidoVoz,
-                      icon: const Icon(Icons.mic_rounded),
+                      onPressed: widget.vozOcupada ? null : widget.onPedidoVoz,
+                      icon: widget.vozOcupada
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.mic_rounded),
                     ),
                   ],
                 ],

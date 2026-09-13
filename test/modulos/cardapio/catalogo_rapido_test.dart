@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
+import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -115,6 +116,31 @@ void main() {
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+      'microfone responde com carrinho cheio e nao inicializa plugin ao abrir',
+      (tester) async {
+    await abrir(tester);
+    await tester.tap(find.byKey(const ValueKey('adicionar_produto_0')));
+    await tester.pumpAndSettle();
+    final carrinho = Modular.get<ProvedorCarrinho>();
+    expect(carrinho.itensCarrinho.quantidadeTotal, 1);
+    final microfone = find.byKey(const ValueKey('pedido_por_voz'));
+    final acionar = tester.widget<IconButton>(microfone).onPressed!;
+    await tester.tap(microfone);
+    acionar(); // Um callback atrasado tambem nao deve abrir outro dialogo.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(DialogoPedidoVoz), findsOneWidget);
+    expect(tester.widget<IconButton>(microfone).onPressed, isNull);
+    expect(find.textContaining('Entre novamente'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Cancelar pedido por voz'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<IconButton>(microfone).onPressed, isNotNull);
+    expect(carrinho.itensCarrinho.quantidadeTotal, 1);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant({TargetPlatform.iOS}));
 
   testWidgets(
       'favoritar nao adiciona e filtro inclui produto alem da primeira pagina',

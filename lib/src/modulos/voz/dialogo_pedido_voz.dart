@@ -67,7 +67,11 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
       _etapa = _EtapaVoz.erro;
       _erro = erro is FalhaPedidoVoz
           ? erro.mensagem
-          : 'Não foi possível preparar o pedido por voz. Nenhum item foi enviado.';
+          : erro is MissingPluginException
+              ? 'O microfone não está instalado nesta versão do aplicativo. Atualize o app com uma nova instalação completa.'
+              : erro is PlatformException
+                  ? 'Não foi possível abrir o microfone. Confira a permissão nos ajustes do celular e tente novamente.'
+                  : 'Não foi possível preparar o pedido por voz. Nenhum item foi enviado.';
     });
   }
 
@@ -117,7 +121,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
         resultado =
             await widget.servico.interpretarAbertura(caminho, widget.abertura!);
       } else {
-        resultado = (await widget.servico.interpretar(caminho)).item;
+        resultado = await widget.servico.interpretar(caminho);
       }
       if (!mounted || operacao != _operacao || _interrompido) return;
       Navigator.pop(context, resultado);
@@ -204,7 +208,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
                 if (_etapa == _EtapaVoz.pronta) ...[
                   Text(abertura
                       ? 'O áudio será enviado à OpenAI. Ao concluir, a abertura será salva para sincronização.'
-                      : 'O áudio será enviado à OpenAI para interpretar o pedido. Ao concluir, os itens serão enviados ao preparo.'),
+                      : 'O áudio será enviado à OpenAI para interpretar o pedido.'),
                   const SizedBox(height: 20),
                   FilledButton.icon(
                       onPressed: _iniciar,
@@ -241,7 +245,7 @@ class _DialogoPedidoVozState extends State<DialogoPedidoVoz>
                       onPressed: _concluir,
                       icon: const Icon(Icons.stop_rounded),
                       label: Text(
-                          abertura ? 'Concluir e abrir' : 'Concluir e enviar')),
+                          abertura ? 'Concluir e abrir' : 'Concluir pedido')),
                 ],
                 if (ocupado) ...[
                   const LinearProgressIndicator(),

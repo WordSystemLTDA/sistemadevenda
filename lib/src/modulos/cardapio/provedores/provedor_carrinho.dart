@@ -159,7 +159,8 @@ class ProvedorCarrinho extends ChangeNotifier {
   }
 
   Future<bool> prepararEnvioVoz(
-      Modelowordprodutos produto, ContextoCarrinho esperado) async {
+      Modelowordprodutos produto, ContextoCarrinho esperado,
+      {bool exigirCarrinhoVazio = true}) async {
     if (_descartado || !identical(_contexto, esperado) || !esperado.valido) {
       return false;
     }
@@ -167,7 +168,9 @@ class ProvedorCarrinho extends ChangeNotifier {
       ..conferidoNoCarrinho = false;
     final salvo = await _servico.armazenamento.alterar(esperado, (itens) {
       // Uma gravacao nunca autoriza enviar outros rascunhos do atendimento.
-      if (!identical(_contexto, esperado) || itens.isNotEmpty) {
+      if (_descartado ||
+          !identical(_contexto, esperado) ||
+          (exigirCarrinhoVazio && itens.isNotEmpty)) {
         throw StateError('Há outros itens no carrinho ou o atendimento mudou.');
       }
       itens.add(copia);

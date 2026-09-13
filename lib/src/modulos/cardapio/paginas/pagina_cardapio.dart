@@ -1,8 +1,8 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:developer';
 import 'dart:convert';
+import 'dart:async';
 import 'package:app/src/essencial/api/conexao.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
 import 'package:app/src/modulos/voz/gravador_voz.dart';
 import 'package:app/src/modulos/voz/pedido_falado.dart';
@@ -216,8 +216,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   }
 
   Future<void> _pedidoVoz() async {
-    if (_vozAberta || _carregandoDados) return;
-    _vozAberta = true;
+    if (_vozAberta) return;
+    setState(() => _vozAberta = true);
+    FocusManager.instance.primaryFocus?.unfocus();
     final esperado = carrinhoProvedor.contexto;
     final usuario = provedor.usuarioProvedor.usuario;
     try {
@@ -229,22 +230,24 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       }
       if (esperado == null ||
           !esperado.valido ||
-          !['mesa', 'comanda'].contains(esperado.tipo) ||
-          Sincronizador.instancia == null) {
+          !['mesa', 'comanda'].contains(esperado.tipo)) {
         throw const FalhaPedidoVoz(
-            'Abra uma mesa ou comanda sincronizada para enviar um pedido por voz.');
+            'Aguarde a abertura da mesa ou comanda e tente o microfone novamente.');
       }
-      if ((await carrinhoProvedor.obterItensParaFinalizar(esperado))
-          .isNotEmpty) {
+      final servidor =
+          (await Apis().getConexao().timeout(const Duration(seconds: 5)))
+              .servidor;
+      if (!mounted) return;
+      if (!identical(esperado, carrinhoProvedor.contexto) ||
+          !identical(usuario, provedor.usuarioProvedor.usuario) ||
+          ModalRoute.of(context)?.isCurrent != true) {
         throw const FalhaPedidoVoz(
-            'Há produtos no carrinho. Finalize esses itens antes de enviar outro pedido por voz.');
+            'O atendimento mudou. Abra o microfone novamente.');
       }
-      final servidor = (await Apis().getConexao()).servidor;
-      if (!mounted || !identical(esperado, carrinhoProvedor.contexto)) return;
       final servicoVoz = ServicoPedidoVoz(
           servidor: servidor, usuario: provedor.usuarioProvedor);
       final gravadorVoz = GravadorVoz();
-      final item = await showDialog<Modelowordprodutos>(
+      final resultado = await showDialog<ResultadoPedidoVoz>(
         context: context,
         barrierDismissible: false,
         builder: (_) => DialogoPedidoVoz(
@@ -252,19 +255,39 @@ class _PaginaCardapioState extends State<PaginaCardapio>
             servico: servicoVoz,
             gravador: gravadorVoz),
       );
-      if (!mounted || item == null) return;
+      if (!mounted || resultado == null) return;
+      final item = resultado.item;
+      final cozinha = resultado.destino == DestinoPedidoVoz.cozinha;
+      final servidorAtual =
+          (await Apis().getConexao().timeout(const Duration(seconds: 5)))
+              .servidor;
+      if (!mounted) return;
       if (!identical(esperado, carrinhoProvedor.contexto) ||
           !identical(usuario, provedor.usuarioProvedor.usuario) ||
-          servidor != (await Apis().getConexao()).servidor) {
+          ModalRoute.of(context)?.isCurrent != true ||
+          servidor != servidorAtual) {
         throw const FalhaPedidoVoz(
             'O atendimento ou a conexão mudou. Nenhum pedido foi enviado.');
       }
-      if (!mounted ||
-          !await carrinhoProvedor.prepararEnvioVoz(item, esperado)) {
+      if (cozinha && Sincronizador.instancia == null) {
         throw const FalhaPedidoVoz(
-            'Não foi possível preparar o envio. Confira os itens no carrinho.');
+            'Aguarde a sincronização antes de enviar à cozinha. Nenhum pedido foi enviado.');
+      }
+      if (!mounted ||
+          !await carrinhoProvedor.prepararEnvioVoz(item, esperado,
+              exigirCarrinhoVazio: cozinha)) {
+        throw const FalhaPedidoVoz(
+            'O carrinho ou atendimento mudou. Para envio direto, finalize antes os outros itens. Nenhum pedido foi enviado.');
       }
       if (!mounted) return;
+      if (!cozinha) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Produto adicionado ao carrinho. Não enviado à cozinha.'),
+          showCloseIcon: true,
+        ));
+        return;
+      }
       await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => PaginaCarrinho(
             contextoVoz: esperado,
@@ -277,12 +300,14 @@ class _PaginaCardapioState extends State<PaginaCardapio>
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(erro is FalhaPedidoVoz
               ? erro.mensagem
-              : 'Não foi possível concluir o pedido por voz. Confira o carrinho.'),
+              : erro is TimeoutException
+                  ? 'Não foi possível abrir a conexão de voz. Tente novamente.'
+                  : 'Não foi possível concluir o pedido por voz. Confira o carrinho.'),
           showCloseIcon: true,
         ));
       }
     } finally {
-      _vozAberta = false;
+      if (mounted) setState(() => _vozAberta = false);
     }
   }
 
@@ -451,6 +476,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               finalizar: finalizar,
                               favoritos: _favoritos,
                               onPedidoVoz: _pedidoVoz,
+                              vozOcupada: _vozAberta,
                             ),
                         ],
                       ),

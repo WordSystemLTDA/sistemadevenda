@@ -19,26 +19,27 @@ class DioCliente {
     receiveTimeout: tempoResposta,
   ));
 
-  void configurar({String? servidor}) async {
+  void configurar({String? servidor}) {
     // cliente.options.baseUrl = servidor ?? (await Apis().getConexao()).servidor;
     // cliente = Dio(
     //   BaseOptions(
     //     baseUrl: servidor ?? (await Apis().getConexao()).servidor,
     //     connectTimeout: const Duration(seconds: 10),
     //   ),
-    // ); 
+    // );
 
     cliente.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Add the access token to the request header
-          options.baseUrl = options.extra['servidorFixo'] as String? ??
-              servidor ?? (await Apis().getConexao()).servidor;
-
-          return handler.next(options);
-        },
-        onError: (DioException e, handler) async {
-          return handler.next(e);
+          try {
+            options.baseUrl = options.extra['servidorFixo'] as String? ??
+                servidor ??
+                (await Apis().getConexao()).servidor;
+            handler.next(options);
+          } catch (erro, stack) {
+            handler.reject(DioException(
+                requestOptions: options, error: erro, stackTrace: stack));
+          }
         },
       ),
     );

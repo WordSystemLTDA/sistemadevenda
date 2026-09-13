@@ -240,7 +240,29 @@ void main() {
             'http://usuario:senha@restaurante/'),
         throwsA(isA<FalhaPedidoVoz>()));
   });
+  test('fechar servico com endereco invalido nao inicializa clientes nem falha',
+      () {
+    final servico = ServicoPedidoVoz(servidor: 'invalido', usuario: usuario);
+    servico.dispose();
+    servico.dispose();
+  });
 
+  for (final (entrada, esperado) in [
+    ('cozinha', DestinoPedidoVoz.cozinha),
+    ('carrinho', DestinoPedidoVoz.carrinho),
+    ('nao_informado', DestinoPedidoVoz.carrinho),
+    (null, DestinoPedidoVoz.carrinho),
+  ]) {
+    test('preserva destino $entrada do pedido falado', () {
+      expect(
+          PedidoFalado.fromMap(comandoPizza()..['destino'] = entrada).destino,
+          esperado);
+    });
+  }
+  test('destino desconhecido nao permite envio', () {
+    expect(() => PedidoFalado.fromMap(comandoPizza()..['destino'] = 'qualquer'),
+        throwsA(isA<FalhaPedidoVoz>()));
+  });
   group('gravação no atendimento', () {
     late ProvedorCarrinho carrinho;
     late ApiCarrinhoTeste api;
@@ -269,12 +291,34 @@ void main() {
       expect(carrinho.itensCarrinho.listaComandosPedidos, hasLength(1));
       expect(api.chamadas, isEmpty);
     });
+    test('destino carrinho acrescenta sem enviar rascunhos anteriores',
+        () async {
+      final contexto = carrinho.contexto!;
+      final item = montador.montar(
+          PedidoFalado.fromMap(comandoPizza()), pizzaDetalhada());
+      await carrinho.prepararEnvioVoz(item, contexto);
+      final anterior = jsonEncode(
+          carrinho.itensCarrinho.listaComandosPedidos.single.toMap());
+      expect(
+          await carrinho.prepararEnvioVoz(item, contexto,
+              exigirCarrinhoVazio: false),
+          true);
+      expect(carrinho.itensCarrinho.listaComandosPedidos, hasLength(2));
+      expect(
+          jsonEncode(carrinho.itensCarrinho.listaComandosPedidos.first.toMap()),
+          anterior);
+      expect(api.chamadas, isEmpty);
+    });
     test('comanda reutilizada nao recebe o pedido antigo', () async {
       final contexto = carrinho.contexto!;
       await carrinho.selecionarAtendimento(
           tipo: 'comanda', idAtendimento: '204', idRecurso: '4');
       expect(
           await carrinho.prepararEnvioVoz(pizzaDetalhada(), contexto), false);
+      expect(
+          await carrinho.prepararEnvioVoz(pizzaDetalhada(), contexto,
+              exigirCarrinhoVazio: false),
+          false);
       expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     });
   });

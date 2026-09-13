@@ -36,10 +36,30 @@ conferir($request['input'][0]['role'] === 'user', 'fala tratada como dado');
 conferir($request['text']['format']['strict'] === true, 'saida estruturada estrita');
 conferir($request['text']['format']['schema']['additionalProperties'] === false, 'campos fechados');
 conferir(!isset(vozSchema()['properties']['preco']) && !isset(vozSchema()['properties']['id_comanda']), 'modelo nao controla preco ou destino');
-$plano = ['tipo'=>'pizza', 'produto'=>'', 'quantidade'=>1, 'tamanho'=>'G', 'sabores'=>['Mussarela','Calabresa'],
+$plano = ['tipo'=>'pizza', 'destino'=>'carrinho', 'produto'=>'', 'quantidade'=>1, 'tamanho'=>'G', 'sabores'=>['Mussarela','Calabresa'],
     'bordas'=>['Chocolate'], 'adicionais'=>[['nome'=>'Milho','quantidade'=>1]], 'observacao'=>'', 'esclarecimento'=>''];
 $resposta = ['status'=>'completed','output'=>[['type'=>'message','content'=>[['type'=>'output_text','text'=>json_encode($plano)]]]]];
 conferir(vozExtrairPlano($resposta) === $plano, 'extracao do contrato');
+conferir(vozSchema()['properties']['destino']['enum'] === ['carrinho', 'cozinha', 'nao_informado'],
+    'destinos fechados, sem ID de atendimento');
+conferir(strpos($request['instructions'], 'cozinha SOMENTE') !== false,
+    'envio exige ordem explicita');
+conferir(strpos($request['instructions'], 'nao mande para a cozinha, so adicione no carrinho') !== false,
+    'prompt respeita negacao do envio');
+foreach (['carrinho', 'cozinha', 'nao_informado'] as $destino) {
+    $comDestino = $plano;
+    $comDestino['destino'] = $destino;
+    $retorno = ['status'=>'completed','output'=>[['content'=>[
+        ['type'=>'output_text','text'=>json_encode($comDestino)]]]]];
+    conferir(vozExtrairPlano($retorno)['destino'] === $destino, 'preserva destino ' . $destino);
+}
+foreach (['outro', null, 1] as $destino) {
+    $invalido = $plano;
+    $invalido['destino'] = $destino;
+    $retorno = ['status'=>'completed','output'=>[['content'=>[
+        ['type'=>'output_text','text'=>json_encode($invalido)]]]]];
+    rejeitar(fn() => vozExtrairPlano($retorno), 'destino invalido bloqueado');
+}
 rejeitar(fn() => vozExtrairPlano(['status'=>'incomplete']), 'resposta truncada');
 rejeitar(fn() => vozExtrairPlano(['status'=>'completed','output'=>[['content'=>[['type'=>'refusal']]]]]), 'recusa');
 rejeitar(fn() => vozExtrairPlano(['status'=>'completed','output'=>[['content'=>[['type'=>'output_text','text'=>'{}']]]]]), 'objeto incompleto');

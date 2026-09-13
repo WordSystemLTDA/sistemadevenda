@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import 'pedido_falado.dart';
+import 'falha_pedido_voz.dart';
 
 class GravadorVoz {
-  final AudioRecorder _gravador = AudioRecorder();
+  AudioRecorder? _gravador;
   Directory? _pasta;
   int _operacao = 0;
   bool _encerrado = false;
@@ -18,7 +18,10 @@ class GravadorVoz {
   Future<void> iniciar() async {
     final operacao = ++_operacao;
     _validar(operacao);
-    final permitido = await _gravador.hasPermission();
+    // O plugin inicia um Future no construtor. Aguarde-o no mesmo fluxo
+    // para capturar MissingPluginException em builds anteriores ao microfone.
+    final gravador = _gravador ??= AudioRecorder();
+    final permitido = await gravador.hasPermission();
     _validar(operacao);
     if (!permitido) {
       throw const FalhaPedidoVoz(
@@ -33,7 +36,7 @@ class GravadorVoz {
       }
       _validar(operacao);
     }
-    await _gravador.start(
+    await gravador.start(
         const RecordConfig(
             encoder: AudioEncoder.aacLc,
             bitRate: 64000,
@@ -43,7 +46,7 @@ class GravadorVoz {
   }
 
   Future<String> concluir() async {
-    final caminho = await _gravador.stop();
+    final caminho = await _gravador?.stop();
     if (caminho == null ||
         !await File(caminho).exists() ||
         await File(caminho).length() > 1024 * 1024) {
@@ -53,16 +56,16 @@ class GravadorVoz {
     return caminho;
   }
 
-  Future<void> cancelar() {
+  Future<void> cancelar() async {
     ++_operacao;
-    return _gravador.cancel();
+    await _gravador?.cancel();
   }
 
   Future<void> dispose() async {
     _encerrado = true;
     ++_operacao;
     try {
-      await _gravador.dispose();
+      await _gravador?.dispose();
     } finally {
       final pasta = _pasta;
       if (pasta != null && await pasta.exists()) {

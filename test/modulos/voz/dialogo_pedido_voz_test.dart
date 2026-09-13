@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:app/src/modulos/voz/abertura_falada.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
 import 'package:app/src/modulos/voz/gravador_voz.dart';
 import 'package:app/src/modulos/voz/pedido_falado.dart';
 import 'package:app/src/modulos/voz/servico_pedido_voz.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../suporte/captura_tela.dart';
 import 'pedido_falado_test.dart' show pizzaDetalhada;
@@ -46,7 +46,8 @@ class VozTeste extends Fake implements ServicoPedidoVoz {
   TipoAberturaVoz? tipoVerificado;
   Completer<void>? verificacaoPendente;
   Object? erro;
-  Completer<({String texto, Modelowordprodutos item})>? espera;
+  Completer<ResultadoPedidoVoz>? espera;
+  DestinoPedidoVoz destino = DestinoPedidoVoz.carrinho;
   @override
   Future<void> verificar({TipoAberturaVoz? abertura}) async {
     verificacoes++;
@@ -56,12 +57,11 @@ class VozTeste extends Fake implements ServicoPedidoVoz {
   }
 
   @override
-  Future<({String texto, Modelowordprodutos item})> interpretar(
-      String caminho) async {
+  Future<ResultadoPedidoVoz> interpretar(String caminho) async {
     chamadas++;
     return espera != null
         ? await espera!.future
-        : (texto: 'Pizza G', item: pizzaDetalhada());
+        : (texto: 'Pizza G', item: pizzaDetalhada(), destino: destino);
   }
 
   @override
@@ -81,7 +81,7 @@ void main() {
   setUpAll(carregarFontesDeTeste);
   late GravadorTeste gravador;
   late VozTeste servico;
-  Modelowordprodutos? resultado;
+  ResultadoPedidoVoz? resultado;
   AberturaFalada? resultadoAbertura;
   setUp(() {
     gravador = GravadorTeste();
@@ -119,7 +119,7 @@ void main() {
                               abertura: abertura,
                               servico: servico,
                               gravador: gravador));
-                      if (resposta is Modelowordprodutos) {
+                      if (resposta is ResultadoPedidoVoz) {
                         resultado = resposta;
                       }
                       if (resposta is AberturaFalada) {
@@ -145,7 +145,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
       expect(find.textContaining('Gravando'), findsOneWidget);
-      expect(find.text('Concluir e enviar'), findsOneWidget);
+      expect(find.text('Concluir pedido'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'pedido_voz_${tamanho.width.toInt()}');
       await tester.tap(find.byTooltip('Cancelar pedido por voz'));
@@ -190,14 +190,19 @@ void main() {
     await abrir(tester);
     await tester.tap(find.text('Gravar pedido'));
     await tester.pump();
-    await tester.tap(find.text('Concluir e enviar'));
-    await tester.tap(find.text('Concluir e enviar'));
+    await tester.tap(find.text('Concluir pedido'));
+    await tester.tap(find.text('Concluir pedido'));
     await tester.pump();
     expect(servico.chamadas, 1);
     expect(gravador.conclusoes, 1);
-    servico.espera!.complete((texto: 'Pizza', item: pizzaDetalhada()));
+    servico.espera!.complete((
+      texto: 'Pizza',
+      item: pizzaDetalhada(),
+      destino: DestinoPedidoVoz.carrinho
+    ));
     await tester.pumpAndSettle();
-    expect(resultado?.id, '1');
+    expect(resultado?.item.id, '1');
+    expect(resultado?.destino, DestinoPedidoVoz.carrinho);
   });
   testWidgets('cancelar antes da resposta descarta resultado tardio',
       (tester) async {
@@ -205,11 +210,15 @@ void main() {
     await abrir(tester);
     await tester.tap(find.text('Gravar pedido'));
     await tester.pump();
-    await tester.tap(find.text('Concluir e enviar'));
+    await tester.tap(find.text('Concluir pedido'));
     await tester.pump();
     await tester.tap(find.byTooltip('Cancelar pedido por voz'));
     await tester.pumpAndSettle();
-    servico.espera!.complete((texto: 'Pizza', item: pizzaDetalhada()));
+    servico.espera!.complete((
+      texto: 'Pizza',
+      item: pizzaDetalhada(),
+      destino: DestinoPedidoVoz.cozinha
+    ));
     await tester.pumpAndSettle();
     expect(resultado, isNull);
     expect(tester.takeException(), isNull);
@@ -224,6 +233,31 @@ void main() {
     expect(resultado, isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('plugin ausente mostra erro em vez de derrubar a janela',
+      (tester) async {
+    gravador.erro = MissingPluginException('record');
+    await abrir(tester);
+    await tester.tap(find.text('Gravar pedido'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('nova instalação completa'), findsOneWidget);
+    expect(servico.chamadas, 0);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Cancelar pedido por voz'));
+    await tester.pumpAndSettle();
+  });
+  for (final destino in DestinoPedidoVoz.values) {
+    testWidgets('dialogo preserva destino ${destino.name} da fala',
+        (tester) async {
+      servico.destino = destino;
+      await abrir(tester);
+      await tester.tap(find.text('Gravar pedido'));
+      await tester.pump();
+      await tester.tap(find.text('Concluir pedido'));
+      await tester.pumpAndSettle();
+      expect(resultado?.destino, destino);
+      expect(resultado?.item.id, '1');
+    });
+  }
   testWidgets('sem API configurada nao abre o microfone', (tester) async {
     servico.erro = const FalhaPedidoVoz('Configure a API.');
     await abrir(tester);

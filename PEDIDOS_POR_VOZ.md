@@ -4,12 +4,14 @@
 
 - Microfone ao lado dos favoritos no cardapio.
 - Microfone a direita do QR Code nas listas de mesas e comandas.
-- Gravacao iniciada pelo garcom e encerrada em "Concluir e enviar".
+- Gravacao iniciada pelo garcom e encerrada em "Concluir pedido".
 - Uma pizza ou um produto simples por comando. Pizza inclui tamanho, sabores,
   bordas, adicionais e observacao. O calculo usa as regras existentes do app.
-- Envio automatico para mesa/comanda, usando a mesma fila duravel de pedidos e
-  preparo. O carrinho precisa estar vazio antes da voz para nao enviar outros
-  rascunhos sem autorizacao.
+- "Adicionar no carrinho" guarda o produto no atendimento atual, preserva os
+  rascunhos anteriores e nao envia para preparo. Sem destino falado, fica no carrinho.
+- "Enviar para a cozinha" usa a mesma fila duravel de pedidos e preparo.
+  Apenas nesse destino o carrinho precisa estar vazio, para nao enviar outros
+  rascunhos sem autorizacao. Destinos contraditorios pedem esclarecimento.
 - Nomes ambiguos, opcoes indisponiveis, limites excedidos e escolhas obrigatorias
   interrompem o envio. Montagens especiais (kits, acai e acompanhamentos) continuam
   no configurador manual nesta etapa. Nao ha transferencia por voz.
@@ -41,6 +43,20 @@ sao rejeitados, sem truncar o texto.
 Publicar tambem `voz/abertura.php` e `voz/clientes.php`, junto com as alteracoes
 de `voz/pedido.php` e `voz/interpretacao.php`. O app verifica `abertura_voz: 1`
 antes de gravar. Nenhuma tabela ou coluna nova e necessaria.
+
+Pedidos de produtos verificam `destino_voz: 1` e enviam o mesmo marcador no
+multipart. Publicar app e API atualizados: a API rejeita pedidos de versoes antigas
+que ignoravam o destino falado. O contrato usa a saida estruturada da OpenAI;
+respostas incompletas ou destinos desconhecidos nao autorizam envio.
+
+### Microfone e erros de inicializacao
+
+- O toque mostra estado ocupado, mesmo durante atualizacao do cardapio.
+- O gravador nativo so e criado ao iniciar a gravacao, dentro do tratamento de
+  erros. Falta do plugin exige nova instalacao completa, nao apenas hot reload.
+- Negar permissao ou faltar configuracao da API mostra erro e permite fechar
+  a janela, sem descartar o carrinho ou enviar pedidos.
+- A verificacao HTTPS tem timeout curto; o prazo maior fica reservado ao audio.
 
 ### Configuracao do servidor
 
@@ -104,9 +120,18 @@ anexado nao foi transcrito pela OpenAI; os testes usam o exemplo escrito.
 
 Validacao leve do contrato de abertura, sem Flutter nem chamadas externas:
 `dart test/modulos/voz/contrato_abertura_check.dart`.
-Os testes de interface e da fila estao em `abertura_voz_test.dart`,
-`dialogo_pedido_voz_test.dart` e `atendimento_test.dart`. A execucao Flutter desta
-etapa ficou impedida por falta de espaco no Mac; repetir apos liberar espaco.
+Em 13/09/2026 passaram 149 testes Flutter focados em voz, conexao, carrinho,
+catalogo, sincronizacao, preparo e abertura, com `--no-pub --no-test-assets
+--concurrency=1`. Passaram tambem 45 verificacoes PHP do contrato da API.
+Os testes de microfone incluem plugin ausente, permissao negada, cancelamento e
+toque no cardapio com carrinho cheio. Nao substituem a homologacao no aparelho.
+
+A compilacao `flutter build ios --debug --no-pub --no-codesign` terminou com
+sucesso. O `Runner.app` gerado contem `NSMicrophoneUsageDescription` e
+`record_ios.framework`; o build anterior nao continha a descricao de permissao.
+Esse artefato de validacao nao esta assinado nem foi instalado no iPhone. Executar
+novamente pelo fluxo normal de assinatura/instalacao do projeto, sem desinstalar
+o aplicativo nem apagar seus dados, para preservar pedidos locais pendentes.
 
 Casos de homologacao: pizza G Mussarela/Calabresa com borda Chocolate e Milho;
 variacao de nomes e sotaques; pausa na fala; duas pizzas iguais; produto inexistente;

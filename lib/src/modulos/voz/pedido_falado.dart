@@ -10,12 +10,21 @@ import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 
 import 'falha_pedido_voz.dart';
+import 'destino_pedido_voz.dart';
 export 'falha_pedido_voz.dart';
+export 'destino_pedido_voz.dart';
+
+typedef ResultadoPedidoVoz = ({
+  String texto,
+  Modelowordprodutos item,
+  DestinoPedidoVoz destino,
+});
 
 class PedidoFalado {
   final bool pizza;
   final String produto, tamanho, observacao;
   final int quantidade;
+  final DestinoPedidoVoz destino;
   final List<String> sabores, bordas;
   final List<({String nome, int quantidade})> adicionais;
 
@@ -27,7 +36,8 @@ class PedidoFalado {
       required this.sabores,
       required this.bordas,
       required this.adicionais,
-      required this.observacao});
+      required this.observacao,
+      this.destino = DestinoPedidoVoz.carrinho});
 
   factory PedidoFalado.fromMap(Map dados) {
     String texto(String campo, {int limite = 160}) {
@@ -84,6 +94,7 @@ class PedidoFalado {
       ));
     }
     final pedido = PedidoFalado(
+        destino: DestinoPedidoVoz.interpretar(dados['destino']),
         pizza: tipo == 'pizza',
         produto: texto('produto'),
         tamanho: texto('tamanho'),
