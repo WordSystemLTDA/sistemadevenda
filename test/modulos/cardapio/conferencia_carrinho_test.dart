@@ -240,6 +240,7 @@ void main() {
           await tester.tap(find.text('Conferir'));
           await tester.pumpAndSettle();
           expect(find.text('Conferido'), findsOneWidget);
+          expect(find.text('Conferido com o cliente'), findsNothing);
           expect(itens().first.conferidoNoCarrinho, isTrue);
           expect(tester.widget<Card>(find.byType(Card).first).color,
               isNot(corInicial));

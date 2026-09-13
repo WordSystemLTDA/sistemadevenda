@@ -326,13 +326,6 @@ class _CardCarrinhoState extends State<CardCarrinho>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (item.conferidoNoCarrinho) ...[
-                      StatusAtendimento(
-                          texto: 'Conferido com o cliente',
-                          cor: VisualAtendimento.verde(context),
-                          icone: Icons.check_circle_outline),
-                      const SizedBox(height: 10),
-                    ],
                     LinhaValor(
                       descricao: Text(nomeExibicao,
                           style: const TextStyle(
