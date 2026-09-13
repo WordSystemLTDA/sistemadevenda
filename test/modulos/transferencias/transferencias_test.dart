@@ -122,8 +122,9 @@ class ServicoTeste extends Fake implements ServicoTransferencias {
   Future<void> confirmar(AlvoTransferencia a, AlvoTransferencia b) async {
     envios++;
     await espera?.future;
-    if (falharEnvio)
+    if (falharEnvio) {
       throw const FalhaTransferencia('Conexao interrompida', pendente: true);
+    }
   }
 
   @override
@@ -339,7 +340,7 @@ void main() {
           escuro: largura == 800);
       expect(tester.takeException(), isNull);
       expect(servico.envios, 0);
-      expect(find.text('Confirmar uniao'), findsOneWidget);
+      expect(find.text('Confirmar união'), findsOneWidget);
       await capturarTela(
           tester, 'transferencia_confirmacao_${largura.toInt()}');
     });
@@ -377,7 +378,7 @@ void main() {
     await tester.tap(find.text(destino.nome));
     await tester.pumpAndSettle();
     expect(servico.envios, 0);
-    await tester.tap(find.text('Confirmar uniao'));
+    await tester.tap(find.text('Confirmar união'));
     await tester.pumpAndSettle();
     expect(servico.envios, 1);
     expect(tester.takeException(), isNull);
@@ -394,7 +395,7 @@ void main() {
         DialogoTransferencia(
             servico: servico, origem: origem, destino: destino));
     expect(find.textContaining('O destino mudou'), findsOneWidget);
-    expect(find.text('Confirmar uniao'), findsNothing);
+    expect(find.text('Confirmar união'), findsNothing);
     expect(servico.envios, 0);
   });
   testWidgets('queda apresenta verificacao sem habilitar outra uniao',
@@ -404,11 +405,11 @@ void main() {
         tester,
         DialogoTransferencia(
             servico: servico, origem: origem, destino: destino));
-    await tester.tap(find.text('Confirmar uniao'));
+    await tester.tap(find.text('Confirmar união'));
     await tester.pumpAndSettle();
-    expect(find.text('Verificar transferencia'), findsOneWidget);
+    expect(find.text('Verificar transferência'), findsOneWidget);
     expect(find.text('Escolher outro destino'), findsNothing);
-    await tester.tap(find.text('Verificar transferencia'));
+    await tester.tap(find.text('Verificar transferência'));
     await tester.pumpAndSettle();
     expect(servico.envios, 1);
     expect(servico.verificacoes, 1);
@@ -417,7 +418,7 @@ void main() {
       (tester) async {
     await tela(
         tester, HistoricoTransferencias(servico: ServicoTeste(), alvo: origem));
-    expect(find.textContaining('Usuario #1'), findsOneWidget);
+    expect(find.textContaining('Usuário #1'), findsOneWidget);
     expect(find.textContaining('Atendimentos #101 / #102'), findsOneWidget);
     expect(find.text('Cliente de teste'), findsOneWidget);
     await capturarTela(tester, 'transferencia_historico');

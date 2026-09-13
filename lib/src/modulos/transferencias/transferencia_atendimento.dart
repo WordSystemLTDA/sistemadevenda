@@ -234,7 +234,7 @@ class _DialogoTransferenciaState extends State<DialogoTransferencia> {
                         Expanded(
                             child: Text(
                                 pendente
-                                    ? 'Transferencia pendente'
+                                    ? 'Transferência pendente'
                                     : 'Transferir / Juntar',
                                 style: const TextStyle(
                                     fontSize: 18,
@@ -287,7 +287,7 @@ class _DialogoTransferenciaState extends State<DialogoTransferencia> {
                     Expanded(
                         child: candidatos.isEmpty
                             ? const Center(
-                                child: Text('Nenhum atendimento disponivel.'))
+                                child: Text('Nenhum atendimento disponível.'))
                             : ListView.separated(
                                 itemCount: candidatos.length,
                                 separatorBuilder: (_, __) =>
@@ -345,11 +345,11 @@ class _DialogoTransferenciaState extends State<DialogoTransferencia> {
                                             fontWeight: FontWeight.w700)),
                                   const SizedBox(height: 12),
                                   Text(pendente
-                                      ? 'O resultado ainda precisa de confirmacao do servidor.'
-                                      : 'Todos os pedidos irao para ${destino!.nome}. ${origem!.nome} ficara livre.'),
+                                      ? 'O resultado ainda precisa de confirmação do servidor.'
+                                      : 'Todos os pedidos irão para ${destino!.nome}. ${origem!.nome} ficará livre.'),
                                   const SizedBox(height: 8),
                                   const Text(
-                                      'Os itens nao serao impressos novamente. Avise a cozinha sobre a troca de destino.'),
+                                      'Os itens não serão impressos novamente. Avise a cozinha sobre a troca de destino.'),
                                   if (erro != null) ...[
                                     const SizedBox(height: 12),
                                     Text(erro!,
@@ -375,10 +375,10 @@ class _DialogoTransferenciaState extends State<DialogoTransferencia> {
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 12),
                                       child: Text(pendente
-                                          ? 'Verificar transferencia'
+                                          ? 'Verificar transferência'
                                           : destino!.livre
-                                              ? 'Confirmar transferencia'
-                                              : 'Confirmar uniao'))),
+                                              ? 'Confirmar transferência'
+                                              : 'Confirmar união'))),
                               if (!pendente)
                                 TextButton(
                                     onPressed: enviando
@@ -463,7 +463,7 @@ class _HistoricoTransferenciasState extends State<HistoricoTransferencias> {
           height: math.min(600, MediaQuery.sizeOf(context).height * .8),
           child: Column(children: [
             ListTile(
-                title: const Text('Historico de transferencias'),
+                title: const Text('Histórico de transferências'),
                 subtitle: Text(widget.alvo.nome),
                 trailing: IconButton(
                     tooltip: 'Fechar',
@@ -477,7 +477,7 @@ class _HistoricoTransferenciasState extends State<HistoricoTransferencias> {
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
                     'Atendimentos #${item['atendimento_origem']} / #${item['atendimento_destino']}'),
-                Text('${item['criado_em']} · Usuario #${item['usuario']}'),
+                Text('${item['criado_em']} · Usuário #${item['usuario']}'),
                 if (widget.servico.mostrarValores)
                   Text(
                       'Transferido: ${_real(item['total_origem'].toString())}'),
@@ -486,7 +486,7 @@ class _HistoricoTransferenciasState extends State<HistoricoTransferencias> {
                 const Divider(height: 24),
               ],
               if (!carregando && erro == null && itens.isEmpty)
-                const Text('Nenhuma transferencia registrada.'),
+                const Text('Nenhuma transferência registrada.'),
               if (erro != null) Text(erro!),
               if (carregando)
                 const Center(child: CircularProgressIndicator())

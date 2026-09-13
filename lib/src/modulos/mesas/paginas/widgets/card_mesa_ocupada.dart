@@ -265,7 +265,7 @@ class _CardMesaOcupadaState extends State<CardMesaOcupada> {
               MenuItemButton(
                 onPressed: () => abrirHistoricoTransferencias(context, alvo),
                 leadingIcon: const Icon(Icons.history, size: 18),
-                child: const Text('Historico de transferencias'),
+                child: const Text('Histórico de transferências'),
               ),
             ],
           ),
