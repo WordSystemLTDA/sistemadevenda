@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/voz/abertura_falada.dart';
 import 'package:app/src/modulos/voz/botao_abertura_voz.dart';
+import 'package:app/src/modulos/voz/configuracao_voz.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -491,9 +492,11 @@ class _CabecalhoBusca extends StatelessWidget {
             tooltip: 'Escanear QR Code',
             onTap: onAbrirScanner,
           ),
-          const SizedBox(width: 8),
-          BotaoAberturaVoz(
-              tipo: TipoAberturaVoz.mesa, onAberto: onAbertoPorVoz),
+          if (exibirComandosVoz) ...[
+            const SizedBox(width: 8),
+            BotaoAberturaVoz(
+                tipo: TipoAberturaVoz.mesa, onAberto: onAbertoPorVoz),
+          ],
         ]);
         if (limites.maxWidth < (onNfc == null ? 360 : 416)) {
           return Column(

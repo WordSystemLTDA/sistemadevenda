@@ -6,6 +6,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
+import 'package:app/src/modulos/voz/configuracao_voz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -165,7 +166,7 @@ class _TabCustomState extends State<TabCustom>
                           widget.favoritos!.disponivel ? _alternarFiltro : null,
                     ),
                   ],
-                  if (widget.onPedidoVoz != null) ...[
+                  if (exibirComandosVoz && widget.onPedidoVoz != null) ...[
                     const SizedBox(width: 4),
                     IconButton.filledTonal(
                       key: const ValueKey('pedido_por_voz'),
