@@ -1,11 +1,27 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": "C:/Projetos/sistemarestaurante"
 		},
 		{
-			"path": "../../sistema/apis_restaurantes"
+			"path": "C:/xampp/htdocs/sistema/apis_restaurantes"
+		},
+		{
+			"path": "C:/Projetos/sistemadevenda"
+		},
+		{
+			"path": "C:/Projetos/Servidor"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"git.enabled": true,
+		"git.autoRepositoryDetection": true,
+		"git.scanRepositories": [
+			"C:/Projetos/sistemarestaurante",
+			"C:/xampp/htdocs/sistema/apis_restaurantes",
+			"C:/Projetos/sistemadevenda",
+			"C:/Projetos/Servidor"
+		],
+		"scm.repositories.visible": 10
+	}
 }

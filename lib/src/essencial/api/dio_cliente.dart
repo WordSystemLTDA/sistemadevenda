@@ -26,7 +26,7 @@ class DioCliente {
     //     baseUrl: servidor ?? (await Apis().getConexao()).servidor,
     //     connectTimeout: const Duration(seconds: 10),
     //   ),
-    // );
+    // ); 
 
     cliente.interceptors.add(
       InterceptorsWrapper(
