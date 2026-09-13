@@ -7,18 +7,27 @@
     {
       "name": "app",
       "request": "launch",
-      "type": "dart"
+      "type": "dart",
+      "cwd": "${workspaceFolder}",
+      "program": "lib/main.dart",
+      "deviceId": "windows"
     },
     {
       "name": "app (profile mode)",
       "request": "launch",
       "type": "dart",
+      "cwd": "${workspaceFolder}",
+      "program": "lib/main.dart",
+      "deviceId": "windows",
       "flutterMode": "profile"
     },
     {
       "name": "app (release mode)",
       "request": "launch",
       "type": "dart",
+      "cwd": "${workspaceFolder}",
+      "program": "lib/main.dart",
+      "deviceId": "windows",
       "flutterMode": "release"
     }
   ]
