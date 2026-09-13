@@ -5,8 +5,8 @@ import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 class DioCliente {
   CacheConsultas? cache;
-  DioCliente() {
-    configurar();
+  DioCliente({String? servidor}) {
+    configurar(servidor: servidor);
   }
 
   static const tempoConexao = Duration(seconds: 10);

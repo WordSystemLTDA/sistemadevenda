@@ -14,6 +14,7 @@ class TabCustom extends StatefulWidget {
   final ModeloCategoria categoria;
   final bool finalizar;
   final FavoritosProdutos? favoritos;
+  final VoidCallback? onPedidoVoz;
 
   const TabCustom({
     super.key,
@@ -21,6 +22,7 @@ class TabCustom extends StatefulWidget {
     required this.categoria,
     required this.finalizar,
     this.favoritos,
+    this.onPedidoVoz,
   });
 
   @override
@@ -159,6 +161,17 @@ class _TabCustomState extends State<TabCustom>
                       ),
                       onPressed:
                           widget.favoritos!.disponivel ? _alternarFiltro : null,
+                    ),
+                  ],
+                  if (widget.onPedidoVoz != null) ...[
+                    const SizedBox(width: 4),
+                    IconButton.filledTonal(
+                      key: const ValueKey('pedido_por_voz'),
+                      tooltip: 'Pedido por voz',
+                      style:
+                          IconButton.styleFrom(minimumSize: const Size(48, 48)),
+                      onPressed: widget.onPedidoVoz,
+                      icon: const Icon(Icons.mic_rounded),
                     ),
                   ],
                 ],

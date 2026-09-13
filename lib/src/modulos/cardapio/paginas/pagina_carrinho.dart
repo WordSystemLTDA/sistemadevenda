@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
@@ -26,7 +27,14 @@ import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaCarrinho extends StatefulWidget {
-  const PaginaCarrinho({super.key});
+  final ContextoCarrinho? contextoVoz;
+  final String? assinaturaVoz, servidorVoz, usuarioVoz;
+  const PaginaCarrinho(
+      {super.key,
+      this.contextoVoz,
+      this.assinaturaVoz,
+      this.servidorVoz,
+      this.usuarioVoz});
 
   @override
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
@@ -60,6 +68,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   final _finalizacao = FinalizacaoComPreparo();
   Modeloworddadoscardapio? dados;
   bool carregando = true;
+  bool _tentouEnvioVoz = false;
 
   @override
   void initState() {
@@ -108,6 +117,18 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       }
     } finally {
       if (mounted) setState(() => carregando = false);
+    }
+    if (mounted &&
+        dados != null &&
+        widget.contextoVoz != null &&
+        !_tentouEnvioVoz) {
+      _tentouEnvioVoz = true;
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        await _finalizar(voz: true);
+      }
     }
   }
 
@@ -213,7 +234,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     if (ok == true) removerTodosItensCarrinho();
   }
 
-  Future<void> _finalizar() async {
+  Future<void> _finalizar({bool voz = false}) async {
     if (isLoading ||
         carregando ||
         _contextoCarrinho == null ||
@@ -245,6 +266,17 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     try {
       final itens =
           await carrinhoProvedor.obterItensParaFinalizar(contextoCarrinho);
+      if (voz &&
+          (!identical(widget.contextoVoz, contextoCarrinho) ||
+              widget.usuarioVoz != usuarioProvedor.usuario?.id ||
+              widget.servidorVoz != (await Apis().getConexao()).servidor ||
+              itens.length != 1 ||
+              jsonEncode(itens.map((i) => i.toMap()).toList()) !=
+                  widget.assinaturaVoz ||
+              Sincronizador.instancia == null)) {
+        throw StateError(
+            'O pedido mudou depois da gravação. Confira o carrinho antes de finalizar.');
+      }
       if (itens.isEmpty && !_finalizacao.pedidoRegistrado) {
         throw StateError('O carrinho nao tem produtos pendentes.');
       }

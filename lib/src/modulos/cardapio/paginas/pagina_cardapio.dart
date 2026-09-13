@@ -1,6 +1,12 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:developer';
 import 'dart:convert';
+import 'package:app/src/essencial/api/conexao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
+import 'package:app/src/modulos/voz/gravador_voz.dart';
+import 'package:app/src/modulos/voz/pedido_falado.dart';
+import 'package:app/src/modulos/voz/servico_pedido_voz.dart';
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
@@ -83,6 +89,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   int indexTabBar = 0;
   bool finalizar = false;
   bool _carregandoDados = false;
+  bool _vozAberta = false;
   String? _erroCarregamento;
   final _sincronizador = Sincronizador.instancia;
   late final _favoritos = FavoritosProdutos(provedor.usuarioProvedor);
@@ -205,6 +212,71 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     provedor.idCliente = widget.idCliente ?? '0';
     provedor.id = widget.id ?? '0';
     provedor.tipodeentrega = widget.tipodeentrega ?? '0';
+  }
+
+  Future<void> _pedidoVoz() async {
+    if (_vozAberta || _carregandoDados) return;
+    _vozAberta = true;
+    final esperado = carrinhoProvedor.contexto;
+    final usuario = provedor.usuarioProvedor.usuario;
+    try {
+      if (esperado == null ||
+          !esperado.valido ||
+          !['mesa', 'comanda'].contains(esperado.tipo) ||
+          Sincronizador.instancia == null) {
+        throw const FalhaPedidoVoz(
+            'Abra uma mesa ou comanda sincronizada para enviar um pedido por voz.');
+      }
+      if ((await carrinhoProvedor.obterItensParaFinalizar(esperado))
+          .isNotEmpty) {
+        throw const FalhaPedidoVoz(
+            'Há produtos no carrinho. Finalize esses itens antes de enviar outro pedido por voz.');
+      }
+      final servidor = (await Apis().getConexao()).servidor;
+      if (!mounted || !identical(esperado, carrinhoProvedor.contexto)) return;
+      final servicoVoz = ServicoPedidoVoz(
+          servidor: servidor, usuario: provedor.usuarioProvedor);
+      final gravadorVoz = GravadorVoz();
+      final item = await showDialog<Modelowordprodutos>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => DialogoPedidoVoz(
+            atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
+            servico: servicoVoz,
+            gravador: gravadorVoz),
+      );
+      if (!mounted || item == null) return;
+      if (!identical(esperado, carrinhoProvedor.contexto) ||
+          !identical(usuario, provedor.usuarioProvedor.usuario) ||
+          servidor != (await Apis().getConexao()).servidor) {
+        throw const FalhaPedidoVoz(
+            'O atendimento ou a conexão mudou. Nenhum pedido foi enviado.');
+      }
+      if (!mounted ||
+          !await carrinhoProvedor.prepararEnvioVoz(item, esperado)) {
+        throw const FalhaPedidoVoz(
+            'Não foi possível preparar o envio. Confira os itens no carrinho.');
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PaginaCarrinho(
+            contextoVoz: esperado,
+            assinaturaVoz: jsonEncode([item.toMap()]),
+            servidorVoz: servidor,
+            usuarioVoz: usuario?.id),
+      ));
+    } catch (erro) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(erro is FalhaPedidoVoz
+              ? erro.mensagem
+              : 'Não foi possível concluir o pedido por voz. Confira o carrinho.'),
+          showCloseIcon: true,
+        ));
+      }
+    } finally {
+      _vozAberta = false;
+    }
   }
 
   @override
@@ -371,6 +443,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               categoria: categoria,
                               finalizar: finalizar,
                               favoritos: _favoritos,
+                              onPedidoVoz: _pedidoVoz,
                             ),
                         ],
                       ),

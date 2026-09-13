@@ -158,6 +158,27 @@ class ProvedorCarrinho extends ChangeNotifier {
     return res;
   }
 
+  Future<bool> prepararEnvioVoz(
+      Modelowordprodutos produto, ContextoCarrinho esperado) async {
+    if (_descartado || !identical(_contexto, esperado) || !esperado.valido) {
+      return false;
+    }
+    final copia = Modelowordprodutos.fromMap(produto.toMap())
+      ..conferidoNoCarrinho = false;
+    final salvo = await _servico.armazenamento.alterar(esperado, (itens) {
+      // Uma gravacao nunca autoriza enviar outros rascunhos do atendimento.
+      if (!identical(_contexto, esperado) || itens.isNotEmpty) {
+        throw StateError('Há outros itens no carrinho ou o atendimento mudou.');
+      }
+      itens.add(copia);
+    });
+    if (salvo && identical(_contexto, esperado) && !_descartado) {
+      _numeroAdicoes++;
+      await listarComandasPedidos();
+    }
+    return salvo;
+  }
+
   Future<bool> definirConferencia(
       Modelowordprodutos item, int index, bool conferido) async {
     final alvo = _contexto;
