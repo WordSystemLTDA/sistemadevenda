@@ -139,7 +139,7 @@ class CacheConsultas extends Interceptor {
     if (alvo != null &&
         alvo == escopo &&
         (!_atendimento(caminho(response.requestOptions)) ||
-            response.requestOptions.extra['geracaoAtendimento'] ==
+            (response.requestOptions.extra['geracaoAtendimento'] ?? _geracaoAtendimento) ==
                 _geracaoAtendimento) &&
         response.extra['cacheLocal'] != true &&
         response.statusCode == 200 &&

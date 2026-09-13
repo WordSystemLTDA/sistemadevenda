@@ -173,10 +173,11 @@ class _DialogoTransferenciaState extends State<DialogoTransferencia> {
         destino = atual;
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => erro = e is FalhaTransferencia
             ? e.mensagem
             : 'Nao foi possivel carregar a transferencia.');
+      }
     } finally {
       if (mounted) setState(() => carregando = false);
     }
@@ -441,11 +442,12 @@ class _HistoricoTransferenciasState extends State<HistoricoTransferencias> {
       await widget.servico.iniciar();
       final resultado = await widget.servico.historico(widget.alvo,
           antes: itens.isEmpty ? null : itens.last['id'].toString());
-      if (mounted)
+      if (mounted) {
         setState(() {
           itens.addAll(resultado);
           mais = resultado.length == 50;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => erro = e.toString());
     } finally {

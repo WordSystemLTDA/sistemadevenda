@@ -93,7 +93,7 @@ foreach (['comanda', 'mesa'] as $tipo) {
 }
 
 foreach (['novo_item', 'fechamento', 'reutilizada', 'livre_reutilizada', 'pago', 'ajuste', 'item_pago',
-    'outra_empresa', 'mesmo_destino', 'usuario_inativo', 'mesa_vinculada', 'versao', 'origem_alterada'] as $cenario) {
+    'outra_empresa', 'mesmo_destino', 'mesmo_destino_zero', 'usuario_inativo', 'mesa_vinculada', 'versao', 'origem_alterada'] as $cenario) {
     $tipo = $cenario === 'mesa_vinculada' ? 'mesa' : 'comanda';
     preparar($pdo, $tipo, $cenario === 'livre_reutilizada');
     $pedido = entrada($pdo, $tipo);
@@ -107,6 +107,7 @@ foreach (['novo_item', 'fechamento', 'reutilizada', 'livre_reutilizada', 'pago',
         case 'item_pago': $pdo->exec('UPDATE itens_venda SET id_venda = 22 WHERE id = 1'); $pedido = entrada($pdo, $tipo); break;
         case 'outra_empresa': $pdo->exec('UPDATE comandas SET empresa = 33 WHERE id = 2'); break;
         case 'mesmo_destino': $pedido['dados']['destino'] = '1'; break;
+        case 'mesmo_destino_zero': $pedido['dados']['destino'] = '01'; break;
         case 'usuario_inativo': $pdo->exec("UPDATE usuarios SET ativo = 'Não'"); break;
         case 'mesa_vinculada': $pdo->exec('UPDATE comandas_pedidos SET id_comanda = 4 WHERE id = 101'); $pedido = entrada($pdo, $tipo); break;
         case 'versao': $pedido['dados']['versao_destino'] = ''; break;
@@ -142,3 +143,15 @@ echo "OK: duas conexoes simultaneas confirmam apenas uma transferencia\n";
 $pedido['dados']['destino'] = '1';
 rejeitar($pdo, $pedido);
 echo "OK: identificador repetido com outro conteudo recusado\n";
+
+foreach (['mesa', 'comanda'] as $tipo) {
+    preparar($pdo, $tipo);
+    garcomOperacao($pdo, entrada($pdo, $tipo));
+    try {
+        garcomPedidoLegado($pdo, ['empresa' => '32', 'id_usuario' => '1', 'id_comanda_pedido' => '101',
+            'id_comanda' => $tipo === 'comanda' ? '1' : '0', 'id_mesa' => $tipo === 'mesa' ? '1' : '0', 'produtos' => []], $tipo);
+        throw new RuntimeException('Rota legada aceitou origem transferida');
+    } catch (ConflitoGarcom $e) {}
+    verificar($pdo->query('SELECT COUNT(*) FROM itens_venda WHERE id_comanda_pedido = 101')->fetchColumn() == 0, 'Legado enviou para origem transferida');
+    echo "OK: envio legado de $tipo rejeita atendimento transferido\n";
+}

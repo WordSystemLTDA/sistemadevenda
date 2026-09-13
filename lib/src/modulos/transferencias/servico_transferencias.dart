@@ -89,8 +89,9 @@ class ServicoTransferencias {
   Future<void> iniciar() async {
     _empresa = usuario.usuario?.empresa ?? '';
     _usuario = usuario.usuario?.id ?? '';
-    if (_empresa.isEmpty || _usuario.isEmpty)
+    if (_empresa.isEmpty || _usuario.isEmpty) {
       throw const FalhaTransferencia('Entre novamente no aplicativo.');
+    }
     _servidor = (await Apis().getConexao()).servidor;
     _escopo = BancoLocal.escopo(_servidor, _empresa, _usuario);
   }
@@ -182,10 +183,11 @@ class ServicoTransferencias {
     if (_enviando) return;
     _enviando = true;
     try {
-      if (await pendente() != null)
+      if (await pendente() != null) {
         throw const FalhaTransferencia(
             'Verifique primeiro a transferencia pendente.',
             pendente: true);
+      }
       await validarPendencias(origem, destino);
       final operacao = TransferenciaPendente(origem, destino, {
         ..._identificacao,
@@ -217,7 +219,8 @@ class ServicoTransferencias {
             {'id_operacao': operacao.entrada['id_operacao']});
         if (dados['resposta'] is Map &&
             dados['resposta']['sucesso'] == true &&
-            dados['resposta']['id_operacao'] == operacao.entrada['id_operacao']) {
+            dados['resposta']['id_operacao'] ==
+                operacao.entrada['id_operacao']) {
           await _concluir(operacao);
         } else {
           await validarPendencias(operacao.origem, operacao.destino);
@@ -226,8 +229,11 @@ class ServicoTransferencias {
       }
     } catch (e) {
       if (await pendente() != null) {
-        throw FalhaTransferencia(e is FalhaTransferencia ? e.mensagem :
-            'Nao foi possivel verificar a transferencia.', pendente: true);
+        throw FalhaTransferencia(
+            e is FalhaTransferencia
+                ? e.mensagem
+                : 'Nao foi possivel verificar a transferencia.',
+            pendente: true);
       }
       rethrow;
     } finally {
@@ -267,8 +273,8 @@ class ServicoTransferencias {
   }
 
   Future<void> _concluir(TransferenciaPendente operacao) async {
-    await ArmazenamentoCarrinhos.instancia.atualizarStatus(
-        _empresa, operacao.origem.atendimento, 'Transferida');
+    await ArmazenamentoCarrinhos.instancia
+        .atualizarStatus(_empresa, operacao.origem.atendimento, 'Transferida');
     await api.cache?.invalidarAtendimentos();
     await _gravar(null);
   }
