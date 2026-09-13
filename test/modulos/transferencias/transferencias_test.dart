@@ -419,6 +419,8 @@ void main() {
     await tela(
         tester, HistoricoTransferencias(servico: ServicoTeste(), alvo: origem));
     expect(find.textContaining('Usuário #1'), findsOneWidget);
+    expect(find.textContaining('12/09/2026 23:00'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
     expect(find.textContaining('Atendimentos #101 / #102'), findsOneWidget);
     expect(find.text('Cliente de teste'), findsOneWidget);
     await capturarTela(tester, 'transferencia_historico');

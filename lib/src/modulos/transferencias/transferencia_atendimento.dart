@@ -9,9 +9,17 @@ import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:intl/intl.dart';
 import 'servico_transferencias.dart';
 
 String _real(String valor) => (double.tryParse(valor) ?? 0).obterReal();
+
+String _dataHistorico(Object? valor) {
+  final data = DateTime.tryParse(valor?.toString() ?? '');
+  return data == null
+      ? 'Data indisponível'
+      : DateFormat('dd/MM/yyyy HH:mm').format(data);
+}
 
 Future<void> abrirTransferencia(BuildContext context, AlvoTransferencia origem,
     {AlvoTransferencia? destino}) async {
@@ -473,11 +481,21 @@ class _HistoricoTransferenciasState extends State<HistoricoTransferencias> {
             Expanded(
                 child: ListView(padding: const EdgeInsets.all(16), children: [
               for (final item in itens) ...[
-                Text('${item['nome_origem']} → ${item['nome_destino']}',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(item['nome_origem'].toString(),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const Icon(Icons.arrow_forward, size: 16),
+                      Text(item['nome_destino'].toString(),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ]),
                 Text(
                     'Atendimentos #${item['atendimento_origem']} / #${item['atendimento_destino']}'),
-                Text('${item['criado_em']} · Usuário #${item['usuario']}'),
+                Text(
+                    '${_dataHistorico(item['criado_em'])} · Usuário #${item['usuario']}'),
                 if (widget.servico.mostrarValores)
                   Text(
                       'Transferido: ${_real(item['total_origem'].toString())}'),
