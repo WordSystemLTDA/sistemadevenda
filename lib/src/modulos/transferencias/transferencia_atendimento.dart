@@ -8,6 +8,8 @@ import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
 import 'servico_transferencias.dart';
@@ -46,7 +48,46 @@ Future<void> abrirHistoricoTransferencias(
         builder: (_) => HistoricoTransferencias(
             servico: Modular.get<ServicoTransferencias>(), alvo: alvo));
 
-class AreaTransferencia extends StatelessWidget {
+// A lista recebe o gesto mesmo quando a rolagem desmonta o card sob o dedo.
+class _ArrasteTransferencia {
+  final AlvoTransferencia origem;
+  final VoidCallback pararRolagem;
+  const _ArrasteTransferencia(this.origem, this.pararRolagem);
+}
+
+class ListaTransferencia extends StatelessWidget {
+  final Widget child;
+  const ListaTransferencia({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => DragTarget<_ArrasteTransferencia>(
+        onWillAcceptWithDetails: (detalhes) =>
+            detalhes.data.origem.podeArrastar,
+        onAcceptWithDetails: (detalhes) {
+          detalhes.data.pararRolagem();
+          final destino = _destinoNaPosicao(
+              detalhes.offset, detalhes.data.origem, View.of(context).viewId);
+          destino?._receber(detalhes.data.origem);
+        },
+        builder: (_, __, ___) => child,
+      );
+}
+
+_AreaTransferenciaState? _destinoNaPosicao(
+    Offset posicao, AlvoTransferencia origem, int viewId) {
+  final resultado = HitTestResult();
+  RendererBinding.instance.hitTestInView(resultado, posicao, viewId);
+  for (final entrada in resultado.path) {
+    final alvo = entrada.target;
+    if (alvo is RenderMetaData && alvo.metaData is _AreaTransferenciaState) {
+      final area = alvo.metaData as _AreaTransferenciaState;
+      if (area.mounted && area._podeReceber(origem)) return area;
+    }
+  }
+  return null;
+}
+
+class AreaTransferencia extends StatefulWidget {
   final AlvoTransferencia alvo;
   final Widget child;
   final void Function(AlvoTransferencia origem, AlvoTransferencia destino)?
@@ -55,60 +96,238 @@ class AreaTransferencia extends StatelessWidget {
       {super.key, required this.alvo, required this.child, this.aoSoltar});
 
   @override
-  Widget build(BuildContext context) => DragTarget<AlvoTransferencia>(
-      onWillAcceptWithDetails: (detalhes) =>
-          detalhes.data.id != alvo.id &&
-          detalhes.data.tipo == alvo.tipo &&
-          alvo.motivo.isEmpty,
-      onAcceptWithDetails: (detalhes) {
-        if (aoSoltar != null) {
-          aoSoltar!(detalhes.data, alvo);
-        } else {
-          abrirTransferencia(context, detalhes.data, destino: alvo);
-        }
+  State<AreaTransferencia> createState() => _AreaTransferenciaState();
+}
+
+class _AreaTransferenciaState extends State<AreaTransferencia>
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  final _previa =
+      ValueNotifier<(Offset, AlvoTransferencia?)>((Offset.zero, null));
+  ScrollableState? _lista;
+  late final Ticker _rolagem;
+  Duration? _ultimoQuadro;
+  double _velocidade = 0;
+  _AreaTransferenciaState? _destino;
+  Offset _posicao = Offset.zero;
+  AlvoTransferencia? _origem;
+  bool _arrastando = false;
+  bool _destacado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _rolagem = createTicker(_rolar);
+  }
+
+  @override
+  bool get wantKeepAlive => _arrastando;
+
+  bool _podeReceber(AlvoTransferencia origem) =>
+      origem.id != widget.alvo.id &&
+      origem.tipo == widget.alvo.tipo &&
+      widget.alvo.motivo.isEmpty;
+
+  void _receber(AlvoTransferencia origem) {
+    if (widget.aoSoltar != null) {
+      widget.aoSoltar!(origem, widget.alvo);
+    } else {
+      abrirTransferencia(context, origem, destino: widget.alvo);
+    }
+  }
+
+  void _destacar(bool valor) {
+    if (mounted && _destacado != valor) setState(() => _destacado = valor);
+  }
+
+  void _iniciar() {
+    _origem = widget.alvo;
+    setState(() => _arrastando = true);
+    updateKeepAlive();
+    _lista = Scrollable.maybeOf(context, axis: Axis.vertical);
+    _atualizarDestino();
+    _atualizarRolagem();
+  }
+
+  void _atualizarDestino() {
+    if (!_arrastando || !mounted) return;
+    final destino =
+        _destinoNaPosicao(_posicao, _origem!, View.of(context).viewId);
+    if (_destino != destino) {
+      _destino?._destacar(false);
+      _destino = destino;
+      _destino?._destacar(true);
+    }
+    _previa.value = (_posicao, destino?.widget.alvo);
+  }
+
+  void _atualizarRolagem() {
+    if (!_arrastando || _lista?.mounted != true) return;
+    final caixa = _lista!.context.findRenderObject() as RenderBox;
+    final limites = caixa.localToGlobal(Offset.zero) & caixa.size;
+    if (_posicao.dx < limites.left || _posicao.dx > limites.right) {
+      _pararRolagem();
+      return;
+    }
+    final margem = math.min(72.0, limites.height / 4);
+    final proximidade = _posicao.dy < limites.top + margem
+        ? -((limites.top + margem - _posicao.dy) / margem).clamp(0.0, 1.0)
+        : ((_posicao.dy - limites.bottom + margem) / margem).clamp(0.0, 1.0);
+    _velocidade = proximidade *
+        600 *
+        (_lista!.axisDirection == AxisDirection.up ? -1 : 1);
+    if (_velocidade == 0) {
+      _pararRolagem();
+    } else if (!_rolagem.isActive) {
+      _ultimoQuadro = null;
+      _rolagem.start();
+    }
+  }
+
+  void _rolar(Duration tempo) {
+    if (!_arrastando || !mounted || _lista?.mounted != true) {
+      _pararRolagem();
+      return;
+    }
+    final anterior = _ultimoQuadro ?? tempo;
+    _ultimoQuadro = tempo;
+    final segundos =
+        ((tempo - anterior).inMicroseconds / 1000000).clamp(0.0, .05);
+    if (segundos == 0) return;
+    final posicao = _lista!.position;
+    if (!posicao.hasContentDimensions) return;
+    final proxima = (posicao.pixels + _velocidade * segundos)
+        .clamp(posicao.minScrollExtent, posicao.maxScrollExtent);
+    if (proxima == posicao.pixels) {
+      _pararRolagem();
+      return;
+    }
+    // Atualiza por quadro sem bloquear os alvos com uma animacao de scroll.
+    posicao.jumpTo(proxima);
+    // Os novos cards precisam estar posicionados antes de consultar o destino.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _atualizarDestino());
+  }
+
+  void _pararRolagem() {
+    _rolagem.stop();
+    _ultimoQuadro = null;
+  }
+
+  void _encerrar() {
+    if (!_arrastando) return;
+    setState(() => _arrastando = false);
+    _pararRolagem();
+    _destino?._destacar(false);
+    _destino = null;
+    updateKeepAlive();
+  }
+
+  @override
+  void dispose() {
+    _rolagem.dispose();
+    _previa.dispose();
+    super.dispose();
+  }
+
+  Widget _feedback(BuildContext context) {
+    final larguraTela = MediaQuery.sizeOf(context).width;
+    final largura = math.min(280.0, larguraTela - 32);
+    final cor = VisualAtendimento.azul(context);
+    final texto = ThemeData.estimateBrightnessForColor(cor) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+    return ValueListenableBuilder<(Offset, AlvoTransferencia?)>(
+      valueListenable: _previa,
+      builder: (_, previa, __) {
+        final (posicao, destino) = previa;
+        final esquerda =
+            (posicao.dx - largura / 2).clamp(16.0, larguraTela - largura - 16);
+        return Transform.translate(
+          offset: Offset(esquerda - posicao.dx, -20),
+          child: FractionalTranslation(
+            translation: const Offset(0, -1),
+            child: Material(
+              key: const ValueKey('previa_transferencia'),
+              elevation: 10,
+              color: cor,
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: largura,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(children: [
+                    Icon(Icons.drive_file_move_outline, color: texto, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text((_origem ?? widget.alvo).nome,
+                              style: TextStyle(
+                                  color: texto,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 4),
+                          Text(
+                              destino == null
+                                  ? 'Transferindo'
+                                  : '${destino.livre ? 'Mover para' : 'Juntar com'} ${destino.nome}',
+                              style: TextStyle(color: texto, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        );
       },
-      builder: (context, candidatos, rejeitados) {
-        final destacado = candidatos.isNotEmpty;
-        final conteudo = Stack(children: [
-          child,
-          if (destacado)
-            Positioned.fill(
-                child: IgnorePointer(
-                    child: DecoratedBox(
-              decoration: BoxDecoration(
-                  color: VisualAtendimento.azul(context).withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: VisualAtendimento.azul(context), width: 2)),
-            ))),
-        ]);
-        if (!alvo.podeArrastar) return conteudo;
-        return LongPressDraggable<AlvoTransferencia>(
-            data: alvo,
-            maxSimultaneousDrags: 1,
-            delay: const Duration(milliseconds: 450),
-            feedbackOffset: const Offset(0, -30),
-            feedback: Material(
-                elevation: 6,
-                borderRadius: BorderRadius.circular(8),
-                color: VisualAtendimento.superficie(context),
-                child: SizedBox(
-                    width: math.min(260, MediaQuery.sizeOf(context).width - 48),
-                    child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Row(children: [
-                          Icon(Icons.drive_file_move_outline,
-                              color: VisualAtendimento.azul(context)),
-                          const SizedBox(width: 10),
-                          Expanded(
-                              child: Text(alvo.nome,
-                                  style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700))),
-                        ])))),
-            childWhenDragging: Opacity(opacity: .35, child: conteudo),
-            child: conteudo);
-      });
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final conteudo = Stack(children: [
+      Opacity(opacity: _arrastando ? .45 : 1, child: widget.child),
+      if (_destacado || _arrastando)
+        Positioned.fill(
+            child: IgnorePointer(
+                child: DecoratedBox(
+          decoration: BoxDecoration(
+              color: VisualAtendimento.azul(context).withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(8),
+              border:
+                  Border.all(color: VisualAtendimento.azul(context), width: 2)),
+        ))),
+    ]);
+    return MetaData(
+      metaData: this,
+      behavior: HitTestBehavior.translucent,
+      child: !widget.alvo.podeArrastar
+          ? conteudo
+          : Listener(
+              onPointerDown: (evento) => _posicao = evento.position,
+              child: LongPressDraggable<_ArrasteTransferencia>(
+                data: _ArrasteTransferencia(widget.alvo, _pararRolagem),
+                maxSimultaneousDrags: 1,
+                delay: const Duration(milliseconds: 450),
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                rootOverlay: true,
+                onDragStarted: _iniciar,
+                onDragUpdate: (detalhes) {
+                  _posicao = detalhes.globalPosition;
+                  _atualizarDestino();
+                  _atualizarRolagem();
+                },
+                onDragEnd: (_) => _encerrar(),
+                feedback: _feedback(context),
+                child: conteudo,
+              ),
+            ),
+    );
+  }
 }
 
 class DialogoTransferencia extends StatefulWidget {

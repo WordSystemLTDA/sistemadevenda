@@ -12,6 +12,7 @@ import 'package:app/src/modulos/comandas/paginas/widgets/modal_digitar_codigo.da
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/mesas/paginas/widgets/card_mesa_ocupada.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
+import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter/services.dart';
@@ -400,7 +401,8 @@ class _PaginaMesasState extends State<PaginaMesas> {
       );
     }
 
-    return CustomScrollView(
+    return ListaTransferencia(
+        child: CustomScrollView(
       key: PageStorageKey(modo),
       physics: const AlwaysScrollableScrollPhysics(),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -427,7 +429,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
-    );
+    ));
   }
 }
 

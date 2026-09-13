@@ -351,7 +351,8 @@ void main() {
     AlvoTransferencia? recebido;
     await tela(
         tester,
-        Column(children: [
+        ListaTransferencia(
+            child: Column(children: [
           AreaTransferencia(
               alvo: origem,
               child: const SizedBox(
@@ -361,7 +362,7 @@ void main() {
               aoSoltar: (a, b) => recebido = a,
               child: const SizedBox(
                   width: 300, height: 100, child: Text('Destino'))),
-        ]));
+        ])));
     final gesto =
         await tester.startGesture(tester.getCenter(find.text('Origem')));
     await tester.pump(const Duration(milliseconds: 600));
@@ -371,6 +372,172 @@ void main() {
     await gesto.up();
     await tester.pumpAndSettle();
     expect(recebido, origem);
+  });
+
+  for (final tipo in ['comanda', 'mesa']) {
+    testWidgets('arraste de $tipo rola ate destino fora da tela e solta nele',
+        (tester) async {
+      final rolagem = ScrollController();
+      addTearDown(rolagem.dispose);
+      final recursos = List.generate(
+          40,
+          (i) => AlvoTransferencia(
+              id: '$i',
+              atendimento: i < 4 ? '${100 + i}' : '0',
+              nome: '${tipo == 'mesa' ? 'Mesa' : 'Comanda'}: $i',
+              tipo: tipo,
+              livre: i >= 4));
+      final recebidos = <(AlvoTransferencia, AlvoTransferencia)>[];
+      await tela(
+          tester,
+          Column(children: [
+            const SizedBox(height: 150, child: Text('Filtros')),
+            Expanded(
+              child: ListaTransferencia(
+                child: ListView.builder(
+                    key: const ValueKey('lista_arraste'),
+                    controller: rolagem,
+                    padding: EdgeInsets.zero,
+                    itemExtent: 120,
+                    itemCount: recursos.length,
+                    itemBuilder: (_, i) => AreaTransferencia(
+                          key: ValueKey('alvo_$i'),
+                          alvo: recursos[i],
+                          aoSoltar: (a, b) => recebidos.add((a, b)),
+                          child: CardResumoAtendimento(
+                              nome: recursos[i].nome,
+                              cliente: '',
+                              codigo: '',
+                              ocupada: !recursos[i].livre,
+                              fechamento: false,
+                              tipoMesa: tipo == 'mesa',
+                              tempo: const Text('Atendimento'),
+                              onAbrir: () {}),
+                        )),
+              ),
+            ),
+          ]));
+      final limites =
+          tester.getRect(find.byKey(const ValueKey('lista_arraste')));
+      final gesto = await tester
+          .startGesture(tester.getCenter(find.byKey(const ValueKey('alvo_1'))));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(
+          find.byKey(const ValueKey('previa_transferencia')), findsOneWidget);
+      final posicao = Offset(limites.center.dx, limites.bottom - 18);
+      await gesto.moveTo(posicao);
+      for (var i = 0; i < 90; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(rolagem.offset, greaterThan(limites.height * 2));
+      expect(recebidos, isEmpty);
+      final indice =
+          ((rolagem.offset + posicao.dy - limites.top) / 120).floor();
+      expect(recursos[indice].livre, isTrue);
+      await capturarTela(tester, 'transferencia_arraste_$tipo');
+      await gesto.up();
+      await tester.pumpAndSettle();
+      expect(recebidos, [(recursos[1], recursos[indice])]);
+      expect(find.byKey(const ValueKey('previa_transferencia')), findsNothing);
+      final parada = rolagem.offset;
+      await tester.pump(const Duration(seconds: 1));
+      expect(rolagem.offset, parada);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets('arraste sobe, para no centro e cancelar nao transfere',
+      (tester) async {
+    final rolagem = ScrollController(initialScrollOffset: 1000);
+    addTearDown(rolagem.dispose);
+    var envios = 0;
+    await tela(
+        tester,
+        ListaTransferencia(
+          child: ListView.builder(
+            controller: rolagem,
+            itemExtent: 120,
+            itemCount: 30,
+            itemBuilder: (_, i) => AreaTransferencia(
+              key: ValueKey('alvo_$i'),
+              alvo: AlvoTransferencia(
+                  id: '$i',
+                  atendimento: '${100 + i}',
+                  nome: 'Comanda: $i',
+                  tipo: 'comanda'),
+              aoSoltar: (_, __) => envios++,
+              child: Center(child: Text('Comanda: $i')),
+            ),
+          ),
+        ));
+    final gesto = await tester
+        .startGesture(tester.getCenter(find.byKey(const ValueKey('alvo_10'))));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesto.moveTo(const Offset(180, 18));
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(rolagem.offset, lessThan(700));
+    await gesto.moveTo(const Offset(180, 400));
+    await tester.pumpAndSettle();
+    final parada = rolagem.offset;
+    await tester.pump(const Duration(seconds: 1));
+    expect(rolagem.offset, parada);
+    await gesto.cancel();
+    await tester.pumpAndSettle();
+    expect(envios, 0);
+    expect(find.byKey(const ValueKey('previa_transferencia')), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('soltar fora dos cards ou sobre destino bloqueado nao transfere',
+      (tester) async {
+    var envios = 0;
+    await tela(
+        tester,
+        ListaTransferencia(
+          child: Column(children: [
+            for (final alvo in [
+              origem,
+              const AlvoTransferencia(
+                  id: '2',
+                  atendimento: '102',
+                  nome: 'Fechada',
+                  tipo: 'comanda',
+                  motivo: 'Reabra a conta antes de transferir.'),
+              const AlvoTransferencia(
+                  id: '3', atendimento: '103', nome: 'Mesa', tipo: 'mesa'),
+            ])
+              AreaTransferencia(
+                key: ValueKey(alvo.nome),
+                alvo: alvo,
+                aoSoltar: (_, __) => envios++,
+                child: SizedBox(
+                    height: 120,
+                    width: double.infinity,
+                    child: Text(alvo.nome)),
+              ),
+            const Expanded(child: SizedBox(width: double.infinity)),
+          ]),
+        ));
+    for (final posicao in [
+      const Offset(180, 60),
+      const Offset(180, 180),
+      const Offset(180, 300),
+      const Offset(180, 700),
+    ]) {
+      final gesto = await tester
+          .startGesture(tester.getCenter(find.byKey(ValueKey(origem.nome))));
+      await tester.pump(const Duration(milliseconds: 600));
+      await gesto.moveTo(posicao);
+      await tester.pump();
+      await gesto.up();
+      await tester.pumpAndSettle();
+      expect(envios, 0);
+    }
+    expect(tester.takeException(), isNull);
   });
   testWidgets('escolher destino e confirmar envia uma vez', (tester) async {
     final servico = ServicoTeste();

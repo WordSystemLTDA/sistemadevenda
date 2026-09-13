@@ -12,6 +12,7 @@ import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/card_comanda.dart';
 import 'package:app/src/modulos/comandas/paginas/widgets/modal_digitar_codigo.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter/services.dart';
@@ -414,7 +415,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
       );
     }
 
-    return CustomScrollView(
+    return ListaTransferencia(
+        child: CustomScrollView(
       key: PageStorageKey(modo),
       physics: const AlwaysScrollableScrollPhysics(),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -442,7 +444,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 96)),
       ],
-    );
+    ));
   }
 }
 
