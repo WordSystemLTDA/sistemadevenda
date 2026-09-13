@@ -414,7 +414,7 @@ void main() {
         home: PaginaCardapio(
             tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
     await tester.pumpAndSettle();
-    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isFalse);
     const chaveContador = ValueKey('quantidade_carrinho_Agua');
     expect(find.byKey(chaveContador), findsNothing);
     await tocarProduto(tester, 'Agua');

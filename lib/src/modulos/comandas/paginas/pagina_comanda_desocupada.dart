@@ -170,6 +170,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                   Navigator.push(context, MaterialPageRoute(
                     builder: (context) {
                       return PaginaCardapio(
+                        nomeAtendimento: widget.nome,
                         tipo: TipoCardapio.mesa,
                         idComanda: '0',
                         idMesa: id,
@@ -227,6 +228,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                   Navigator.push(context, MaterialPageRoute(
                     builder: (context) {
                       return PaginaCardapio(
+                        nomeAtendimento: widget.nome,
                         tipo: TipoCardapio.comanda,
                         idComanda: id,
                         idMesa: '0',

@@ -171,6 +171,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (context) {
                     return PaginaCardapio(
+                      nomeAtendimento: value.nome,
                       tipo: TipoCardapio.comanda,
                       idComanda: value.id,
                       idMesa: '0',

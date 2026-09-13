@@ -371,6 +371,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaginaCardapio(
+                            nomeAtendimento: dados!.nome,
                             tipo: TipoCardapio.comanda,
                             idComanda: dados!.idComanda,
                             idMesa: '0',
@@ -383,6 +384,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido> with Widget
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaginaCardapio(
+                            nomeAtendimento: dados!.nome,
                             tipo: TipoCardapio.mesa,
                             idComanda: '0',
                             idMesa: idMesa,

@@ -246,10 +246,15 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         throw StateError('O carrinho nao tem produtos pendentes.');
       }
       final sucesso = await _finalizacao.executar(
-        registrarPedidoDuravel: Sincronizador.instancia == null ? null : (mensagens) =>
-            Sincronizador.instancia!.guardarPedido(
-              contexto: contextoCarrinho, itens: itens, idMesa: idMesa,
-              idComanda: idComanda, idCliente: idCliente, impressoes: mensagens),
+        registrarPedidoDuravel: Sincronizador.instancia == null
+            ? null
+            : (mensagens) => Sincronizador.instancia!.guardarPedido(
+                contexto: contextoCarrinho,
+                itens: itens,
+                idMesa: idMesa,
+                idComanda: idComanda,
+                idCliente: idCliente,
+                impressoes: mensagens),
         prepararImpressao: () => Impressao.prepararComprovanteDePedido(
           produtos: itens,
           tipoTela: tipo,
@@ -315,8 +320,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 : 'Nao foi possivel finalizar'),
             content: Text(_finalizacao.pedidoRegistrado
                 ? 'A finalizacao ficou pendente. Confira com a cozinha. Toque em Finalizar novamente para concluir a impressao e limpar o carrinho, sem lancar os produtos outra vez.'
-                : erro is StateError ? erro.message.toString()
-                : 'Confira a conexao e consulte os itens do pedido antes de tentar novamente.'),
+                : erro is StateError
+                    ? erro.message.toString()
+                    : 'Confira a conexao e consulte os itens do pedido antes de tentar novamente.'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -379,7 +385,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                         color: cs.onPrimaryContainer, size: 18),
                   ),
                   const SizedBox(width: 10),
-                  Column(
+                  Expanded(
+                      child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -387,7 +394,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: 0.1)),
+                              letterSpacing: 0)),
                       Text(
                         '${itens.length} ${itens.length == 1 ? "item" : "itens"}',
                         style: TextStyle(
@@ -396,7 +403,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                             color: cs.onSurfaceVariant),
                       ),
                     ],
-                  ),
+                  )),
                 ],
               ),
               actions: [
@@ -433,9 +440,33 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                   : itens.isEmpty
                       ? _EstadoVazio(cs: cs)
                       : ListView.builder(
-                          itemCount: itens.length,
+                          itemCount: itens.length + 1,
                           padding: const EdgeInsets.fromLTRB(10, 12, 10, 130),
-                          itemBuilder: (context, index) {
+                          itemBuilder: (context, posicao) {
+                            if (posicao == 0) {
+                              return Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        dados?.nome?.trim().isNotEmpty == true
+                                            ? dados!.nome!
+                                            : _tipo.nome,
+                                        key: const ValueKey('destino_carrinho'),
+                                        style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 4),
+                                    Text('Novos itens',
+                                        style: TextStyle(
+                                            color: cs.onSurfaceVariant,
+                                            fontSize: 13)),
+                                  ],
+                                ),
+                              );
+                            }
+                            final index = posicao - 1;
                             final item = itens[index];
                             return CardCarrinho(
                               item: item,

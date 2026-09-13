@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:app/src/essencial/constantes/assets_constantes.dart';
+import 'package:app/src/essencial/utils/normalizar_busca.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
@@ -9,7 +9,6 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.d
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
-import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +20,8 @@ class CardProduto extends StatefulWidget {
   final Modelowordprodutos item;
   final ModeloCategoria? categoria;
   final bool finalizar;
+  final bool favorito;
+  final VoidCallback? aoAlternarFavorito;
   final ProvedorCardapio? cardapioEdicao;
   final ValueChanged<Modelowordprodutos>? aoSelecionarSabor;
 
@@ -31,6 +32,8 @@ class CardProduto extends StatefulWidget {
     required this.item,
     required this.categoria,
     required this.finalizar,
+    this.favorito = false,
+    this.aoAlternarFavorito,
     this.cardapioEdicao,
     this.aoSelecionarSabor,
   }) : assert((cardapioEdicao == null) == (aoSelecionarSabor == null));
@@ -42,7 +45,6 @@ class CardProduto extends StatefulWidget {
 class _CardProdutoState extends State<CardProduto> {
   late final ProvedorCarrinho carrinhoProvedor =
       Modular.get<ProvedorCarrinho>();
-  late final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   late final ProvedorCardapio provedorCardapio =
       widget.cardapioEdicao ?? Modular.get<ProvedorCardapio>();
   late final Listenable _alteracoes = widget.cardapioEdicao != null
@@ -58,64 +60,47 @@ class _CardProdutoState extends State<CardProduto> {
 
   Future<void> _carregarBaseHostImagens() async {
     if (widget.item.foto.isEmpty) return;
-    final baseHost = await UrlImagem.obterBaseHostImagens();
-    if (!mounted) {
-      return;
+    try {
+      final baseHost = await UrlImagem.obterBaseHostImagens();
+      if (!mounted) return;
+      setState(() => _baseHostImagens = baseHost);
+    } catch (_) {
+      // A imagem nao bloqueia o atendimento.
     }
-    setState(() {
-      _baseHostImagens = baseHost;
-    });
   }
 
-  Widget retornoValorVendaProduto() {
-    var texto = '';
-
-    // if (provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).firstOrNull != null &&
-    //     provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).first.tamanhosPizza != null &&
-    //     provedor.categorias.where((element) => int.parse(element.id) == provedor.categoriaSelecionada).first.tamanhosPizza!.isNotEmpty &&
-    //     provedor.tamanhosPizza == null) {
-    //   texto = 'A partir ';
-    //   texto += (double.parse(itemProduto.valorVenda) * (widget.finalizar ? (itemProduto.quantidade ?? 1) : 1)).obterReal(2);
-    // } else {
-    if (widget.item.habilTipo == 'Pacote' &&
-        (widget.item.opcoesPacotesListaFinal != null &&
-            widget.item.opcoesPacotesListaFinal!.isNotEmpty)) {
-      var dadosPacotes = widget.item.opcoesPacotesListaFinal!
-          .where((element) => element.id == 4)
-          .firstOrNull;
-
-      // se tiver tamanhos irá aparecer assim
-      if (dadosPacotes != null &&
-          (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
-        if ((dadosPacotes.dados!.first.valor ==
-            dadosPacotes.dados!.last.valor)) {
-          texto +=
-              double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
-        } else {
-          texto +=
-              "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
-        }
-      } else {
-        texto = (double.parse(widget.item.valorVenda) *
-                (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
-            .obterReal(2);
-      }
-    } else {
-      texto = (double.parse(widget.item.valorVenda) *
-              (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
-          .obterReal(2);
+  String _preco(bool pizza) {
+    final item = widget.item;
+    final selecionado =
+        pizza ? provedorCardapio.tamanhoPizzaDoProduto(item) : null;
+    if (selecionado != null) {
+      return (double.tryParse(selecionado.valor) ?? 0).obterReal();
     }
-    // }
-
-    // if (widget.item.id == '563') {
-    //   print('VV --> ${widget.item.valorVenda}');
-    // }
-
-    return Text(
-      texto,
-      style: const TextStyle(
-          color: Colors.green, fontWeight: FontWeight.bold, fontSize: 17),
-    );
+    if (!pizza && item.descontoProduto != null) {
+      return (double.tryParse(item.valorVenda) ?? 0).obterReal();
+    }
+    final valores = pizza
+        ? item.tamanhosPizza
+                ?.map((t) => double.tryParse(t.valor))
+                .whereType<double>()
+                .toList() ??
+            <double>[]
+        : item.opcoesPacotes
+                ?.where((o) => o.id == 4)
+                .firstOrNull
+                ?.dados
+                ?.map((t) => double.tryParse(t.valor ?? ''))
+                .whereType<double>()
+                .toList() ??
+            <double>[];
+    final minimo = valores.isEmpty
+        ? double.tryParse(item.valorVenda) ?? 0
+        : valores.reduce(math.min);
+    final maximo = valores.isEmpty ? minimo : valores.reduce(math.max);
+    if (pizza) return 'A partir de ${minimo.obterReal()}';
+    return minimo == maximo
+        ? minimo.obterReal()
+        : '${minimo.obterReal()} a ${maximo.obterReal()}';
   }
 
   @override
@@ -143,468 +128,342 @@ class _CardProdutoState extends State<CardProduto> {
             .replaceAll('.', ',');
         final cs = Theme.of(context).colorScheme;
 
-        return LayoutBuilder(builder: (context, constraints) {
-          final larguraImagem = constraints.maxWidth < 360 ? 64.0 : 88.0;
-          return Card(
-            elevation: 0,
-            color: marcado
-                ? cs.secondaryContainer.withValues(alpha: 0.3)
-                : cs.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: marcado ? cs.primary : cs.outlineVariant),
-            ),
-            clipBehavior: Clip.hardEdge,
-            child: InkWell(
-              key: widget.key,
-              onTap: () async {
-                FocusManager.instance.primaryFocus?.unfocus();
-                if (widget.aoSelecionarSabor != null) {
-                  widget.aoSelecionarSabor!(item);
-                  return;
-                }
-                final idComanda = provedorCardapio.idComanda;
-                final idMesa = provedorCardapio.idMesa;
+        final indisponivel = normalizarBusca(item.ativo) == 'nao';
+        final personalizavel =
+            item.habilTipo == 'Pacote' || item.habilTipo == 'kit';
+        Future<void> selecionar() async {
+          if (indisponivel) return;
 
-                var comanda = idComanda.isEmpty ? 0 : idComanda;
-                var mesa = idMesa.isEmpty ? 0 : idMesa;
+          FocusManager.instance.primaryFocus?.unfocus();
+          if (widget.aoSelecionarSabor != null) {
+            widget.aoSelecionarSabor!(item);
+            return;
+          }
+          final idComanda = provedorCardapio.idComanda;
+          final idMesa = provedorCardapio.idMesa;
 
-                if (temTamanhosPizza && tamanhoSelecionado != null) {
-                  final estavaSelecionado = provedorCardapio
-                      .saboresPizzaSelecionados
-                      .any((sabor) => sabor.id == item.id);
-                  provedorCardapio.selecionarSaborPizza(item);
-                  final ficouSelecionado = provedorCardapio
-                      .saboresPizzaSelecionados
-                      .any((sabor) => sabor.id == item.id);
-                  if (estavaSelecionado != ficouSelecionado) {
-                    FeedbackUsuario.selecaoAlterada();
-                  }
-                  return;
-                }
+          var comanda = idComanda.isEmpty ? 0 : idComanda;
+          var mesa = idMesa.isEmpty ? 0 : idMesa;
 
-                if (temTamanhosPizza) {
-                  ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(provedorCardapio.tamanhosPizza == null
-                        ? 'Selecione um Tamanho'
-                        : 'Selecione um tamanho disponível para este sabor.'),
-                    backgroundColor: Colors.red,
-                  ));
-                  return;
-                }
+          if (temTamanhosPizza && tamanhoSelecionado != null) {
+            final estavaSelecionado = provedorCardapio.saboresPizzaSelecionados
+                .any((sabor) => sabor.id == item.id);
+            provedorCardapio.selecionarSaborPizza(item);
+            final ficouSelecionado = provedorCardapio.saboresPizzaSelecionados
+                .any((sabor) => sabor.id == item.id);
+            if (estavaSelecionado != ficouSelecionado) {
+              FeedbackUsuario.selecaoAlterada();
+            }
+            return;
+          }
 
-                if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
-                  if (widget.estaPesquisando) {
-                    widget.searchController!.closeView(item.nome);
-                  }
+          if (temTamanhosPizza) {
+            ScaffoldMessenger.of(context).removeCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(provedorCardapio.tamanhosPizza == null
+                  ? 'Selecione um Tamanho'
+                  : 'Selecione um tamanho disponível para este sabor.'),
+              backgroundColor: Colors.red,
+            ));
+            return;
+          }
 
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) {
-                      return PaginaProduto(produto: item);
-                    },
-                  ));
+          if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
+            if (widget.estaPesquisando) {
+              widget.searchController!.closeView(item.nome);
+            }
 
-                  return;
-                }
-
-                String valor = item.valorVenda;
-
-                if (double.parse(valor) == 0) {
-                  bool bloquear = true;
-                  await showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    showDragHandle: false,
-                    builder: (context) {
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: ModalAdicionarValor(
-                          aoSalvar: (novoValor) {
-                            valor = novoValor;
-                            bloquear = false;
-                          },
-                        ),
-                      );
-                    },
-                  );
-                  if (bloquear) return;
-                }
-
-                if (!context.mounted) return;
-
-                await carrinhoProvedor
-                    .inserir(
-                  Modelowordprodutos(
-                    id: item.id,
-                    nome: item.nome,
-                    codigo: item.codigo,
-                    imprimirCodigoProdutoPreparo:
-                        item.imprimirCodigoProdutoPreparo,
-                    estoque: item.estoque,
-                    tamanho: item.tamanho,
-                    foto: item.foto,
-                    ativo: item.ativo,
-                    descricao: item.descricao,
-                    valorVenda: valor,
-                    categoria: item.categoria,
-                    nomeCategoria: item.nomeCategoria,
-                    habilTipo: item.habilTipo,
-                    ingredientes: item.ingredientes,
-                    ativarCustoDeProducao: item.ativarCustoDeProducao,
-                    ativarEdQtd: item.ativarEdQtd,
-                    ativoLoja: item.ativoLoja,
-                    dataLancado: item.dataLancado,
-                    destinoDeImpressao: item.destinoDeImpressao,
-                    habilItensRetirada: item.habilItensRetirada,
-                    novo: item.novo,
-                    observacao: item.observacao,
-                    opcoesPacotes: item.opcoesPacotes,
-                    quantidadePessoa: item.quantidadePessoa,
-                    valorRestoDivisao: item.valorRestoDivisao,
-                    valorTotalVendas: item.valorTotalVendas,
-                    tamanhoLista: item.tamanhoLista,
-                    quantidade: 1,
-                  ),
-                  provedorCardapio.tipo.nome,
-                  mesa,
-                  comanda,
-                  item.valorVenda,
-                  '',
-                  item.id,
-                  item.nome,
-                  item.quantidade,
-                  '',
-                )
-                    .then((sucesso) {
-                  if (sucesso) {
-                    // provedorCardapio.resetarTudo();
-                    return;
-                  }
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Ocorreu um erro'),
-                      showCloseIcon: true,
-                    ));
-                  }
-                }).whenComplete(() {});
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (context) {
+                return PaginaProduto(produto: item);
               },
-              onLongPress: temTamanhosPizza
-                  ? null
-                  : () {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      if (widget.estaPesquisando) {
-                        widget.searchController!.closeView(item.nome);
-                      }
+            ));
 
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) {
-                          return PaginaProduto(produto: item);
-                        },
-                      ));
+            return;
+          }
+
+          String valor = item.valorVenda;
+
+          if (double.parse(valor) == 0) {
+            bool bloquear = true;
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              showDragHandle: false,
+              builder: (context) {
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  child: ModalAdicionarValor(
+                    aoSalvar: (novoValor) {
+                      valor = novoValor;
+                      bloquear = false;
                     },
-              borderRadius: BorderRadius.circular(5),
-              child: Stack(
+                  ),
+                );
+              },
+            );
+            if (bloquear) return;
+          }
+
+          if (!context.mounted) return;
+
+          await carrinhoProvedor
+              .inserir(
+            Modelowordprodutos(
+              id: item.id,
+              nome: item.nome,
+              codigo: item.codigo,
+              imprimirCodigoProdutoPreparo: item.imprimirCodigoProdutoPreparo,
+              estoque: item.estoque,
+              tamanho: item.tamanho,
+              foto: item.foto,
+              ativo: item.ativo,
+              descricao: item.descricao,
+              valorVenda: valor,
+              categoria: item.categoria,
+              nomeCategoria: item.nomeCategoria,
+              habilTipo: item.habilTipo,
+              ingredientes: item.ingredientes,
+              ativarCustoDeProducao: item.ativarCustoDeProducao,
+              ativarEdQtd: item.ativarEdQtd,
+              ativoLoja: item.ativoLoja,
+              dataLancado: item.dataLancado,
+              destinoDeImpressao: item.destinoDeImpressao,
+              habilItensRetirada: item.habilItensRetirada,
+              novo: item.novo,
+              observacao: item.observacao,
+              opcoesPacotes: item.opcoesPacotes,
+              quantidadePessoa: item.quantidadePessoa,
+              valorRestoDivisao: item.valorRestoDivisao,
+              valorTotalVendas: item.valorTotalVendas,
+              tamanhoLista: item.tamanhoLista,
+              quantidade: 1,
+            ),
+            provedorCardapio.tipo.nome,
+            mesa,
+            comanda,
+            item.valorVenda,
+            '',
+            item.id,
+            item.nome,
+            item.quantidade,
+            '',
+          )
+              .then((sucesso) {
+            if (sucesso) {
+              // provedorCardapio.resetarTudo();
+              return;
+            }
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Ocorreu um erro'),
+                showCloseIcon: true,
+              ));
+            }
+          }).whenComplete(() {});
+        }
+
+        void abrirDetalhes() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          if (widget.estaPesquisando) {
+            widget.searchController!.closeView(item.nome);
+          }
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => PaginaProduto(produto: item),
+          ));
+        }
+
+        final precoCor = Theme.of(context).brightness == Brightness.dark
+            ? Colors.green.shade300
+            : Colors.green.shade800;
+        final temFoto = item.foto.trim().isNotEmpty;
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          elevation: 0,
+          color: marcado
+              ? cs.secondaryContainer.withValues(alpha: 0.25)
+              : cs.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: marcado ? cs.primary : cs.outlineVariant),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: indisponivel ? null : selecionar,
+            onLongPress:
+                indisponivel || temTamanhosPizza ? null : abrirDetalhes,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (item.descontoProduto != null) ...[
-                    Positioned(
-                      top: 17,
-                      left: -37,
+                  if (temFoto) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
                       child: SizedBox(
-                        width: 120,
-                        child: Transform.rotate(
-                          angle: -math.pi / 4,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.deepOrange,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: 0.5),
-                                  spreadRadius: 0,
-                                  blurRadius: 7,
-                                  offset: const Offset(
-                                      0, 3), // changes position of shadow
-                                ),
-                              ],
-                            ),
-                            child: const Text('Promoção',
-                                style: TextStyle(
-                                    fontSize: 10, color: Colors.white),
-                                textAlign: TextAlign.center),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (item.opcoesPacotes != null &&
-                      item.opcoesPacotes!
-                          .where((element) => element.id == 1)
-                          .isNotEmpty) ...[
-                    Positioned(
-                      top: 17,
-                      left: -37,
-                      child: SizedBox(
-                        width: 120,
-                        child: Transform.rotate(
-                          angle: -math.pi / 4,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withValues(alpha: .5),
-                                  spreadRadius: 0,
-                                  blurRadius: 7,
-                                  offset: const Offset(
-                                      0, 3), // changes position of shadow
-                                ),
-                              ],
-                            ),
-                            child: const Text('Cortesia',
-                                style: TextStyle(
-                                    fontSize: 10, color: Colors.white),
-                                textAlign: TextAlign.center),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      item.foto.isEmpty || _baseHostImagens == null
-                          ? Image.asset(Assets.produtoAsset,
-                              width: larguraImagem, height: larguraImagem)
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: CachedNetworkImage(
-                                width: larguraImagem,
-                                height: larguraImagem,
-                                memCacheWidth: (larguraImagem *
-                                        MediaQuery.devicePixelRatioOf(context))
-                                    .round(),
-                                memCacheHeight: (larguraImagem *
-                                        MediaQuery.devicePixelRatioOf(context))
-                                    .round(),
-                                fit: BoxFit.contain,
-                                fadeOutDuration:
-                                    const Duration(milliseconds: 100),
-                                placeholder: (context, url) => Image.asset(
-                                    Assets.produtoAsset,
-                                    fit: BoxFit.contain),
-                                errorWidget: (context, url, error) =>
-                                    Image.asset(Assets.produtoAsset,
-                                        fit: BoxFit.contain),
+                        width: 56,
+                        height: 56,
+                        child: _baseHostImagens == null
+                            ? Icon(Icons.restaurant_outlined,
+                                color: cs.onSurfaceVariant)
+                            : CachedNetworkImage(
                                 imageUrl: UrlImagem.montarUrlImagem(
-                                  foto: item.foto,
-                                  baseHost: _baseHostImagens!,
-                                ),
+                                    foto: item.foto,
+                                    baseHost: _baseHostImagens!),
+                                fit: BoxFit.contain,
+                                memCacheWidth: (56 *
+                                        MediaQuery.devicePixelRatioOf(context))
+                                    .round(),
+                                placeholder: (context, url) => Icon(
+                                    Icons.restaurant_outlined,
+                                    color: cs.onSurfaceVariant),
+                                errorWidget: (context, url, erro) => Icon(
+                                    Icons.restaurant_outlined,
+                                    color: cs.onSurfaceVariant),
                               ),
-                            ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      "${item.nome} ${item.tamanho}".trim(),
-                                      style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
-                                  if (selecionado) ...[
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.check_circle,
-                                        color: Colors.green,
-                                        size: 24,
-                                        semanticLabel: 'Selecionado'),
-                                  ] else if (quantidadeNoCarrinho > 0) ...[
-                                    const SizedBox(width: 6),
-                                    Tooltip(
-                                      message: '$quantidadeTexto no carrinho',
-                                      child: Semantics(
-                                        label: '$quantidadeTexto no carrinho',
-                                        child: Container(
-                                          key: ValueKey(
-                                              'quantidade_carrinho_${item.id}'),
-                                          width: 32,
-                                          height: 28,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4),
-                                          decoration: BoxDecoration(
-                                            color: cs.primary,
-                                            borderRadius:
-                                                BorderRadius.circular(14),
-                                          ),
-                                          child: AnimatedSwitcher(
-                                            duration:
-                                                MediaQuery.disableAnimationsOf(
-                                                        context)
-                                                    ? Duration.zero
-                                                    : const Duration(
-                                                        milliseconds: 220),
-                                            transitionBuilder: (child,
-                                                    animation) =>
-                                                ScaleTransition(
-                                                    scale: animation,
-                                                    child: child),
-                                            child: FittedBox(
-                                              key: ValueKey(
-                                                  quantidadeNoCarrinho),
-                                              fit: BoxFit.scaleDown,
-                                              child: Text(quantidadeTexto,
-                                                  style: TextStyle(
-                                                      color: cs.onPrimary,
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.bold)),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 5),
-                                child: Text(
-                                  'Código: ${item.codigo}',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${item.nome} ${item.tamanho}'.trim(),
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: indisponivel
+                                    ? cs.onSurfaceVariant
+                                    : cs.onSurface)),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text('Código: ${item.codigo}',
+                                style: TextStyle(
+                                    fontSize: 12, color: cs.onSurfaceVariant)),
+                            if (temTamanhosPizza || personalizavel)
+                              Text(
+                                  temTamanhosPizza ? 'Pizza' : 'Personalizável',
                                   style: TextStyle(
-                                    color: cs.onSurfaceVariant,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              if (temTamanhosPizza) ...[
-                                if (tamanhoSelecionado == null) ...[
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: Text(
-                                      "A partir de ${double.parse(item.tamanhosPizza?.firstOrNull?.valor ?? item.valorVenda).obterReal()}",
-                                      style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
-                                    ),
-                                  ),
-                                ] else ...[
-                                  Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: Text(
-                                      double.parse(tamanhoSelecionado.valor)
-                                          .obterReal(),
-                                      style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
-                                    ),
-                                  ),
-                                ],
-                              ] else if (item.descontoProduto == null) ...[
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Text(
-                                    (_provedorProduto.retornarDadosPorID(
-                                                [4], false, '0').isEmpty &&
-                                            _provedorProduto.retornarDadosPorID(
-                                                    [4],
-                                                    false,
-                                                    '0').firstOrNull ==
-                                                null &&
-                                            item.opcoesPacotes
-                                                    ?.where((element) =>
-                                                        element.id == 4)
-                                                    .firstOrNull !=
-                                                null)
-                                        ? "${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(item.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
-                                        : (double.tryParse(item.valorVenda) ??
-                                                0)
-                                            .obterReal(),
-                                    style: const TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14),
-                                  ),
-                                ),
-                              ] else ...[
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Wrap(
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    alignment: WrapAlignment.end,
-                                    spacing: 4,
-                                    children: [
-                                      Text(
-                                        (double.parse(item.valorVenda) +
-                                                double.parse(item
-                                                    .descontoProduto!
-                                                    .valorretirado))
-                                            .obterReal(),
-                                        style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey,
-                                            fontWeight: FontWeight.w600,
-                                            decoration:
-                                                TextDecoration.lineThrough),
-                                      ),
-                                      const Text('por',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey,
-                                              fontWeight: FontWeight.w600)),
-                                      Text(
-                                        double.parse(item.valorVenda)
-                                            .obterReal(),
-                                        style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.deepOrange,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.deepOrange,
-                                          borderRadius:
-                                              BorderRadius.circular(30),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 5, vertical: 1),
-                                        child: Text(
-                                          '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
-                                          style: const TextStyle(
-                                              fontSize: 8, color: Colors.white),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant)),
+                            if (item.descontoProduto != null)
+                              Text('Promoção',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: precoCor)),
+                            if (item.opcoesPacotes?.any((o) => o.id == 1) ??
+                                false)
+                              Text('Cortesia',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant)),
+                          ],
                         ),
+                        const SizedBox(height: 6),
+                        if (!indisponivel &&
+                            !temTamanhosPizza &&
+                            item.descontoProduto != null)
+                          Text(
+                              ((double.tryParse(item.valorVenda) ?? 0) +
+                                      (double.tryParse(item.descontoProduto!
+                                              .valorretirado) ??
+                                          0))
+                                  .obterReal(),
+                              style: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 12,
+                                  decoration: TextDecoration.lineThrough)),
+                        if (indisponivel)
+                          Text('Indisponível',
+                              style: TextStyle(
+                                  color: cs.error,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600))
+                        else
+                          Text(_preco(temTamanhosPizza),
+                              style: TextStyle(
+                                  color: precoCor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700)),
+                        if (quantidadeNoCarrinho > 0)
+                          DefaultTextStyle.merge(
+                            key: ValueKey('quantidade_carrinho_${item.id}'),
+                            style: TextStyle(
+                                color: cs.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
+                            child: Wrap(spacing: 4, children: [
+                              Text(quantidadeTexto),
+                              const Text('no carrinho')
+                            ]),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.aoAlternarFavorito != null)
+                        IconButton(
+                          key: ValueKey('favorito_${item.id}'),
+                          tooltip: widget.favorito
+                              ? 'Remover dos favoritos'
+                              : 'Adicionar aos favoritos',
+                          isSelected: widget.favorito,
+                          selectedIcon: const Icon(Icons.star_rounded),
+                          icon: const Icon(Icons.star_outline_rounded),
+                          color: widget.favorito
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                          constraints: const BoxConstraints.tightFor(
+                              width: 48, height: 48),
+                          onPressed: widget.aoAlternarFavorito,
+                        ),
+                      IconButton(
+                        key: ValueKey('adicionar_produto_${item.id}'),
+                        tooltip: indisponivel
+                            ? 'Produto indisponível'
+                            : temTamanhosPizza
+                                ? (selecionado
+                                    ? 'Remover sabor'
+                                    : 'Selecionar sabor')
+                                : personalizavel
+                                    ? 'Personalizar produto'
+                                    : 'Adicionar ao carrinho',
+                        constraints: const BoxConstraints.tightFor(
+                            width: 48, height: 48),
+                        color: selecionado ? precoCor : cs.primary,
+                        onPressed: indisponivel ? null : selecionar,
+                        icon: Icon(
+                            temTamanhosPizza
+                                ? (selecionado
+                                    ? Icons.check_circle
+                                    : Icons.add_circle_outline)
+                                : personalizavel
+                                    ? Icons.tune_rounded
+                                    : Icons.add_circle_outline,
+                            semanticLabel: selecionado ? 'Selecionado' : null),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          );
-        });
+          ),
+        );
       },
     );
   }

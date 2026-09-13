@@ -25,6 +25,7 @@ class ProvedorProdutos extends ChangeNotifier {
   bool erroAoCarregarMais = false;
   String? erro;
   String _pesquisa = '';
+  bool _consultaCompleta = false;
   bool _limpouPesquisaAgora = false;
   final Map<String, Modelowordprodutos> _produtosCompletosPorId = {};
   final Map<String, List<Modelowordprodutos>> _produtosPorCategoria = {};
@@ -48,6 +49,7 @@ class ProvedorProdutos extends ChangeNotifier {
     temMais = true;
     erro = null;
     _pesquisa = '';
+    _consultaCompleta = false;
     _limpouPesquisaAgora = false;
     notifyListeners();
   }
@@ -82,6 +84,7 @@ class ProvedorProdutos extends ChangeNotifier {
     final cacheCategoria = _produtosPorCategoria[category];
     _limpouPesquisaAgora = false;
     _pesquisa = '';
+    _consultaCompleta = false;
     carregando = !carregarMais;
     carregandoMais = carregarMais;
     erro = null;
@@ -125,6 +128,7 @@ class ProvedorProdutos extends ChangeNotifier {
     final requisicao = ++_requisicao;
     final filtro = _normalizarPesquisa(pesquisa);
     _pesquisa = pesquisa.trim();
+    _consultaCompleta = true;
     carregando = true;
     carregandoMais = false;
     erro = null;
@@ -202,12 +206,14 @@ class ProvedorProdutos extends ChangeNotifier {
       final pesquisa = _normalizarPesquisa(_pesquisa);
       final novos = <Modelowordprodutos>[];
       var ultimaPaginaCompleta = false;
-      if (_pesquisa.isNotEmpty) {
-        novos.addAll(await _produtoService.listarPorNome(pesquisa.termo, categoria, '0',
+      if (_consultaCompleta) {
+        novos.addAll(await _produtoService.listarPorNome(
+            pesquisa.termo, categoria, '0',
             codigoExato: pesquisa.porCodigoExato));
       } else {
         for (var pagina = 1; pagina <= (paginas[categoria] ?? 1); pagina++) {
-          final itens = await _produtoService.listarPorCategoria(categoria, pagina);
+          final itens =
+              await _produtoService.listarPorCategoria(categoria, pagina);
           novos.addAll(itens);
           ultimaPaginaCompleta = itens.length >= _itensPorPagina;
         }
@@ -217,7 +223,7 @@ class ProvedorProdutos extends ChangeNotifier {
       _guardarProdutosCompletos(novos);
       _produtos = novos;
       _produtosPorCategoria[categoria] = [...novos];
-      temMais = _pesquisa.isEmpty && ultimaPaginaCompleta;
+      temMais = !_consultaCompleta && ultimaPaginaCompleta;
       _temMaisPorCategoria[categoria] = temMais;
       erro = null;
       notifyListeners();

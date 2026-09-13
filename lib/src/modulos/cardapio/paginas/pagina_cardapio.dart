@@ -1,6 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:developer';
 import 'dart:convert';
+import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
@@ -55,6 +56,7 @@ class PaginaCardapio extends StatefulWidget {
   final String? idMesa;
   final String? idCliente;
   final String? tipodeentrega;
+  final String? nomeAtendimento;
 
   const PaginaCardapio({
     super.key,
@@ -64,6 +66,7 @@ class PaginaCardapio extends StatefulWidget {
     this.idMesa,
     this.idCliente,
     this.tipodeentrega,
+    this.nomeAtendimento,
   });
 
   @override
@@ -71,7 +74,7 @@ class PaginaCardapio extends StatefulWidget {
 }
 
 class _PaginaCardapioState extends State<PaginaCardapio>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
 
@@ -82,10 +85,13 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   bool _carregandoDados = false;
   String? _erroCarregamento;
   final _sincronizador = Sincronizador.instancia;
+  late final _favoritos = FavoritosProdutos(provedor.usuarioProvedor);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _favoritos.carregar();
     _sincronizador?.revisaoCatalogo.addListener(_atualizarCategorias);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -95,18 +101,26 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _favoritos.dispose();
     _sincronizador?.revisaoCatalogo.removeListener(_atualizarCategorias);
     _tabController?.removeListener(_aoTrocarCategoria);
     _tabController?.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _favoritos.carregar();
+  }
+
   Future<void> _atualizarCategorias() async {
     if (!mounted || _carregandoDados) return;
     try {
       final novas = List<ModeloCategoria>.of(await provedor.listarCategorias());
-      if (!mounted || jsonEncode(novas.map((e) => e.toMap()).toList()) ==
-          jsonEncode(_categorias.map((e) => e.toMap()).toList())) {
+      if (!mounted ||
+          jsonEncode(novas.map((e) => e.toMap()).toList()) ==
+              jsonEncode(_categorias.map((e) => e.toMap()).toList())) {
         return;
       }
       final idAtual = _categorias.isEmpty ? null : _categorias[indexTabBar].id;
@@ -116,8 +130,10 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       setState(() {
         _categorias = novas;
         indexTabBar = index < 0 ? 0 : index;
-        _tabController = novas.isEmpty ? null :
-            (TabController(length: novas.length, initialIndex: indexTabBar, vsync: this)
+        _tabController = novas.isEmpty
+            ? null
+            : (TabController(
+                length: novas.length, initialIndex: indexTabBar, vsync: this)
               ..addListener(_aoTrocarCategoria));
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => anterior?.dispose());
@@ -200,7 +216,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       builder: (context, _) {
         final temCategorias = _tabController != null && _categorias.isNotEmpty;
         return Scaffold(
-          extendBody: true,
+          extendBody: false,
           backgroundColor: cs.surface,
           appBar: AppBar(
             backgroundColor: cs.inversePrimary,
@@ -216,7 +232,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                       color: cs.onPrimaryContainer, size: 18),
                 ),
                 const SizedBox(width: 10),
-                Column(
+                Expanded(
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -224,14 +241,16 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.1)),
-                    Text(widget.tipo.nome,
+                            letterSpacing: 0)),
+                    Text(widget.nomeAtendimento ?? widget.tipo.nome,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                             color: cs.onSurfaceVariant)),
                   ],
-                ),
+                )),
               ],
             ),
             bottom: !temCategorias
@@ -285,6 +304,28 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                           ),
                         ),
                         const SizedBox(width: 12),
+                      ] else if (carrinhoProvedor
+                              .itensCarrinho.quantidadeTotal >
+                          0) ...[
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Novos itens',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant)),
+                              Text(
+                                  carrinhoProvedor.itensCarrinho.precoTotal
+                                      .obterReal(),
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                       ] else
                         const Spacer(),
                       BotaoCarrinho(
@@ -329,6 +370,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               category: categoria.id,
                               categoria: categoria,
                               finalizar: finalizar,
+                              favoritos: _favoritos,
                             ),
                         ],
                       ),

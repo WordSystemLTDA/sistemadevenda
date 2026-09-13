@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'package:app/src/essencial/utils/normalizar_busca.dart';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -52,8 +53,12 @@ class CacheConsultas extends Interceptor {
       return false;
     }
     final rota = caminho(opcoes);
-    if (['tela_nfe_saida/listar_banco_pix.php', 'tela_nfe_saida/listar_datas_vendas.php',
-      'tela_nfe_saida/listar_bancos.php', 'balcao/listar.php'].contains(rota)) {
+    if ([
+      'tela_nfe_saida/listar_banco_pix.php',
+      'tela_nfe_saida/listar_datas_vendas.php',
+      'tela_nfe_saida/listar_bancos.php',
+      'balcao/listar.php'
+    ].contains(rota)) {
       return true;
     }
     if (rota == 'cardapio/listar_por_id.php') {
@@ -212,13 +217,13 @@ class CacheConsultas extends Interceptor {
             .toList();
       }
       if (rota == 'produtos/listar.php') {
-        final pesquisa = (q['pesquisa'] ?? '').trim().toLowerCase();
+        final pesquisa = normalizarBusca(q['pesquisa'] ?? '');
         final exato = q['codigo_exato'] == 'Sim';
         itens = itens
             .where((p) => exato
                 ? _codigo(p['codigo'].toString()) == _codigo(pesquisa)
                 : ['nome', 'codigo', 'valorVenda'].any((campo) =>
-                    p[campo].toString().toLowerCase().contains(pesquisa)))
+                    normalizarBusca(p[campo].toString()).contains(pesquisa)))
             .toList();
         itens.sort(
             (a, b) => a['nome'].toString().compareTo(b['nome'].toString()));

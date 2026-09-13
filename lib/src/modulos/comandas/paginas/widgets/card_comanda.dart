@@ -162,6 +162,7 @@ class _CardComandaState extends State<CardComanda> {
       Navigator.push(context, MaterialPageRoute(
         builder: (context) {
           return PaginaCardapio(
+            nomeAtendimento: item.nome,
             tipo: TipoCardapio.comanda,
             idComanda: item.id,
             idMesa: item.idmesa,

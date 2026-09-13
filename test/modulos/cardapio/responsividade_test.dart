@@ -105,9 +105,17 @@ void main() {
       await tester.tap(grande);
       await tester.pumpAndSettle();
       expect(cardapio.tamanhosPizza?.id, 'G');
+      if (find.byType(CardProduto).evaluate().isEmpty) {
+        await tester.drag(
+            find.byType(CustomScrollView).first, const Offset(0, -120));
+        await tester.pumpAndSettle();
+      }
       final sabor = find.byType(CardProduto).first;
-      await tester.ensureVisible(sabor);
-      await tester.tap(sabor);
+      final selecionar =
+          find.descendant(of: sabor, matching: find.byType(IconButton)).last;
+      await tester.ensureVisible(selecionar);
+      await tester.pumpAndSettle();
+      await tester.tap(selecionar);
       await tester.pumpAndSettle();
       expect(cardapio.saboresPizzaSelecionados, hasLength(1));
       expect(find.byType(BotaoAcaoPedido), findsOneWidget);

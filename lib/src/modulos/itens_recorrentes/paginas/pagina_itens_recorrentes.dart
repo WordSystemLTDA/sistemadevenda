@@ -454,6 +454,7 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaginaCardapio(
+                            nomeAtendimento: dados!.nome,
                             tipo: TipoCardapio.comanda,
                             idComanda: dados!.idComanda,
                             idMesa: '0',
@@ -466,6 +467,7 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes> with Wi
                         context,
                         MaterialPageRoute(
                           builder: (context) => PaginaCardapio(
+                            nomeAtendimento: dados!.nome,
                             tipo: TipoCardapio.mesa,
                             idComanda: '0',
                             idMesa: widget.idMesa,

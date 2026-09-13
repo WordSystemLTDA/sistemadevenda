@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
-
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -13,14 +13,22 @@ class TabCustom extends StatefulWidget {
   final String category;
   final ModeloCategoria categoria;
   final bool finalizar;
+  final FavoritosProdutos? favoritos;
 
-  const TabCustom({super.key, required this.category, required this.categoria, required this.finalizar});
+  const TabCustom({
+    super.key,
+    required this.category,
+    required this.categoria,
+    required this.finalizar,
+    this.favoritos,
+  });
 
   @override
   State<TabCustom> createState() => _TabCustomState();
 }
 
-class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixin {
+class _TabCustomState extends State<TabCustom>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -28,6 +36,7 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   final _scrollController = ScrollController();
   final _pesquisaController = TextEditingController();
   Timer? _debounce;
+  bool _somenteFavoritos = false;
   final _sincronizador = Sincronizador.instancia;
 
   @override
@@ -43,7 +52,11 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   }
 
   void _carregarMais() {
-    if (_scrollController.hasClients && _scrollController.position.extentAfter < 240 && _pesquisaController.text.trim().isEmpty && provedor.erro == null) {
+    if (!_somenteFavoritos &&
+        _scrollController.hasClients &&
+        _scrollController.position.extentAfter < 240 &&
+        _pesquisaController.text.trim().isEmpty &&
+        provedor.erro == null) {
       provedor.listarProdutosPorCategoria(widget.category, carregarMais: true);
     }
   }
@@ -51,9 +64,10 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   Future<void> _atualizar() {
     _debounce?.cancel();
     final pesquisa = _pesquisaController.text.trim();
-    if (pesquisa.isEmpty) {
+    if (pesquisa.isEmpty && !_somenteFavoritos) {
       return provedor.listarProdutosPorCategoria(widget.category);
     }
+    // A busca completa inclui favoritos alem da primeira pagina do catalogo.
     return provedor.listarProdutosPorNome(pesquisa, widget.category, '0');
   }
 
@@ -66,6 +80,22 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
     } else {
       _debounce = Timer(const Duration(milliseconds: 300), _atualizar);
     }
+  }
+
+  void _alternarFiltro() {
+    setState(() => _somenteFavoritos = !_somenteFavoritos);
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    _atualizar();
+  }
+
+  Future<void> _alternarFavorito(String id) async {
+    final favoritos = widget.favoritos;
+    if (favoritos == null) return;
+    final salvo = await favoritos.alternar(id);
+    if (!mounted || salvo) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(favoritos.erro ?? 'Favoritos indisponíveis no momento.'),
+    ));
   }
 
   @override
@@ -81,103 +111,207 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          child: CampoBusca(
-            controller: _pesquisaController,
-            hintText: 'Nome ou código',
-            onChanged: _pesquisar,
-            onSubmitted: (_) {
-              FocusScope.of(context).unfocus();
-              _atualizar();
-            },
-          ),
-        ),
-        Expanded(
-          child: ListenableBuilder(
-            listenable: provedor,
-            builder: (context, _) => Column(
-              children: [
-                SizedBox(
-                  height: 2,
-                  child: provedor.carregando ? const LinearProgressIndicator(minHeight: 2) : null,
-                ),
-                if (provedor.erro != null && !provedor.erroAoCarregarMais && provedor.produtos.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(child: Text(provedor.erro!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
-                        IconButton(tooltip: 'Tentar novamente', onPressed: _atualizar, icon: const Icon(Icons.refresh)),
-                      ],
+    final cs = Theme.of(context).colorScheme;
+    return ListenableBuilder(
+      listenable: Listenable.merge(
+          [provedor, if (widget.favoritos != null) widget.favoritos!]),
+      builder: (context, _) {
+        final produtos = _somenteFavoritos
+            ? provedor.produtos
+                .where((p) => widget.favoritos?.contem(p.id) ?? false)
+                .toList()
+            : provedor.produtos;
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CampoBusca(
+                      controller: _pesquisaController,
+                      hintText: _somenteFavoritos
+                          ? 'Buscar nos favoritos'
+                          : 'Nome ou código',
+                      onChanged: _pesquisar,
+                      onSubmitted: (_) {
+                        FocusScope.of(context).unfocus();
+                        _atualizar();
+                      },
                     ),
                   ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _atualizar,
-                    child: CustomScrollView(
-                      controller: _scrollController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                      slivers: [
-                        if (widget.categoria.tamanhosPizza?.isNotEmpty ?? false)
-                          SliverToBoxAdapter(
-                            child: ListaTamanhosPizza(categoria: widget.categoria),
-                          ),
-                        if (provedor.produtos.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: provedor.carregando ? const CircularProgressIndicator() : _estadoLista(context),
-                            ),
-                          )
-                        else ...[
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-                            sliver: SliverList.builder(
-                              itemCount: provedor.produtos.length,
-                              itemBuilder: (context, index) {
-                                final item = provedor.produtos[index];
+                  if (widget.favoritos != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      key: const ValueKey('filtrar_favoritos'),
+                      tooltip: _somenteFavoritos
+                          ? 'Mostrar todos os produtos'
+                          : 'Mostrar favoritos',
+                      isSelected: _somenteFavoritos,
+                      selectedIcon: const Icon(Icons.star_rounded),
+                      icon: const Icon(Icons.star_outline_rounded),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                        backgroundColor: _somenteFavoritos
+                            ? cs.secondaryContainer
+                            : cs.surfaceContainerLow,
+                        foregroundColor: cs.onSurfaceVariant,
+                      ),
+                      onPressed:
+                          widget.favoritos!.disponivel ? _alternarFiltro : null,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 2,
+              child: provedor.carregando
+                  ? const LinearProgressIndicator(minHeight: 2)
+                  : null,
+            ),
+            if (widget.favoritos?.erro != null)
+              Row(
+                children: [
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: Text(widget.favoritos!.erro!,
+                          style: TextStyle(color: cs.error))),
+                  IconButton(
+                      tooltip: 'Recarregar favoritos',
+                      onPressed: widget.favoritos!.carregar,
+                      icon: const Icon(Icons.refresh)),
+                ],
+              ),
+            if (_somenteFavoritos)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Favoritos',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant)),
+                ),
+              ),
+            if (provedor.erro != null &&
+                !provedor.erroAoCarregarMais &&
+                produtos.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                        child: Text(provedor.erro!,
+                            style: TextStyle(color: cs.error))),
+                    IconButton(
+                        tooltip: 'Tentar novamente',
+                        onPressed: _atualizar,
+                        icon: const Icon(Icons.refresh)),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _atualizar,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  slivers: [
+                    if ((widget.categoria.tamanhosPizza?.isNotEmpty ?? false) &&
+                        (!_somenteFavoritos ||
+                            produtos.any(
+                                (p) => p.tamanhosPizza?.isNotEmpty ?? false)))
+                      SliverToBoxAdapter(
+                          child:
+                              ListaTamanhosPizza(categoria: widget.categoria)),
+                    if (produtos.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: provedor.carregando
+                              ? const CircularProgressIndicator()
+                              : _estadoLista(context, vazio: true),
+                        ),
+                      )
+                    else ...[
+                      SliverLayoutBuilder(builder: (context, constraints) {
+                        final colunas = constraints.crossAxisExtent >= 720 &&
+                                MediaQuery.textScalerOf(context).scale(16) <= 24
+                            ? 2
+                            : 1;
+                        return SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+                          sliver: SliverList.builder(
+                            itemCount: (produtos.length / colunas).ceil(),
+                            itemBuilder: (context, index) {
+                              Widget produto(int posicao) {
+                                final item = produtos[posicao];
                                 return IgnorePointer(
-                                  ignoring: provedor.carregando || (provedor.erro != null && !provedor.erroAoCarregarMais),
+                                  ignoring: provedor.carregando ||
+                                      (provedor.erro != null &&
+                                          !provedor.erroAoCarregarMais),
                                   child: CardProduto(
                                     key: ValueKey(item.id),
                                     estaPesquisando: false,
                                     item: item,
                                     categoria: widget.categoria,
                                     finalizar: widget.finalizar,
+                                    favorito:
+                                        widget.favoritos?.contem(item.id) ??
+                                            false,
+                                    aoAlternarFavorito:
+                                        widget.favoritos?.disponivel == true
+                                            ? () => _alternarFavorito(item.id)
+                                            : null,
                                   ),
                                 );
-                              },
-                            ),
+                              }
+
+                              if (colunas == 1) return produto(index);
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: produto(index * 2)),
+                                  Expanded(
+                                      child: index * 2 + 1 < produtos.length
+                                          ? produto(index * 2 + 1)
+                                          : const SizedBox()),
+                                ],
+                              );
+                            },
                           ),
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Center(child: _estadoLista(context)),
-                            ),
-                          ),
-                        ],
-                        SliverToBoxAdapter(
-                          child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+                        );
+                      }),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(child: _estadoLista(context)),
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    ],
+                    SliverToBoxAdapter(
+                        child: SizedBox(
+                            height: MediaQuery.paddingOf(context).bottom)),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _estadoLista(BuildContext context) {
+  Widget _estadoLista(BuildContext context, {bool vazio = false}) {
     if (provedor.carregandoMais) {
-      return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
+      return const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2));
     }
     if (provedor.erro != null) {
       return Column(
@@ -186,8 +320,9 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
           Text(provedor.erro!, textAlign: TextAlign.center),
           TextButton.icon(
             onPressed: () {
-              if (provedor.erroAoCarregarMais) {
-                provedor.listarProdutosPorCategoria(widget.category, carregarMais: true);
+              if (provedor.erroAoCarregarMais && !_somenteFavoritos) {
+                provedor.listarProdutosPorCategoria(widget.category,
+                    carregarMais: true);
               } else {
                 _atualizar();
               }
@@ -198,19 +333,34 @@ class _TabCustomState extends State<TabCustom> with AutomaticKeepAliveClientMixi
         ],
       );
     }
-    if (provedor.produtos.isEmpty) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.search_off_rounded, size: 36, color: Theme.of(context).colorScheme.onSurfaceVariant),
-          const SizedBox(height: 8),
-          const Text('Nenhum produto encontrado'),
-        ],
+    if (vazio) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+                _somenteFavoritos
+                    ? Icons.star_outline_rounded
+                    : Icons.search_off_rounded,
+                size: 36,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(
+                _somenteFavoritos
+                    ? 'Nenhum favorito nesta seleção'
+                    : 'Nenhum produto encontrado',
+                textAlign: TextAlign.center),
+          ],
+        ),
       );
     }
-    if (provedor.temMais) {
+    if (provedor.temMais && !_somenteFavoritos) {
       return TextButton.icon(
-        onPressed: provedor.carregando ? null : () => provedor.listarProdutosPorCategoria(widget.category, carregarMais: true),
+        onPressed: provedor.carregando
+            ? null
+            : () => provedor.listarProdutosPorCategoria(widget.category,
+                carregarMais: true),
         icon: const Icon(Icons.expand_more),
         label: const Text('Carregar mais'),
       );

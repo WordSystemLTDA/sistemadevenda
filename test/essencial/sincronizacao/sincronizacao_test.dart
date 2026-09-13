@@ -739,6 +739,24 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 30));
   });
 
+  test('pesquisa offline encontra acai e agua sem acentos', () async {
+    await banco.gravar('catalogo:${sync.escopo}', jsonEncode({
+      'produtos': [
+        produto(id: '5', codigo: '5', nome: 'Açaí especial', computador: 'Cozinha').toMap(),
+        produto(id: '6', codigo: '6', nome: 'Água com gás', computador: 'Bar').toMap(),
+      ],
+      'detalhes': {},
+    }));
+    for (final (termo, id) in [('ACAI', '5'), ('agua', '6')]) {
+      final resposta = await api.cliente.get('produtos/listar.php', queryParameters: {
+        'pesquisa': termo, 'empresa': '32', 'categoria': '0', 'id_usuario': '1', 'id_cliente': '0',
+      });
+      expect(resposta.data, hasLength(1));
+      expect(resposta.data.single['id'], id);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+  });
+
   for (final largura in [320.0, 430.0, 1024.0]) {
     testWidgets('pendencias legiveis na largura $largura', (tester) async {
       tester.view.physicalSize = Size(largura, 900);

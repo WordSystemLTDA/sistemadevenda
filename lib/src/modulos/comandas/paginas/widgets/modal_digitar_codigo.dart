@@ -109,9 +109,10 @@ class _ModalDigitarCodigoState extends State<ModalDigitarCodigo> {
             Navigator.push(context, MaterialPageRoute(
               builder: (context) {
                 return PaginaCardapio(
-                  tipo: TipoCardapio.comanda,
-                  idComanda: value.id,
-                  idMesa: '0',
+                  nomeAtendimento: value.nome,
+                  tipo: TipoCardapio.mesa,
+                  idComanda: '0',
+                  idMesa: value.id,
                   idCliente: value.idCliente,
                   id: value.idComandaPedido,
                 );
@@ -179,6 +180,7 @@ class _ModalDigitarCodigoState extends State<ModalDigitarCodigo> {
             Navigator.push(context, MaterialPageRoute(
               builder: (context) {
                 return PaginaCardapio(
+                  nomeAtendimento: value.nome,
                   tipo: TipoCardapio.comanda,
                   idComanda: value.id,
                   idMesa: '0',

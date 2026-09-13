@@ -163,9 +163,10 @@ class _PaginaMesasState extends State<PaginaMesas> {
                 Navigator.push(context, MaterialPageRoute(
                   builder: (context) {
                     return PaginaCardapio(
-                      tipo: TipoCardapio.comanda,
-                      idComanda: value.id,
-                      idMesa: '0',
+                      nomeAtendimento: value.nome,
+                      tipo: TipoCardapio.mesa,
+                      idComanda: '0',
+                      idMesa: value.id,
                       idCliente: value.idCliente,
                       id: value.idComandaPedido,
                     );
