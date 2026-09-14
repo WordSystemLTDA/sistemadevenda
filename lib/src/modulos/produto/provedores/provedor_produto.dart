@@ -14,10 +14,13 @@ class ProvedorProduto extends ChangeNotifier {
   ProvedorProduto(this.provedorCardapio, this.usuarioProvedor);
 
   List<ModeloOpcoesPacotes> _opcoesPacotesListaFinal = [];
+  final Map<String, bool> _preferenciaMeiaBorda = {};
+
   List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal =>
       _opcoesPacotesListaFinal;
   set opcoesPacotesListaFinal(List<ModeloOpcoesPacotes> value) {
     _opcoesPacotesListaFinal = value;
+    _resetarPreferenciaBordaSemSelecao(value);
     notifyListeners();
   }
 
@@ -40,6 +43,7 @@ class ProvedorProduto extends ChangeNotifier {
 
   void resetarTudo() {
     opcoesPacotesListaFinal = [];
+    _preferenciaMeiaBorda.clear();
     quantidade = 1;
     notifyListeners();
   }
@@ -151,6 +155,60 @@ class ProvedorProduto extends ChangeNotifier {
         provedorCardapio.limiteSaborBordaSelecionado <= 0;
   }
 
+  String _chavePreferenciaMeiaBorda(bool kit, String idProduto) =>
+      kit ? 'kit:$idProduto' : 'produto';
+
+  void _definirPreferenciaMeiaBorda(
+      bool somenteMetade, bool kit, String idProduto) {
+    final chave = _chavePreferenciaMeiaBorda(kit, idProduto);
+    if (somenteMetade) {
+      _preferenciaMeiaBorda[chave] = true;
+    } else {
+      _preferenciaMeiaBorda.remove(chave);
+    }
+  }
+
+  void _resetarPreferenciaBordaSemSelecao(List<ModeloOpcoesPacotes> opcoes) {
+    final temBordaSelecionada = opcoes
+            .where((element) => element.id == 6)
+            .firstOrNull
+            ?.dados
+            ?.isNotEmpty ??
+        false;
+    if (!temBordaSelecionada) {
+      _preferenciaMeiaBorda.remove(_chavePreferenciaMeiaBorda(false, '0'));
+    }
+  }
+
+  void _resetarPreferenciaBordaSeVazia(
+      List<ModeloDadosOpcoesPacotes> dados, bool kit, String idProduto) {
+    if (dados.isEmpty) {
+      _preferenciaMeiaBorda.remove(_chavePreferenciaMeiaBorda(kit, idProduto));
+    }
+  }
+
+  bool bordaSomenteMetadeSelecionada(bool kit, String idProduto) {
+    final bordasSelecionadas = retornarDadosPorID([6], kit, idProduto);
+    if (bordasSelecionadas.isEmpty) {
+      return _preferenciaMeiaBorda[
+              _chavePreferenciaMeiaBorda(kit, idProduto)] ??
+          false;
+    }
+    return ValoresPizza.bordaSomenteMetade(bordasSelecionadas);
+  }
+
+  bool get bordaSomenteMetade => bordaSomenteMetadeSelecionada(false, '0');
+
+  void definirBordaSomenteMetade(
+      bool somenteMetade, bool kit, String idProduto) {
+    _definirPreferenciaMeiaBorda(somenteMetade, kit, idProduto);
+    final bordasSelecionadas = retornarDadosPorID([6], kit, idProduto);
+    for (final borda in bordasSelecionadas) {
+      borda.somenteMetadeBorda = somenteMetade;
+    }
+    calcularValorVenda(kit, idProduto);
+  }
+
   void selecionarItem(ModeloDadosOpcoesPacotes item,
       ModeloOpcoesPacotes opcoesPacote, bool kit, String idProduto) {
     var dadosID = retornarDadosPorID([opcoesPacote.id], kit, idProduto);
@@ -211,19 +269,28 @@ class ProvedorProduto extends ChangeNotifier {
             provedorCardapio.configBigchef?.saborlimitedeborda ?? '0') ??
         0;
     if (limiteSaboresBorda > 0 && opcoesPacote.id == 6) {
+      final somenteMetadeBorda = bordaSomenteMetadeSelecionada(kit, idProduto);
       if (dadosID.length == provedorCardapio.limiteSaborBordaSelecionado) {
         if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
           dadosID.removeWhere((element) => element.id == item.id);
+          _resetarPreferenciaBordaSeVazia(dadosID, kit, idProduto);
         }
 
         calcularValorVenda(kit, idProduto);
         return;
       }
+      item.somenteMetadeBorda = somenteMetadeBorda;
     }
 
     if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
       dadosID.removeWhere((element) => element.id == item.id);
+      if (opcoesPacote.id == 6) {
+        _resetarPreferenciaBordaSeVazia(dadosID, kit, idProduto);
+      }
     } else {
+      if (opcoesPacote.id == 6) {
+        item.somenteMetadeBorda = bordaSomenteMetadeSelecionada(kit, idProduto);
+      }
       dadosID.add(item);
     }
 

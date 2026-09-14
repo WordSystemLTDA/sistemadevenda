@@ -344,6 +344,11 @@ class _PaginaEditarOpcoesCarrinhoState
                 },
               ),
             ),
+          if (opcao.id == 6 && edicao.pizza)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ControleMeiaBorda(produto: edicao.produto),
+            ),
           for (final dado in opcao.dados ?? [])
             CardOpcoesPacotes(
               key: ValueKey('editar_${opcao.id}_${dado.id}'),

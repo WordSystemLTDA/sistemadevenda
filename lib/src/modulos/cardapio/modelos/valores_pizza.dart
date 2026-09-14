@@ -3,31 +3,79 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
 class ValoresPizza {
+  static final RegExp _proporcaoNoInicio = RegExp(r'^\(\d+(?:/\d+)?\)\s+');
+  static final RegExp _meioNoInicio =
+      RegExp(r'^Meio\s+-\s+\(\d+(?:/\d+)?\)\s+', caseSensitive: false);
+
   static int _centavos(String? valor) =>
       ((double.tryParse(valor ?? '') ?? 0) * 100).round();
+
+  static bool bordaSomenteMetade(List<ModeloDadosOpcoesPacotes> dados) =>
+      dados.any((dado) => dado.somenteMetadeBorda);
+
+  static int _divisorProporcaoBorda(List<ModeloDadosOpcoesPacotes> dados) =>
+      bordaSomenteMetade(dados) ? dados.length * 2 : dados.length;
+
+  static int _totalComProporcaoBorda(
+          int centavos, List<ModeloDadosOpcoesPacotes> dados) =>
+      bordaSomenteMetade(dados) ? (centavos / 2).round() : centavos;
+
+  static String proporcaoBorda(ModeloDadosOpcoesPacotes dado, int totalBordas) {
+    if (dado.somenteMetadeBorda) {
+      return '1/${totalBordas <= 1 ? 2 : totalBordas * 2}';
+    }
+    return totalBordas <= 1 ? '1' : '1/$totalBordas';
+  }
+
+  static String nomeBorda(ModeloDadosOpcoesPacotes dado, int totalBordas) {
+    final nome = dado.nome;
+    final nomeLimpo = nome.trimLeft();
+    if (_meioNoInicio.hasMatch(nomeLimpo) ||
+        _proporcaoNoInicio.hasMatch(nomeLimpo)) {
+      return nome;
+    }
+    return '(${proporcaoBorda(dado, totalBordas)}) $nome';
+  }
+
+  static String nomeBordaDetalhada(
+      ModeloDadosOpcoesPacotes dado, int totalBordas) {
+    final nome = nomeBorda(dado, totalBordas);
+    if (!dado.somenteMetadeBorda) return nome;
+    return _meioNoInicio.hasMatch(nome.trimLeft()) ? nome : 'Meio - $nome';
+  }
+
+  static String nomeBordaCarrinho(
+          ModeloDadosOpcoesPacotes dado, int totalBordas) =>
+      nomeBordaDetalhada(dado, totalBordas);
 
   static double calcular(List<ModeloDadosOpcoesPacotes> dados, String? modelo) {
     if (dados.isEmpty) return 0;
     final valores = dados.map((d) => _centavos(d.valorOriginal ?? d.valor));
-    final total = modelo == 'maior'
+    final totalInteiro = modelo == 'maior'
         ? valores.reduce((a, b) => a > b ? a : b)
         : (valores.reduce((a, b) => a + b) / dados.length).round();
+    final total = _totalComProporcaoBorda(totalInteiro, dados);
     return total / 100;
   }
 
   static List<ModeloDadosOpcoesPacotes> ratear(
       List<ModeloDadosOpcoesPacotes> dados, String? modelo) {
     if (dados.isEmpty) return [];
+    final somenteMetade = bordaSomenteMetade(dados);
     final valores =
         dados.map((d) => _centavos(d.valorOriginal ?? d.valor)).toList();
-    final total = (calcular(dados, modelo) * 100).round();
+    final totalInteiro = modelo == 'maior'
+        ? valores.reduce((a, b) => a > b ? a : b)
+        : (valores.reduce((a, b) => a + b) / dados.length).round();
+    final total = _totalComProporcaoBorda(totalInteiro, dados);
+    final divisor = _divisorProporcaoBorda(dados);
     final parcelas =
-        modelo == 'maior' ? List.filled(dados.length, total) : valores;
-    final centavos = parcelas.map((v) => v ~/ dados.length).toList();
+        modelo == 'maior' ? List.filled(dados.length, totalInteiro) : valores;
+    final centavos = parcelas.map((v) => v ~/ divisor).toList();
     final ordem = List.generate(dados.length, (i) => i)
       ..sort((a, b) {
         final diferenca =
-            (parcelas[b] % dados.length).compareTo(parcelas[a] % dados.length);
+            (parcelas[b] % divisor).compareTo(parcelas[a] % divisor);
         return diferenca == 0 ? a.compareTo(b) : diferenca;
       });
     // Distribui centavos restantes sem alterar o total cobrado.
@@ -42,6 +90,7 @@ class ValoresPizza {
               ...dados[i].toMap(),
               'valorOriginal': (valores[i] / 100).toStringAsFixed(2),
               'valor': (centavos[i] / 100).toStringAsFixed(2),
+              if (somenteMetade) 'somenteMetadeBorda': true,
             }));
   }
 

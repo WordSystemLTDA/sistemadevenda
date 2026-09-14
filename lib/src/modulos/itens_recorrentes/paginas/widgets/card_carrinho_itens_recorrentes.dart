@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/titulo_opcoes_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
@@ -279,7 +280,8 @@ class _CardCarrinhoItensRecorrentesState
 
                             return LinhaValor(
                               descricao: Text(
-                                _descricaoOpcaoCarrinho(e.id, dado),
+                                _descricaoOpcaoCarrinho(
+                                    e.id, dado, e.dados!.length),
                                 style: const TextStyle(fontSize: 15),
                               ),
                               valor: Text(
@@ -349,11 +351,16 @@ class _CardCarrinhoItensRecorrentesState
     }).join('\n');
   }
 
-  String _descricaoOpcaoCarrinho(int idOpcao, ModeloDadosOpcoesPacotes dado) {
+  String _descricaoOpcaoCarrinho(
+      int idOpcao, ModeloDadosOpcoesPacotes dado, int totalDados) {
     if (idOpcao == 10) {
       final proporcao = dado.quantimaximaselecao?.trim();
       final prefixo = proporcao == null || proporcao.isEmpty ? null : proporcao;
       return _nomeSaborPizza(dado, prefixo);
+    }
+
+    if (idOpcao == 6) {
+      return ValoresPizza.nomeBordaCarrinho(dado, totalDados);
     }
 
     return '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}';

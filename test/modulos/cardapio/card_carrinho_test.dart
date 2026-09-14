@@ -196,6 +196,69 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('carrinho indica meia borda nos detalhes da pizza',
+      (tester) async {
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
+    addTearDown(carrinho.dispose);
+    Modular.init(ModuloCarrinhoTeste(carrinho));
+    final item = produtoCarrinho()
+      ..nome = 'Pizza de Queijos'
+      ..codigo = '2'
+      ..valorVenda = '59.50'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 10,
+          titulo: 'Sabores Pizza (2)',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Mussarela',
+              valor: '28.50',
+              quantimaximaselecao: '1/2',
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Catupiry Especial',
+              valor: '28.50',
+              quantimaximaselecao: '1/2',
+            ),
+          ],
+        ),
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '10',
+              nome: 'Chocolate ao Leite',
+              valor: '2.50',
+              valorOriginal: '5.00',
+              somenteMetadeBorda: true,
+            ),
+          ],
+        ),
+      ];
+
+    await carregarCard(
+      tester,
+      item: item,
+      setarQuantidade: (increase) async {
+        item.quantidade = item.quantidade! + (increase ? 1 : -1);
+        return true;
+      },
+    );
+
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Meio (1/2)'), findsOneWidget);
+    expect(find.text('Meio - (1/2) Chocolate ao Leite'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('lixeira exclui item somente depois da confirmacao',
       (tester) async {
     final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),

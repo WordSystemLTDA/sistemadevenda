@@ -1,5 +1,6 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 
 class DadosImpressaoPreparo {
   static final RegExp _proporcaoNoInicio = RegExp(r'^\(\d+(?:/\d+)?\)\s+');
@@ -12,12 +13,6 @@ class DadosImpressaoPreparo {
 
     final prefixo = '$codigoProduto - ';
     return nome.startsWith(prefixo) ? nome : '$prefixo$nome';
-  }
-
-  static String _nomeBorda(String nome, int totalBordas) {
-    if (_proporcaoNoInicio.hasMatch(nome.trimLeft())) return nome;
-    final proporcao = totalBordas <= 1 ? '1' : '1/$totalBordas';
-    return '($proporcao) $nome';
   }
 
   static String _nomeSabor(
@@ -90,11 +85,14 @@ class DadosImpressaoPreparo {
       }).toList();
     } else if (opcao.id == 6) {
       final bordas = opcao.dados ?? [];
-      dados['titulo'] = 'Bordas (${bordas.length})';
+      final meiaBorda = ValoresPizza.bordaSomenteMetade(bordas);
+      dados['titulo'] = meiaBorda
+          ? 'Bordas - Meio (1/2) (${bordas.length})'
+          : 'Bordas (${bordas.length})';
       dados['dados'] = bordas.map((borda) {
         return {
           ...borda.toMap(),
-          'nome': _nomeBorda(borda.nome, bordas.length),
+          'nome': ValoresPizza.nomeBordaDetalhada(borda, bordas.length),
           'quantimaximaselecao': null,
         };
       }).toList();

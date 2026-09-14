@@ -844,6 +844,76 @@ void main() {
     expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (2)');
   });
 
+  testWidgets('controle de aplicacao da borda aparece com padrao inteira',
+      (tester) async {
+    produtos = ProdutosComBordasTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    cardapio.tamanhosPizza = tamanho('G');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aplicação da borda'), findsOneWidget);
+    expect(find.textContaining('Pizza inteira selecionada'), findsOneWidget);
+    expect(find.textContaining(RegExp(r'Cobrança:.*0,00')), findsOneWidget);
+    expect(
+      tester
+          .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
+          .selected,
+      {false},
+    );
+    final card =
+        tester.getRect(find.byKey(const ValueKey('controle_meia_borda_card')));
+    final seletor = tester
+        .getRect(find.byKey(const ValueKey('controle_meia_borda_seletor')));
+    expect(seletor.width, closeTo(card.width - 20, 0.1));
+  });
+
+  testWidgets('meia borda cobra somente metade no fluxo da pizza',
+      (tester) async {
+    produtos = ProdutosComBordasTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    cardapio.tamanhosPizza = tamanho('G');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final botao = find.byType(BotaoAcaoPedido);
+    await tester.tap(find.text('1 sabor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cheddar'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).total, contains('62,00'));
+
+    await tester.tap(find.text('Meia'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<BotaoAcaoPedido>(botao).total, contains('56,00'));
+    expect(find.text('Meia pizza'), findsOneWidget);
+    expect(find.textContaining('Cobrança:'), findsWidgets);
+    expect(find.textContaining('6,00'), findsWidgets);
+    expect(
+        Modular.get<ProvedorProduto>()
+            .retornarDadosPorID([6], false, '0')
+            .single
+            .somenteMetadeBorda,
+        isTrue);
+  });
+
   for (final largura in [393.0, 800.0]) {
     testWidgets('mantem pizza ao trocar categorias em tela de $largura',
         (tester) async {

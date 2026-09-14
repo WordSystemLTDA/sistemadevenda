@@ -14,8 +14,11 @@ class TituloOpcoesCarrinho extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titulo = Text(grupo.titulo,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold));
+    final titulo = _TituloGrupoCarrinho(
+      titulo: grupo.titulo,
+      meiaBorda: grupo.id == 6 &&
+          (grupo.dados ?? []).any((dado) => dado.somenteMetadeBorda),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
       child: [6, 7, 10].contains(grupo.id)
@@ -31,6 +34,60 @@ class TituloOpcoesCarrinho extends StatelessWidget {
               ),
             )
           : titulo,
+    );
+  }
+}
+
+class _TituloGrupoCarrinho extends StatelessWidget {
+  final String titulo;
+  final bool meiaBorda;
+
+  const _TituloGrupoCarrinho({
+    required this.titulo,
+    required this.meiaBorda,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = const TextStyle(fontSize: 16, fontWeight: FontWeight.bold);
+
+    if (!meiaBorda) {
+      return Text(titulo, style: estilo);
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(titulo, style: estilo),
+        const _EtiquetaMeiaBordaCarrinho(),
+      ],
+    );
+  }
+}
+
+class _EtiquetaMeiaBordaCarrinho extends StatelessWidget {
+  const _EtiquetaMeiaBordaCarrinho();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        'Meio (1/2)',
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          color: cs.onPrimaryContainer,
+        ),
+      ),
     );
   }
 }

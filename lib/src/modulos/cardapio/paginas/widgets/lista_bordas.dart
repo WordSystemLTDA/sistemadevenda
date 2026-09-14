@@ -2,6 +2,7 @@ import 'package:app/src/essencial/widgets/grade_opcoes_responsiva.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -204,6 +205,130 @@ class _ListaBordasState extends State<ListaBordas> {
               }),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class ControleMeiaBorda extends StatelessWidget {
+  final ProvedorProduto? produto;
+  final bool kit;
+  final String idProduto;
+
+  const ControleMeiaBorda({
+    super.key,
+    this.produto,
+    this.kit = false,
+    this.idProduto = '0',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final provedorProduto = produto ?? Modular.get<ProvedorProduto>();
+
+    return ListenableBuilder(
+      listenable: provedorProduto,
+      builder: (context, _) {
+        final cs = Theme.of(context).colorScheme;
+        final somenteMetade =
+            provedorProduto.bordaSomenteMetadeSelecionada(kit, idProduto);
+        final totalBordas = provedorProduto.calcularPrecoBorda();
+        final totalTexto = totalBordas.obterReal();
+        final descricao = somenteMetade
+            ? 'Meia pizza selecionada'
+            : 'Pizza inteira selecionada';
+
+        final seletor = SegmentedButton<bool>(
+          key: const ValueKey('controle_meia_borda_seletor'),
+          showSelectedIcon: false,
+          expandedInsets: EdgeInsets.zero,
+          style: SegmentedButton.styleFrom(
+            selectedBackgroundColor: cs.primaryContainer,
+            selectedForegroundColor: cs.onPrimaryContainer,
+            foregroundColor: cs.onSurfaceVariant,
+            side: BorderSide(color: cs.outlineVariant),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.radio_button_checked_outlined),
+              label: Text('Inteira'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.adjust_outlined),
+              label: Text('Meia'),
+            ),
+          ],
+          selected: {somenteMetade},
+          onSelectionChanged: (selecionado) {
+            provedorProduto.definirBordaSomenteMetade(
+              selecionado.single,
+              kit,
+              idProduto,
+            );
+            FeedbackUsuario.selecaoAlterada();
+          },
+        );
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+          child: Material(
+            key: const ValueKey('controle_meia_borda_card'),
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.local_pizza_outlined,
+                            size: 19, color: cs.onPrimaryContainer),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Aplicação da borda',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onSurface)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$descricao • Cobrança: $totalTexto',
+                              style: TextStyle(
+                                  fontSize: 12.5, color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  seletor,
+                ],
+              ),
+            ),
+          ),
         );
       },
     );

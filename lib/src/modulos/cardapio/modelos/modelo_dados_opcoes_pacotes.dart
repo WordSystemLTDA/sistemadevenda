@@ -14,6 +14,7 @@ class ModeloDadosOpcoesPacotes {
   bool? estaSelecionado;
   bool? excluir;
   int? quantidade;
+  bool somenteMetadeBorda;
 
   ModeloDadosOpcoesPacotes({
     required this.id,
@@ -28,6 +29,7 @@ class ModeloDadosOpcoesPacotes {
     this.estaSelecionado,
     this.excluir,
     this.quantidade,
+    this.somenteMetadeBorda = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +46,7 @@ class ModeloDadosOpcoesPacotes {
       'estaSelecionado': estaSelecionado,
       'excluir': excluir,
       'quantidade': quantidade,
+      if (somenteMetadeBorda) 'somenteMetadeBorda': somenteMetadeBorda,
     };
   }
 
@@ -66,6 +69,9 @@ class ModeloDadosOpcoesPacotes {
           : null,
       excluir: map['excluir'] != null ? map['excluir'] as bool : null,
       quantidade: map['quantidade'] != null ? map['quantidade'] as int : null,
+      somenteMetadeBorda: map['somenteMetadeBorda'] == true ||
+          map['bordaSomenteMetade'] == true ||
+          map['somente_metade_borda'] == true,
       imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??
               map['imprimir_codigo_produto_preparo']) as String? ??
           'Não',

@@ -212,6 +212,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                   opcoesPacote.id == 6) ...[
                                 // SÓ APARECE QUANDO TEM BORDAS
                                 const ListaBordas(),
+                                const ControleMeiaBorda(),
                               ],
                               ListView.builder(
                                 shrinkWrap: true,

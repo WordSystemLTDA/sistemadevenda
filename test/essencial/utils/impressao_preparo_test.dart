@@ -238,6 +238,64 @@ void main() {
     expect(borda['nome'], '(1) Cheddar');
   });
 
+  test('borda em meia pizza imprime indicacao clara para preparo', () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Chocolate',
+              valor: '2.50',
+              valorOriginal: '5.00',
+              somenteMetadeBorda: true,
+            ),
+          ],
+        ),
+      ];
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcao = (dados['opcoesPacotesListaFinal'] as List).single;
+    final borda = (opcao['dados'] as List).single;
+
+    expect(opcao['titulo'], 'Bordas - Meio (1/2) (1)');
+    expect(borda['nome'], 'Meio - (1/2) Chocolate');
+    expect(borda['somenteMetadeBorda'], isTrue);
+  });
+
+  test('duas bordas em meia pizza imprimem meio e cada sabor como um quarto',
+      () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Chocolate',
+              somenteMetadeBorda: true,
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Catupiry',
+              somenteMetadeBorda: true,
+            ),
+          ],
+        ),
+      ];
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcao = (dados['opcoesPacotesListaFinal'] as List).single;
+    final bordas = opcao['dados'] as List;
+
+    expect(opcao['titulo'], 'Bordas - Meio (1/2) (2)');
+    expect(bordas.map((borda) => borda['nome']),
+        ['Meio - (1/4) Chocolate', 'Meio - (1/4) Catupiry']);
+  });
+
   test('combos formatam produtos internos sem alterar complementos', () {
     final combo = produto(nome: 'Combo', imprimirCodigo: 'Não')
       ..opcoesPacotesListaFinal = [

@@ -8,6 +8,7 @@ import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
@@ -222,7 +223,10 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
               ),
               for (final dado in opcao.dados!)
                 _buildLinhaDetalhe(
-                    context, _nomeDetalhe(dado), dado.valor, dado.quantidade),
+                    context,
+                    _nomeDetalhe(opcao.id, dado, opcao.dados!.length),
+                    dado.valor,
+                    dado.quantidade),
             ],
           ],
           if (observacao.isNotEmpty) ...[
@@ -238,7 +242,11 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
     );
   }
 
-  String _nomeDetalhe(ModeloDadosOpcoesPacotes dado) {
+  String _nomeDetalhe(
+      int idOpcao, ModeloDadosOpcoesPacotes dado, int totalDados) {
+    if (idOpcao == 6) {
+      return ValoresPizza.nomeBordaCarrinho(dado, totalDados);
+    }
     if (dado.quantimaximaselecao != null) {
       return '(${dado.quantimaximaselecao}) ${dado.nome}';
     }

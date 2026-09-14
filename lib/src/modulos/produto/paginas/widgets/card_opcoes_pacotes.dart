@@ -3,6 +3,7 @@
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -72,7 +73,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
           widget.kit,
           widget.idProduto,
         )
-        .map((dado) => '${dado.id}:${dado.quantidade ?? ''}')
+        .map((dado) =>
+            '${dado.id}:${dado.quantidade ?? ''}:${dado.somenteMetadeBorda}')
         .join('|');
   }
 
@@ -101,14 +103,20 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     final item = widget.item;
     final grupo = widget.opcoesPacote;
     final cs = Theme.of(context).colorScheme;
-    final selecionado = _provedorProduto
-        .retornarDadosPorID([grupo.id], widget.kit, widget.idProduto)
-        .where((dado) => dado.id == item.id)
-        .firstOrNull;
+    final dadosSelecionados = _provedorProduto
+        .retornarDadosPorID([grupo.id], widget.kit, widget.idProduto);
+    final selecionado =
+        dadosSelecionados.where((dado) => dado.id == item.id).firstOrNull;
     final ativo = selecionado != null;
     final adicional = grupo.id == 7;
     final cor = VisualAtendimento.verde(context);
-    final valor = double.tryParse(item.valor ?? '') ?? 0;
+    final meiaBorda = grupo.id == 6 && selecionado?.somenteMetadeBorda == true;
+    final valor = _valorExibido(grupo, item, selecionado, dadosSelecionados);
+    final valorBase = double.tryParse(selecionado?.valorOriginal ??
+            item.valorOriginal ??
+            item.valor ??
+            '') ??
+        0;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -169,9 +177,16 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                         Text(item.nome,
                             style: TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w500)),
+                        if (meiaBorda) ...[
+                          const SizedBox(height: 5),
+                          _EtiquetaMeiaBorda(cor: cor),
+                        ],
                         if (valor > 0) ...[
                           const SizedBox(height: 4),
-                          Text(valor.obterReal(),
+                          Text(
+                              meiaBorda && valorBase > valor
+                                  ? 'Cobrança: ${valor.obterReal()} • inteira ${valorBase.obterReal()}'
+                                  : valor.obterReal(),
                               style: TextStyle(
                                   fontSize: 13, color: cs.onSurfaceVariant)),
                         ],
@@ -222,6 +237,50 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
               ]),
             );
           }),
+        ),
+      ),
+    );
+  }
+
+  double _valorExibido(
+    ModeloOpcoesPacotes grupo,
+    ModeloDadosOpcoesPacotes item,
+    ModeloDadosOpcoesPacotes? selecionado,
+    List<ModeloDadosOpcoesPacotes> dadosSelecionados,
+  ) {
+    if (grupo.id == 6 && selecionado != null) {
+      final dadosRateados = ValoresPizza.ratear(
+          dadosSelecionados, _provedorProduto.modeloValorBorda);
+      final rateado =
+          dadosRateados.where((dado) => dado.id == selecionado.id).firstOrNull;
+      return double.tryParse(rateado?.valor ?? selecionado.valor ?? '') ?? 0;
+    }
+
+    return double.tryParse(item.valor ?? '') ?? 0;
+  }
+}
+
+class _EtiquetaMeiaBorda extends StatelessWidget {
+  final Color cor;
+
+  const _EtiquetaMeiaBorda({required this.cor});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cor.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        'Meia pizza',
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: cs.brightness == Brightness.dark ? Colors.white : cor,
         ),
       ),
     );

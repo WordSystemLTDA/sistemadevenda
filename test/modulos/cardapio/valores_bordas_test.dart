@@ -72,6 +72,74 @@ void main() {
     expect(produto.calcularPrecoBorda(), 0);
   });
 
+  test('borda em meia pizza cobra metade do valor selecionado', () {
+    produto.opcoesPacotesListaFinal = [
+      grupo(6, 'Selecione as Bordas', [opcao('Chocolate', '5')]),
+    ];
+    produto.retornarDadosPorID([6], false, '0').single.somenteMetadeBorda =
+        true;
+
+    produto.calcularValorVenda(false, '0');
+
+    expect(produto.calcularPrecoBorda(), 2.5);
+    expect(produto.valorVenda, 59.5);
+    final borda = produto.opcoesParaCarrinho().single.dados!.single;
+    expect(borda.valor, '2.50');
+    expect(borda.valorOriginal, '5.00');
+    expect(borda.somenteMetadeBorda, isTrue);
+    expect(ModeloDadosOpcoesPacotes.fromMap(borda.toMap()).somenteMetadeBorda,
+        isTrue);
+  });
+
+  test('meia borda escolhida antes do sabor aplica e volta para inteira', () {
+    final cheddar = opcao('Cheddar', '12');
+    final opcoesDisponiveis = grupo(6, 'Selecione as Bordas', [cheddar]);
+    produto.opcoesPacotesListaFinal = [
+      grupo(6, 'Selecione as Bordas', []),
+    ];
+    cardapio.limiteSaborBordaSelecionado = 1;
+
+    expect(produto.bordaSomenteMetadeSelecionada(false, '0'), isFalse);
+
+    produto.definirBordaSomenteMetade(true, false, '0');
+    produto.selecionarItem(cheddar, opcoesDisponiveis, false, '0');
+
+    expect(produto.bordaSomenteMetadeSelecionada(false, '0'), isTrue);
+    expect(produto.retornarDadosPorID([6], false, '0').single, cheddar);
+    expect(cheddar.somenteMetadeBorda, isTrue);
+    expect(produto.calcularPrecoBorda(), 6);
+
+    produto.selecionarItem(cheddar, opcoesDisponiveis, false, '0');
+
+    expect(produto.retornarDadosPorID([6], false, '0'), isEmpty);
+    expect(produto.bordaSomenteMetadeSelecionada(false, '0'), isFalse);
+  });
+
+  test('borda com dois sabores em meia pizza divide tambem pela metade', () {
+    for (final (modelo, total, parcelas) in [
+      ('maior', 7.5, ['3.75', '3.75']),
+      ('media', 6.75, ['3.75', '3.00']),
+    ]) {
+      cardapio.configBigchef = ModeloConfigBigchef.fromMap({
+        ...configBigchef().toMap(),
+        'modelo_valor_adicional_pizza': modelo,
+      });
+      produto.opcoesPacotesListaFinal = [
+        grupo(6, 'Selecione as Bordas', [
+          opcao('Doce de Leite', '15')..somenteMetadeBorda = true,
+          opcao('Chocolate Branco', '12')..somenteMetadeBorda = true,
+        ]),
+      ];
+      produto.calcularValorVenda(false, '0');
+
+      expect(produto.calcularPrecoBorda(), total);
+      expect(produto.valorVenda, 57 + total);
+      final bordas = produto.opcoesParaCarrinho().single.dados!;
+      expect(bordas.map((d) => d.valor), parcelas);
+      expect(bordas.every((d) => d.somenteMetadeBorda), isTrue);
+    }
+  });
+
   for (final (modelo, total, parcelas) in [
     ('maior', 15.0, ['7.50', '7.50']),
     ('media', 13.5, ['7.50', '6.00']),

@@ -73,7 +73,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final chamadasHapticas = _capturarFeedbackHaptico();
-      final pizza = _pizzaRecorrente();
+      final pizza = _pizzaRecorrente(meiaBorda: true);
 
       await tester.pumpWidget(MaterialApp(
         builder: (context, child) => MediaQuery(
@@ -117,8 +117,8 @@ void main() {
       expect(find.text('(1/3) Catupiry Especial'), findsOneWidget);
       expect(find.text('(1/3) Dois Quijos'), findsOneWidget);
       expect(find.text('Selecione as Bordas'), findsOneWidget);
-      expect(find.text('Catupiry'), findsOneWidget);
-      expect(find.text('Goiabada'), findsOneWidget);
+      expect(find.text('Meio - (1/4) Catupiry'), findsOneWidget);
+      expect(find.text('Meio - (1/4) Goiabada'), findsOneWidget);
       expect(find.text('Selecione os Adicionais'), findsOneWidget);
       expect(find.text('1x Ervilha'), findsOneWidget);
       expect(find.text('1x Bacon'), findsOneWidget);
@@ -240,7 +240,7 @@ void main() {
   testWidgets(
       'carrinho recorrente mostra sabores da pizza e codigos habilitados',
       (tester) async {
-    final pizza = _pizzaRecorrente();
+    final pizza = _pizzaRecorrente(meiaBorda: true);
     final sabores = pizza.opcoesPacotesListaFinal!
         .where((opcao) => opcao.id == 10)
         .single
@@ -299,6 +299,9 @@ void main() {
     expect(find.text('1 - (1/3) Mussarela'), findsOneWidget);
     expect(find.text('2 - (1/3) Catupiry Especial'), findsOneWidget);
     expect(find.text('3 - (1/3) Dois Quijos'), findsOneWidget);
+    expect(find.text('Meio (1/2)'), findsOneWidget);
+    expect(find.text('Meio - (1/4) Catupiry'), findsOneWidget);
+    expect(find.text('Meio - (1/4) Goiabada'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
@@ -319,7 +322,7 @@ List<MethodCall> _capturarFeedbackHaptico() {
   return chamadas;
 }
 
-Modelowordprodutos _pizzaRecorrente() {
+Modelowordprodutos _pizzaRecorrente({bool meiaBorda = false}) {
   return Modelowordprodutos(
     id: '1',
     iditensvenda: '10673',
@@ -389,11 +392,13 @@ Modelowordprodutos _pizzaRecorrente() {
             id: '10',
             nome: 'Catupiry',
             valor: '12.00',
+            somenteMetadeBorda: meiaBorda,
           ),
           ModeloDadosOpcoesPacotes(
             id: '11',
             nome: 'Goiabada',
             valor: '12.00',
+            somenteMetadeBorda: meiaBorda,
           ),
         ],
       ),
