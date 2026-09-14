@@ -1,5 +1,24 @@
 import 'dart:convert';
 
+String _texto(Object? valor, [String padrao = '']) =>
+    valor?.toString() ?? padrao;
+
+bool? _boolOpcional(Object? valor) {
+  if (valor == null) return null;
+  if (valor is bool) return valor;
+  final texto = valor.toString().toLowerCase();
+  if (texto == 'true' || texto == '1' || texto == 'sim') return true;
+  if (texto == 'false' || texto == '0' || texto == 'nao' || texto == 'não') {
+    return false;
+  }
+  return null;
+}
+
+int? _inteiroOpcional(Object? valor) {
+  if (valor is num) return valor.toInt();
+  return int.tryParse((valor ?? '').toString());
+}
+
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 class ModeloDadosOpcoesPacotes {
   final String id;
@@ -52,28 +71,23 @@ class ModeloDadosOpcoesPacotes {
 
   factory ModeloDadosOpcoesPacotes.fromMap(Map<String, dynamic> map) {
     return ModeloDadosOpcoesPacotes(
-      id: map['id'] as String,
-      nome: map['nome'] as String,
-      codigo: map['codigo'] != null ? map['codigo'] as String : null,
-      valor: map['valor'] != null ? map['valor'] as String : null,
+      id: _texto(map['id']),
+      nome: _texto(map['nome']),
+      codigo: map['codigo']?.toString(),
+      valor: map['valor']?.toString(),
       valorOriginal: map['valorOriginal']?.toString(),
-      foto: map['foto'] != null ? map['foto'] as String : null,
-      quantimaximaselecao: map['quantimaximaselecao'] != null
-          ? map['quantimaximaselecao'] as String
-          : null,
-      habilsepardelivery: map['habilsepardelivery'] != null
-          ? map['habilsepardelivery'] as String
-          : null,
-      estaSelecionado: map['estaSelecionado'] != null
-          ? map['estaSelecionado'] as bool
-          : null,
-      excluir: map['excluir'] != null ? map['excluir'] as bool : null,
-      quantidade: map['quantidade'] != null ? map['quantidade'] as int : null,
-      somenteMetadeBorda: map['somenteMetadeBorda'] == true ||
-          map['bordaSomenteMetade'] == true ||
-          map['somente_metade_borda'] == true,
+      foto: map['foto']?.toString(),
+      quantimaximaselecao: map['quantimaximaselecao']?.toString(),
+      habilsepardelivery: map['habilsepardelivery']?.toString(),
+      estaSelecionado: _boolOpcional(map['estaSelecionado']),
+      excluir: _boolOpcional(map['excluir']),
+      quantidade: _inteiroOpcional(map['quantidade']),
+      somenteMetadeBorda: _boolOpcional(map['somenteMetadeBorda']) == true ||
+          _boolOpcional(map['bordaSomenteMetade']) == true ||
+          _boolOpcional(map['somente_metade_borda']) == true,
       imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??
-              map['imprimir_codigo_produto_preparo']) as String? ??
+                  map['imprimir_codigo_produto_preparo'])
+              ?.toString() ??
           'Não',
     );
   }

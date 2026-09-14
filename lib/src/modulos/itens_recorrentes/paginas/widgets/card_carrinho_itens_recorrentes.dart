@@ -47,6 +47,11 @@ class _CardCarrinhoItensRecorrentesState
   late final Tween<double> _sizeTween;
   bool _isExpanded = false;
 
+  double _valorNumerico(Object? valor) {
+    final texto = (valor ?? '0').toString().replaceAll(',', '.');
+    return double.tryParse(texto) ?? 0;
+  }
+
   @override
   void initState() {
     _controller = AnimationController(
@@ -103,8 +108,8 @@ class _CardCarrinhoItensRecorrentesState
                         ),
                       ),
                       valor: Text(
-                        (double.parse(item.valorVenda) *
-                                item.quantidade!.toInt())
+                        (_valorNumerico(item.valorVenda) *
+                                (item.quantidade ?? 1))
                             .obterReal(),
                         textAlign: TextAlign.end,
                         style: TextStyle(
@@ -170,15 +175,15 @@ class _CardCarrinhoItensRecorrentesState
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: item.quantidade! <= 1
+                              tooltip: (item.quantidade ?? 1) <= 1
                                   ? 'Excluir item'
                                   : 'Diminuir quantidade',
-                              icon: item.quantidade! <= 1
+                              icon: (item.quantidade ?? 1) <= 1
                                   ? const Icon(Icons.delete_outline_outlined)
                                   : const Icon(
                                       Icons.remove_circle_outline_outlined),
                               onPressed: () {
-                                if (item.quantidade! <= 1) {
+                                if ((item.quantidade ?? 1) <= 1) {
                                   showDialog(
                                     context: context,
                                     builder: (context) {
@@ -226,7 +231,7 @@ class _CardCarrinhoItensRecorrentesState
                             ConstrainedBox(
                               constraints: const BoxConstraints(minWidth: 30),
                               child: Text(
-                                item.quantidade!.toStringAsFixed(0),
+                                (item.quantidade ?? 1).toStringAsFixed(0),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(fontSize: 16),
                               ),
@@ -285,7 +290,7 @@ class _CardCarrinhoItensRecorrentesState
                                 style: const TextStyle(fontSize: 15),
                               ),
                               valor: Text(
-                                (double.parse(dado.valor ?? '0') *
+                                (_valorNumerico(dado.valor) *
                                         (dado.quantidade ?? 1))
                                     .obterReal(),
                                 style: TextStyle(

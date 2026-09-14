@@ -8,6 +8,78 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
 import 'package:flutter/material.dart';
 
+String _texto(Object? valor, [String padrao = '']) =>
+    valor?.toString() ?? padrao;
+
+bool? _boolOpcional(Object? valor) {
+  if (valor == null) return null;
+  if (valor is bool) return valor;
+  final texto = valor.toString().toLowerCase();
+  if (texto == 'true' || texto == '1' || texto == 'sim') return true;
+  if (texto == 'false' || texto == '0' || texto == 'nao' || texto == 'não') {
+    return false;
+  }
+  return null;
+}
+
+int? _inteiroOpcional(Object? valor) {
+  if (valor is num) return valor.toInt();
+  return int.tryParse((valor ?? '').toString());
+}
+
+double? _decimalOpcional(Object? valor) {
+  if (valor is num) return valor.toDouble();
+  return double.tryParse((valor ?? '').toString().replaceAll(',', '.'));
+}
+
+Map<String, dynamic>? _mapa(Object? valor) =>
+    valor is Map ? Map<String, dynamic>.from(valor) : null;
+
+List<Modelowordingredientesproduto> _ingredientes(Object? valor) {
+  if (valor is! List) return <Modelowordingredientesproduto>[];
+  final ingredientes = <Modelowordingredientesproduto>[];
+  for (final item in valor) {
+    final mapa = _mapa(item);
+    if (mapa == null) continue;
+    try {
+      ingredientes.add(Modelowordingredientesproduto.fromMap(mapa));
+    } catch (_) {
+      continue;
+    }
+  }
+  return ingredientes;
+}
+
+List<ModeloOpcoesPacotes>? _opcoes(Object? valor) {
+  if (valor is! List) return null;
+  final opcoes = <ModeloOpcoesPacotes>[];
+  for (final item in valor) {
+    final mapa = _mapa(item);
+    if (mapa == null) continue;
+    try {
+      opcoes.add(ModeloOpcoesPacotes.fromMap(mapa));
+    } catch (_) {
+      continue;
+    }
+  }
+  return opcoes;
+}
+
+List<Modelowordtamanhosproduto>? _tamanhosPizza(Object? valor) {
+  if (valor is! List) return null;
+  final tamanhos = <Modelowordtamanhosproduto>[];
+  for (final item in valor) {
+    final mapa = _mapa(item);
+    if (mapa == null) continue;
+    try {
+      tamanhos.add(Modelowordtamanhosproduto.fromMap(mapa));
+    } catch (_) {
+      continue;
+    }
+  }
+  return tamanhos;
+}
+
 class Modelowordprodutos {
   String id;
   String? hashprodutos;
@@ -154,43 +226,35 @@ class Modelowordprodutos {
 
   factory Modelowordprodutos.fromMap(Map<String, dynamic> map) {
     return Modelowordprodutos(
-      id: map['id'] as String,
-      conferidoNoCarrinho: map['conferidoNoCarrinho'] == true,
-      limiteSaboresBorda: (map['limiteSaboresBorda'] as num?)?.toInt(),
-      hashprodutos:
-          map['hashprodutos'] != null ? map['hashprodutos'] as String : null,
+      id: _texto(map['id']),
+      conferidoNoCarrinho: _boolOpcional(map['conferidoNoCarrinho']) == true,
+      limiteSaboresBorda: _inteiroOpcional(map['limiteSaboresBorda']),
+      hashprodutos: map['hashprodutos']?.toString(),
       iditensvenda: (map['iditensvenda'] ?? map['id_itens_venda'])?.toString(),
-      nome: map['nome'] as String,
-      codigo: map['codigo'] as String,
+      nome: _texto(map['nome']),
+      codigo: _texto(map['codigo']),
       imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??
-              map['imprimir_codigo_produto_preparo']) as String? ??
+                  map['imprimir_codigo_produto_preparo'])
+              ?.toString() ??
           'Não',
-      estoque: map['estoque'] as String,
-      tamanho: map['tamanho'] as String,
-      foto: map['foto'] as String,
-      ativo: map['ativo'] as String,
-      descricao: map['descricao'] as String,
-      valorVenda: map['valorVenda'] as String,
-      categoria: map['categoria'] as String,
-      nomeCategoria: map['nomeCategoria'] as String,
-      dataLancado:
-          map['dataLancado'] != null ? map['dataLancado'] as String : null,
-      habilsepardelivery: map['habilsepardelivery'] != null
-          ? map['habilsepardelivery'] as String
+      estoque: _texto(map['estoque']),
+      tamanho: _texto(map['tamanho']),
+      foto: _texto(map['foto']),
+      ativo: _texto(map['ativo']),
+      descricao: _texto(map['descricao']),
+      valorVenda: _texto(map['valorVenda'], '0'),
+      categoria: _texto(map['categoria']),
+      nomeCategoria: _texto(map['nomeCategoria']),
+      dataLancado: map['dataLancado']?.toString(),
+      habilsepardelivery: map['habilsepardelivery']?.toString(),
+      ativarCustoDeProducao: map['ativarCustoDeProducao']?.toString(),
+      novo: _boolOpcional(map['novo']),
+      destinoDeImpressao: _mapa(map['destinoDeImpressao']) != null
+          ? ModeloDestinoImpressao.fromMap(_mapa(map['destinoDeImpressao'])!)
           : null,
-      ativarCustoDeProducao: map['ativarCustoDeProducao'] != null
-          ? map['ativarCustoDeProducao'] as String
-          : null,
-      novo: map['novo'] != null ? map['novo'] as bool : null,
-      destinoDeImpressao: map['destinoDeImpressao'] != null
-          ? ModeloDestinoImpressao.fromMap(
-              map['destinoDeImpressao'] as Map<String, dynamic>)
-          : null,
-      habilTipo: map['habilTipo'] as String,
-      habilItensRetirada: map['habilItensRetirada'] != null
-          ? map['habilItensRetirada'] as String
-          : null,
-      ativoLoja: map['ativoLoja'] != null ? map['ativoLoja'] as String : null,
+      habilTipo: _texto(map['habilTipo']),
+      habilItensRetirada: map['habilItensRetirada']?.toString(),
+      ativoLoja: map['ativoLoja']?.toString(),
       // cortesias: List<Modelowordcortesiasproduto>.from(
       //   (map['cortesias'] as List<dynamic>).map<Modelowordcortesiasproduto>(
       //     (x) => Modelowordcortesiasproduto.fromMap(x as Map<String, dynamic>),
@@ -221,62 +285,22 @@ class Modelowordprodutos {
       //     (x) => Modeloworditensretiradaproduto.fromMap(x as Map<String, dynamic>),
       //   ),
       // ),
-      ingredientes: List<Modelowordingredientesproduto>.from(
-        (map['ingredientes'] as List<dynamic>)
-            .map<Modelowordingredientesproduto>(
-          (x) =>
-              Modelowordingredientesproduto.fromMap(x as Map<String, dynamic>),
-        ),
-      ),
-      quantidade: map['quantidade'] != null
-          ? (map['quantidade'] is int || map['quantidade'] is double)
-              ? (double.tryParse(map['quantidade'].toString()) ?? 0)
-              : (double.tryParse(map['quantidade']) ?? 0)
-          : null,
-      quantidadePessoa: map['quantidadePessoa'] != null
-          ? map['quantidadePessoa'] as int
-          : null,
-      tamanhoLista:
-          map['tamanhoLista'] != null ? map['tamanhoLista'] as int : null,
-      valorTotalVendas: map['valorTotalVendas'] != null
-          ? map['valorTotalVendas'] as String
-          : null,
-      observacao:
-          map['observacao'] != null ? map['observacao'] as String : null,
-      quantidadeController: map['quantidadeController'] != null
+      ingredientes: _ingredientes(map['ingredientes']),
+      quantidade: _decimalOpcional(map['quantidade']),
+      quantidadePessoa: _inteiroOpcional(map['quantidadePessoa']),
+      tamanhoLista: _inteiroOpcional(map['tamanhoLista']),
+      valorTotalVendas: map['valorTotalVendas']?.toString(),
+      observacao: map['observacao']?.toString(),
+      quantidadeController: map['quantidadeController'] is TextEditingController
           ? map['quantidadeController'] as TextEditingController
           : null,
-      acoes: map['acoes'] != null ? map['acoes'] as Widget : null,
-      valorRestoDivisao: map['valorRestoDivisao'] != null
-          ? map['valorRestoDivisao'] as String
-          : null,
-      opcoesPacotes: map['opcoesPacotes'] != null
-          ? List<ModeloOpcoesPacotes>.from(
-              (map['opcoesPacotes'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
-                (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      opcoesPacotesListaFinal: map['opcoesPacotesListaFinal'] != null
-          ? List<ModeloOpcoesPacotes>.from(
-              (map['opcoesPacotesListaFinal'] as List<dynamic>)
-                  .map<ModeloOpcoesPacotes?>(
-                (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      tamanhosPizza: map['tamanhosPizza'] != null
-          ? List<Modelowordtamanhosproduto>.from(
-              (map['tamanhosPizza'] as List<dynamic>)
-                  .map<Modelowordtamanhosproduto?>(
-                (x) => Modelowordtamanhosproduto.fromMap(
-                    x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      descontoProduto: map['descontoProduto'] != null
-          ? ModeloDescontoProduto.fromMap(
-              map['descontoProduto'] as Map<String, dynamic>)
+      acoes: map['acoes'] is Widget ? map['acoes'] as Widget : null,
+      valorRestoDivisao: map['valorRestoDivisao']?.toString(),
+      opcoesPacotes: _opcoes(map['opcoesPacotes']),
+      opcoesPacotesListaFinal: _opcoes(map['opcoesPacotesListaFinal']),
+      tamanhosPizza: _tamanhosPizza(map['tamanhosPizza']),
+      descontoProduto: _mapa(map['descontoProduto']) != null
+          ? ModeloDescontoProduto.fromMap(_mapa(map['descontoProduto'])!)
           : null,
     );
   }

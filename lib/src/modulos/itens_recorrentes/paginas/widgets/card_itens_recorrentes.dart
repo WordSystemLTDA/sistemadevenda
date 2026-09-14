@@ -8,6 +8,7 @@ import 'package:app/src/essencial/constantes/assets_constantes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -82,6 +83,38 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
   StreamController<String> tempoLancadoController = StreamController<String>();
   bool _detalhesPizzaAbertos = false;
 
+  double _valorNumerico(Object? valor) {
+    final texto = (valor ?? '0').toString().replaceAll(',', '.');
+    return double.tryParse(texto) ?? 0;
+  }
+
+  int _inteiro(Object? valor, {int padrao = 0}) {
+    if (valor is num) return valor.toInt();
+    return int.tryParse((valor ?? '').toString()) ?? padrao;
+  }
+
+  DateTime? _parseDataLancado(String? valor) {
+    final texto = valor?.trim();
+    if (texto == null || texto.isEmpty) return null;
+
+    final iso = DateTime.tryParse(texto);
+    if (iso != null) return iso;
+
+    final partes =
+        RegExp(r'^(\d{2})/(\d{2})/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$')
+            .firstMatch(texto);
+    if (partes == null) return null;
+
+    return DateTime(
+      int.parse(partes.group(3)!),
+      int.parse(partes.group(2)!),
+      int.parse(partes.group(1)!),
+      int.tryParse(partes.group(4) ?? '0') ?? 0,
+      int.tryParse(partes.group(5) ?? '0') ?? 0,
+      int.tryParse(partes.group(6) ?? '0') ?? 0,
+    );
+  }
+
   Widget retornoValorVendaProduto() {
     // return SizedBox();
     var texto = '';
@@ -105,19 +138,18 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
           (dadosPacotes.dados != null && dadosPacotes.dados!.isNotEmpty)) {
         if ((dadosPacotes.dados!.first.valor ==
             dadosPacotes.dados!.last.valor)) {
-          texto +=
-              double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal();
+          texto += _valorNumerico(dadosPacotes.dados!.first.valor).obterReal();
         } else {
           texto +=
-              "${double.parse(dadosPacotes.dados!.first.valor ?? '0').obterReal()} à ${double.parse(dadosPacotes.dados!.last.valor ?? '0').obterReal()}";
+              "${_valorNumerico(dadosPacotes.dados!.first.valor).obterReal()} à ${_valorNumerico(dadosPacotes.dados!.last.valor).obterReal()}";
         }
       } else {
-        texto = (double.parse(widget.item.valorVenda) *
+        texto = (_valorNumerico(widget.item.valorVenda) *
                 (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
             .obterReal(2);
       }
     } else {
-      texto = (double.parse(widget.item.valorVenda) *
+      texto = (_valorNumerico(widget.item.valorVenda) *
               (widget.finalizar ? (widget.item.quantidade ?? 1) : 1))
           .obterReal(2);
     }
@@ -135,13 +167,16 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
   }
 
   void _updateTimer() {
-    if (widget.item.dataLancado != null) {
-      final duration =
-          DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
-      final newDuration = ConfigSistema.formatarHora(duration);
-
-      tempoLancadoController.add(newDuration);
+    if (tempoLancadoController.isClosed) return;
+    final dataLancado = _parseDataLancado(widget.item.dataLancado);
+    if (dataLancado == null) {
+      tempoLancadoController.add('agora');
+      return;
     }
+
+    final duration = DateTime.now().difference(dataLancado);
+    final newDuration = ConfigSistema.formatarHora(duration);
+    tempoLancadoController.add(newDuration);
   }
 
   @override
@@ -154,10 +189,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
 
   @override
   void dispose() {
-    if (_tickerTempoLancado != null) {
-      _tickerTempoLancado!.cancel();
-      tempoLancadoController.close();
-    }
+    _tickerTempoLancado?.cancel();
+    if (!tempoLancadoController.isClosed) tempoLancadoController.close();
     super.dispose();
   }
 
@@ -183,7 +216,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
 
   void _abrirProduto(Modelowordprodutos item) {
     if (widget.estaPesquisando) {
-      widget.searchController!.closeView(item.nome);
+      widget.searchController?.closeView(item.nome);
     }
 
     Navigator.of(context).push(MaterialPageRoute(
@@ -301,24 +334,34 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
   }
 
   Widget _buildValorResumo(BuildContext context, Modelowordprodutos item) {
-    if (widget.categoria != null &&
-        widget.categoria!.tamanhosPizza!.isNotEmpty) {
+    final tamanhosCategoria =
+        widget.categoria?.tamanhosPizza ?? const <ModeloTamanhosPizza>[];
+    if (tamanhosCategoria.isNotEmpty) {
       if (provedorCardapio.tamanhosPizza == null) {
+        final primeiroTamanho = item.tamanhosPizza?.firstOrNull;
+        if (primeiroTamanho == null) {
+          return Text(
+            _valorNumerico(item.valorVenda).obterReal(),
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+                color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+          );
+        }
         return Text(
-          "A partir de ${double.parse(item.tamanhosPizza?.first.valor ?? '0').obterReal()}",
+          "A partir de ${_valorNumerico(primeiroTamanho.valor).obterReal()}",
           textAlign: TextAlign.right,
           style: const TextStyle(
               color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
         );
       }
 
-      final tamanhoSelecionado = item.tamanhosPizza!
+      final tamanhoSelecionado = (item.tamanhosPizza ?? [])
           .where((element) => element.id == provedorCardapio.tamanhosPizza!.id)
           .firstOrNull;
       if (tamanhoSelecionado == null) return const SizedBox.shrink();
 
       return Text(
-        double.parse(tamanhoSelecionado.valor).obterReal(),
+        _valorNumerico(tamanhoSelecionado.valor).obterReal(),
         textAlign: TextAlign.right,
         style: const TextStyle(
             color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
@@ -327,7 +370,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
 
     if (item.descontoProduto == null) {
       return Text(
-        (double.tryParse(item.valorVenda) ?? 0).obterReal(),
+        _valorNumerico(item.valorVenda).obterReal(),
         textAlign: TextAlign.right,
         style: const TextStyle(
             color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
@@ -340,8 +383,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
       spacing: 4,
       children: [
         Text(
-          (double.parse(item.valorVenda) +
-                  double.parse(item.descontoProduto!.valorretirado))
+          (_valorNumerico(item.valorVenda) +
+                  _valorNumerico(item.descontoProduto!.valorretirado))
               .obterReal(),
           style: const TextStyle(
               fontSize: 10,
@@ -353,7 +396,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
             style: TextStyle(
                 fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
         Text(
-          double.parse(item.valorVenda).obterReal(),
+          _valorNumerico(item.valorVenda).obterReal(),
           style: const TextStyle(
               fontSize: 14,
               color: Colors.deepOrange,
@@ -366,7 +409,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
           ),
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
           child: Text(
-            '-${item.descontoProduto!.tipodedesconto == '1' ? "${double.parse(item.descontoProduto!.valordedesconto).toInt()}%" : double.parse(item.descontoProduto!.valordedesconto).obterReal()}',
+            '-${item.descontoProduto!.tipodedesconto == '1' ? "${_valorNumerico(item.descontoProduto!.valordedesconto).toInt()}%" : _valorNumerico(item.descontoProduto!.valordedesconto).obterReal()}',
             style: const TextStyle(fontSize: 8, color: Colors.white),
           ),
         ),
@@ -452,9 +495,11 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
                     provedorCardapio.saboresPizzaSelecionados =
                         listaSaboresPizza;
                   } else {
+                    final limiteSabores = _inteiro(
+                        provedorCardapio.tamanhosPizza?.saboreslimite,
+                        padrao: 1);
                     if (provedorCardapio.saboresPizzaSelecionados.length <
-                        int.parse(
-                            provedorCardapio.tamanhosPizza!.saboreslimite)) {
+                        limiteSabores) {
                       var listaSaboresPizza = [
                         ...provedorCardapio.saboresPizzaSelecionados,
                         item
@@ -475,7 +520,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
                 }
 
                 if (widget.categoria != null &&
-                    widget.categoria!.tamanhosPizza!.isNotEmpty &&
+                    (widget.categoria!.tamanhosPizza ?? []).isNotEmpty &&
                     provedorCardapio.tamanhosPizza == null) {
                   ScaffoldMessenger.of(context).removeCurrentSnackBar();
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -497,7 +542,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
 
                 String valor = item.valorVenda;
 
-                if (double.parse(valor) == 0) {
+                if (_valorNumerico(valor) == 0) {
                   bool bloquear = true;
                   await showModalBottomSheet(
                     context: context,
@@ -724,7 +769,7 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
                                     initialData: 'Carregando',
                                     builder: (context, snapshot) {
                                       return Text(
-                                          "Item lançado há: ${snapshot.data!}",
+                                          "Item lançado há: ${snapshot.data ?? 'agora'}",
                                           style: const TextStyle(fontSize: 13));
                                     },
                                   ),

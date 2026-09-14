@@ -3,6 +3,21 @@ import 'dart:convert';
 
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 
+List<ModeloTamanhosPizza>? _tamanhosPizza(Object? valor) {
+  if (valor is! List) return null;
+  final tamanhos = <ModeloTamanhosPizza>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      tamanhos
+          .add(ModeloTamanhosPizza.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return tamanhos;
+}
+
 class ModeloCategoria {
   String id;
   String nomeCategoria;
@@ -27,16 +42,10 @@ class ModeloCategoria {
 
   factory ModeloCategoria.fromMap(Map<String, dynamic> map) {
     return ModeloCategoria(
-      id: map['id'] as String,
-      nomeCategoria: map['nomeCategoria'] as String,
-      quantidadeProdutos: map['quantidadeProdutos'] as String,
-      tamanhosPizza: map['tamanhosPizza'] != null
-          ? List<ModeloTamanhosPizza>.from(
-              (map['tamanhosPizza'] as List<dynamic>).map<ModeloTamanhosPizza?>(
-                (x) => ModeloTamanhosPizza.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
+      id: map['id']?.toString() ?? '',
+      nomeCategoria: map['nomeCategoria']?.toString() ?? '',
+      quantidadeProdutos: map['quantidadeProdutos']?.toString() ?? '0',
+      tamanhosPizza: _tamanhosPizza(map['tamanhosPizza']),
     );
   }
 

@@ -8,6 +8,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -173,12 +174,14 @@ class Sincronizador extends ChangeNotifier {
       throw StateError('A conta mudou. Confira o carrinho antes de enviar.');
     }
     final origem = abertura == null ? null : AtendimentosLocais.dados(abertura);
+    final produtosParaEnvio =
+        normalizarProdutosParaEnvio(itens.map((e) => e.toMap()).toList());
     await ArmazenamentoCarrinhos.instancia.finalizarDuravel(
       escopo: alvo,
       contexto: contexto,
       itens: itens,
       dados: {
-        'produtos': itens.map((e) => e.toMap()).toList(),
+        'produtos': produtosParaEnvio,
         'id_comanda_pedido': contexto.idAtendimento,
         'versao_atendimento': versao,
         if (abertura != null) 'id_abertura': abertura['id'],
@@ -323,7 +326,11 @@ class Sincronizador extends ChangeNotifier {
         dados['id_usuario'] != conta.id) {
       throw StateError('A conta mudou. Confira a venda antes de finalizar.');
     }
-    final payload = {...dados, 'caixa_id': estado['caixa_id']};
+    final payload = {
+      ...dados,
+      'produtos': normalizarProdutosParaEnvio(dados['produtos']),
+      'caixa_id': estado['caixa_id']
+    };
     await ArmazenamentoCarrinhos.instancia.finalizarDuravel(
         escopo: alvo,
         contexto: contexto,
@@ -532,6 +539,100 @@ class Sincronizador extends ChangeNotifier {
     _notificar();
   }
 
+  Future<void> reenviarParaServidor(String id) async {
+    if (_descartado) return;
+    await configurar();
+    if (escopo.isEmpty || _descartado) return;
+    final operacao = (await banco.db.query(
+      'operacoes',
+      where:
+          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+      whereArgs: [id, escopo],
+      limit: 1,
+    ))
+        .firstOrNull;
+    if (operacao == null) return;
+    final dados = _normalizarDadosOperacao(AtendimentosLocais.dados(operacao));
+    final atualizadas = await banco.db.update(
+      'operacoes',
+      {
+        'estado': 'pendente',
+        'dados': jsonEncode(dados),
+        'erro': null,
+        'proxima': 0,
+        'tentativas': 0,
+      },
+      where:
+          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+      whereArgs: [id, escopo],
+    );
+    if (atualizadas == 0) return;
+    await _recarregarPendencias();
+    _notificar();
+    await enviarPendentes();
+  }
+
+  Future<void> voltarPedidoParaCarrinho(String id) async {
+    if (_descartado) return;
+    await configurar();
+    if (escopo.isEmpty || _descartado) return;
+    final operacao = (await banco.db.query(
+      'operacoes',
+      where:
+          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+      whereArgs: [id, escopo],
+      limit: 1,
+    ))
+        .firstOrNull;
+    if (operacao == null) {
+      throw StateError('Pedido nao encontrado na fila do aparelho.');
+    }
+    final dados = AtendimentosLocais.dados(operacao);
+    final produtos = normalizarProdutosParaEnvio(dados['produtos'])
+        .map(Modelowordprodutos.fromMap)
+        .map((produto) => produto..conferidoNoCarrinho = false)
+        .toList();
+    if (produtos.isEmpty) {
+      throw StateError('Nao foi possivel recuperar os itens desse pedido.');
+    }
+    final acao = operacao['acao']?.toString() ?? '';
+    final tipo =
+        (dados['tipo'] ?? (acao == 'venda' ? 'balcao' : '')).toString();
+    if (!['mesa', 'comanda', 'balcao'].contains(tipo)) {
+      throw StateError('Esse tipo de pedido nao pode voltar ao carrinho.');
+    }
+    final idAtendimento = tipo == 'balcao'
+        ? '0'
+        : (dados['id_comanda_pedido'] ?? operacao['atendimento'] ?? '')
+            .toString();
+    final idRecurso = tipo == 'mesa'
+        ? (dados['id_mesa'] ?? '').toString()
+        : tipo == 'comanda'
+            ? (dados['id_comanda'] ?? '').toString()
+            : '';
+    final contexto = ContextoCarrinho(
+      empresa: usuario.usuario?.empresa ?? dados['empresa']?.toString() ?? '',
+      tipo: tipo,
+      idAtendimento: idAtendimento,
+      idRecurso: idRecurso,
+    );
+    final salvo = await ArmazenamentoCarrinhos.instancia.alterar(
+      contexto,
+      (itens) => itens.addAll(produtos),
+    );
+    if (!salvo) {
+      throw StateError('Nao foi possivel devolver esse pedido ao carrinho.');
+    }
+    await banco.atualizarOperacao(id, {
+      'estado': 'arquivado',
+      'erro': 'Pedido voltou para o carrinho para edicao.',
+      'proxima': 0,
+    });
+    await _recarregarPendencias();
+    aoAtualizarTelas?.call();
+    _notificar();
+  }
+
   Future<List<Map<String, dynamic>>> rascunhosBloqueados() async {
     final dados =
         jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}') as Map;
@@ -594,7 +695,15 @@ class Sincronizador extends ChangeNotifier {
         continue;
       }
       if (op['estado'] != 'registrado') {
-        final dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
+        var dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
+        if (op['tentativas'] == 0) {
+          final normalizados = _normalizarDadosOperacao(dados);
+          if (jsonEncode(normalizados) != jsonEncode(dados)) {
+            await banco
+                .atualizarOperacao(id, {'dados': jsonEncode(normalizados)});
+            dados = normalizados;
+          }
+        }
         final tentativas = (op['tentativas'] as int) + 1;
         await banco.atualizarOperacao(id, {'tentativas': tentativas});
         Response resposta;
@@ -685,6 +794,14 @@ class Sincronizador extends ChangeNotifier {
       }));
       await socket.processarImpressoesPendentes();
     }
+  }
+
+  Map<String, dynamic> _normalizarDadosOperacao(Map<String, dynamic> dados) {
+    final copia = Map<String, dynamic>.from(dados);
+    if (copia.containsKey('produtos')) {
+      copia['produtos'] = normalizarProdutosParaEnvio(copia['produtos']);
+    }
+    return copia;
   }
 
   Future<void> _atualizarConsultas(

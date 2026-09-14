@@ -1,3 +1,5 @@
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
@@ -5,12 +7,16 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:app/src/modulos/itens_recorrentes/paginas/pagina_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_carrinho_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
+import 'package:app/src/modulos/itens_recorrentes/servicos/servicos_itens_recorrentes.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +27,33 @@ import '../cardapio/montagem_pizza_test.dart' show DioClienteTeste;
 class ServicosCategoriaTeste extends Fake implements ServicosCategoria {
   @override
   Future<List<ModeloCategoria>> listar() async => [];
+}
+
+class ApiPaginaItensRecorrentesTeste extends Fake implements DioCliente {
+  @override
+  final cliente = Dio();
+  Object resposta = {
+    'id': '104',
+    'status': 'Andamento',
+    'nome': 'Comanda: 4',
+    'idComanda': '4',
+    'idMesa': '0',
+    'idCliente': '0',
+    'produtos': <dynamic>[],
+  };
+  bool falhar = false;
+
+  ApiPaginaItensRecorrentesTeste() {
+    cliente.interceptors.add(InterceptorsWrapper(onRequest: (opcoes, handler) {
+      if (falhar) {
+        handler.reject(DioException(
+            requestOptions: opcoes, type: DioExceptionType.connectionError));
+        return;
+      }
+      handler.resolve(
+          Response(requestOptions: opcoes, statusCode: 200, data: resposta));
+    }));
+  }
 }
 
 class ModuloItensRecorrentesTeste extends Module {
@@ -35,12 +68,18 @@ class ModuloItensRecorrentesTeste extends Module {
       ServicosItensComanda(DioClienteTeste(), usuarioProvedor));
   late final provedorCardapio =
       ProvedorCardapio(ServicosCategoriaTeste(), usuarioProvedor);
+  late final apiPagina = ApiPaginaItensRecorrentesTeste();
+  late final servicosItensRecorrentes =
+      ServicosItensRecorrentes(apiPagina, usuarioProvedor);
+  late final server = Server();
 
   @override
   void binds(Injector i) {
     i.addInstance<UsuarioProvedor>(usuarioProvedor);
     i.addInstance<ProvedorItensRecorrentes>(provedorItensRecorrentes);
     i.addInstance<ProvedorCardapio>(provedorCardapio);
+    i.addInstance<ServicosItensRecorrentes>(servicosItensRecorrentes);
+    i.addInstance<Server>(server);
   }
 }
 
@@ -54,7 +93,11 @@ void main() {
     Modular.init(modulo);
   });
 
-  tearDown(Modular.destroy);
+  tearDown(() {
+    modulo.server.dispose();
+    modulo.apiPagina.cliente.close();
+    Modular.destroy();
+  });
 
   test('produto aceita id_itens_venda vindo da api', () {
     final produto = _pizzaRecorrente().toMap();
@@ -62,6 +105,121 @@ void main() {
     produto['id_itens_venda'] = 987;
 
     expect(Modelowordprodutos.fromMap(produto).iditensvenda, '987');
+  });
+
+  testWidgets('pagina recorrente mostra erro com retentativa sem tela branca',
+      (tester) async {
+    modulo.apiPagina.falhar = true;
+
+    await tester.pumpWidget(const MaterialApp(
+      home: PaginaItensRecorrentes(
+        tipo: TipoCardapio.comanda,
+        idComanda: '4',
+        idMesa: '0',
+        idComandaPedido: '104',
+        idCliente: '0',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Não foi possível carregar'), findsOneWidget);
+    expect(find.text('Tentar novamente'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    modulo.apiPagina.falhar = false;
+    await tester.tap(find.text('Tentar novamente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum item recorrente'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pagina recorrente aceita resposta sem produtos', (tester) async {
+    modulo.apiPagina.resposta = {
+      'id': 104,
+      'status': 'Andamento',
+      'nome': 'Comanda: 4',
+      'idComanda': 4,
+      'idMesa': 0,
+      'idCliente': 0,
+    };
+
+    await tester.pumpWidget(const MaterialApp(
+      home: PaginaItensRecorrentes(
+        tipo: TipoCardapio.comanda,
+        idComanda: '4',
+        idMesa: '0',
+        idComandaPedido: '104',
+        idCliente: '0',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nenhum item recorrente'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('card recorrente aceita produto antigo incompleto no Android',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final item = Modelowordprodutos.fromMap({
+      'id': 1010,
+      'nome': 'Coca Cola Lata',
+      'codigo': 1010,
+      'valorVenda': '',
+      'dataLancado': '14/09/2026 15:12:00',
+      'habilTipo': 'Normal',
+      'quantidade': '1',
+      'descontoProduto': {
+        'tipodedesconto': 1,
+        'valordedesconto': '',
+        'valorretirado': null,
+      },
+    });
+    final categoria = ModeloCategoria.fromMap({
+      'id': 12,
+      'nomeCategoria': 'Bebidas',
+      'quantidadeProdutos': 1,
+      'tamanhosPizza': [
+        {
+          'id': 'G',
+          'nomedotamanho': 'G',
+          'quantpedacos': 8,
+          'saboreslimite': 2,
+        }
+      ],
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: const TextScaler.linear(2)),
+        child: child!,
+      ),
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CardItensRecorrentes(
+            estaPesquisando: true,
+            searchController: null,
+            item: item,
+            categoria: categoria,
+            finalizar: true,
+            idComanda: '4',
+            idMesa: '0',
+            idComandaPedido: '104',
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Coca Cola Lata'), findsOneWidget);
+    expect(find.textContaining('Item lançado há:'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   for (final (largura, escala) in [(800.0, 1.0), (320.0, 1.0), (320.0, 2.0)]) {

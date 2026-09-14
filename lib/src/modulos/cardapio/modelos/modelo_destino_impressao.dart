@@ -28,12 +28,11 @@ class ModeloDestinoImpressao {
 
   factory ModeloDestinoImpressao.fromMap(Map<String, dynamic> map) {
     return ModeloDestinoImpressao(
-      nome: map['nome'] as String,
-      nomeDaImpressora: map['nomeDaImpressora'] as String,
-      tamanhoDoPapel: map['tamanhoDoPapel'] as String,
-      avancoPapel:
-          map['avancoPapel'] != null ? map['avancoPapel'] as String : null,
-      nomedopc: map['nomedopc'] != null ? map['nomedopc'] as String : null,
+      nome: map['nome']?.toString() ?? '',
+      nomeDaImpressora: map['nomeDaImpressora']?.toString() ?? '',
+      tamanhoDoPapel: map['tamanhoDoPapel']?.toString() ?? '',
+      avancoPapel: map['avancoPapel']?.toString(),
+      nomedopc: map['nomedopc']?.toString(),
     );
   }
 

@@ -98,7 +98,7 @@ void main() {
       expect(salvo!.observacao, 'Cortar em 8, sem sal');
       expect(
           salvo!.opcoesPacotesListaFinal!
-              .where((o) => o.id == 11)
+              .where((o) => o.id == 12)
               .single
               .dados!
               .single

@@ -3,6 +3,7 @@ import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/sugestoes_observacao.dart';
@@ -189,7 +190,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     var valor = itemProduto!.valorVenda;
     var idProduto = itemProduto!.id;
     var observacaoMesa = '';
-    var observacao = obsController.text;
+    var observacao = normalizarObservacaoProduto(obsController.text);
 
     if ((itemProduto?.opcoesPacotes?.where((element) => element.id == 4) ?? [])
             .isNotEmpty &&
@@ -255,26 +256,14 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           provedorCardapio.limiteSaborBordaSelecionado;
     }
     itemProduto!.valorVenda = _provedorProduto.valorVenda.toStringAsFixed(2);
-    itemProduto!.observacao = obsController.text;
+    itemProduto!.observacao = observacao;
 
-    if (obsController.text.isNotEmpty) {
+    _provedorProduto.opcoesPacotesListaFinal
+        .removeWhere(grupoObservacaoProduto);
+    if (observacao.isNotEmpty) {
       _provedorProduto.opcoesPacotesListaFinal.insert(
         _provedorProduto.opcoesPacotesListaFinal.length,
-        ModeloOpcoesPacotes(
-          id: 11,
-          titulo: 'Observação',
-          tipo: 7,
-          obrigatorio: false,
-          dados: [
-            ModeloDadosOpcoesPacotes(
-              id: '0',
-              nome: obsController.text,
-              foto: '',
-              estaSelecionado: false,
-              excluir: false,
-            ),
-          ],
-        ),
+        montarGrupoObservacaoProduto(observacao),
       );
     }
 

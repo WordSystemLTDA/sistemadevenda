@@ -25,9 +25,11 @@ class ServicosItensRecorrentes {
       await ArmazenamentoCarrinhos.instancia
           .atualizarStatus(empresa ?? '', id, dados.status);
       if (dados.id == id && dados.status == 'Andamento') {
-        final mesa = dados.idComanda == null ||
-            dados.idComanda == '0' ||
-            dados.idComanda == '';
+        final mesa = tipo == TipoCardapio.mesa ||
+            (tipo != TipoCardapio.comanda &&
+                (dados.idComanda == null ||
+                    dados.idComanda == '0' ||
+                    dados.idComanda == ''));
         await ArmazenamentoCarrinhos.instancia
             .importarRecorrentes(ContextoCarrinho(
           empresa: empresa ?? '',

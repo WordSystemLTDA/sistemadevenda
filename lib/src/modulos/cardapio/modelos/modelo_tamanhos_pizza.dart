@@ -24,10 +24,10 @@ class ModeloTamanhosPizza {
 
   factory ModeloTamanhosPizza.fromMap(Map<String, dynamic> map) {
     return ModeloTamanhosPizza(
-      id: map['id'] as String,
-      nomedotamanho: map['nomedotamanho'] as String,
-      quantpedacos: map['quantpedacos'] as String,
-      saboreslimite: map['saboreslimite'] as String,
+      id: map['id']?.toString() ?? '',
+      nomedotamanho: map['nomedotamanho']?.toString() ?? '',
+      quantpedacos: map['quantpedacos']?.toString() ?? '',
+      saboreslimite: map['saboreslimite']?.toString() ?? '1',
     );
   }
 

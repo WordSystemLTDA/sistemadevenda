@@ -22,9 +22,9 @@ class Modelowordingredientesproduto {
 
   factory Modelowordingredientesproduto.fromMap(Map<String, dynamic> map) {
     return Modelowordingredientesproduto(
-      id: map['id'] as String,
-      nome: map['nome'] as String,
-      quantidade: map['quantidade'] as String,
+      id: map['id']?.toString() ?? '',
+      nome: map['nome']?.toString() ?? '',
+      quantidade: map['quantidade']?.toString() ?? '',
     );
   }
 
