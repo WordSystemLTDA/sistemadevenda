@@ -8,6 +8,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:dio/dio.dart';
@@ -30,13 +31,17 @@ class ServicoCardapio {
       final locais = AtendimentosLocais(sync.banco, sync.escopo);
       final abertura = await locais.abertura(id);
       final detalhe = await locais.detalhe(id);
-      final real = abertura == null ? null : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
-      if (real != null && !['conflito', 'arquivado'].contains(abertura!['estado'])) {
+      final real = abertura == null
+          ? null
+          : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+      if (real != null &&
+          !['conflito', 'arquivado'].contains(abertura!['estado'])) {
         try {
           final remoto = await listarPorId(real.toString(), tipo, mostraritens);
           if (remoto.id == real.toString()) {
             remoto.id = id;
-            await ArmazenamentoCarrinhos.instancia.atualizarStatus(empresa ?? '', id, remoto.status);
+            await ArmazenamentoCarrinhos.instancia
+                .atualizarStatus(empresa ?? '', id, remoto.status);
             return remoto;
           }
         } on DioException catch (e) {
@@ -45,9 +50,16 @@ class ServicoCardapio {
       }
       return Modeloworddadoscardapio.fromMap(detalhe);
     }
-    if (sync != null && tipo == TipoCardapio.balcao && (id == '0' || id.isEmpty)) {
-      return Modeloworddadoscardapio(id: '0', nome: 'Balcão', status: 'Andamento',
-          nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', produtos: [], valorTotal: '0');
+    if (sync != null &&
+        tipo == TipoCardapio.balcao &&
+        (id == '0' || id.isEmpty)) {
+      return Modeloworddadoscardapio(
+          id: '0',
+          nome: 'Balcão',
+          status: 'Andamento',
+          nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '',
+          produtos: [],
+          valorTotal: '0');
     }
 
     final response = await dio.cliente.get(
@@ -210,20 +222,108 @@ class ServicoCardapio {
     }
   }
 
+  Future<(bool, String)> editarProdutoFinalizado({
+    required TipoCardapio tipo,
+    required Modeloworddadoscardapio atendimento,
+    required Modelowordprodutos produto,
+    required String idMesa,
+    required String idComanda,
+    required String idCliente,
+    required List<String> impressoes,
+  }) async {
+    final idEmpresa = usuarioProvedor.usuario?.empresa ?? '';
+    final idUsuario = usuarioProvedor.usuario?.id ?? '';
+    final idAtendimento = atendimento.id ?? '';
+    final idItemVenda = produto.iditensvenda ?? '';
+    final versao = atendimento.versaoAtendimento ?? '';
+
+    if (idEmpresa.isEmpty || idUsuario.isEmpty) {
+      return (false, 'Entre novamente para editar o produto.');
+    }
+    if (idAtendimento.isEmpty || idItemVenda.isEmpty) {
+      return (false, 'Produto sem identificador para edição.');
+    }
+    if (atendimento.status != 'Andamento') {
+      return (false, 'Este atendimento nao esta aberto para edicao.');
+    }
+
+    final sync = Sincronizador.instancia;
+    if (sync != null) {
+      await sync.guardarEdicaoProdutoFinalizado(
+        tipo: tipo.name,
+        idAtendimento: idAtendimento,
+        versaoAtendimento: versao,
+        idItemVenda: idItemVenda,
+        produto: produto,
+        idMesa: idMesa,
+        idComanda: idComanda,
+        idCliente: idCliente,
+        impressoes: impressoes,
+      );
+      return (
+        true,
+        'Alteracao salva. O app vai reenviar ate confirmar no servidor.'
+      );
+    }
+
+    try {
+      final campos = {
+        'produto': normalizarProdutoParaEnvio(produto.toMap()),
+        'id_itens_venda': idItemVenda,
+        'id_comanda_pedido': idAtendimento,
+        'versao_atendimento': versao,
+        'id_comanda': idComanda.isEmpty ? '0' : idComanda,
+        'id_mesa': idMesa.isEmpty ? '0' : idMesa,
+        'tipo': tipo.name,
+        'id_cliente': idCliente.isEmpty ? '0' : idCliente,
+        'empresa': idEmpresa,
+        'id_usuario': idUsuario,
+      };
+
+      final response = await dio.cliente.post(
+          'comandas/editar_produto_finalizado.php',
+          data: jsonEncode(campos));
+      final jsonData = response.data;
+      if (jsonData is! Map) return (false, 'Resposta invalida do servidor.');
+      return (
+        jsonData['sucesso'] == true,
+        jsonData['mensagem']?.toString() ?? 'Produto atualizado.'
+      );
+    } on DioException catch (e) {
+      if (e.response == null && kDebugMode) {
+        log('ERRO API', error: e.error);
+      }
+      rethrow;
+    }
+  }
+
   Future<({bool sucesso, String mensagem})> fecharAbrirComanda(
       String idComandaPedido, String status) async {
     final sincronizador = Sincronizador.instancia;
     if (status != 'Andamento' && sincronizador != null) {
-      final pendencias = await sincronizador.banco.operacoes(sincronizador.escopo);
+      final pendencias =
+          await sincronizador.banco.operacoes(sincronizador.escopo);
       if (pendencias.any((op) => op['atendimento'] == idComandaPedido)) {
-        return (sucesso: false,
-            mensagem: 'Este atendimento tem pedidos aguardando envio ou conferencia. Resolva as pendencias antes de fechar.');
+        return (
+          sucesso: false,
+          mensagem:
+              'Este atendimento tem pedidos aguardando envio ou conferencia. Resolva as pendencias antes de fechar.'
+        );
       }
     }
     if (sincronizador != null && AtendimentosLocais.local(idComandaPedido)) {
-      final abertura = await AtendimentosLocais(sincronizador.banco, sincronizador.escopo).abertura(idComandaPedido);
-      final real = abertura == null ? null : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
-      if (real == null) return (sucesso: false, mensagem: 'Aguarde o envio da abertura antes de fechar.');
+      final abertura =
+          await AtendimentosLocais(sincronizador.banco, sincronizador.escopo)
+              .abertura(idComandaPedido);
+      final real = abertura == null
+          ? null
+          : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+      if (real == null) {
+        return (
+          sucesso: false,
+          mensagem: 'Aguarde o envio da abertura antes de fechar.'
+        );
+      }
       idComandaPedido = real.toString();
     }
     var idEmpresa = usuarioProvedor.usuario!.empresa;

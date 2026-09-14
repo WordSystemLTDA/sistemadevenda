@@ -39,7 +39,8 @@ import 'montagem_pizza_test.dart'
 
 class ConfigEdicaoTeste extends Fake implements ServicoConfigBigchef {
   @override
-  Future<ModeloConfigBigchef?> listar() async => configBigchef();
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
+      configBigchef();
 }
 
 class ModuloEdicaoTeste extends Module {
@@ -613,7 +614,9 @@ void main() {
         find.text(
             'Desmarque uma borda antes de diminuir a quantidade de sabores.'),
         findsOneWidget);
-    await tester.tap(find.text('Catupiry'));
+    final catupiry = find.byKey(const ValueKey('opcao_6_Catupiry'));
+    await mostrar(tester, catupiry);
+    await tester.tap(catupiry);
     await tester.pumpAndSettle();
     await tester.tap(umSabor);
     await tester.pumpAndSettle();

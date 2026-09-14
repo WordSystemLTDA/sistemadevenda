@@ -139,6 +139,10 @@ void main() {
             'idVenda': '301',
             'numeroPedido': '32'
           },
+          if (pedido['acao'] == 'editar_item') ...{
+            'id_itens_venda': pedido['dados']['id_itens_venda'],
+            'numeroPedido': '31',
+          },
         }));
         return;
       }
@@ -681,6 +685,53 @@ void main() {
       final mapa = opcao as Map;
       return mapa['titulo'] == 'Observação' || mapa['id'].toString() == '12';
     }), isEmpty);
+  });
+
+  test('edicao finalizada fica duravel e imprime somente item confirmado',
+      () async {
+    final item =
+        produto(id: '5', nome: 'Pizza', codigo: '5', computador: 'Cozinha')
+          ..iditensvenda = '900'
+          ..quantidade = 3
+          ..observacao = 'Bem assada';
+
+    await sync.guardarEdicaoProdutoFinalizado(
+      tipo: 'comanda',
+      idAtendimento: '104',
+      versaoAtendimento: 'versao-original',
+      idItemVenda: '900',
+      produto: item,
+      idMesa: '0',
+      idComanda: '4',
+      idCliente: '0',
+      impressoes: [
+        jsonEncode({
+          'idRequisicao': 'edicao-900',
+          'tipoImpressao': '1',
+          'idEmpresa': '32',
+          'produtos': [item.toMap()],
+        })
+      ],
+    );
+
+    final fila = await banco.operacoes(sync.escopo);
+    expect(fila, hasLength(1));
+    expect(fila.single['acao'], 'editar_item');
+    expect(fila.single['estado'], 'pendente');
+    expect(socket.filaImpressao.itens, isEmpty);
+
+    final salvo = jsonDecode(fila.single['dados'] as String);
+    expect(salvo['produto']['observacao'], 'Bem assada');
+    expect(salvo['produto']['quantidade'], 3);
+    expect(salvo['id_itens_venda'], '900');
+
+    conectado = true;
+    await sync.tentarNovamente();
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(tentativas.last['acao'], 'editar_item');
+    expect(socket.filaImpressao.itens, hasLength(1));
+    expect(socket.filaImpressao.itens.single.id, 'edicao-900');
   });
 
   test('reenviar conflito antigo normaliza observacao antes de enviar',

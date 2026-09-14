@@ -58,6 +58,11 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
   static bool _ehObservacao(ModeloOpcoesPacotes opcao) =>
       grupoObservacaoProduto(opcao);
 
+  static double _valor(Object? valor) {
+    final texto = (valor ?? '0').toString().replaceAll(',', '.');
+    return double.tryParse(texto) ?? 0;
+  }
+
   List<ModeloDadosOpcoesPacotes> _dadosOriginais(int id) =>
       (original.opcoesPacotesListaFinal ?? [])
           .where((opcao) => opcao.id == id)
@@ -67,11 +72,13 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
 
   bool get pizza => _saboresOriginais.isNotEmpty;
   String get _idTamanhoOriginal => _dadosOriginais(9).firstOrNull?.id ?? '0';
+  double get _valorTamanhoOriginal =>
+      _valor(_dadosOriginais(9).firstOrNull?.valor);
   String get idTamanho => cardapio.tamanhosPizza?.id ?? _idTamanhoOriginal;
   bool get tamanhoAlterado => idTamanho != _idTamanhoOriginal;
   double get valorUnitario => carregando || erro != null
-      ? double.parse(original.valorVenda)
-      : double.parse((double.parse(original.valorVenda) +
+      ? _valor(original.valorVenda)
+      : _valor((_valor(original.valorVenda) +
               produto.valorVenda -
               _composicaoInicial)
           .toStringAsFixed(2));
@@ -83,10 +90,12 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       tamanhoAlterado ||
       !listEquals(cardapio.saboresPizzaSelecionados.map((s) => s.id).toList(),
           _saboresOriginais.map((s) => s.id).toList());
+  double get quantidade => original.quantidade ?? 1;
   bool get alterado =>
       !carregando && erro == null && _assinatura() != _assinaturaInicial;
 
   String _assinatura() => jsonEncode({
+        'quantidade': quantidade,
         'opcoes':
             produto.opcoesPacotesListaFinal.map((o) => o.toMap()).toList(),
         'tamanho': idTamanho,
@@ -122,6 +131,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
 
   void aplicarRascunho(EdicaoProdutoCarrinho rascunho) {
     // Copias independentes: salvar uma etapa ainda nao grava no carrinho.
+    original.quantidade = rascunho.original.quantidade;
     cardapio
       ..tamanhosPizza = rascunho.cardapio.tamanhosPizza == null
           ? null
@@ -139,6 +149,15 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       ..quantidade = rascunho.produto.quantidade
       ..valorVendaOriginal = rascunho.produto.valorVendaOriginal;
     produto.calcularValorVenda(false, '0');
+    notifyListeners();
+  }
+
+  void definirQuantidade(double quantidade) {
+    if (quantidade < 1) return;
+    final normalizada = quantidade.roundToDouble();
+    if (normalizada == original.quantidade) return;
+    original.quantidade = normalizada;
+    produto.quantidade = normalizada.toInt();
     notifyListeners();
   }
 
@@ -243,9 +262,8 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       cardapio.limiteSaborBordaSelecionado =
           math.max(1, original.limiteSaboresBorda ?? _dadosOriginais(6).length);
       produto.quantidade = (original.quantidade ?? 1).toInt();
-      produto.valorVendaOriginal = pizza
-          ? double.parse(_dadosOriginais(9).first.valor ?? '0')
-          : double.parse(_catalogo!.valorVenda);
+      produto.valorVendaOriginal =
+          pizza ? _valorTamanhoOriginal : _valor(_catalogo!.valorVenda);
       produto.calcularValorVenda(false, '0');
       // Aplica apenas a diferenca da edicao, sem cobrar a montagem duas vezes.
       _composicaoInicial = produto.valorVenda;
@@ -274,13 +292,13 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
         cardapio.saboresPizzaSelecionados.any((s) => s.id == sabor.id);
     if (!selecionado &&
         cardapio.saboresPizzaSelecionados.length >=
-            int.parse(cardapio.tamanhosPizza!.saboreslimite)) {
+            (int.tryParse(cardapio.tamanhosPizza!.saboreslimite) ?? 1)) {
       return 'Limite de sabores atingido. Desmarque um sabor para trocar.';
     }
     cardapio.selecionarSaborPizza(sabor);
     produto.valorVendaOriginal = saboresAlterados
         ? cardapio.calcularPrecoPizza()
-        : double.parse(_dadosOriginais(9).first.valor ?? '0');
+        : _valorTamanhoOriginal;
     produto.calcularValorVenda(false, '0');
     notifyListeners();
     return null;
@@ -304,11 +322,17 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     notifyListeners();
   }
 
-  String? validar() {
-    if (pizza && cardapio.saboresPizzaSelecionados.isEmpty) {
+  String? validar({
+    bool validarSaboresPizza = true,
+    bool Function(int idOpcao)? validarOpcao,
+  }) {
+    if (pizza &&
+        validarSaboresPizza &&
+        cardapio.saboresPizzaSelecionados.isEmpty) {
       return 'Selecione pelo menos um sabor de pizza.';
     }
     for (final opcao in opcoes) {
+      if (validarOpcao != null && !validarOpcao(opcao.id)) continue;
       if ((opcao.obrigatorio || opcao.id == 4 || opcao.id == 11) &&
           (opcao.dados?.isNotEmpty ?? false) &&
           produto.retornarDadosPorID([opcao.id], false, '0').isEmpty) {
@@ -318,11 +342,17 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     return null;
   }
 
-  Future<Modelowordprodutos> concluir() async {
+  Future<Modelowordprodutos> concluir({
+    bool validarSaboresPizza = true,
+    bool Function(int idOpcao)? validarOpcao,
+  }) async {
     if (carregando || erro != null) {
       throw StateError('As opções do produto ainda não foram carregadas.');
     }
-    final erroValidacao = validar();
+    final erroValidacao = validar(
+      validarSaboresPizza: validarSaboresPizza,
+      validarOpcao: validarOpcao,
+    );
     if (erroValidacao != null) throw StateError(erroValidacao);
     final resultado = Modelowordprodutos.fromMap(original.toMap());
     final montagem = <ModeloOpcoesPacotes>[];
@@ -380,8 +410,10 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
           opcoes.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
       ..opcoesPacotesListaFinal =
           montagem.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
+      ..quantidade = quantidade
       ..observacao = observacao
       ..valorVenda = valorUnitario.toStringAsFixed(2)
+      ..valorTotalVendas = total.toStringAsFixed(2)
       ..limiteSaboresBorda = cardapio.limiteSaborBordaSelecionado;
     return resultado;
   }

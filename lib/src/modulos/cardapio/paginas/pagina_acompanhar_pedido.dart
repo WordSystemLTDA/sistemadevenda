@@ -1,11 +1,20 @@
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/widgets/badge_valor_oculto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -31,10 +40,15 @@ class PaginaAcompanharPedido extends StatefulWidget {
 class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     with WidgetsBindingObserver {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+  final ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   final Server _server = Modular.get<Server>();
+  final UsuarioProvedor _usuario = Modular.get<UsuarioProvedor>();
 
   Modeloworddadoscardapio? dados;
+  ModeloConfigBigchef? _configBigchef;
   bool _carregando = false;
+  bool _abrindoEdicao = false;
 
   @override
   void initState() {
@@ -42,6 +56,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     WidgetsBinding.instance.addObserver(this);
     _server.addListener(_aoReceberEventoSocket);
     listarComandasPedidos();
+    _carregarConfiguracao();
   }
 
   @override
@@ -67,27 +82,33 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
   Future<void> listarComandasPedidos() async {
     if (_carregando) return;
     _carregando = true;
-    await servicoCardapio
-        .listarPorId(widget.idComandaPedido ?? '0', TipoCardapio.comanda, 'Sim')
-        .then((value) {
+    try {
+      final value = await servicoCardapio.listarPorId(
+          widget.idComandaPedido ?? '0', widget.tipo, 'Sim');
       if (!mounted) return;
       setState(() {
         dados = value;
       });
-    });
-    _carregando = false;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível atualizar os itens do pedido.')));
+    } finally {
+      _carregando = false;
+    }
   }
 
-  String get _nomeTipo {
-    if (widget.idComandaPedido != null) return 'Comanda';
-    if (widget.idMesa != null) return 'Mesa';
-    return '';
+  Future<void> _carregarConfiguracao() async {
+    final config = await servicoConfigBigchef.listar();
+    if (!mounted) return;
+    setState(() => _configBigchef = config);
   }
+
+  String get _nomeTipo => widget.tipo.nome;
 
   IconData get _iconeTipo {
-    if (widget.idComandaPedido != null) return Icons.receipt_long_rounded;
-    if (widget.idMesa != null) return Icons.table_restaurant_rounded;
-    return Icons.assignment_outlined;
+    if (widget.tipo == TipoCardapio.mesa) return Icons.table_restaurant_rounded;
+    return Icons.receipt_long_rounded;
   }
 
   int _totalItens(List<Modelowordprodutos> produtos) {
@@ -104,6 +125,99 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
       total += (double.tryParse(p.valorVenda) ?? 0) * (p.quantidade ?? 0);
     }
     return total;
+  }
+
+  bool _ehPizza(Modelowordprodutos item) => (item.opcoesPacotesListaFinal ?? [])
+      .any((opcao) => opcao.id == 9 || opcao.id == 10);
+
+  bool _podeEditarProduto(Modelowordprodutos item,
+      [ModeloConfigBigchef? configuracao]) {
+    final config = configuracao ?? _configBigchef;
+    if (config == null || dados?.status != 'Andamento') return false;
+    if (_ehPizza(item)) {
+      return config.permiteEditarQuantidadeAposFinalizar ||
+          config.permiteEditarObservacaoAposFinalizar ||
+          config.permiteEditarSaborPizzaAposFinalizar ||
+          config.permiteEditarBordaAposFinalizar ||
+          config.permiteEditarAdicionalAposFinalizar;
+    }
+    return config.permiteEditarQuantidadeAposFinalizar ||
+        config.permiteEditarObservacaoAposFinalizar;
+  }
+
+  Future<void> _abrirEdicaoProduto(Modelowordprodutos item) async {
+    if (_abrindoEdicao || dados == null) return;
+    setState(() => _abrindoEdicao = true);
+    try {
+      final config = _configBigchef ?? await servicoConfigBigchef.listar();
+      if (!mounted) return;
+      if (config == null || !_podeEditarProduto(item, config)) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content:
+                Text('Edição bloqueada pela configuração do App Garçom.')));
+        return;
+      }
+      final original = Modelowordprodutos.fromMap(item.toMap());
+      final edicao = EdicaoProdutoCarrinho(
+        item: original,
+        servico: Modular.get<ServicoProduto>(),
+        categorias: Modular.get<ServicosCategoria>(),
+        usuario: _usuario,
+      );
+      final idMesa = widget.idMesa ?? dados!.idMesa ?? '0';
+      final idComanda = widget.idComanda ?? dados!.idComanda ?? '0';
+      final idCliente = dados!.idCliente ?? '0';
+      final salvo = await Navigator.of(context).push<bool>(MaterialPageRoute(
+        builder: (_) => PaginaEditarProdutoCarrinho(
+          edicao: edicao,
+          edicaoAposFinalizar: true,
+          mostrarControleQuantidade:
+              config.permiteEditarQuantidadeAposFinalizar,
+          carregarConfiguracao: () async => config,
+          aoSalvar: (produto) async {
+            final mensagens = Impressao.prepararComprovanteDePedido(
+              produtos: [produto],
+              comanda: '${widget.tipo.nome}: ${dados!.nome ?? ''}',
+              numeroPedido: dados!.numeroPedido ?? '0',
+              nomeCliente: dados!.nomeCliente ?? '',
+              nomeEmpresa:
+                  dados!.nomeEmpresa ?? _usuario.usuario?.nomeEmpresa ?? '',
+              tipodeentrega: dados!.tipodeentrega ?? '',
+              local: widget.tipo == TipoCardapio.mesa
+                  ? (dados!.nomeMesa ?? dados!.nome ?? '')
+                  : (dados!.nome ?? ''),
+              tipoTela: widget.tipo,
+            );
+            final resposta = await servicoCardapio.editarProdutoFinalizado(
+              tipo: widget.tipo,
+              atendimento: dados!,
+              produto: produto,
+              idMesa: idMesa,
+              idComanda: idComanda,
+              idCliente: idCliente,
+              impressoes: mensagens,
+            );
+            if (resposta.$1 &&
+                Sincronizador.instancia == null &&
+                mensagens.isNotEmpty) {
+              await _server.enviarImpressoes(mensagens);
+            }
+            return resposta.$1;
+          },
+        ),
+      ));
+      if (!mounted || salvo != true) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Produto atualizado e enviado para conferência.')));
+      await listarComandasPedidos();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível editar este produto.')));
+      }
+    } finally {
+      if (mounted) setState(() => _abrindoEdicao = false);
+    }
   }
 
   @override
@@ -180,6 +294,8 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
                       setarQuantidade: (increase) {},
                       value: '',
                       tipo: widget.tipo,
+                      podeEditar: _podeEditarProduto(item),
+                      onEditar: () => _abrirEdicaoProduto(item),
                     );
                   }),
                 ],

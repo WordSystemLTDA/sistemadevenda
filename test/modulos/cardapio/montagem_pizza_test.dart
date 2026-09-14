@@ -258,7 +258,8 @@ class CarrinhoComFalha extends ServicosItensComanda {
 
 class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
   @override
-  Future<ModeloConfigBigchef?> listar() async => null;
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
+      null;
 }
 
 class ModuloTeste extends Module {
@@ -414,7 +415,7 @@ void main() {
         home: PaginaCardapio(
             tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
     await tester.pumpAndSettle();
-    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isFalse);
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
     const chaveContador = ValueKey('quantidade_carrinho_Agua');
     expect(find.byKey(chaveContador), findsNothing);
     await tocarProduto(tester, 'Agua');

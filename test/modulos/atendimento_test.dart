@@ -123,7 +123,8 @@ class BalcaoTeste extends Fake implements ServicoBalcao {
 
 class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
   @override
-  Future<ModeloConfigBigchef?> listar() async => null;
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
+      null;
 }
 
 class ConfigTeste extends Fake implements ServicoConfig {

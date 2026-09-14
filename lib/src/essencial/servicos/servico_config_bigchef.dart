@@ -12,16 +12,24 @@ class ServicoConfigBigchef {
   ServicoConfigBigchef(this.dio, this.usuarioProvedor);
 
   static const caminhoAPI = 'config_bigchef';
+  static final Map<String, ModeloConfigBigchef> _cachePorEmpresa = {};
 
-  Future<ModeloConfigBigchef?> listar() async {
-    var idEmpresa = usuarioProvedor.usuario!.empresa!;
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async {
+    final idEmpresa = usuarioProvedor.usuario?.empresa;
+    if (idEmpresa == null || idEmpresa.isEmpty) return null;
+    if (!forcarAtualizacao && _cachePorEmpresa[idEmpresa] != null) {
+      return _cachePorEmpresa[idEmpresa];
+    }
 
     try {
-      var response = await dio.cliente.get('$caminhoAPI/listar.php?empresa=$idEmpresa');
-      var jsonData = response.data;
-
-      // bool sucesso = jsonData['sucesso'];
-      return ModeloConfigBigchef.fromMap(jsonData);
+      final response =
+          await dio.cliente.get('$caminhoAPI/listar.php?empresa=$idEmpresa');
+      final jsonData = response.data;
+      if (jsonData is! Map) return _cachePorEmpresa[idEmpresa];
+      final config =
+          ModeloConfigBigchef.fromMap(Map<String, dynamic>.from(jsonData));
+      _cachePorEmpresa[idEmpresa] = config;
+      return config;
     } on DioException catch (e) {
       if (e.response == null) {
         if (kDebugMode) {
@@ -29,7 +37,7 @@ class ServicoConfigBigchef {
         }
       }
 
-      return null;
+      return _cachePorEmpresa[idEmpresa];
     }
   }
 }

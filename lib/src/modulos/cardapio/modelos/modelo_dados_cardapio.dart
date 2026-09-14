@@ -39,6 +39,7 @@ class Modeloworddadoscardapio {
   String? codigo;
   String? nome;
   String? status;
+  String? versaoAtendimento;
   String? dataAbertura;
   String? dataFechamento;
   String? dataUltimoProdutoInserido;
@@ -75,6 +76,7 @@ class Modeloworddadoscardapio {
     this.codigo,
     this.nome,
     this.status,
+    this.versaoAtendimento,
     this.dataAbertura,
     this.dataFechamento,
     this.dataUltimoProdutoInserido,
@@ -112,6 +114,7 @@ class Modeloworddadoscardapio {
       'codigo': codigo,
       'nome': nome,
       'status': status,
+      'versao_atendimento': versaoAtendimento,
       'dataAbertura': dataAbertura,
       'dataFechamento': dataFechamento,
       'dataUltimoProdutoInserido': dataUltimoProdutoInserido,
@@ -150,6 +153,8 @@ class Modeloworddadoscardapio {
       codigo: _textoOpcional(map['codigo']),
       nome: _textoOpcional(map['nome']),
       status: _textoOpcional(map['status']),
+      versaoAtendimento:
+          _textoOpcional(map['versao_atendimento'] ?? map['versaoAtendimento']),
       dataAbertura: _textoOpcional(map['dataAbertura']),
       dataFechamento: _textoOpcional(map['dataFechamento']),
       dataUltimoProdutoInserido:

@@ -5,10 +5,8 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_modular/flutter_modular.dart';
 
 class CardProdutoAcompanhar extends StatefulWidget {
   final Modelowordprodutos item;
@@ -19,6 +17,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final dynamic value;
   final TipoCardapio tipo;
   final Function(bool increase) setarQuantidade;
+  final bool podeEditar;
+  final VoidCallback? onEditar;
 
   const CardProdutoAcompanhar({
     super.key,
@@ -30,15 +30,16 @@ class CardProdutoAcompanhar extends StatefulWidget {
     required this.value,
     required this.setarQuantidade,
     required this.tipo,
+    this.podeEditar = false,
+    this.onEditar,
   });
 
   @override
   State<CardProdutoAcompanhar> createState() => _CardProdutoAcompanharState();
 }
 
-class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with TickerProviderStateMixin {
-  final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
-
+class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
   late final Tween<double> _sizeTween;
@@ -60,17 +61,27 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
     );
     _sizeTween = Tween(begin: 0, end: 1);
     _updateTimer();
-    _tickerTempoLancado ??= Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
+    _tickerTempoLancado ??=
+        Timer.periodic(const Duration(seconds: 1), (_) => _updateTimer());
     super.initState();
   }
 
   void _updateTimer() {
-    if (widget.item.dataLancado != null) {
-      final duration = DateTime.now().difference(DateTime.parse(widget.item.dataLancado!));
-      final newDuration = ConfigSistema.formatarHora(duration);
-
-      tempoLancadoController.add(newDuration);
+    if (tempoLancadoController.isClosed) return;
+    final textoData = widget.item.dataLancado?.trim();
+    if (textoData == null || textoData.isEmpty) {
+      tempoLancadoController.add('agora');
+      return;
     }
+    final dataLancado = DateTime.tryParse(textoData);
+    if (dataLancado == null) {
+      tempoLancadoController.add('agora');
+      return;
+    }
+    final duration = DateTime.now().difference(dataLancado);
+    final newDuration = ConfigSistema.formatarHora(duration);
+
+    tempoLancadoController.add(newDuration);
   }
 
   void _expandOnChanged() {
@@ -84,6 +95,8 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
   void dispose() {
     if (_tickerTempoLancado != null) {
       _tickerTempoLancado!.cancel();
+    }
+    if (!tempoLancadoController.isClosed) {
       tempoLancadoController.close();
     }
     _controller.dispose();
@@ -95,6 +108,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
     var item = widget.item;
     final observacao = item.observacao?.trim() ?? '';
     final temObservacao = observacao.isNotEmpty;
+    final quantidade = item.quantidade ?? 1;
+    final valorUnitario = double.tryParse(item.valorVenda) ?? 0;
+    final valorTotal = valorUnitario * quantidade;
 
     // var soma = item.adicionais.fold(
     //   Modelowordadicionaisproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', quantidade: 1, estaSelecionado: false, excluir: false),
@@ -161,7 +177,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       crossAxisAlignment: CrossAxisAlignment.start,
                       // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -183,11 +199,12 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             Row(
                               children: [
                                 Text(
-                                  ((double.parse(widget.item.valorVenda)) * widget.item.quantidade!.toInt()).obterReal(),
+                                  valorTotal.obterReal(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
                                   maxLines: 1,
                                 ),
@@ -196,22 +213,26 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             ),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Text("Código: ${item.codigo}"),
-                            Spacer(),
-                            const Text("Quant.:  ", style: TextStyle(fontSize: 13)),
-                            Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            SizedBox(width: 5),
+                            const Spacer(),
+                            const Text("Quant.:  ",
+                                style: TextStyle(fontSize: 13)),
+                            Text(quantidade.toStringAsFixed(0),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 5),
                           ],
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         StreamBuilder<String>(
                           stream: tempoLancadoController.stream,
                           initialData: 'Carregando',
                           builder: (context, snapshot) {
-                            return Text("Item lançado há: ${snapshot.data!}", style: const TextStyle(fontSize: 13));
+                            return Text("Item lançado há: ${snapshot.data!}",
+                                style: const TextStyle(fontSize: 13));
                           },
                         ),
                         if (temObservacao) ...[
@@ -222,7 +243,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 13,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -232,13 +255,15 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                         //     Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         //   ],
                         // ),
-                        if (item.tamanho != '' && item.tamanho != '0') Text(item.tamanho),
+                        if (item.tamanho != '' && item.tamanho != '0')
+                          Text(item.tamanho),
                         Padding(
                           padding: const EdgeInsets.only(top: 0.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (item.destinoDeImpressao != null && item.destinoDeImpressao!.nome.isNotEmpty) ...[
+                              if (item.destinoDeImpressao != null &&
+                                  item.destinoDeImpressao!.nome.isNotEmpty) ...[
                                 // IconButton(
                                 //   onPressed: () {
                                 //     if (widget.dados != null) {
@@ -369,12 +394,18 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                           width: 20,
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, anim) => RotationTransition(
-                              turns: child.key == const ValueKey('icon1') ? Tween<double>(begin: 0.75, end: 1).animate(anim) : Tween<double>(begin: 1, end: 1).animate(anim),
+                            transitionBuilder: (child, anim) =>
+                                RotationTransition(
+                              turns: child.key == const ValueKey('icon1')
+                                  ? Tween<double>(begin: 0.75, end: 1)
+                                      .animate(anim)
+                                  : Tween<double>(begin: 1, end: 1)
+                                      .animate(anim),
                               child: ScaleTransition(scale: anim, child: child),
                             ),
                             child: _isExpanded
-                                ? const Icon(Icons.keyboard_arrow_down_outlined, key: ValueKey('icon1'))
+                                ? const Icon(Icons.keyboard_arrow_down_outlined,
+                                    key: ValueKey('icon1'))
                                 : const Icon(
                                     Icons.keyboard_arrow_up_outlined,
                                     key: ValueKey('icon2'),
@@ -388,6 +419,24 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
               ),
             ),
           ),
+          if (widget.podeEditar && widget.onEditar != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: widget.onEditar,
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  label: const Text('Editar Produto'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 42),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ),
+          ],
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(
@@ -403,10 +452,13 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                       if (e.dados != null && e.dados!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.dados!.length,
@@ -417,38 +469,53 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar> with Tick
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 if (dado.quantimaximaselecao != null) ...[
-                                  Text(
-                                    '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : ''}${dado.nome}',
-                                    style: const TextStyle(fontSize: 15),
+                                  Expanded(
+                                    child: Text(
+                                      '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : ''}${dado.nome}',
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
                                   ),
                                 ] else ...[
-                                  Text(
-                                    '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
-                                    style: const TextStyle(fontSize: 15),
+                                  Expanded(
+                                    child: Text(
+                                      '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                      style: const TextStyle(fontSize: 15),
+                                    ),
                                   ),
                                 ],
+                                const SizedBox(width: 8),
                                 Text(
-                                  (double.parse(dado.valor ?? '0') * (dado.quantidade ?? 1)).obterReal(),
-                                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 14),
+                                  ((double.tryParse(dado.valor ?? '0') ?? 0) *
+                                          (dado.quantidade ?? 1))
+                                      .obterReal(),
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontSize: 14),
                                 ),
                               ],
                             );
                           },
                         ),
-                      ] else if (e.produtos != null && e.produtos!.isNotEmpty) ...[
+                      ] else if (e.produtos != null &&
+                          e.produtos!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          child: Text(e.titulo,
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
                         ListView.builder(
-                          padding: const EdgeInsets.only(left: 10, top: 5, right: 10, bottom: 5),
+                          padding: const EdgeInsets.only(
+                              left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: e.produtos!.length,
                           itemBuilder: (context, index) {
                             final produto = e.produtos![index];
 
-                            return CardPedidoKit(item: produto, somarValores: false);
+                            return CardPedidoKit(
+                                item: produto, somarValores: false);
                           },
                         ),
                       ],

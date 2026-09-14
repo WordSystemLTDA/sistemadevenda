@@ -1,6 +1,14 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
+String _texto(Map<String, dynamic> map, String chave, [String padrao = '']) =>
+    map[chave]?.toString() ?? padrao;
+
+String _textoConfig(Map<String, dynamic> map, String chave, String coluna) =>
+    (map[chave] ?? map[coluna])?.toString() ?? 'Não';
+
+bool _sim(String valor) => valor.trim().toLowerCase() == 'sim';
+
 class ModeloConfigBigchef {
   final String abrircomandadireto;
   final String abrirmesadireto;
@@ -55,15 +63,15 @@ class ModeloConfigBigchef {
   });
 
   bool get permiteEditarQuantidadeAposFinalizar =>
-      permitireditarquantidadeappaposfinalizar == 'Sim';
+      _sim(permitireditarquantidadeappaposfinalizar);
   bool get permiteEditarObservacaoAposFinalizar =>
-      permitireditarobservacaoappaposfinalizar == 'Sim';
+      _sim(permitireditarobservacaoappaposfinalizar);
   bool get permiteEditarSaborPizzaAposFinalizar =>
-      permitireditarsaborpizzaappaposfinalizar == 'Sim';
+      _sim(permitireditarsaborpizzaappaposfinalizar);
   bool get permiteEditarBordaAposFinalizar =>
-      permitireditarbordaappaposfinalizar == 'Sim';
+      _sim(permitireditarbordaappaposfinalizar);
   bool get permiteEditarAdicionalAposFinalizar =>
-      permitireditaradicionalappaposfinalizar == 'Sim';
+      _sim(permitireditaradicionalappaposfinalizar);
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -102,39 +110,49 @@ class ModeloConfigBigchef {
 
   factory ModeloConfigBigchef.fromMap(Map<String, dynamic> map) {
     return ModeloConfigBigchef(
-      abrircomandadireto: map['abrircomandadireto'] as String,
-      abrirmesadireto: map['abrirmesadireto'] as String,
-      agrupamentodeitenscomanda: map['agrupamentodeitenscomanda'] as String,
-      agrupamentodeitensmesa: map['agrupamentodeitensmesa'] as String,
-      agrupamentodeitensbalcao: map['agrupamentodeitensbalcao'] as String,
-      agrupamentodeitensdelivery: map['agrupamentodeitensdelivery'] as String,
-      obrigarjustifcancelarpedido: map['obrigarjustifcancelarpedido'] as String,
-      mostrarnomeempresapreparo: map['mostrarnomeempresapreparo'] as String,
-      mostrarnomeclientepreparo: map['mostrarnomeclientepreparo'] as String,
-      tamanhofontepreparoaltura: map['tamanhofontepreparoaltura'] as String,
-      tamanhofontepreparolargura: map['tamanhofontepreparolargura'] as String,
-      formacobrancaentregadelivery:
-          map['formacobrancaentregadelivery'] as String,
-      valordaentrega: map['valordaentrega'] as String,
+      abrircomandadireto: _texto(map, 'abrircomandadireto'),
+      abrirmesadireto: _texto(map, 'abrirmesadireto'),
+      agrupamentodeitenscomanda: _texto(map, 'agrupamentodeitenscomanda'),
+      agrupamentodeitensmesa: _texto(map, 'agrupamentodeitensmesa'),
+      agrupamentodeitensbalcao: _texto(map, 'agrupamentodeitensbalcao'),
+      agrupamentodeitensdelivery: _texto(map, 'agrupamentodeitensdelivery'),
+      obrigarjustifcancelarpedido: _texto(map, 'obrigarjustifcancelarpedido'),
+      mostrarnomeempresapreparo: _texto(map, 'mostrarnomeempresapreparo'),
+      mostrarnomeclientepreparo: _texto(map, 'mostrarnomeclientepreparo'),
+      tamanhofontepreparoaltura: _texto(map, 'tamanhofontepreparoaltura'),
+      tamanhofontepreparolargura: _texto(map, 'tamanhofontepreparolargura'),
+      formacobrancaentregadelivery: _texto(map, 'formacobrancaentregadelivery'),
+      valordaentrega: _texto(map, 'valordaentrega'),
       agrupamentodeitenscomprovconsumo:
-          map['agrupamentodeitenscomprovconsumo'] as String,
+          _texto(map, 'agrupamentodeitenscomprovconsumo'),
       agrupamentodeitenscomproventregador:
-          map['agrupamentodeitenscomproventregador'] as String,
-      valordiferenca: map['valordiferenca'] as String,
-      saborlimitedeborda: map['saborlimitedeborda'] as String,
-      autenticarcomtag: map['autenticarcomtag'] as String,
+          _texto(map, 'agrupamentodeitenscomproventregador'),
+      valordiferenca: _texto(map, 'valordiferenca', '0'),
+      saborlimitedeborda: _texto(map, 'saborlimitedeborda', '0'),
+      autenticarcomtag: _texto(map, 'autenticarcomtag'),
       modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ??
-          map['modelovaloradicionalpizza']) as String?,
-      permitireditarquantidadeappaposfinalizar:
-          map['permitireditarquantidadeappaposfinalizar']?.toString() ?? 'Não',
-      permitireditarobservacaoappaposfinalizar:
-          map['permitireditarobservacaoappaposfinalizar']?.toString() ?? 'Não',
-      permitireditarsaborpizzaappaposfinalizar:
-          map['permitireditarsaborpizzaappaposfinalizar']?.toString() ?? 'Não',
-      permitireditarbordaappaposfinalizar:
-          map['permitireditarbordaappaposfinalizar']?.toString() ?? 'Não',
-      permitireditaradicionalappaposfinalizar:
-          map['permitireditaradicionalappaposfinalizar']?.toString() ?? 'Não',
+              map['modelovaloradicionalpizza'])
+          ?.toString(),
+      permitireditarquantidadeappaposfinalizar: _textoConfig(
+          map,
+          'permitireditarquantidadeappaposfinalizar',
+          'permitir_editar_quantidade_app_apos_finalizar'),
+      permitireditarobservacaoappaposfinalizar: _textoConfig(
+          map,
+          'permitireditarobservacaoappaposfinalizar',
+          'permitir_editar_observacao_app_apos_finalizar'),
+      permitireditarsaborpizzaappaposfinalizar: _textoConfig(
+          map,
+          'permitireditarsaborpizzaappaposfinalizar',
+          'permitir_editar_sabor_pizza_app_apos_finalizar'),
+      permitireditarbordaappaposfinalizar: _textoConfig(
+          map,
+          'permitireditarbordaappaposfinalizar',
+          'permitir_editar_borda_app_apos_finalizar'),
+      permitireditaradicionalappaposfinalizar: _textoConfig(
+          map,
+          'permitireditaradicionalappaposfinalizar',
+          'permitir_editar_adicional_app_apos_finalizar'),
     );
   }
 

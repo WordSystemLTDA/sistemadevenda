@@ -16,6 +16,8 @@ class PaginaEditarProdutoCarrinho extends StatefulWidget {
   final Future<ModeloConfigBigchef?> Function() carregarConfiguracao;
   final Future<bool> Function(Modelowordprodutos) aoSalvar;
   final bool recorrentes;
+  final bool edicaoAposFinalizar;
+  final bool mostrarControleQuantidade;
 
   const PaginaEditarProdutoCarrinho({
     super.key,
@@ -23,6 +25,8 @@ class PaginaEditarProdutoCarrinho extends StatefulWidget {
     required this.carregarConfiguracao,
     required this.aoSalvar,
     this.recorrentes = false,
+    this.edicaoAposFinalizar = false,
+    this.mostrarControleQuantidade = false,
   });
 
   @override
@@ -41,6 +45,8 @@ class _PaginaEditarProdutoCarrinhoState
   ModeloConfigBigchef? _configuracao;
   String? _erroConfiguracao;
 
+  bool get _usarPermissoesAposFinalizar => widget.edicaoAposFinalizar;
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +61,7 @@ class _PaginaEditarProdutoCarrinhoState
       _erroConfiguracao = null;
     });
     try {
-      final precisaConfiguracao = edicao.pizza || widget.recorrentes;
+      final precisaConfiguracao = edicao.pizza || _usarPermissoesAposFinalizar;
       final configuracao =
           precisaConfiguracao ? await widget.carregarConfiguracao() : null;
       if (!mounted) return;
@@ -87,15 +93,23 @@ class _PaginaEditarProdutoCarrinhoState
   }
 
   bool get _permiteEditarObservacao =>
-      !widget.recorrentes ||
+      !_usarPermissoesAposFinalizar ||
       (_configuracao?.permiteEditarObservacaoAposFinalizar ?? false);
 
+  bool get _permiteEditarQuantidade =>
+      !_usarPermissoesAposFinalizar ||
+      (_configuracao?.permiteEditarQuantidadeAposFinalizar ?? false);
+
   bool get _permiteEditarSaborPizza =>
-      !widget.recorrentes ||
+      !_usarPermissoesAposFinalizar ||
       (_configuracao?.permiteEditarSaborPizzaAposFinalizar ?? false);
 
   bool _permiteEditarOpcao(int idOpcao) {
-    if (!widget.recorrentes) return true;
+    if (widget.edicaoAposFinalizar) {
+      if (!edicao.pizza) return false;
+      if (idOpcao != 6 && idOpcao != 7) return false;
+    }
+    if (!_usarPermissoesAposFinalizar) return true;
     if (idOpcao == 6) {
       return _configuracao?.permiteEditarBordaAposFinalizar ?? false;
     }
@@ -129,7 +143,10 @@ class _PaginaEditarProdutoCarrinhoState
 
   Future<void> _salvar() async {
     if (_salvando || _permitirSair) return;
-    final erro = edicao.validar();
+    final erro = edicao.validar(
+      validarSaboresPizza: _permiteEditarSaborPizza,
+      validarOpcao: _permiteEditarOpcao,
+    );
     if (erro != null) {
       _avisar(erro);
       return;
@@ -137,7 +154,10 @@ class _PaginaEditarProdutoCarrinhoState
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _salvando = true);
     try {
-      final produto = await edicao.concluir();
+      final produto = await edicao.concluir(
+        validarSaboresPizza: _permiteEditarSaborPizza,
+        validarOpcao: _permiteEditarOpcao,
+      );
       final salvo = await widget.aoSalvar(produto);
       if (!mounted) return;
       if (!salvo) throw StateError('Carrinho indisponível.');
@@ -363,39 +383,82 @@ class _PaginaEditarProdutoCarrinhoState
     final textoQuantidade = quantidade == quantidade.roundToDouble()
         ? quantidade.toStringAsFixed(0)
         : quantidade.toString().replaceAll('.', ',');
+    final podeEditarQuantidade =
+        widget.mostrarControleQuantidade && _permiteEditarQuantidade;
     return ColoredBox(
       color: VisualAtendimento.superficie(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Row(
+        child: Column(
           children: [
-            _iconeSecao(
-                edicao.pizza
-                    ? Icons.local_pizza_outlined
-                    : Icons.fastfood_outlined,
-                cs.primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Row(
+              children: [
+                _iconeSecao(
                     edicao.pizza
-                        ? 'Pizza ${edicao.cardapio.tamanhosPizza!.nomedotamanho}'
-                        : edicao.original.nome,
-                    style: TextStyle(
-                        color: cs.onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700),
+                        ? Icons.local_pizza_outlined
+                        : Icons.fastfood_outlined,
+                    cs.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        edicao.pizza
+                            ? 'Pizza ${edicao.cardapio.tamanhosPizza!.nomedotamanho}'
+                            : edicao.original.nome,
+                        style: TextStyle(
+                            color: cs.onSurface,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                          '$textoQuantidade×  ${edicao.valorUnitario.obterReal()} cada',
+                          style: TextStyle(
+                              color: cs.onSurfaceVariant, fontSize: 14)),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                      '$textoQuantidade×  ${edicao.valorUnitario.obterReal()} cada',
-                      style:
-                          TextStyle(color: cs.onSurfaceVariant, fontSize: 14)),
+                ),
+              ],
+            ),
+            if (podeEditarQuantidade) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Quantidade',
+                        style: TextStyle(
+                            color: cs.onSurface,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  IconButton.outlined(
+                    tooltip: 'Diminuir quantidade',
+                    onPressed: quantidade <= 1
+                        ? null
+                        : () => edicao.definirQuantidade(quantidade - 1),
+                    icon: const Icon(Icons.remove_rounded),
+                  ),
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      textoQuantidade,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: cs.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton.outlined(
+                    tooltip: 'Aumentar quantidade',
+                    onPressed: () => edicao.definirQuantidade(quantidade + 1),
+                    icon: const Icon(Icons.add_rounded),
+                  ),
                 ],
               ),
-            ),
+            ],
           ],
         ),
       ),

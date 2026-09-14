@@ -201,6 +201,88 @@ class Sincronizador extends ChangeNotifier {
     unawaited(enviarPendentes());
   }
 
+  Future<void> guardarEdicaoProdutoFinalizado({
+    required String tipo,
+    required String idAtendimento,
+    required String versaoAtendimento,
+    required String idItemVenda,
+    required Modelowordprodutos produto,
+    required String idMesa,
+    required String idComanda,
+    required String idCliente,
+    required List<String> impressoes,
+  }) async {
+    await configurar();
+    final conta = usuario.usuario;
+    if (escopo.isEmpty ||
+        conta == null ||
+        !['mesa', 'comanda'].contains(tipo) ||
+        conta.empresa == null ||
+        conta.id == null) {
+      throw StateError('O atendimento nao pertence a esta conexao.');
+    }
+    var idAtendimentoEnvio = idAtendimento;
+    if (AtendimentosLocais.local(idAtendimento)) {
+      final abertura =
+          await AtendimentosLocais(banco, escopo).abertura(idAtendimento);
+      final recibo =
+          abertura == null ? null : AtendimentosLocais.recibo(abertura);
+      final real = recibo?['id_comanda_pedido']?.toString() ?? '';
+      if (real.isEmpty ||
+          ['conflito', 'arquivado'].contains(abertura!['estado'])) {
+        throw StateError('Aguarde a confirmacao do servidor antes de editar.');
+      }
+      idAtendimentoEnvio = real;
+    }
+    if (idAtendimentoEnvio.isEmpty || idItemVenda.isEmpty) {
+      throw StateError('Aguarde a confirmacao do servidor antes de editar.');
+    }
+    final alvo = escopo;
+    final destinoOriginal = destino;
+    final estadoSalvo = await banco.ler('estado:$alvo');
+    final atendimento = estadoSalvo == null
+        ? null
+        : (jsonDecode(estadoSalvo)['atendimentos']
+            as Map?)?[idAtendimentoEnvio];
+    final versao = versaoAtendimento.isNotEmpty
+        ? versaoAtendimento
+        : ((await banco.ler('versao:$alvo:$idAtendimentoEnvio')) ??
+            atendimento?['versao']?.toString() ??
+            '');
+    if (versao.isEmpty) {
+      throw StateError('Aguarde a primeira sincronizacao deste atendimento.');
+    }
+    if (alvo != escopo || !identical(conta, usuario.usuario)) {
+      throw StateError('A conta mudou. Abra a edicao novamente.');
+    }
+    final payload = {
+      'produto': normalizarProdutoParaEnvio(produto.toMap()),
+      'id_itens_venda': idItemVenda,
+      'id_comanda_pedido': idAtendimentoEnvio,
+      'versao_atendimento': versao,
+      'id_comanda': idComanda.isEmpty ? '0' : idComanda,
+      'id_mesa': idMesa.isEmpty ? '0' : idMesa,
+      'tipo': tipo,
+      'id_cliente': idCliente.isEmpty ? '0' : idCliente,
+      'empresa': conta.empresa,
+      'id_usuario': conta.id,
+    };
+    await banco.db.insert('operacoes', {
+      'id': BancoLocal.novoId(),
+      'escopo': alvo,
+      'atendimento': idAtendimentoEnvio,
+      'acao': 'editar_item',
+      'estado': 'pendente',
+      'dados': jsonEncode(payload),
+      'impressoes': jsonEncode(impressoes),
+      'destino': destinoOriginal,
+      'criado': DateTime.now().millisecondsSinceEpoch,
+    });
+    await _recarregarPendencias();
+    _notificar();
+    unawaited(enviarPendentes());
+  }
+
   Future<String> abrirAtendimento(
       {required String tipo,
       String idMesa = '0',
@@ -756,6 +838,10 @@ class Sincronizador extends ChangeNotifier {
                 '${resultado['numeroPedido'] ?? ''}'.isEmpty)) {
           throw StateError('O servidor nao confirmou a identidade da venda.');
         }
+        if (op['acao'] == 'editar_item' &&
+            (int.tryParse('${resultado['id_itens_venda']}') ?? 0) <= 0) {
+          throw StateError('O servidor nao confirmou a edicao do produto.');
+        }
         await banco.atualizarOperacao(id, {
           'estado': 'registrado',
           'resposta': jsonEncode(resultado),
@@ -800,6 +886,9 @@ class Sincronizador extends ChangeNotifier {
     final copia = Map<String, dynamic>.from(dados);
     if (copia.containsKey('produtos')) {
       copia['produtos'] = normalizarProdutosParaEnvio(copia['produtos']);
+    }
+    if (copia.containsKey('produto')) {
+      copia['produto'] = normalizarProdutoParaEnvio(copia['produto']);
     }
     return copia;
   }
