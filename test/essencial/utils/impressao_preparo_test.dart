@@ -224,6 +224,22 @@ void main() {
     expect(opcoes.single['titulo'], 'Adicionais');
   });
 
+  test('comprovante usa lista final e nao envia catalogo marcado', () {
+    final catalogo = adicionais(['Milho', 'Bacon']);
+    catalogo.dados!.last.estaSelecionado = true;
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotes = [catalogo]
+      ..opcoesPacotesListaFinal = [
+        adicionais(['Milho']),
+      ];
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final json = jsonEncode(dados);
+
+    expect(dados['opcoesPacotes'], isNull);
+    expect(json, contains('Milho'));
+    expect(json, isNot(contains('Bacon')));
+  });
+
   test('borda unica imprime como inteira e nao duplica proporcao', () {
     final pizza = produto(nome: 'Pizza')
       ..opcoesPacotesListaFinal = [
