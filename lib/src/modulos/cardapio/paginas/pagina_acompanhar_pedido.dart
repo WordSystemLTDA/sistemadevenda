@@ -49,6 +49,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
   ModeloConfigBigchef? _configBigchef;
   bool _carregando = false;
   bool _abrindoEdicao = false;
+  final Map<String, Modelowordprodutos> _edicoesLocais = {};
 
   @override
   void initState() {
@@ -87,7 +88,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
           widget.idComandaPedido ?? '0', widget.tipo, 'Sim');
       if (!mounted) return;
       setState(() {
-        dados = value;
+        dados = _aplicarEdicoesLocais(value);
       });
     } catch (_) {
       if (!mounted) return;
@@ -125,6 +126,37 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
       total += (double.tryParse(p.valorVenda) ?? 0) * (p.quantidade ?? 0);
     }
     return total;
+  }
+
+  Modeloworddadoscardapio _aplicarEdicoesLocais(
+      Modeloworddadoscardapio atendimento) {
+    final produtos = atendimento.produtos;
+    if (_edicoesLocais.isEmpty || produtos == null || produtos.isEmpty) {
+      return atendimento;
+    }
+    final copia = Modeloworddadoscardapio.fromMap(atendimento.toMap());
+    final atualizados = copia.produtos ?? <Modelowordprodutos>[];
+    var alterou = false;
+    for (var i = 0; i < atualizados.length; i++) {
+      final idItem = atualizados[i].iditensvenda ?? '';
+      final editado = _edicoesLocais[idItem];
+      if (idItem.isEmpty || editado == null) continue;
+      atualizados[i] = Modelowordprodutos.fromMap(editado.toMap());
+      alterou = true;
+    }
+    if (alterou) {
+      copia.valorTotal = _valorTotal(atualizados).toStringAsFixed(2);
+    }
+    return copia;
+  }
+
+  void _registrarEdicaoLocal(Modelowordprodutos produto) {
+    final idItem = produto.iditensvenda ?? '';
+    if (idItem.isEmpty || dados == null) return;
+    _edicoesLocais[idItem] = Modelowordprodutos.fromMap(produto.toMap());
+    if (mounted) {
+      setState(() => dados = _aplicarEdicoesLocais(dados!));
+    }
   }
 
   bool _ehPizza(Modelowordprodutos item) => (item.opcoesPacotesListaFinal ?? [])
@@ -197,10 +229,11 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
               idCliente: idCliente,
               impressoes: mensagens,
             );
-            if (resposta.$1 &&
-                Sincronizador.instancia == null &&
-                mensagens.isNotEmpty) {
-              await _server.enviarImpressoes(mensagens);
+            if (resposta.$1) {
+              _registrarEdicaoLocal(produto);
+              if (Sincronizador.instancia == null && mensagens.isNotEmpty) {
+                await _server.enviarImpressoes(mensagens);
+              }
             }
             return resposta.$1;
           },

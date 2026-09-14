@@ -5,6 +5,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -308,6 +309,61 @@ void main() {
     expect(reaberta.valorUnitario, 81);
     expect(reaberta.cardapio.limiteSaborBordaSelecionado, 2);
     expect((await reaberta.concluir()).valorVenda, '81.00');
+  });
+
+  test('edicoes sequenciais imprimem somente opcoes que continuam na pizza',
+      () async {
+    final item = api.pizza();
+    item
+      ..valorVenda = '84.00'
+      ..valorTotalVendas = '168.00';
+    item.opcoesPacotesListaFinal!
+        .firstWhere((opcao) => opcao.id == 7)
+        .dados!
+        .add(opcao('Bacon', '4', quantidade: 1));
+
+    final primeiraEdicao = criar(item);
+    addTearDown(primeiraEdicao.dispose);
+    await primeiraEdicao.carregar(configuracao: configBigchef());
+    final adicionais = primeiraEdicao.opcoes.firstWhere((o) => o.id == 7);
+    primeiraEdicao.produto
+        .selecionarItem(adicionais.dados!.last, adicionais, false, '0');
+    final semBacon = await primeiraEdicao.concluir();
+    expect(semBacon.valorVenda, '80.00');
+    expect(
+        semBacon.opcoesPacotesListaFinal!
+            .firstWhere((opcao) => opcao.id == 7)
+            .dados!
+            .map((dado) => dado.nome),
+        ['Milho']);
+
+    final segundaEdicao = criar(semBacon);
+    addTearDown(segundaEdicao.dispose);
+    await segundaEdicao.carregar(configuracao: configBigchef());
+    final bordas = segundaEdicao.opcoes.firstWhere((o) => o.id == 6);
+    segundaEdicao.produto
+        .selecionarItem(bordas.dados!.last, bordas, false, '0');
+    final semBaconESemCatupiry = await segundaEdicao.concluir();
+    final payloadImpressao =
+        DadosImpressaoPreparo.produto(semBaconESemCatupiry);
+    final jsonPayload = jsonEncode(payloadImpressao);
+
+    expect(semBaconESemCatupiry.valorVenda, '78.00');
+    expect(
+        semBaconESemCatupiry.opcoesPacotesListaFinal!
+            .firstWhere((opcao) => opcao.id == 6)
+            .dados!
+            .map((dado) => dado.nome),
+        ['Cheddar']);
+    expect(
+        semBaconESemCatupiry.opcoesPacotesListaFinal!
+            .firstWhere((opcao) => opcao.id == 7)
+            .dados!
+            .map((dado) => dado.nome),
+        ['Milho']);
+    expect(payloadImpressao['opcoesPacotes'], isNull);
+    expect(jsonPayload, isNot(contains('Bacon')));
+    expect(jsonPayload, isNot(contains('Catupiry')));
   });
 
   for (final maior in [false, true]) {
@@ -614,6 +670,10 @@ void main() {
         find.text(
             'Desmarque uma borda antes de diminuir a quantidade de sabores.'),
         findsOneWidget);
+    ScaffoldMessenger.of(
+            tester.element(find.byType(PaginaEditarOpcoesCarrinho)))
+        .hideCurrentSnackBar();
+    await tester.pumpAndSettle();
     final catupiry = find.byKey(const ValueKey('opcao_6_Catupiry'));
     await mostrar(tester, catupiry);
     await tester.tap(catupiry);

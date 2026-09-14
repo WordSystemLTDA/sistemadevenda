@@ -406,8 +406,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     }
     observacao = normalizarObservacaoProduto(observacao);
     resultado
-      ..opcoesPacotes =
-          opcoes.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
+      ..opcoesPacotes = _catalogoSemMarcacoes(opcoes)
       ..opcoesPacotesListaFinal =
           montagem.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
       ..quantidade = quantidade
@@ -416,6 +415,28 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       ..valorTotalVendas = total.toStringAsFixed(2)
       ..limiteSaboresBorda = cardapio.limiteSaborBordaSelecionado;
     return resultado;
+  }
+
+  List<ModeloOpcoesPacotes> _catalogoSemMarcacoes(
+      List<ModeloOpcoesPacotes> opcoes) {
+    return opcoes.map(_opcaoSemMarcacoes).toList();
+  }
+
+  ModeloOpcoesPacotes _opcaoSemMarcacoes(ModeloOpcoesPacotes opcao) {
+    final copia = ModeloOpcoesPacotes.fromMap(opcao.toMap());
+    for (final dado in copia.dados ?? <ModeloDadosOpcoesPacotes>[]) {
+      dado.estaSelecionado = false;
+      dado.excluir = false;
+    }
+    copia.opcoesPacote = copia.opcoesPacote?.map(_opcaoSemMarcacoes).toList();
+    copia.produtos = copia.produtos?.map((produto) {
+      final copiaProduto = Modelowordprodutos.fromMap(produto.toMap());
+      copiaProduto.opcoesPacotes = copiaProduto.opcoesPacotes == null
+          ? null
+          : _catalogoSemMarcacoes(copiaProduto.opcoesPacotes!);
+      return copiaProduto;
+    }).toList();
+    return copia;
   }
 
   @override

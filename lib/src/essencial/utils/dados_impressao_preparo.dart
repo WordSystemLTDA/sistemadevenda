@@ -60,9 +60,11 @@ class DadosImpressaoPreparo {
       );
     }
     dados['quantidadeController'] = null;
-    dados['opcoesPacotes'] = produto.opcoesPacotes?.map(_opcao).toList();
-    dados['opcoesPacotesListaFinal'] =
-        produto.opcoesPacotesListaFinal?.map(_opcao).toList();
+    final opcoesFinais = produto.opcoesPacotesListaFinal;
+    dados['opcoesPacotes'] = opcoesFinais == null
+        ? produto.opcoesPacotes?.map(_opcao).toList()
+        : null;
+    dados['opcoesPacotesListaFinal'] = opcoesFinais?.map(_opcao).toList();
     return dados;
   }
 
