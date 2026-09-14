@@ -21,6 +21,11 @@ class ModeloConfigBigchef {
   final String saborlimitedeborda;
   final String autenticarcomtag;
   final String? modeloValorAdicionalPizza;
+  final String permitireditarquantidadeappaposfinalizar;
+  final String permitireditarobservacaoappaposfinalizar;
+  final String permitireditarsaborpizzaappaposfinalizar;
+  final String permitireditarbordaappaposfinalizar;
+  final String permitireditaradicionalappaposfinalizar;
 
   ModeloConfigBigchef({
     required this.abrircomandadireto,
@@ -42,7 +47,23 @@ class ModeloConfigBigchef {
     required this.saborlimitedeborda,
     required this.autenticarcomtag,
     this.modeloValorAdicionalPizza,
+    this.permitireditarquantidadeappaposfinalizar = 'Não',
+    this.permitireditarobservacaoappaposfinalizar = 'Não',
+    this.permitireditarsaborpizzaappaposfinalizar = 'Não',
+    this.permitireditarbordaappaposfinalizar = 'Não',
+    this.permitireditaradicionalappaposfinalizar = 'Não',
   });
+
+  bool get permiteEditarQuantidadeAposFinalizar =>
+      permitireditarquantidadeappaposfinalizar == 'Sim';
+  bool get permiteEditarObservacaoAposFinalizar =>
+      permitireditarobservacaoappaposfinalizar == 'Sim';
+  bool get permiteEditarSaborPizzaAposFinalizar =>
+      permitireditarsaborpizzaappaposfinalizar == 'Sim';
+  bool get permiteEditarBordaAposFinalizar =>
+      permitireditarbordaappaposfinalizar == 'Sim';
+  bool get permiteEditarAdicionalAposFinalizar =>
+      permitireditaradicionalappaposfinalizar == 'Sim';
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -60,11 +81,22 @@ class ModeloConfigBigchef {
       'formacobrancaentregadelivery': formacobrancaentregadelivery,
       'valordaentrega': valordaentrega,
       'agrupamentodeitenscomprovconsumo': agrupamentodeitenscomprovconsumo,
-      'agrupamentodeitenscomproventregador': agrupamentodeitenscomproventregador,
+      'agrupamentodeitenscomproventregador':
+          agrupamentodeitenscomproventregador,
       'valordiferenca': valordiferenca,
       'saborlimitedeborda': saborlimitedeborda,
       'autenticarcomtag': autenticarcomtag,
       'modelo_valor_adicional_pizza': modeloValorAdicionalPizza,
+      'permitireditarquantidadeappaposfinalizar':
+          permitireditarquantidadeappaposfinalizar,
+      'permitireditarobservacaoappaposfinalizar':
+          permitireditarobservacaoappaposfinalizar,
+      'permitireditarsaborpizzaappaposfinalizar':
+          permitireditarsaborpizzaappaposfinalizar,
+      'permitireditarbordaappaposfinalizar':
+          permitireditarbordaappaposfinalizar,
+      'permitireditaradicionalappaposfinalizar':
+          permitireditaradicionalappaposfinalizar,
     };
   }
 
@@ -81,18 +113,33 @@ class ModeloConfigBigchef {
       mostrarnomeclientepreparo: map['mostrarnomeclientepreparo'] as String,
       tamanhofontepreparoaltura: map['tamanhofontepreparoaltura'] as String,
       tamanhofontepreparolargura: map['tamanhofontepreparolargura'] as String,
-      formacobrancaentregadelivery: map['formacobrancaentregadelivery'] as String,
+      formacobrancaentregadelivery:
+          map['formacobrancaentregadelivery'] as String,
       valordaentrega: map['valordaentrega'] as String,
-      agrupamentodeitenscomprovconsumo: map['agrupamentodeitenscomprovconsumo'] as String,
-      agrupamentodeitenscomproventregador: map['agrupamentodeitenscomproventregador'] as String,
+      agrupamentodeitenscomprovconsumo:
+          map['agrupamentodeitenscomprovconsumo'] as String,
+      agrupamentodeitenscomproventregador:
+          map['agrupamentodeitenscomproventregador'] as String,
       valordiferenca: map['valordiferenca'] as String,
       saborlimitedeborda: map['saborlimitedeborda'] as String,
       autenticarcomtag: map['autenticarcomtag'] as String,
-      modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ?? map['modelovaloradicionalpizza']) as String?,
+      modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ??
+          map['modelovaloradicionalpizza']) as String?,
+      permitireditarquantidadeappaposfinalizar:
+          map['permitireditarquantidadeappaposfinalizar']?.toString() ?? 'Não',
+      permitireditarobservacaoappaposfinalizar:
+          map['permitireditarobservacaoappaposfinalizar']?.toString() ?? 'Não',
+      permitireditarsaborpizzaappaposfinalizar:
+          map['permitireditarsaborpizzaappaposfinalizar']?.toString() ?? 'Não',
+      permitireditarbordaappaposfinalizar:
+          map['permitireditarbordaappaposfinalizar']?.toString() ?? 'Não',
+      permitireditaradicionalappaposfinalizar:
+          map['permitireditaradicionalappaposfinalizar']?.toString() ?? 'Não',
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory ModeloConfigBigchef.fromJson(String source) => ModeloConfigBigchef.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory ModeloConfigBigchef.fromJson(String source) =>
+      ModeloConfigBigchef.fromMap(json.decode(source) as Map<String, dynamic>);
 }

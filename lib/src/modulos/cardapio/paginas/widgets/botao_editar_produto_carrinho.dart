@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -14,6 +15,7 @@ class BotaoEditarProdutoCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
   final int index;
   final bool recorrentes;
+  final ModeloConfigBigchef? configBigchef;
   final EdgeInsetsGeometry padding;
 
   const BotaoEditarProdutoCarrinho({
@@ -21,6 +23,7 @@ class BotaoEditarProdutoCarrinho extends StatefulWidget {
     required this.item,
     required this.index,
     this.recorrentes = false,
+    this.configBigchef,
     this.padding = const EdgeInsets.fromLTRB(10, 0, 10, 10),
   });
 
@@ -54,8 +57,10 @@ class _BotaoEditarProdutoCarrinhoState
       final salvo = await Navigator.of(context).push<bool>(MaterialPageRoute(
         builder: (_) => PaginaEditarProdutoCarrinho(
           edicao: edicao,
-          carregarConfiguracao: () =>
-              Modular.get<ServicoConfigBigchef>().listar(),
+          recorrentes: widget.recorrentes,
+          carregarConfiguracao: () async =>
+              widget.configBigchef ??
+              await Modular.get<ServicoConfigBigchef>().listar(),
           aoSalvar: (produto) => carrinho != null
               ? carrinho.editar(produto, index,
                   contexto: contexto, original: original)

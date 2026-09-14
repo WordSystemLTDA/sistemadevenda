@@ -15,12 +15,14 @@ class PaginaEditarProdutoCarrinho extends StatefulWidget {
   final EdicaoProdutoCarrinho edicao;
   final Future<ModeloConfigBigchef?> Function() carregarConfiguracao;
   final Future<bool> Function(Modelowordprodutos) aoSalvar;
+  final bool recorrentes;
 
   const PaginaEditarProdutoCarrinho({
     super.key,
     required this.edicao,
     required this.carregarConfiguracao,
     required this.aoSalvar,
+    this.recorrentes = false,
   });
 
   @override
@@ -36,6 +38,7 @@ class _PaginaEditarProdutoCarrinhoState
   bool _salvando = false;
   bool _iniciando = false;
   bool _permitirSair = false;
+  ModeloConfigBigchef? _configuracao;
   String? _erroConfiguracao;
 
   @override
@@ -52,12 +55,14 @@ class _PaginaEditarProdutoCarrinhoState
       _erroConfiguracao = null;
     });
     try {
+      final precisaConfiguracao = edicao.pizza || widget.recorrentes;
       final configuracao =
-          edicao.pizza ? await widget.carregarConfiguracao() : null;
+          precisaConfiguracao ? await widget.carregarConfiguracao() : null;
       if (!mounted) return;
-      if (edicao.pizza && configuracao == null) {
+      if (precisaConfiguracao && configuracao == null) {
         throw StateError('Configuração indisponível.');
       }
+      _configuracao = configuracao;
       await edicao.carregar(configuracao: configuracao);
     } catch (error, stackTrace) {
       developer.log('Falha ao iniciar edição do produto.',
@@ -81,7 +86,33 @@ class _PaginaEditarProdutoCarrinhoState
         .showSnackBar(SnackBar(content: Text(mensagem)));
   }
 
+  bool get _permiteEditarObservacao =>
+      !widget.recorrentes ||
+      (_configuracao?.permiteEditarObservacaoAposFinalizar ?? false);
+
+  bool get _permiteEditarSaborPizza =>
+      !widget.recorrentes ||
+      (_configuracao?.permiteEditarSaborPizzaAposFinalizar ?? false);
+
+  bool _permiteEditarOpcao(int idOpcao) {
+    if (!widget.recorrentes) return true;
+    if (idOpcao == 6) {
+      return _configuracao?.permiteEditarBordaAposFinalizar ?? false;
+    }
+    if (idOpcao == 7) {
+      return _configuracao?.permiteEditarAdicionalAposFinalizar ?? false;
+    }
+    return true;
+  }
+
+  bool _podeAbrirEtapa(int? idOpcao) =>
+      idOpcao == null ? _permiteEditarSaborPizza : _permiteEditarOpcao(idOpcao);
+
   Future<void> _abrirEtapa({int? idOpcao}) async {
+    if (!_podeAbrirEtapa(idOpcao)) {
+      _avisar('Edição bloqueada pela configuração do App Garçom.');
+      return;
+    }
     _focoObservacao.unfocus();
     final rascunho = edicao.criarRascunho();
     final rota = MaterialPageRoute<bool>(
@@ -165,6 +196,7 @@ class _PaginaEditarProdutoCarrinhoState
       builder: (context, _) {
         final erro = _iniciando ? null : _erroConfiguracao ?? edicao.erro;
         final carregando = _iniciando || edicao.carregando;
+        final permiteEditarObservacao = _permiteEditarObservacao;
         return PopScope(
           canPop: !_salvando && (_permitirSair || !edicao.alterado),
           onPopInvokedWithResult: (didPop, result) {
@@ -230,11 +262,13 @@ class _PaginaEditarProdutoCarrinhoState
                           children: [
                             _resumoProduto(),
                             const SizedBox(height: 12),
-                            if (edicao.pizza) _secaoSabores(),
+                            if (edicao.pizza && _permiteEditarSaborPizza)
+                              _secaoSabores(),
                             for (final opcao in edicao.opcoes)
                               if ((opcao.dados?.isNotEmpty ?? false) ||
                                   (opcao.produtos?.isNotEmpty ?? false))
-                                _secaoOpcoes(opcao),
+                                if (_permiteEditarOpcao(opcao.id))
+                                  _secaoOpcoes(opcao),
                             Padding(
                               padding:
                                   const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -274,8 +308,11 @@ class _PaginaEditarProdutoCarrinhoState
                                       textCapitalization:
                                           TextCapitalization.sentences,
                                       style: const TextStyle(fontSize: 15),
-                                      onChanged: (texto) => setState(
-                                          () => edicao.observacao = texto),
+                                      readOnly: !permiteEditarObservacao,
+                                      onChanged: permiteEditarObservacao
+                                          ? (texto) => setState(
+                                              () => edicao.observacao = texto)
+                                          : null,
                                       decoration: InputDecoration(
                                         suffixIcon: _focoObservacao.hasFocus
                                             ? IconButton(

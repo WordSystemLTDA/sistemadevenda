@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_editar_produto_carrinho.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +45,7 @@ class AcoesProdutoCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
   final int index;
   final bool recorrentes;
+  final ModeloConfigBigchef? configBigchef;
   final Future<bool> Function(bool conferido) aoConferir;
 
   const AcoesProdutoCarrinho({
@@ -52,6 +54,7 @@ class AcoesProdutoCarrinho extends StatefulWidget {
     required this.index,
     required this.aoConferir,
     this.recorrentes = false,
+    this.configBigchef,
   });
 
   @override
@@ -89,6 +92,7 @@ class _AcoesProdutoCarrinhoState extends State<AcoesProdutoCarrinho> {
       item: widget.item,
       index: widget.index,
       recorrentes: widget.recorrentes,
+      configBigchef: widget.configBigchef,
       padding: EdgeInsets.zero,
     );
     final conferir = Semantics(

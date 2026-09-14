@@ -6,6 +6,8 @@ import 'package:app/src/essencial/utils/feedback_usuario.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
@@ -44,6 +46,8 @@ class _PaginaCarrinhoItensRecorrentesState
     extends State<PaginaCarrinhoItensRecorrentes>
     with TickerProviderStateMixin {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
+  final ServicoConfigBigchef servicoConfigBigchef =
+      Modular.get<ServicoConfigBigchef>();
   final ProvedorComanda provedorComanda = Modular.get<ProvedorComanda>();
   final ProvedorMesas provedorMesas = Modular.get<ProvedorMesas>();
   final UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
@@ -56,6 +60,7 @@ class _PaginaCarrinhoItensRecorrentesState
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
   Modeloworddadoscardapio? dados;
+  ModeloConfigBigchef? configBigchef;
   bool carregando = true;
 
   TipoCardapio get _tipo => (widget.idMesa != '0' &&
@@ -72,17 +77,22 @@ class _PaginaCarrinhoItensRecorrentesState
   Future<void> listar() async {
     try {
       dados = null;
+      configBigchef = null;
       await provedorItensRecorrentes
           .listarComandasPedidos(widget.idComandaPedido);
       final resposta = await servicoCardapio.listarPorId(
           widget.idComandaPedido, _tipo, "Não");
+      final configuracao = await servicoConfigBigchef.listar();
       if (resposta.id != widget.idComandaPedido ||
           (_tipo == TipoCardapio.comanda
               ? resposta.idComanda != widget.idComanda
               : resposta.idMesa != widget.idMesa)) {
         throw StateError('Os dados nao pertencem ao atendimento do carrinho.');
       }
-      if (mounted) dados = resposta;
+      if (mounted) {
+        dados = resposta;
+        configBigchef = configuracao;
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -259,6 +269,7 @@ class _PaginaCarrinhoItensRecorrentesState
                                     idMesa: widget.idMesa,
                                     index: index,
                                     value: null,
+                                    configBigchef: configBigchef,
                                     setarQuantidade: (increase) async {
                                       if (increase) {
                                         await provedorItensRecorrentes

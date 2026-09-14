@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
@@ -18,6 +19,7 @@ class CardCarrinhoItensRecorrentes extends StatefulWidget {
   final int index;
   final String idMesa;
   final dynamic value;
+  final ModeloConfigBigchef? configBigchef;
   final Function(bool increase) setarQuantidade;
 
   const CardCarrinhoItensRecorrentes({
@@ -29,6 +31,7 @@ class CardCarrinhoItensRecorrentes extends StatefulWidget {
     required this.idMesa,
     required this.value,
     required this.setarQuantidade,
+    this.configBigchef,
   });
 
   @override
@@ -78,6 +81,10 @@ class _CardCarrinhoItensRecorrentesState
   Widget build(BuildContext context) {
     var item = widget.item;
     final nomeExibicao = _nomeExibicaoItem(item);
+    final permiteEditarQuantidade =
+        widget.configBigchef?.permiteEditarQuantidadeAposFinalizar ?? false;
+    final permiteEditarObservacao =
+        widget.configBigchef?.permiteEditarObservacaoAposFinalizar ?? false;
 
     return CardConferenciaCarrinho(
       conferido: item.conferidoNoCarrinho,
@@ -149,21 +156,23 @@ class _CardCarrinhoItensRecorrentesState
                       spacing: 8,
                       children: [
                         TextButton(
-                          onPressed: () {
-                            showModalBottomSheet(
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              context: context,
-                              builder: (context) {
-                                return ModalEditarObservacao(
-                                  itensRecorrentes: true,
-                                  idProduto: item.id,
-                                  index: widget.index,
-                                  observacao: item.observacao ?? '',
-                                );
-                              },
-                            );
-                          },
+                          onPressed: permiteEditarObservacao
+                              ? () {
+                                  showModalBottomSheet(
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    context: context,
+                                    builder: (context) {
+                                      return ModalEditarObservacao(
+                                        itensRecorrentes: true,
+                                        idProduto: item.id,
+                                        index: widget.index,
+                                        observacao: item.observacao ?? '',
+                                      );
+                                    },
+                                  );
+                                }
+                              : null,
                           child: const Text('Observação'),
                         ),
                         Row(
@@ -177,51 +186,57 @@ class _CardCarrinhoItensRecorrentesState
                                   ? const Icon(Icons.delete_outline_outlined)
                                   : const Icon(
                                       Icons.remove_circle_outline_outlined),
-                              onPressed: () {
-                                if (item.quantidade! <= 1) {
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) {
-                                      return AlertDialog(
-                                        title: const Text('Exclusão de Item'),
-                                        content: const SingleChildScrollView(
-                                          child: ListBody(
-                                            children: <Widget>[
-                                              Text(
-                                                  'Deseja realmente excluir esse item?'),
-                                            ],
-                                          ),
-                                        ),
-                                        actions: <Widget>[
-                                          TextButton(
-                                            child: const Text('Cancelar'),
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                          TextButton(
-                                            child: const Text('Excluir'),
-                                            onPressed: () async {
-                                              await provedorItensRecorrentes
-                                                  .excluirItemCarrinho(
-                                                      widget.idComandaPedido,
-                                                      widget.index);
-                                              if (context.mounted) {
-                                                provedorItensRecorrentes
-                                                    .listarComandasPedidos(
-                                                        widget.idComandaPedido);
-                                                Navigator.pop(context);
-                                              }
-                                            },
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                } else {
-                                  widget.setarQuantidade(false);
-                                }
-                              },
+                              onPressed: permiteEditarQuantidade
+                                  ? () {
+                                      if (item.quantidade! <= 1) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title: const Text(
+                                                  'Exclusão de Item'),
+                                              content:
+                                                  const SingleChildScrollView(
+                                                child: ListBody(
+                                                  children: <Widget>[
+                                                    Text(
+                                                        'Deseja realmente excluir esse item?'),
+                                                  ],
+                                                ),
+                                              ),
+                                              actions: <Widget>[
+                                                TextButton(
+                                                  child: const Text('Cancelar'),
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                ),
+                                                TextButton(
+                                                  child: const Text('Excluir'),
+                                                  onPressed: () async {
+                                                    await provedorItensRecorrentes
+                                                        .excluirItemCarrinho(
+                                                            widget
+                                                                .idComandaPedido,
+                                                            widget.index);
+                                                    if (context.mounted) {
+                                                      provedorItensRecorrentes
+                                                          .listarComandasPedidos(
+                                                              widget
+                                                                  .idComandaPedido);
+                                                      Navigator.pop(context);
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      } else {
+                                        widget.setarQuantidade(false);
+                                      }
+                                    }
+                                  : null,
                             ),
                             ConstrainedBox(
                               constraints: const BoxConstraints(minWidth: 30),
@@ -235,9 +250,11 @@ class _CardCarrinhoItensRecorrentesState
                               tooltip: 'Aumentar quantidade',
                               icon:
                                   const Icon(Icons.add_circle_outline_outlined),
-                              onPressed: () {
-                                widget.setarQuantidade(true);
-                              },
+                              onPressed: permiteEditarQuantidade
+                                  ? () {
+                                      widget.setarQuantidade(true);
+                                    }
+                                  : null,
                             ),
                           ],
                         ),
@@ -252,6 +269,7 @@ class _CardCarrinhoItensRecorrentesState
             item: item,
             index: widget.index,
             recorrentes: true,
+            configBigchef: widget.configBigchef,
             aoConferir: (conferido) => provedorItensRecorrentes
                 .definirConferencia(item, widget.index, conferido),
           ),
