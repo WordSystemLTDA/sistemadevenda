@@ -196,6 +196,82 @@ void main() {
     });
   }
 
+  testWidgets('card recorrente mostra quantidade ja adicionada no carrinho',
+      (tester) async {
+    _capturarFeedbackHaptico();
+    final pizza = _pizzaRecorrente();
+    final outraPizza = _pizzaRecorrente()
+      ..iditensvenda = '10674'
+      ..valorVenda = '52.00';
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            KeyedSubtree(
+              key: const ValueKey('recorrente_1'),
+              child: CardItensRecorrentes(
+                estaPesquisando: false,
+                searchController: null,
+                item: pizza,
+                categoria: null,
+                finalizar: true,
+                idComanda: '3',
+                idMesa: '0',
+                idComandaPedido: '10673',
+              ),
+            ),
+            KeyedSubtree(
+              key: const ValueKey('recorrente_2'),
+              child: CardItensRecorrentes(
+                estaPesquisando: false,
+                searchController: null,
+                item: outraPizza,
+                categoria: null,
+                finalizar: true,
+                idComanda: '3',
+                idMesa: '0',
+                idComandaPedido: '10673',
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+
+    expect(find.text('1 no carrinho'), findsNothing);
+
+    await tester.tap(_textoDoCardRecorrente('recorrente_1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 no carrinho'), findsOneWidget);
+    expect(
+        modulo.provedorItensRecorrentes.quantidadeDoItemRecorrente(pizza), 1);
+
+    await tester.tap(_textoDoCardRecorrente('recorrente_1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 no carrinho'), findsOneWidget);
+    expect(
+        modulo.provedorItensRecorrentes.quantidadeDoItemRecorrente(pizza), 2);
+    expect(
+        modulo.provedorItensRecorrentes.quantidadeDoItemRecorrente(outraPizza),
+        0);
+
+    final card = tester.widget<Card>(
+      find
+          .ancestor(
+            of: find.byKey(
+                const ValueKey('quantidade_carrinho_recorrente_item:10673')),
+            matching: find.byType(Card),
+          )
+          .first,
+    );
+    final borda = card.shape as RoundedRectangleBorder;
+    expect(borda.side.width, greaterThan(1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('selecionar sabor de pizza em itens recorrentes vibra',
       (tester) async {
     final chamadasHapticas = _capturarFeedbackHaptico();
@@ -320,6 +396,15 @@ List<MethodCall> _capturarFeedbackHaptico() {
         .setMockMethodCallHandler(SystemChannels.platform, null);
   });
   return chamadas;
+}
+
+Finder _textoDoCardRecorrente(String key) {
+  return find
+      .descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.text('Pizza de Queijos'),
+      )
+      .first;
 }
 
 Modelowordprodutos _pizzaRecorrente({bool meiaBorda = false}) {

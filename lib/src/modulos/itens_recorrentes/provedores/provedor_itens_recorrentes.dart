@@ -19,6 +19,20 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
   bool _descartado = false;
   List<Modelowordprodutos> itensCarrinho = [];
   double precoTotal = 0;
+  final Map<String, double> _quantidadesPorItemRecorrente = {};
+
+  String chaveDoItemRecorrente(Modelowordprodutos item) {
+    final idItemVenda = item.iditensvenda?.trim() ?? '';
+    if (idItemVenda.isNotEmpty) return 'item:$idItemVenda';
+
+    final hashProduto = item.hashprodutos?.trim() ?? '';
+    if (hashProduto.isNotEmpty) return 'hash:$hashProduto';
+
+    return 'produto:${item.id}';
+  }
+
+  double quantidadeDoItemRecorrente(Modelowordprodutos item) =>
+      _quantidadesPorItemRecorrente[chaveDoItemRecorrente(item)] ?? 0;
 
   void selecionarAtendimento(
       {required String idAtendimento,
@@ -31,8 +45,7 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
         idRecurso: idRecurso);
     _contexto = _contextos[idAtendimento];
     ++_consulta;
-    itensCarrinho = [];
-    precoTotal = 0;
+    _atualizarItens([]);
   }
 
   ContextoCarrinho _contextoPorId(String id) {
@@ -46,19 +59,31 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
   Future<void> listarComandasPedidos(String idComandaPedido) async {
     final contexto = _contextoPorId(idComandaPedido);
     if (_contexto?.chave != contexto.chave) {
-      itensCarrinho = [];
-      precoTotal = 0;
+      _atualizarItens([]);
     }
     _contexto = contexto;
     final consulta = ++_consulta;
     final itens =
         await _servico.armazenamento.listar(contexto, recorrentes: true);
     if (_descartado || consulta != _consulta || _contexto != contexto) return;
+    _atualizarItens(itens);
+  }
+
+  void _atualizarItens(List<Modelowordprodutos> itens) {
+    if (_descartado) return;
+    _quantidadesPorItemRecorrente.clear();
+    double total = 0;
+    for (final item in itens) {
+      final quantidade = item.quantidade ?? 1;
+      total += double.parse(item.valorVenda) * quantidade;
+      _quantidadesPorItemRecorrente.update(
+        chaveDoItemRecorrente(item),
+        (valorAtual) => valorAtual + quantidade,
+        ifAbsent: () => quantidade,
+      );
+    }
     itensCarrinho = itens;
-    precoTotal = itens.fold(
-        0.0,
-        (total, item) =>
-            total + double.parse(item.valorVenda) * (item.quantidade ?? 1));
+    precoTotal = total;
     notifyListeners();
   }
 

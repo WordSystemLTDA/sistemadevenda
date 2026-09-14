@@ -74,6 +74,8 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   final ProvedorItensRecorrentes provedorItensRecorrentes =
       Modular.get<ProvedorItensRecorrentes>();
+  late final Listenable _alteracoes =
+      Listenable.merge([provedorCardapio, provedorItensRecorrentes]);
 
   Timer? _tickerTempoLancado;
   // antiga animação card produto
@@ -385,12 +387,21 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
     // }
 
     return ListenableBuilder(
-      listenable: provedorCardapio,
+      listenable: _alteracoes,
       builder: (context, snapshot) {
         return LayoutBuilder(builder: (context, constraints) {
           final compacto = constraints.maxWidth < 360 ||
               MediaQuery.textScalerOf(context).scale(14) > 19;
           final larguraImagem = compacto ? 64.0 : 100.0;
+          final chaveItemRecorrente =
+              provedorItensRecorrentes.chaveDoItemRecorrente(item);
+          final quantidadeNoCarrinho =
+              provedorItensRecorrentes.quantidadeDoItemRecorrente(item);
+          final marcado = quantidadeNoCarrinho > 0;
+          final quantidadeTexto = quantidadeNoCarrinho
+              .toStringAsFixed(quantidadeNoCarrinho % 1 == 0 ? 0 : 2)
+              .replaceAll('.', ',');
+          final cs = Theme.of(context).colorScheme;
           final resumo = ConstrainedBox(
             constraints: BoxConstraints(
                 minWidth: 70, maxWidth: compacto ? double.infinity : 132),
@@ -408,6 +419,16 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
           );
           return Card(
             clipBehavior: Clip.hardEdge,
+            color: marcado
+                ? cs.secondaryContainer.withValues(alpha: 0.25)
+                : cs.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: marcado ? cs.primary : cs.outlineVariant,
+                width: marcado ? 1.4 : 1,
+              ),
+            ),
             child: InkWell(
               key: widget.key,
               onTap: () async {
@@ -707,6 +728,19 @@ class _CardItensRecorrentesState extends State<CardItensRecorrentes>
                                           style: const TextStyle(fontSize: 13));
                                     },
                                   ),
+                                  if (marcado) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$quantidadeTexto no carrinho',
+                                      key: ValueKey(
+                                          'quantidade_carrinho_recorrente_$chaveItemRecorrente'),
+                                      style: TextStyle(
+                                        color: cs.primary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                   if (compacto)
                                     Align(
                                         alignment: Alignment.centerRight,
