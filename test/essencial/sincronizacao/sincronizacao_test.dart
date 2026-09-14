@@ -15,6 +15,8 @@ import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:dio/dio.dart';
@@ -604,6 +606,167 @@ void main() {
     expect(tentativas.length, envios);
   });
 
+  test('reenviar para servidor libera conflito manualmente', () async {
+    await guardar();
+    conectado = true;
+    conflito = true;
+    await sync.tentarNovamente();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(pendente['estado'], 'conflito');
+    final tentativasAntes = tentativas.length;
+
+    conflito = false;
+    await sync.reenviarParaServidor(pendente['id'] as String);
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(tentativas.length, greaterThan(tentativasAntes));
+    expect(aplicados, hasLength(1));
+    expect(socket.filaImpressao.itens, hasLength(1));
+  });
+
+  test('voltar pedido para carrinho restaura itens e arquiva pendencia',
+      () async {
+    await guardar();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+
+    await sync.voltarPedidoParaCarrinho(pendente['id'] as String);
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    final itens = await ArmazenamentoCarrinhos.instancia.listar(contexto);
+    expect(itens, hasLength(1));
+    expect(itens.single.observacao, 'Sem cebola');
+    final historico = await banco.db.query('operacoes');
+    expect(historico.single['estado'], 'arquivado');
+    expect(aplicados, isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+  });
+
+  test('observacao livre nao e enviada como opcao comercial', () async {
+    final observacao = '${'Asa ' * 70}\nsem cortar';
+    final item = produto(id: '5', nome: 'Pizza', codigo: '5')
+      ..observacao = ''
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 11,
+          titulo: 'Observação',
+          tipo: 7,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(id: '0', nome: observacao, valor: '0'),
+          ],
+        )
+      ];
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(contexto, (itens) => itens.add(item));
+    await sync.guardarPedido(
+        contexto: contexto,
+        itens: [item],
+        idMesa: '0',
+        idComanda: '4',
+        idCliente: '0',
+        impressoes: []);
+
+    conectado = true;
+    await sync.tentarNovamente();
+
+    final enviado =
+        tentativas.lastWhere((pedido) => pedido['acao'] == 'produtos');
+    final produtoEnviado = (enviado['dados']['produtos'] as List).single as Map;
+    expect((produtoEnviado['observacao'] as String).contains('\n'), isFalse);
+    expect((produtoEnviado['observacao'] as String).runes.length,
+        lessThanOrEqualTo(200));
+    final opcoes = produtoEnviado['opcoesPacotesListaFinal'] as List;
+    expect(opcoes.where((opcao) {
+      final mapa = opcao as Map;
+      return mapa['titulo'] == 'Observação' || mapa['id'].toString() == '12';
+    }), isEmpty);
+  });
+
+  test('reenviar conflito antigo normaliza observacao antes de enviar',
+      () async {
+    final idOperacao = BancoLocal.novoId();
+    const observacao = 'Observacao antiga salva apenas no pacote';
+    final item = produto(id: '5', nome: 'Pizza', codigo: '5')
+      ..observacao = ''
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 11,
+          titulo: 'Observação',
+          tipo: 7,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(id: '0', nome: observacao, valor: '0'),
+          ],
+        )
+      ];
+    await banco.db.insert('operacoes', {
+      'id': idOperacao,
+      'escopo': sync.escopo,
+      'atendimento': '104',
+      'acao': 'produtos',
+      'estado': 'conflito',
+      'dados': jsonEncode({
+        'produtos': [item.toMap()],
+        'id_comanda_pedido': '104',
+        'id_comanda': '4',
+        'id_mesa': '0',
+        'id_cliente': '0',
+        'tipo': 'comanda',
+        'empresa': '32',
+        'id_usuario': '1',
+      }),
+      'impressoes': '[]',
+      'destino': '',
+      'criado': DateTime.now().millisecondsSinceEpoch,
+      'tentativas': 3,
+      'proxima': 999999,
+    });
+    await sync.configurar();
+
+    conectado = true;
+    await sync.reenviarParaServidor(idOperacao);
+
+    final enviado =
+        tentativas.lastWhere((pedido) => pedido['acao'] == 'produtos');
+    final produtoEnviado = (enviado['dados']['produtos'] as List).single as Map;
+    expect(produtoEnviado['observacao'], observacao);
+    expect(produtoEnviado['opcoesPacotesListaFinal'], isEmpty);
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
+
+  testWidgets('card de conflito mostra acoes de recuperacao', (tester) async {
+    sync.pendencias = [
+      {
+        'id': 'operacao-pendente',
+        'acao': 'produtos',
+        'atendimento': '104',
+        'estado': 'conflito',
+        'erro': 'Uma opcao do produto foi removida ou alterada.',
+        'dados': jsonEncode({
+          'produtos': [
+            {'nome': 'Outras Pizzas', 'quantidade': 1}
+          ],
+        }),
+        'impressoes': '[]',
+      }
+    ];
+
+    await tester.pumpWidget(
+        MaterialApp(home: PendenciasSincronizacao(sincronizador: sync)));
+
+    final reenviar =
+        find.widgetWithText(FilledButton, 'Reenviar para o Servidor');
+    expect(reenviar, findsOneWidget);
+    expect(
+        find.widgetWithText(
+            OutlinedButton, 'Voltar esse Pedido para o Carrinho'),
+        findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Arquivar apos conferir'),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('reabrir o banco recupera os pedidos ainda nao enviados', () async {
     await guardar();
     final fila = await banco.operacoes(sync.escopo);
@@ -740,16 +903,33 @@ void main() {
   });
 
   test('pesquisa offline encontra acai e agua sem acentos', () async {
-    await banco.gravar('catalogo:${sync.escopo}', jsonEncode({
-      'produtos': [
-        produto(id: '5', codigo: '5', nome: 'Açaí especial', computador: 'Cozinha').toMap(),
-        produto(id: '6', codigo: '6', nome: 'Água com gás', computador: 'Bar').toMap(),
-      ],
-      'detalhes': {},
-    }));
+    await banco.gravar(
+        'catalogo:${sync.escopo}',
+        jsonEncode({
+          'produtos': [
+            produto(
+                    id: '5',
+                    codigo: '5',
+                    nome: 'Açaí especial',
+                    computador: 'Cozinha')
+                .toMap(),
+            produto(
+                    id: '6',
+                    codigo: '6',
+                    nome: 'Água com gás',
+                    computador: 'Bar')
+                .toMap(),
+          ],
+          'detalhes': {},
+        }));
     for (final (termo, id) in [('ACAI', '5'), ('agua', '6')]) {
-      final resposta = await api.cliente.get('produtos/listar.php', queryParameters: {
-        'pesquisa': termo, 'empresa': '32', 'categoria': '0', 'id_usuario': '1', 'id_cliente': '0',
+      final resposta =
+          await api.cliente.get('produtos/listar.php', queryParameters: {
+        'pesquisa': termo,
+        'empresa': '32',
+        'categoria': '0',
+        'id_usuario': '1',
+        'id_cliente': '0',
       });
       expect(resposta.data, hasLength(1));
       expect(resposta.data.single['id'], id);

@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -306,20 +307,15 @@ class MontadorPedidoVoz {
               dados: cardapio.saboresParaCarrinho()),
         ]);
       }
-      if (pedido.observacao.isNotEmpty) {
-        produto.opcoesPacotesListaFinal.add(ModeloOpcoesPacotes(
-            id: 11,
-            titulo: 'Observação',
-            tipo: 7,
-            obrigatorio: false,
-            dados: [
-              ModeloDadosOpcoesPacotes(id: '0', nome: pedido.observacao)
-            ]));
+      final observacao = normalizarObservacaoProduto(pedido.observacao);
+      if (observacao.isNotEmpty) {
+        produto.opcoesPacotesListaFinal
+            .add(montarGrupoObservacaoProduto(observacao));
       }
       return Modelowordprodutos.fromMap(detalhes.toMap())
         ..quantidade = pedido.quantidade.toDouble()
         ..valorVenda = produto.valorVenda.toStringAsFixed(2)
-        ..observacao = pedido.observacao
+        ..observacao = observacao
         ..limiteSaboresBorda = cardapio.limiteSaborBordaSelecionado
         ..conferidoNoCarrinho = false
         ..opcoesPacotesListaFinal = produto.opcoesParaCarrinho();

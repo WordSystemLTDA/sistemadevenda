@@ -13,10 +13,12 @@ import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_carrinho_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,7 @@ class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
   final String idComandaPedido;
   final String idMesa;
   final String idCliente;
+  final TipoCardapio tipo;
 
   const PaginaCarrinhoItensRecorrentes({
     super.key,
@@ -35,6 +38,7 @@ class PaginaCarrinhoItensRecorrentes extends StatefulWidget {
     required this.idComandaPedido,
     required this.idMesa,
     required this.idCliente,
+    required this.tipo,
   });
 
   @override
@@ -63,10 +67,7 @@ class _PaginaCarrinhoItensRecorrentesState
   ModeloConfigBigchef? configBigchef;
   bool carregando = true;
 
-  TipoCardapio get _tipo => (widget.idMesa != '0' &&
-          (widget.idComanda == '0' || widget.idComanda.isEmpty))
-      ? TipoCardapio.mesa
-      : TipoCardapio.comanda;
+  TipoCardapio get _tipo => widget.tipo;
 
   @override
   void initState() {
@@ -137,23 +138,24 @@ class _PaginaCarrinhoItensRecorrentesState
   }
 
   void _voltarParaTelaOrigem({required bool mesa}) {
-    // final nomeRota = mesa ? 'PaginaMesas' : 'PaginaComandas';
-    // var encontrouRota = false;
+    final navigator = Navigator.of(context);
+    final nomeRota = mesa ? 'PaginaMesas' : 'PaginaComandas';
+    var encontrouRota = false;
 
-    // Navigator.popUntil(context, (route) {
-    //   if (route.settings.name == nomeRota) {
-    //     encontrouRota = true;
-    //     return true;
-    //   }
-    //   return route.isFirst;
-    // });
+    navigator.popUntil((route) {
+      if (route.settings.name == nomeRota) {
+        encontrouRota = true;
+        return true;
+      }
+      return route.isFirst;
+    });
 
-    // if (encontrouRota || !mounted) {
-    //   return;
-    // }
+    if (encontrouRota) return;
 
-    Navigator.of(context).pop();
-    Navigator.of(context).pop();
+    navigator.push(MaterialPageRoute(
+      settings: RouteSettings(name: nomeRota),
+      builder: (context) => mesa ? const PaginaMesas() : const PaginaComandas(),
+    ));
   }
 
   @override
@@ -276,7 +278,7 @@ class _PaginaCarrinhoItensRecorrentesState
                                             .setarItemCarrinho(
                                                 widget.idComandaPedido,
                                                 index,
-                                                item.quantidade! + 1);
+                                                (item.quantidade ?? 1) + 1);
                                         if (context.mounted) {
                                           provedorItensRecorrentes
                                               .listarComandasPedidos(
@@ -287,7 +289,7 @@ class _PaginaCarrinhoItensRecorrentesState
                                             .setarItemCarrinho(
                                                 widget.idComandaPedido,
                                                 index,
-                                                item.quantidade! - 1);
+                                                (item.quantidade ?? 1) - 1);
                                         if (context.mounted) {
                                           provedorItensRecorrentes
                                               .listarComandasPedidos(

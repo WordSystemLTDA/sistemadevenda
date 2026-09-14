@@ -295,6 +295,17 @@ class PendenciasSincronizacao extends StatelessWidget {
         .map(_mapa)
         .where((item) => item.isNotEmpty)
         .toList();
+    final idOperacao = op['id']?.toString() ?? '';
+    final erroOperacao = (op['erro'] ?? '').toString().trim().isNotEmpty;
+    final acao = op['acao']?.toString() ?? '';
+    final podeReenviar =
+        idOperacao.isNotEmpty && !rascunho && (conflito || erroOperacao);
+    final podeVoltarCarrinho = idOperacao.isNotEmpty &&
+        !rascunho &&
+        produtos.isNotEmpty &&
+        ['produtos', 'venda'].contains(acao) &&
+        (conflito || erroOperacao);
+    final podeArquivar = conflito && idOperacao.isNotEmpty;
     return Card(
       color: conflito || rascunho ? cs.errorContainer : cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -345,33 +356,129 @@ class PendenciasSincronizacao extends StatelessWidget {
                         )),
                 const SizedBox(height: 8),
               ],
-              if (conflito)
-                TextButton.icon(
-                  icon: const Icon(Icons.archive_outlined),
-                  label: const Text('Arquivar apos conferir'),
-                  onPressed: () async {
-                    final confirmado = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                              title: const Text(
-                                  'Pedido conferido com o responsavel?'),
-                              content: const Text(
-                                  'Este pedido nao sera enviado nem impresso. Os dados ficam guardados no aparelho para consulta tecnica. Caso necessario, lance um novo pedido no atendimento correto.'),
-                              actions: [
-                                TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Voltar')),
-                                FilledButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text('Arquivar')),
-                              ],
-                            ));
-                    if (confirmado == true) {
-                      await sincronizador.arquivarConflito(op['id'] as String);
-                    }
-                  },
+              if (podeReenviar || podeVoltarCarrinho || podeArquivar)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 4),
+                    if (podeReenviar)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 46),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.cloud_upload_outlined),
+                        label: const Text('Reenviar para o Servidor'),
+                        onPressed: sincronizador.sincronizando
+                            ? null
+                            : () async {
+                                try {
+                                  await sincronizador
+                                      .reenviarParaServidor(idOperacao);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content: Text(
+                                        'Reenvio solicitado. Se o servidor ainda recusar, o pedido continua salvo nesta tela.'),
+                                  ));
+                                } catch (_) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content: Text(
+                                        'Nao foi possivel reenviar agora. O pedido continua salvo no aparelho.'),
+                                  ));
+                                }
+                              },
+                      ),
+                    if (podeReenviar && podeVoltarCarrinho)
+                      const SizedBox(height: 8),
+                    if (podeVoltarCarrinho)
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 46),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(Icons.shopping_cart_checkout_outlined),
+                        label: const Text('Voltar esse Pedido para o Carrinho'),
+                        onPressed: sincronizador.sincronizando
+                            ? null
+                            : () async {
+                                final confirmado = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                          title: const Text(
+                                              'Voltar pedido para o carrinho?'),
+                                          content: const Text(
+                                              'Os itens salvos voltam para o carrinho para revisar ou editar. Esse registro sai da fila de envio automatico para evitar envio duplicado.'),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                    context, false),
+                                                child: const Text('Cancelar')),
+                                            FilledButton(
+                                                onPressed: () => Navigator.pop(
+                                                    context, true),
+                                                child: const Text(
+                                                    'Voltar para o carrinho')),
+                                          ],
+                                        ));
+                                if (confirmado != true) return;
+                                try {
+                                  await sincronizador
+                                      .voltarPedidoParaCarrinho(idOperacao);
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content: Text(
+                                        'Pedido voltou para o carrinho. Revise e envie novamente.'),
+                                  ));
+                                } catch (_) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(const SnackBar(
+                                    content: Text(
+                                        'Nao foi possivel voltar esse pedido para o carrinho.'),
+                                  ));
+                                }
+                              },
+                      ),
+                    if ((podeReenviar || podeVoltarCarrinho) && podeArquivar)
+                      const SizedBox(height: 4),
+                    if (podeArquivar)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.archive_outlined),
+                          label: const Text('Arquivar apos conferir'),
+                          onPressed: () async {
+                            final confirmado = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                      title: const Text(
+                                          'Pedido conferido com o responsavel?'),
+                                      content: const Text(
+                                          'Este pedido nao sera enviado nem impresso. Os dados ficam guardados no aparelho para consulta tecnica. Caso necessario, lance um novo pedido no atendimento correto.'),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text('Voltar')),
+                                        FilledButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text('Arquivar')),
+                                      ],
+                                    ));
+                            if (confirmado == true) {
+                              await sincronizador.arquivarConflito(idOperacao);
+                            }
+                          },
+                        ),
+                      ),
+                  ],
                 ),
             ],
           )),

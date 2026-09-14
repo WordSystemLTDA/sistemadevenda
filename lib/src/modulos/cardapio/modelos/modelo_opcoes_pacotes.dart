@@ -4,6 +4,64 @@ import 'dart:convert';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
+int _inteiro(Object? valor, [int padrao = 0]) {
+  if (valor is num) return valor.toInt();
+  return int.tryParse((valor ?? '').toString()) ?? padrao;
+}
+
+bool _booleano(Object? valor, [bool padrao = false]) {
+  if (valor is bool) return valor;
+  final texto = (valor ?? '').toString().toLowerCase();
+  if (texto == 'true' || texto == '1' || texto == 'sim') return true;
+  if (texto == 'false' || texto == '0' || texto == 'nao' || texto == 'não') {
+    return false;
+  }
+  return padrao;
+}
+
+List<ModeloDadosOpcoesPacotes>? _dados(Object? valor) {
+  if (valor is! List) return null;
+  final dados = <ModeloDadosOpcoesPacotes>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      dados.add(
+          ModeloDadosOpcoesPacotes.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return dados;
+}
+
+List<ModeloOpcoesPacotes>? _opcoes(Object? valor) {
+  if (valor is! List) return null;
+  final opcoes = <ModeloOpcoesPacotes>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      opcoes.add(ModeloOpcoesPacotes.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return opcoes;
+}
+
+List<Modelowordprodutos>? _produtos(Object? valor) {
+  if (valor is! List) return null;
+  final produtos = <Modelowordprodutos>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      produtos.add(Modelowordprodutos.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return produtos;
+}
+
 class ModeloOpcoesPacotes {
   final int id;
   final String titulo;
@@ -37,32 +95,13 @@ class ModeloOpcoesPacotes {
 
   factory ModeloOpcoesPacotes.fromMap(Map<String, dynamic> map) {
     return ModeloOpcoesPacotes(
-      id: map['id'] as int,
-      titulo: map['titulo'] as String,
-      obrigatorio: map['obrigatorio'] as bool,
-      tipo: map['tipo'] != null ? map['tipo'] as int : null,
-      dados: map['dados'] != null
-          ? List<ModeloDadosOpcoesPacotes>.from(
-              (map['dados'] as List<dynamic>).map<ModeloDadosOpcoesPacotes?>(
-                (x) =>
-                    ModeloDadosOpcoesPacotes.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      opcoesPacote: map['opcoesPacote'] != null
-          ? List<ModeloOpcoesPacotes>.from(
-              (map['opcoesPacote'] as List<dynamic>).map<ModeloOpcoesPacotes?>(
-                (x) => ModeloOpcoesPacotes.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      produtos: map['produtos'] != null
-          ? List<Modelowordprodutos>.from(
-              (map['produtos'] as List<dynamic>).map<Modelowordprodutos?>(
-                (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
+      id: _inteiro(map['id']),
+      titulo: map['titulo']?.toString() ?? '',
+      obrigatorio: _booleano(map['obrigatorio']),
+      tipo: map['tipo'] == null ? null : _inteiro(map['tipo']),
+      dados: _dados(map['dados']),
+      opcoesPacote: _opcoes(map['opcoesPacote']),
+      produtos: _produtos(map['produtos']),
     );
   }
 

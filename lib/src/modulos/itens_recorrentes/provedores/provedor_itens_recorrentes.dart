@@ -75,7 +75,8 @@ class ProvedorItensRecorrentes extends ChangeNotifier {
     double total = 0;
     for (final item in itens) {
       final quantidade = item.quantidade ?? 1;
-      total += double.parse(item.valorVenda) * quantidade;
+      total += (double.tryParse(item.valorVenda.replaceAll(',', '.')) ?? 0) *
+          quantidade;
       _quantidadesPorItemRecorrente.update(
         chaveDoItemRecorrente(item),
         (valorAtual) => valorAtual + quantidade,

@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
@@ -55,7 +56,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
   }
 
   static bool _ehObservacao(ModeloOpcoesPacotes opcao) =>
-      opcao.tipo == 7 || opcao.titulo.toLowerCase() == 'observação';
+      grupoObservacaoProduto(opcao);
 
   List<ModeloDadosOpcoesPacotes> _dadosOriginais(int id) =>
       (original.opcoesPacotesListaFinal ?? [])
@@ -371,20 +372,15 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     }
     montagem.addAll(produto.opcoesParaCarrinho());
     if (observacao.trim().isNotEmpty) {
-      montagem.add(ModeloOpcoesPacotes(
-        id: 11,
-        titulo: 'Observação',
-        tipo: 7,
-        obrigatorio: false,
-        dados: [ModeloDadosOpcoesPacotes(id: '0', nome: observacao.trim())],
-      ));
+      montagem.add(montarGrupoObservacaoProduto(observacao));
     }
+    observacao = normalizarObservacaoProduto(observacao);
     resultado
       ..opcoesPacotes =
           opcoes.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
       ..opcoesPacotesListaFinal =
           montagem.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
-      ..observacao = observacao.trim()
+      ..observacao = observacao
       ..valorVenda = valorUnitario.toStringAsFixed(2)
       ..limiteSaboresBorda = cardapio.limiteSaborBordaSelecionado;
     return resultado;

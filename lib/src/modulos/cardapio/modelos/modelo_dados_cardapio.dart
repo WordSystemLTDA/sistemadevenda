@@ -3,6 +3,36 @@ import 'dart:convert';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 
+String? _textoOpcional(Object? valor) => valor?.toString();
+
+List<Modelowordprodutos>? _produtos(Object? valor) {
+  if (valor is! List) return null;
+  final produtos = <Modelowordprodutos>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      produtos.add(Modelowordprodutos.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return produtos;
+}
+
+List<ModeloNomeLancamento>? _nomesLancamento(Object? valor) {
+  if (valor is! List) return null;
+  final nomes = <ModeloNomeLancamento>[];
+  for (final item in valor) {
+    if (item is! Map) continue;
+    try {
+      nomes.add(ModeloNomeLancamento.fromMap(Map<String, dynamic>.from(item)));
+    } catch (_) {
+      continue;
+    }
+  }
+  return nomes;
+}
+
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 class Modeloworddadoscardapio {
   String? id;
@@ -116,84 +146,40 @@ class Modeloworddadoscardapio {
 
   factory Modeloworddadoscardapio.fromMap(Map<String, dynamic> map) {
     return Modeloworddadoscardapio(
-      id: map['id'] != null ? map['id'] as String : null,
-      codigo: map['codigo'] != null ? map['codigo'] as String : null,
-      nome: map['nome'] != null ? map['nome'] as String : null,
-      status: map['status'] != null ? map['status'] as String : null,
-      dataAbertura:
-          map['dataAbertura'] != null ? map['dataAbertura'] as String : null,
-      dataFechamento: map['dataFechamento'] != null
-          ? map['dataFechamento'] as String
-          : null,
-      dataUltimoProdutoInserido: map['dataUltimoProdutoInserido'] != null
-          ? map['dataUltimoProdutoInserido'] as String
-          : null,
-      idCliente: map['idCliente'] != null ? map['idCliente'] as String : null,
-      nomeCliente:
-          map['nomeCliente'] != null ? map['nomeCliente'] as String : null,
-      produtos: map['produtos'] != null
-          ? List<Modelowordprodutos>.from(
-              (map['produtos'] as List<dynamic>).map<Modelowordprodutos?>(
-                (x) => Modelowordprodutos.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      valorTotal:
-          map['valorTotal'] != null ? map['valorTotal'] as String : null,
-      numeroPedido:
-          map['numeroPedido'] != null ? map['numeroPedido'] as String : null,
-      celularCliente: map['celularCliente'] != null
-          ? map['celularCliente'] as String
-          : null,
-      enderecoCliente: map['enderecoCliente'] != null
-          ? map['enderecoCliente'] as String
-          : null,
-      numeroCliente:
-          map['numeroCliente'] != null ? map['numeroCliente'] as String : null,
-      complementoCliente: map['complementoCliente'] != null
-          ? map['complementoCliente'] as String
-          : null,
-      cidadeCliente:
-          map['cidadeCliente'] != null ? map['cidadeCliente'] as String : null,
-      bairroCliente:
-          map['bairroCliente'] != null ? map['bairroCliente'] as String : null,
-      taxaBairroCliente: map['taxaBairroCliente'] != null
-          ? map['taxaBairroCliente'] as String
-          : null,
-      somaValorHistorico: map['somaValorHistorico'] != null
-          ? map['somaValorHistorico'] as String
-          : null,
-      celularEmpresa: map['celularEmpresa'] != null
-          ? map['celularEmpresa'] as String
-          : null,
-      cnpjEmpresa:
-          map['cnpjEmpresa'] != null ? map['cnpjEmpresa'] as String : null,
-      enderecoEmpresa: map['enderecoEmpresa'] != null
-          ? map['enderecoEmpresa'] as String
-          : null,
-      nomeEmpresa:
-          map['nomeEmpresa'] != null ? map['nomeEmpresa'] as String : null,
-      nomelancamento: map['nomelancamento'] != null
-          ? List<ModeloNomeLancamento>.from(
-              (map['nomelancamento'] as List<dynamic>)
-                  .map<ModeloNomeLancamento?>(
-                (x) => ModeloNomeLancamento.fromMap(x as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      idComanda: map['idComanda'] != null ? map['idComanda'] as String : null,
-      idMesa: map['idMesa'] != null ? map['idMesa'] as String : null,
-      idDelivery:
-          map['idDelivery'] != null ? map['idDelivery'] as String : null,
-      idBalcao: map['idBalcao'] != null ? map['idBalcao'] as String : null,
-      observacaoDoPedido: map['observacaoDoPedido'] != null
-          ? map['observacaoDoPedido'] as String
-          : null,
-      nomeMesa: map['nomeMesa'] != null ? map['nomeMesa'] as String : null,
-      tipodeentrega:
-          map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
-      valorentrega:
-          map['valorentrega'] != null ? map['valorentrega'] as String : null,
+      id: _textoOpcional(map['id']),
+      codigo: _textoOpcional(map['codigo']),
+      nome: _textoOpcional(map['nome']),
+      status: _textoOpcional(map['status']),
+      dataAbertura: _textoOpcional(map['dataAbertura']),
+      dataFechamento: _textoOpcional(map['dataFechamento']),
+      dataUltimoProdutoInserido:
+          _textoOpcional(map['dataUltimoProdutoInserido']),
+      idCliente: _textoOpcional(map['idCliente']),
+      nomeCliente: _textoOpcional(map['nomeCliente']),
+      produtos: _produtos(map['produtos']),
+      valorTotal: _textoOpcional(map['valorTotal']),
+      numeroPedido: _textoOpcional(map['numeroPedido']),
+      celularCliente: _textoOpcional(map['celularCliente']),
+      enderecoCliente: _textoOpcional(map['enderecoCliente']),
+      numeroCliente: _textoOpcional(map['numeroCliente']),
+      complementoCliente: _textoOpcional(map['complementoCliente']),
+      cidadeCliente: _textoOpcional(map['cidadeCliente']),
+      bairroCliente: _textoOpcional(map['bairroCliente']),
+      taxaBairroCliente: _textoOpcional(map['taxaBairroCliente']),
+      somaValorHistorico: _textoOpcional(map['somaValorHistorico']),
+      celularEmpresa: _textoOpcional(map['celularEmpresa']),
+      cnpjEmpresa: _textoOpcional(map['cnpjEmpresa']),
+      enderecoEmpresa: _textoOpcional(map['enderecoEmpresa']),
+      nomeEmpresa: _textoOpcional(map['nomeEmpresa']),
+      nomelancamento: _nomesLancamento(map['nomelancamento']),
+      idComanda: _textoOpcional(map['idComanda']),
+      idMesa: _textoOpcional(map['idMesa']),
+      idDelivery: _textoOpcional(map['idDelivery']),
+      idBalcao: _textoOpcional(map['idBalcao']),
+      observacaoDoPedido: _textoOpcional(map['observacaoDoPedido']),
+      nomeMesa: _textoOpcional(map['nomeMesa']),
+      tipodeentrega: _textoOpcional(map['tipodeentrega']),
+      valorentrega: _textoOpcional(map['valorentrega']),
     );
   }
 

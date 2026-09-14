@@ -16,8 +16,8 @@ class ModeloNomeLancamento {
 
   factory ModeloNomeLancamento.fromMap(Map<String, dynamic> map) {
     return ModeloNomeLancamento(
-      nome: map['nome'] as String,
-      valor: map['valor'] as String,
+      nome: map['nome']?.toString() ?? '',
+      valor: map['valor']?.toString() ?? '0',
     );
   }
 

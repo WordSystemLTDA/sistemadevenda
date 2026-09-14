@@ -1,6 +1,16 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
+bool _booleano(Object? valor, [bool padrao = false]) {
+  if (valor is bool) return valor;
+  final texto = (valor ?? '').toString().toLowerCase();
+  if (texto == 'true' || texto == '1' || texto == 'sim') return true;
+  if (texto == 'false' || texto == '0' || texto == 'nao' || texto == 'não') {
+    return false;
+  }
+  return padrao;
+}
+
 class Modelowordtamanhosproduto {
   final String id;
   final String nome;
@@ -31,12 +41,12 @@ class Modelowordtamanhosproduto {
 
   factory Modelowordtamanhosproduto.fromMap(Map<String, dynamic> map) {
     return Modelowordtamanhosproduto(
-      id: map['id'] as String,
-      nome: map['nome'] as String,
-      valor: map['valor'] as String,
-      foto: map['foto'] as String,
-      estaSelecionado: map['estaSelecionado'] as bool,
-      excluir: map['excluir'] as bool,
+      id: map['id']?.toString() ?? '',
+      nome: map['nome']?.toString() ?? '',
+      valor: map['valor']?.toString() ?? '0',
+      foto: map['foto']?.toString() ?? '',
+      estaSelecionado: _booleano(map['estaSelecionado']),
+      excluir: _booleano(map['excluir']),
     );
   }
 

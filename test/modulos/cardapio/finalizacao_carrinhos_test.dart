@@ -8,6 +8,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
@@ -45,14 +46,18 @@ class ApiFinalizacaoTeste extends Fake implements DioCliente {
       Object dados = [];
       if (opcoes.path.startsWith('cardapio/listar_por_id.php')) {
         final id = idResposta ?? opcoes.uri.queryParameters['id']!;
-        final numero = id == '104' ? '4' : '6';
+        final tipoParametro = opcoes.uri.queryParameters['tipo']?.toLowerCase();
+        final tipo =
+            tipoParametro == 'mesa' ? TipoCardapio.mesa : TipoCardapio.comanda;
+        final numero = id.startsWith('10') ? id.substring(2) : id;
+        final mesa = tipo == TipoCardapio.mesa;
         dados = {
           'id': id,
           'status': 'Andamento',
-          'nome': 'Comanda: $numero',
+          'nome': mesa ? 'Mesa: $numero' : 'Comanda: $numero',
           'numeroPedido': id,
-          'idComanda': numero,
-          'idMesa': '0',
+          'idComanda': mesa ? '0' : numero,
+          'idMesa': mesa ? numero : '0',
           'idCliente': '0',
           'nomeCliente': '',
           'observacaoDoPedido': 'Cliente $numero',
@@ -130,15 +135,17 @@ class ModuloFinalizacaoTeste extends Module {
     i.addInstance<Server>(servidor);
   }
 
-  Future<void> selecionar(String numero) async {
+  Future<void> selecionar(String numero,
+      {TipoCardapio tipo = TipoCardapio.comanda}) async {
+    final mesa = tipo == TipoCardapio.mesa;
     cardapio.id = '10$numero';
-    cardapio.idComanda = numero;
-    cardapio.idMesa = '0';
+    cardapio.idComanda = mesa ? '0' : numero;
+    cardapio.idMesa = mesa ? numero : '0';
     cardapio.idCliente = '0';
     await carrinho.selecionarAtendimento(
-        tipo: 'comanda', idAtendimento: '10$numero', idRecurso: numero);
+        tipo: tipo.name, idAtendimento: '10$numero', idRecurso: numero);
     recorrentes.selecionarAtendimento(
-        tipo: 'comanda', idAtendimento: '10$numero', idRecurso: numero);
+        tipo: tipo.name, idAtendimento: '10$numero', idRecurso: numero);
     await recorrentes.listarComandasPedidos('10$numero');
   }
 
@@ -165,20 +172,29 @@ class ModuloFinalizacaoTeste extends Module {
         isTrue);
   }
 
-  Widget pagina(bool recorrente) => recorrente
-      ? PaginaCarrinhoItensRecorrentes(
-          idComanda: carrinho.contexto!.idRecurso,
-          idComandaPedido: carrinho.contexto!.idAtendimento,
-          idMesa: '0',
-          idCliente: '0')
-      : const PaginaCarrinho();
+  Widget pagina(bool recorrente) {
+    final contexto = carrinho.contexto!;
+    final tipo = TipoCardapio.values.byName(contexto.tipo);
+    return recorrente
+        ? PaginaCarrinhoItensRecorrentes(
+            idComanda: tipo == TipoCardapio.comanda ? contexto.idRecurso : '0',
+            idComandaPedido: contexto.idAtendimento,
+            idMesa: tipo == TipoCardapio.mesa ? contexto.idRecurso : '0',
+            idCliente: '0',
+            tipo: tipo)
+        : const PaginaCarrinho();
+  }
 
-  Future<void> montar(WidgetTester tester, {bool recorrente = false}) async {
+  Future<void> montar(WidgetTester tester,
+      {bool recorrente = false,
+      TipoCardapio tipo = TipoCardapio.comanda}) async {
+    final rotaDestino =
+        tipo == TipoCardapio.mesa ? 'PaginaMesas' : 'PaginaComandas';
     await tester.pumpWidget(MaterialApp(
-      initialRoute: 'PaginaComandas',
+      initialRoute: rotaDestino,
       routes: {
         '/': (_) => const SizedBox.shrink(),
-        'PaginaComandas': (context) => Scaffold(
+        rotaDestino: (context) => Scaffold(
               body: TextButton(
                   onPressed: () => Navigator.push(
                       context,
@@ -317,7 +333,7 @@ void main() {
       expect(impresso['observacao'], 'Sem cebola');
       final opcoes = impresso['opcoesPacotesListaFinal'] as List;
       expect(opcoes.first['dados'], hasLength(2));
-      expect(opcoes.last['id'], 11);
+      expect(opcoes.last['id'], 12);
       expect(opcoes.last['dados'].single['nome'], 'Sem cebola');
       await tester.pumpWidget(const SizedBox.shrink());
     });
@@ -344,6 +360,25 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+
+  testWidgets('carrinho recorrente de mesa volta para lista de mesas',
+      (tester) async {
+    final m = iniciar();
+    await m.selecionar('8', tipo: TipoCardapio.mesa);
+    await m.adicionar('Coca Cola 2L', '1010', recorrente: true);
+    await m.montar(tester, recorrente: true, tipo: TipoCardapio.mesa);
+    await m.abrir(tester, recorrente: true);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(m.api.pedidos.single['id_comanda_pedido'], '108');
+    expect(m.api.pedidos.single['id_mesa'], '8');
+    expect(m.api.pedidos.single.containsKey('id_comanda'), isFalse);
+    expect(m.servidor.impressos.single['comanda'], 'Mesa: 8');
+    expect(find.text('Abrir carrinho'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
       'atualizacao do carrinho mostra os mesmos produtos que serao enviados',

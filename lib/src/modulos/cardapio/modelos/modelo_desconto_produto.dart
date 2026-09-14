@@ -28,11 +28,11 @@ class ModeloDescontoProduto {
 
   factory ModeloDescontoProduto.fromMap(Map<String, dynamic> map) {
     return ModeloDescontoProduto(
-      tipodedesconto: map['tipodedesconto'] as String,
-      valordedesconto: map['valordedesconto'] as String,
-      valorretirado: map['valorretirado'] as String,
-      datadeterminopromocao: map['datadeterminopromocao'] as String,
-      ativo: map['ativo'] as String,
+      tipodedesconto: map['tipodedesconto']?.toString() ?? '',
+      valordedesconto: map['valordedesconto']?.toString() ?? '0',
+      valorretirado: map['valorretirado']?.toString() ?? '0',
+      datadeterminopromocao: map['datadeterminopromocao']?.toString() ?? '',
+      ativo: map['ativo']?.toString() ?? '',
     );
   }
 

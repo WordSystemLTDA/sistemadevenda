@@ -1,7 +1,7 @@
-import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/sugestoes_observacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
@@ -54,7 +54,7 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
     if (_salvando) return;
     _focus.unfocus();
     final rota = ModalRoute.of(context);
-    final texto = _observacoesController.text.trim();
+    final texto = normalizarObservacaoProduto(_observacoesController.text);
     setState(() => _salvando = true);
     try {
       final recorrente = widget.itensRecorrentes == true;
@@ -96,23 +96,9 @@ class _ModalEditarObservacaoState extends State<ModalEditarObservacao> {
   List<ModeloOpcoesPacotes> _atualizarLista(
       List<ModeloOpcoesPacotes>? atual, String texto) {
     return [
-      ...(atual?.toList() ?? []).where((element) => element.id != 11),
-      if (texto.isNotEmpty)
-        ModeloOpcoesPacotes(
-          id: 11,
-          titulo: 'Observação',
-          tipo: 7,
-          obrigatorio: false,
-          dados: [
-            ModeloDadosOpcoesPacotes(
-              id: '0',
-              nome: texto,
-              foto: '',
-              estaSelecionado: false,
-              excluir: false,
-            )
-          ],
-        ),
+      ...(atual?.toList() ?? [])
+          .where((element) => !grupoObservacaoProduto(element)),
+      if (texto.isNotEmpty) montarGrupoObservacaoProduto(texto),
     ];
   }
 
