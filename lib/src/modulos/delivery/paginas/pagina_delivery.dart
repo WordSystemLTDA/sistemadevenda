@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
@@ -374,6 +376,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
     with TickerProviderStateMixin {
   late TabController _abas =
       TabController(length: widget.etapas.length, vsync: this);
+  final _produtosExpandidos = <String>{};
 
   @override
   void didUpdateWidget(covariant _CarrosselDelivery old) {
@@ -462,6 +465,11 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                         : etapa.botao;
                             final podeAvancar =
                                 p.podeAvancar(etapa) && destino != null;
+                            final produtos = p.produtos;
+                            final podeMostrarProdutos =
+                                p.quantidade > 0 && produtos.isNotEmpty;
+                            final produtosAbertos =
+                                _produtosExpandidos.contains(p.id);
                             return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 elevation: 0,
@@ -566,6 +574,43 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                           color: cs
                                                               .onSurfaceVariant)),
                                                 ),
+                                              if (podeMostrarProdutos) ...[
+                                                const SizedBox(height: 10),
+                                                _BotaoPreviewProdutos(
+                                                  aberto: produtosAbertos,
+                                                  quantidade: produtos.length,
+                                                  onTap: () => setState(() {
+                                                    if (produtosAbertos) {
+                                                      _produtosExpandidos
+                                                          .remove(p.id);
+                                                    } else {
+                                                      _produtosExpandidos
+                                                          .add(p.id);
+                                                    }
+                                                  }),
+                                                ),
+                                                AnimatedCrossFade(
+                                                  firstChild:
+                                                      const SizedBox.shrink(),
+                                                  secondChild:
+                                                      _PreviewProdutosPedido(
+                                                          produtos: produtos),
+                                                  crossFadeState:
+                                                      produtosAbertos
+                                                          ? CrossFadeState
+                                                              .showSecond
+                                                          : CrossFadeState
+                                                              .showFirst,
+                                                  duration: const Duration(
+                                                      milliseconds: 180),
+                                                  firstCurve:
+                                                      Curves.easeOutCubic,
+                                                  secondCurve:
+                                                      Curves.easeOutCubic,
+                                                  sizeCurve:
+                                                      Curves.easeOutCubic,
+                                                ),
+                                              ],
                                               if (p.pago > 0)
                                                 Padding(
                                                     padding:
@@ -631,6 +676,189 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
       ])),
     ]);
   }
+}
+
+class _BotaoPreviewProdutos extends StatelessWidget {
+  final bool aberto;
+  final int quantidade;
+  final VoidCallback onTap;
+  const _BotaoPreviewProdutos(
+      {required this.aberto, required this.quantidade, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainerHighest.withValues(alpha: .45),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(children: [
+            Icon(Icons.receipt_long_outlined, size: 18, color: cs.primary),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(
+              aberto
+                  ? 'Ocultar itens'
+                  : 'Ver itens ($quantidade ${quantidade == 1 ? 'item' : 'itens'})',
+              style: TextStyle(
+                  color: cs.primary, fontSize: 13, fontWeight: FontWeight.w600),
+            )),
+            Icon(
+              aberto
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              color: cs.primary,
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewProdutosPedido extends StatelessWidget {
+  final List<Modelowordprodutos> produtos;
+  const _PreviewProdutosPedido({required this.produtos});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(left: BorderSide(color: cs.primary, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final produto in produtos)
+            _LinhaPreviewProduto(produto: produto),
+        ],
+      ),
+    );
+  }
+}
+
+class _LinhaPreviewProduto extends StatelessWidget {
+  final Modelowordprodutos produto;
+  const _LinhaPreviewProduto({required this.produto});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final dados = DadosImpressaoPreparo.produto(produto);
+    final detalhes = _detalhes(dados);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            constraints: const BoxConstraints(minWidth: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: .55),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '${_formatarQuantidade(produto.quantidade)}x',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: cs.onPrimaryContainer,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                _texto(dados['nome']).isEmpty
+                    ? produto.nome
+                    : _texto(dados['nome']),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              if (detalhes.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                for (final detalhe in detalhes)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      detalhe,
+                      style:
+                          TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
+                  ),
+              ],
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            valorDelivery(produto.valorTotalVendas ?? produto.valorVenda)
+                .obterReal(),
+            style: TextStyle(
+                color: cs.primary, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ]),
+      ]),
+    );
+  }
+
+  List<String> _detalhes(Map<String, dynamic> dados) {
+    final linhas = <String>[];
+    for (final opcao in [
+      ..._lista(dados['opcoesPacotesListaFinal']),
+      ..._lista(dados['opcoesPacotes']),
+    ]) {
+      final titulo = _texto(opcao['titulo']);
+      final partes = <String>[
+        for (final dado in _lista(opcao['dados'])) _nomeDado(dado).trim(),
+        for (final produto in _lista(opcao['produtos']))
+          _texto(produto['nome']).trim(),
+      ]..removeWhere((parte) => parte.isEmpty);
+      if (partes.isEmpty) continue;
+      linhas.add('${titulo.isEmpty ? 'Opções' : titulo}: ${partes.join(', ')}');
+    }
+    final observacao = _texto(dados['observacao']).trim();
+    if (observacao.isNotEmpty) linhas.add('Obs: $observacao');
+    return linhas;
+  }
+
+  String _nomeDado(Map<String, dynamic> dado) {
+    final nome = _texto(dado['nome']);
+    final quantidade = dado['quantidade'];
+    final qtd = quantidade is num
+        ? quantidade.toInt()
+        : int.tryParse((quantidade ?? '').toString()) ?? 0;
+    return qtd > 1 ? '${qtd}x $nome' : nome;
+  }
+}
+
+List<Map<String, dynamic>> _lista(Object? valor) {
+  if (valor is! List) return const [];
+  return [
+    for (final item in valor)
+      if (item is Map) Map<String, dynamic>.from(item)
+  ];
+}
+
+String _texto(Object? valor) => valor?.toString() ?? '';
+
+String _formatarQuantidade(double? valor) {
+  final quantidade = valor ?? 1;
+  if (quantidade == quantidade.roundToDouble()) {
+    return quantidade.toInt().toString();
+  }
+  return quantidade.toStringAsFixed(2).replaceAll('.', ',');
 }
 
 class _BotaoNovoPedido extends StatelessWidget {

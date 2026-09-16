@@ -118,6 +118,56 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('card do delivery mostra previa de itens somente ao expandir',
+      (tester) async {
+    final s = ServicoDeliveryTeste();
+    final pizza = impressao.produto(id: '1', nome: 'Pizza', codigo: '2')
+      ..quantidade = 1
+      ..valorTotalVendas = '86.00'
+      ..observacao = 'Sem cebola'
+      ..opcoesPacotesListaFinal = [
+        impressao.saboresPizza(),
+        impressao.bordas(['Cheddar']),
+        impressao.adicionais(['Milho']),
+      ];
+    final pedido = pedidoTeste(campos: {
+      'quantidadeprodutos': '1',
+      'valorVenda': '90.00',
+      'valordaentrega': '4.00',
+      'produtos': [pizza.toMap()],
+    });
+    s.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [pedido.dados],
+          }),
+          ...etapasTeste().skip(1),
+        ];
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ver itens (1 item)'), findsOneWidget);
+    expect(find.text('Ocultar itens'), findsNothing);
+
+    await tester.tap(find.text('Ver itens (1 item)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ocultar itens'), findsOneWidget);
+    expect(find.text('Pizza'), findsOneWidget);
+    expect(find.textContaining('Calabresa'), findsOneWidget);
+    expect(find.textContaining('Cheddar'), findsOneWidget);
+    expect(find.textContaining('Milho'), findsOneWidget);
+    expect(find.text('Obs: Sem cebola'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('deslizar muda a aba e atualizar conserva a etapa selecionada',
       (tester) async {
     final s = ServicoDeliveryTeste();
