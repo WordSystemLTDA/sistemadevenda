@@ -6,6 +6,13 @@ import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -14,8 +21,12 @@ import 'package:url_launcher/url_launcher.dart';
 class PaginaDetalhesDelivery extends StatefulWidget {
   final ServicoDelivery servico;
   final String id;
+  final bool editar;
   const PaginaDetalhesDelivery(
-      {super.key, required this.servico, required this.id});
+      {super.key,
+      required this.servico,
+      required this.id,
+      this.editar = false});
   @override
   State<PaginaDetalhesDelivery> createState() => _PaginaDetalhesDeliveryState();
 }
@@ -90,6 +101,47 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Telefone do cliente: $telefone')));
       }
+    }
+  }
+
+  Future<void> _editarProduto(Modelowordprodutos produto) async {
+    if (_ocupado || _pedido == null) return;
+    setState(() => _ocupado = true);
+    try {
+      final pedido = await widget.servico.pedido(widget.id);
+      if (!mounted) return;
+      final edicao = EdicaoProdutoCarrinho(
+        item: Modelowordprodutos.fromMap(produto.toMap()),
+        servico: Modular.get<ServicoProduto>(),
+        categorias: Modular.get<ServicosCategoria>(),
+        usuario: widget.servico.usuario,
+      );
+      await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => PaginaEditarProdutoCarrinho(
+                  edicao: edicao,
+                  mostrarControleQuantidade: true,
+                  carregarConfiguracao: () =>
+                      Modular.get<ServicoConfigBigchef>().listar(),
+                  aoSalvar: (item) async {
+                    await widget.servico.acao('editarProduto', pedido, {
+                      'produto': normalizarProdutoParaEnvio(item.toMap()),
+                      'valorOriginal': produto.valorVenda,
+                      'quantidadeOriginal': produto.quantidade,
+                    });
+                    return true;
+                  })));
+      if (mounted) await _listar();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e is StateError
+                ? e.message.toString()
+                : 'Não foi possível editar o produto.')));
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
     }
   }
 
@@ -200,6 +252,8 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                         child: Text('Observação: ${pedido.observacao}')),
                   const Divider(),
                   _linha('Total', pedido.total.obterReal()),
+                  if (pedido.tipoEntrega == '1')
+                    _linha('Taxa de entrega', pedido.taxaEntrega.obterReal()),
                   _linha('Recebido', pedido.pago.obterReal()),
                   _linha('A receber', pedido.restante.obterReal()),
                   if (pedido.pagamentos.isNotEmpty)
@@ -224,6 +278,9 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                   for (final produto in _dados?.produtos ?? [])
                     CardProdutoAcompanhar(
                         item: produto,
+                        podeEditar:
+                            widget.editar && !_ocupado && !pedido.cancelado,
+                        onEditar: () => _editarProduto(produto),
                         dados: _dados,
                         idComanda: '0',
                         idComandaPedido: pedido.id,

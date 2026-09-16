@@ -59,6 +59,12 @@ class PedidoDelivery {
   bool get encerrado =>
       ['Finalizado', 'Cancelado'].contains(texto('status')) ||
       (int.tryParse(texto('idVenda')) ?? 0) > 0;
+  bool get cancelado => texto('status') == 'Cancelado';
+  // A venda pode estar paga antes de o pedido entrar em preparo.
+  bool podeAvancar(EtapaDelivery origem) =>
+      !cancelado && origem.impressao != '3';
+  double get taxaEntrega =>
+      tipoEntrega == '1' ? valorDelivery(dados['valordaentrega']) : 0;
   PedidoDelivery comEndereco(Modeloworddadoscardapio cardapio) =>
       PedidoDelivery.fromMap({
         ...dados,

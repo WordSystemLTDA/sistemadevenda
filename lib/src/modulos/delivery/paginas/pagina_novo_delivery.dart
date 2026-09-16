@@ -11,7 +11,10 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaNovoDelivery extends StatefulWidget {
   final ServicoDelivery servico;
-  const PaginaNovoDelivery({super.key, required this.servico});
+  final PedidoDelivery? clonar;
+  final bool semCliente;
+  const PaginaNovoDelivery(
+      {super.key, required this.servico, this.clonar, this.semCliente = false});
   @override
   State<PaginaNovoDelivery> createState() => _PaginaNovoDeliveryState();
 }
@@ -29,6 +32,24 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
       ? _config?.taxaEntrega(_endereco?['valortaxabairro']) ?? 0
       : 0;
   int _consulta = 0;
+  bool _clonePreparado = false;
+  @override
+  void initState() {
+    super.initState();
+    final base = widget.clonar;
+    if (base != null) {
+      _observacao.text = base.observacao;
+      _tipo = base.tipoEntrega;
+      if (!widget.semCliente) {
+        _cliente = base.cliente;
+        _nome = base.nome;
+        _telefone = base.texto('celularCliente');
+        _endereco = {'id': base.texto('idendereco')};
+        _carregarEnderecos();
+      }
+    }
+  }
+
   @override
   void dispose() {
     _observacao.dispose();
@@ -128,6 +149,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
         'tipo_de_entrega': _tipo,
         'novo_valor_entrega': _taxa.toStringAsFixed(2),
       });
+      if (widget.clonar != null && !_clonePreparado) {
+        await widget.servico.prepararClone(id, widget.clonar!.produtos);
+        _clonePreparado = true;
+      }
       if (!mounted) return;
       Navigator.pushReplacement(
           context,

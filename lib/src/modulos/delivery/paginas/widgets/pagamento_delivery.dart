@@ -23,8 +23,8 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
   PedidoDelivery? _pedido;
   Map<int, String> _formas = {
     1: 'Dinheiro',
-    2: 'Cartão de débito',
-    3: 'Cartão de crédito'
+    3: 'Cartão de débito',
+    4: 'Cartão de crédito'
   };
   int _forma = 1;
   bool _carregando = true, _salvando = false;
@@ -58,13 +58,13 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
         _valor.text = pedido.restante.toStringAsFixed(2).replaceAll('.', ',');
         _formas = {
           1: 'Dinheiro',
-          2: 'Cartão de débito',
-          3: 'Cartão de crédito',
+          3: 'Cartão de débito',
+          4: 'Cartão de crédito',
           if (bancos['ativoBancoPix'] == 'Sim')
-            4: '${bancos['nomeBancoPix'] ?? 'Pix'}',
+            5: '${bancos['nomeBancoPix'] ?? 'Pix'}',
           for (var i = 2; i <= 5; i++)
             if (bancos['ativoBancoOpcao$i'] == 'Sim')
-              i + 3: '${bancos['nomeBancoOpcao$i']}',
+              i + 4: '${bancos['nomeBancoOpcao$i']}',
         };
       });
     } catch (_) {

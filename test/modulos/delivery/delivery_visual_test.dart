@@ -74,16 +74,18 @@ void main() {
       expect(find.text('Bruno Masson'), findsWidgets);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_$nome');
-      await tester
-          .ensureVisible(find.widgetWithText(ChoiceChip, 'Em preparo (1)'));
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Em preparo (1)'));
+      await tester.tap(find.byTooltip('Opções do pedido #1'));
       await tester.pumpAndSettle();
-      expect(
-          tester
-              .widget<ChoiceChip>(
-                  find.widgetWithText(ChoiceChip, 'Em preparo (1)'))
-              .selected,
-          isTrue);
+      expect(find.text('Editar Pedido'), findsOneWidget);
+      expect(find.text('Clonar Completo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capturarTela(tester, 'delivery_menu_$nome');
+      await tester.tap(find.byTooltip('Fechar opções'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.widgetWithText(Tab, 'Em preparo (1)'));
+      await tester.tap(find.widgetWithText(Tab, 'Em preparo (1)'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
       await tester.enterText(find.byType(TextField).first, 'Bruno');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();

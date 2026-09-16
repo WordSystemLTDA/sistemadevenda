@@ -4,6 +4,8 @@ import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
@@ -160,6 +162,8 @@ class ServicoDelivery {
       salvar('delivery/mudar_status_delivery.php', {
         'id': pedido.id,
         'status': destino.id,
+        'statusOrigem': pedido.etapa,
+        'valorOriginal': pedido.total,
         'irParaProximo': false,
         'idEntregador': entregador,
         'valor_da_entrega': valorEntrega,
@@ -169,11 +173,76 @@ class ServicoDelivery {
       'delivery/finalizar_pedido_delivery.php',
       {'id_delivery': pedido.id, 'cliente': pedido.cliente});
 
+  Future<Map<String, dynamic>> acao(String acao, PedidoDelivery pedido,
+          [Map<String, dynamic> campos = const {}]) =>
+      salvar('delivery/acoes_pedido.php', {
+        ...campos,
+        'acao': acao,
+        'id': pedido.id,
+        'statusOrigem': pedido.etapa,
+      });
+
+  Future<Uri> documentoFiscal(PedidoDelivery pedido, {bool xml = false}) async {
+    final chave = pedido.texto('cp15');
+    final documento = pedido.texto('docempresa');
+    final data = DateTime.tryParse(pedido.texto('dataEmissao'));
+    if (!RegExp(r'^\d{44}$').hasMatch(chave) ||
+        !RegExp(r'^\d{11,14}$').hasMatch(documento) ||
+        data == null) {
+      throw StateError(
+          'Documento fiscal indisponível. Confira a venda no módulo fiscal.');
+    }
+    final servidor =
+        enderecoApi((await Apis().getConexao()).servidor).resolve('../../../');
+    final modelo = pedido.texto('cp16') == '55' ? 'NF-e' : 'NFCe';
+    return servidor.resolve(
+        'fiscal/Arquivos_XML/$modelo/$documento/producao/enviadas/aprovadas/${DateFormat('yy/MM').format(data)}/$chave-${xml ? 'nfe.xml' : 'pdf.pdf'}');
+  }
+
+  Future<void> prepararClone(
+      String id, List<Modelowordprodutos> produtos) async {
+    final contexto = ContextoCarrinho(
+        empresa: usuario.usuario!.empresa!,
+        tipo: 'delivery',
+        idAtendimento: id);
+    final copias = produtos
+        .map((p) => Modelowordprodutos.fromMap(_limparClone(p.toMap())))
+        .toList();
+    final salvo =
+        await ArmazenamentoCarrinhos.instancia.alterar(contexto, (itens) {
+      if (itens.isNotEmpty) {
+        throw StateError('Este pedido já possui um rascunho.');
+      }
+      itens.addAll(copias);
+    });
+    if (!salvo) {
+      throw StateError('Não foi possível preparar os produtos do clone.');
+    }
+  }
+
+  static Map<String, dynamic> _limparClone(Map<String, dynamic> mapa) => {
+        for (final e in mapa.entries)
+          e.key: switch (e.value) {
+            Map valor => _limparClone(Map<String, dynamic>.from(valor)),
+            List valor => [
+                for (final v in valor)
+                  v is Map ? _limparClone(Map<String, dynamic>.from(v)) : v
+              ],
+            _ => e.value,
+          },
+        if (mapa.containsKey('valorVenda')) ...{
+          'iditensvenda': null,
+          'hashprodutos': null,
+          'novo': true,
+          'conferidoNoCarrinho': false,
+        },
+      };
+
   Future<void> pagar(PedidoDelivery pedido, int forma, double recebido,
       {double? valorOriginal,
       double? valorAPagar,
-      double desconto = 0,
-      double acrescimo = 0}) async {
+      double? desconto,
+      double? acrescimo}) async {
     final totalOriginal = valorOriginal ?? pedido.total;
     final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||
@@ -213,8 +282,12 @@ class ServicoDelivery {
       'valorAPagarOriginal': totalOriginal.toStringAsFixed(2),
       'valorAPagar': totalAPagar.toStringAsFixed(2),
       'valordataxadeservico': '0',
-      'valordesconto': desconto.toStringAsFixed(2),
-      'valoracrescimo': acrescimo.toStringAsFixed(2),
+      'valordesconto':
+          (desconto ?? valorDelivery(pedido.dados['valorDesconto']))
+              .toStringAsFixed(2),
+      'valoracrescimo':
+          (acrescimo ?? valorDelivery(pedido.dados['valorAcrescimo']))
+              .toStringAsFixed(2),
       'produtosParaFinalizar': [],
     });
   }
