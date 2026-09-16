@@ -430,17 +430,6 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final botoes = <Widget>[
-                    if (widget.podeEditar && widget.onEditar != null)
-                      FilledButton.tonalIcon(
-                        onPressed: widget.onEditar,
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        label: const Text('Editar Produto'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 42),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
                     if (widget.podeExcluir && widget.onExcluir != null)
                       OutlinedButton.icon(
                         onPressed: widget.onExcluir,
@@ -452,6 +441,17 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                           foregroundColor: Theme.of(context).colorScheme.error,
                           side: BorderSide(
                               color: Theme.of(context).colorScheme.error),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    if (widget.podeEditar && widget.onEditar != null)
+                      FilledButton.tonalIcon(
+                        onPressed: widget.onEditar,
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        label: const Text('Editar Produto'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 42),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
                         ),

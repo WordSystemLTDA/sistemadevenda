@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'dart:developer';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
@@ -24,6 +25,9 @@ class ServicoCardapio {
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
       {String? codigoQrcode}) async {
+    if (tipo == TipoCardapio.delivery) {
+      return ServicoDelivery(dio, usuarioProvedor).dadosCardapio(id);
+    }
     final empresa = usuarioProvedor.usuario!.empresa;
     final idUsuario = usuarioProvedor.usuario!.id;
 

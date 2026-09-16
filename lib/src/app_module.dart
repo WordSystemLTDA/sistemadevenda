@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';
 import 'package:app/src/essencial/provedores/config/config_servico.dart';
@@ -55,6 +56,7 @@ class AppModule extends Module {
     // Balcão
     i.addSingleton<ProvedorBalcao>(ProvedorBalcao.new);
     i.add<ServicoBalcao>(ServicoBalcao.new);
+    i.add<ServicoDelivery>(ServicoDelivery.new);
 
     // FINALIZAR
     i.addSingleton<ProvedorFinalizarPagamento>(ProvedorFinalizarPagamento.new);

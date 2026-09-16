@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
@@ -256,6 +257,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
           ));
       return;
     }
+    if (_tipo == TipoCardapio.delivery) {
+      await _finalizarDelivery();
+      return;
+    }
     setState(() => isLoading = true);
     final tipo = _tipo;
     final contextoCarrinho = _contextoCarrinho!;
@@ -365,6 +370,47 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
             ],
           ),
         );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _finalizarDelivery() async {
+    setState(() => isLoading = true);
+    try {
+      final contexto = _contextoCarrinho!;
+      final itens = await carrinhoProvedor.obterItensParaFinalizar(contexto);
+      await _finalizacao.executar(
+        prepararImpressao: () => [],
+        registrarPedido: () async {
+          await Modular.get<ServicoDelivery>()
+              .inserirProdutos(contexto.idAtendimento, itens);
+          return true;
+        },
+        enviarImpressao: (_) async {},
+        limparCarrinho: () async {
+          if (!await carrinhoProvedor.removerComandasPedidos(
+              contexto: contexto)) {
+            throw StateError(
+                'Pedido salvo. Não foi possível limpar o carrinho.');
+          }
+        },
+      );
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      Navigator.popUntil(context,
+          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_finalizacao.pedidoRegistrado
+                ? 'Pedido salvo. Toque em Finalizar para concluir sem adicionar novamente.'
+                : e is StateError
+                    ? e.message.toString()
+                    : 'Não foi possível confirmar o pedido. Confira o Delivery antes de tentar novamente.')));
       }
     } finally {
       if (mounted) setState(() => isLoading = false);

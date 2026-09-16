@@ -11,6 +11,7 @@ import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
+import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
 import 'package:app/src/modulos/comandos_nfc/paginas/pagina_comandos_nfc.dart';
 import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
@@ -246,13 +247,29 @@ class _PaginaInicioState extends State<PaginaInicio> {
                             ));
                           },
                         ),
-                        if (podeVerIndicadores(context.read<UsuarioProvedor>().usuario))
+                        CardHome(
+                          nome: 'Delivery',
+                          cor: const Color(0xFF3478BF),
+                          icone: const Icon(Icons.delivery_dining_outlined,
+                              size: 40),
+                          onPressed: () =>
+                              Navigator.of(context).push(MaterialPageRoute(
+                            settings:
+                                const RouteSettings(name: 'PaginaDelivery'),
+                            builder: (_) => const PaginaDelivery(),
+                          )),
+                        ),
+                        if (podeVerIndicadores(
+                            context.read<UsuarioProvedor>().usuario))
                           CardHome(
                             nome: 'Indicadores',
                             cor: const Color(0xFF2869A8),
-                            icone: const Icon(Icons.bar_chart_outlined, size: 40),
-                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                              settings: const RouteSettings(name: 'PaginaIndicadores'),
+                            icone:
+                                const Icon(Icons.bar_chart_outlined, size: 40),
+                            onPressed: () =>
+                                Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(
+                                  name: 'PaginaIndicadores'),
                               builder: (_) => const PaginaIndicadores(),
                             )),
                           ),
