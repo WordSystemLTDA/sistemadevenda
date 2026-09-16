@@ -3,6 +3,7 @@ import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/alterar_pedido_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
@@ -207,6 +208,33 @@ void main() {
     expect(find.text('86.770-000'), findsOneWidget);
     expect(find.text('Santa Fe'), findsOneWidget);
     expect(find.text('PR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('busca de cliente mostra celular na lista', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => Scaffold(
+                body: TextButton(
+                    onPressed: () => buscarDelivery(
+                          context,
+                          titulo: 'Selecionar cliente',
+                          buscar: (_) async => [
+                            {
+                              'id': '4',
+                              'nome_puro': 'Bruno Masson',
+                              'celular': '44999213336',
+                            }
+                          ],
+                          nome: (e) => e['nome_puro'].toString(),
+                          detalhe: (e) => 'Celular: ${e['celular']}',
+                        ),
+                    child: const Text('Buscar cliente'))))));
+
+    await tester.tap(find.text('Buscar cliente'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bruno Masson'), findsOneWidget);
+    expect(find.text('Celular: 44999213336'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

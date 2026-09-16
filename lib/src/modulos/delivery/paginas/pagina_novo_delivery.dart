@@ -73,7 +73,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   }
 
   String _nomeClienteBusca(Map<String, dynamic> dados) {
-    final nome = _textoCliente(dados, ['nome', 'nomeCliente', 'nomecliente']);
+    final nome = _textoCliente(
+        dados, ['nome_puro', 'nomePuro', 'nomeCliente', 'nomecliente', 'nome']);
     if (nome.isNotEmpty) return nome;
     return _textoCliente(dados, ['razao_social', 'razaoSocial']);
   }
@@ -84,7 +85,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     final celular = _formatarTelefoneCliente(
         _textoCliente(dados, ['celular', 'telefone', 'celularCliente']));
     return [
-      if (celular.isNotEmpty) 'Celular: $celular',
+      'Celular: ${celular.isEmpty ? 'Sem celular' : celular}',
       if (razao.isNotEmpty && razao != nome) 'Razão social: $razao',
     ].join('\n');
   }
