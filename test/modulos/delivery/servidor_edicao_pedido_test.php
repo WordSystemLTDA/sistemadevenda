@@ -138,3 +138,12 @@ $res = editarPedidoVenda($pdo, ['empresa' => '3', 'id_usuario' => '2', 'tipo' =>
     'cliente' => '4', 'tipoentrega' => '2', 'endereco' => '0', 'taxa' => '0', 'observacao' => 'Retirada'], '');
 conferir($res['total'] == 100 && $res['recebido'] == 104, 'Edicao de dados nao preservou valores');
 echo "OK: edicao de pedido sem criar outra venda\n";
+
+foreach (['media', 'maior'] as $modelo) {
+    $bordas = [['valor' => '6', 'valorOriginal' => '12', 'somenteMetadeBorda' => true],
+        ['valor' => '6', 'valorOriginal' => '12', 'somenteMetadeBorda' => true]];
+    conferir(pedidoBordasVendidas($bordas, $modelo)[0]['somenteMetadeBorda'] === false, 'Duas bordas rateadas nao sao meia borda');
+    $bordas[0]['valor'] = '3'; $bordas[1]['valor'] = '3';
+    conferir(pedidoBordasVendidas($bordas, $modelo)[0]['somenteMetadeBorda'] === true, 'Meia borda com dois sabores deve ser preservada');
+}
+echo "OK: bordas rateadas e meia borda sem alterar valores\n";

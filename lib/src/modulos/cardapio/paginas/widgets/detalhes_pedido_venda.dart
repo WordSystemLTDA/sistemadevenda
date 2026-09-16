@@ -142,8 +142,9 @@ class DetalhesPedidoVenda extends StatelessWidget {
         child: Row(children: [
           Icon(Icons.list_alt_rounded, size: 20),
           SizedBox(width: 8),
-          Text('ITENS DO PEDIDO',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700))
+          Expanded(
+              child: Text('ITENS DO PEDIDO',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)))
         ]),
       ),
       if (produtos.isEmpty)
@@ -211,10 +212,16 @@ class RodapeTotalPedidoVenda extends StatelessWidget {
         Icon(Icons.receipt_long_outlined,
             color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 10),
-        const Expanded(child: Text('Total do pedido')),
-        Text(total.obterReal(),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w700)),
+        Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+              const Text('Total do pedido'),
+              Text(total.obterReal(),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w700)),
+            ])),
       ]));
 }

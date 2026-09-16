@@ -17,39 +17,47 @@ import '../../essencial/utils/impressao_preparo_test.dart' as imp;
 import '../../suporte/captura_tela.dart';
 import 'delivery_test.dart';
 
-Modelowordprodutos pizzaDetalhada({String item = '99'}) =>
-    imp.produto(id: '101', nome: 'Mussarela', computador: 'COZINHA')
-      ..iditensvenda = item
-      ..versaoEdicao = 'versao-$item'
-      ..nomeCategoria = 'Pizza de Queijos'
-      ..valorVenda = '85.00'
-      ..observacao = 'Sem cebola, cortar em oito pedaços.'
-      ..opcoesPacotesListaFinal = [
-        ModeloOpcoesPacotes(
-            id: 9,
-            titulo: 'Tamanho Pizza',
-            obrigatorio: false,
-            dados: [ModeloDadosOpcoesPacotes(id: '2', nome: 'G', valor: '60')]),
-        ModeloOpcoesPacotes(
-            id: 10,
-            titulo: 'Sabores Pizza (3)',
-            obrigatorio: false,
-            dados: [
-              for (final (id, nome) in [
-                ('101', 'Mussarela'),
-                ('102', 'Catupiry Especial'),
-                ('103', 'Dois Queijos')
-              ])
-                ModeloDadosOpcoesPacotes(
-                    id: id, nome: nome, valor: '20', quantimaximaselecao: '1/3')
-            ]),
-        ModeloOpcoesPacotes(id: 6, titulo: 'Bordas', obrigatorio: false,
-          dados: [for (final nome in ['Cheddar', 'Goiabada'])
-            ModeloDadosOpcoesPacotes(id: '4', nome: nome, valor: '6')]),
-        ModeloOpcoesPacotes(id: 7, titulo: 'Adicionais', obrigatorio: false,
-          dados: [ModeloDadosOpcoesPacotes(id: '5', nome: 'Mussarela', valor: '10', quantidade: 1),
-            ModeloDadosOpcoesPacotes(id: '6', nome: 'Milho', valor: '3', quantidade: 1)]),
-      ];
+Modelowordprodutos pizzaDetalhada({String item = '99'}) => imp.produto(
+    id: '101', nome: 'Mussarela', computador: 'COZINHA')
+  ..iditensvenda = item
+  ..versaoEdicao = 'versao-$item'
+  ..nomeCategoria = 'Pizza de Queijos'
+  ..valorVenda = '85.00'
+  ..observacao = 'Sem cebola, cortar em oito pedaços.'
+  ..opcoesPacotesListaFinal = [
+    ModeloOpcoesPacotes(
+        id: 9,
+        titulo: 'Tamanho Pizza',
+        obrigatorio: false,
+        dados: [ModeloDadosOpcoesPacotes(id: '2', nome: 'G', valor: '60')]),
+    ModeloOpcoesPacotes(
+        id: 10,
+        titulo: 'Sabores Pizza (3)',
+        obrigatorio: false,
+        dados: [
+          for (final (id, nome) in [
+            ('101', 'Mussarela'),
+            ('102', 'Catupiry Especial'),
+            ('103', 'Dois Queijos')
+          ])
+            ModeloDadosOpcoesPacotes(
+                id: id, nome: nome, valor: '20', quantimaximaselecao: '1/3')
+        ]),
+    ModeloOpcoesPacotes(id: 6, titulo: 'Bordas', obrigatorio: false, dados: [
+      for (final nome in ['Cheddar', 'Goiabada'])
+        ModeloDadosOpcoesPacotes(id: '4', nome: nome, valor: '6')
+    ]),
+    ModeloOpcoesPacotes(
+        id: 7,
+        titulo: 'Adicionais',
+        obrigatorio: false,
+        dados: [
+          ModeloDadosOpcoesPacotes(
+              id: '5', nome: 'Mussarela', valor: '10', quantidade: 1),
+          ModeloDadosOpcoesPacotes(
+              id: '6', nome: 'Milho', valor: '3', quantidade: 1)
+        ]),
+  ];
 
 void main() {
   setUpAll(carregarFontesDeTeste);
@@ -242,16 +250,29 @@ void main() {
   testWidgets('editar dados salva sem criar outro pedido ou abrir cardapio',
       (tester) async {
     Map<String, dynamic>? dados;
+    bool? retornou;
     final s = ServicoDeliveryTeste();
     await tester.pumpWidget(MaterialApp(
-        home: PaginaNovoDelivery(
-            servico: s,
-            editarPedido:
-                pedidoTeste(campos: {'tipodeentrega': '3', 'idCliente': '0'}),
-            permitirEntrega: false,
-            aoSalvarEdicao: (valor) async {
-              dados = valor;
-            })));
+        home: Builder(
+            builder: (context) => Scaffold(
+                body: TextButton(
+                    onPressed: () async {
+                      retornou = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => PaginaNovoDelivery(
+                                  servico: s,
+                                  editarPedido: pedidoTeste(campos: {
+                                    'tipodeentrega': '3',
+                                    'idCliente': '0'
+                                  }),
+                                  permitirEntrega: false,
+                                  aoSalvarEdicao: (valor) async {
+                                    dados = valor;
+                                  })));
+                    },
+                    child: const Text('Abrir edição'))))));
+    await tester.tap(find.text('Abrir edição'));
     await tester.pumpAndSettle();
     expect(find.text('Entrega'), findsNothing);
     await tester.enterText(find.byType(TextField).last, 'Retirar sem talheres');
@@ -261,5 +282,7 @@ void main() {
     expect(dados!['tipoentrega'], '3');
     expect(dados!['taxa'], '0.00');
     expect(s.gravacoes, isEmpty);
+    expect(retornou, isTrue);
+    expect(find.text('Abrir edição'), findsOneWidget);
   });
 }
