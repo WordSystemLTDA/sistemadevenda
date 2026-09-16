@@ -102,7 +102,7 @@ void main() {
       await tester.tap(find.text('Abrir cardápio'));
       await tester.pumpAndSettle();
       expect(s.gravacoes, isEmpty);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Retirada'));
+      await tester.tap(find.byKey(const ValueKey('tipo-entrega-2')));
       await tester.pumpAndSettle();
       expect(find.text('Endereço de entrega'), findsNothing);
       expect(tester.takeException(), isNull);

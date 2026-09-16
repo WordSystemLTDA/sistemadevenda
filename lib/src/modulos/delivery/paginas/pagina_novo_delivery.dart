@@ -187,20 +187,20 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                           padding: const EdgeInsets.all(16),
                           children: [
                             _titulo('Tipo de entrega', Icons.delivery_dining),
-                            Wrap(spacing: 8, runSpacing: 4, children: [
+                            Row(children: [
                               for (final opcao in const [
                                 ('1', 'Entrega', Icons.delivery_dining),
                                 ('2', 'Retirada', Icons.shopping_bag_outlined),
                                 ('3', 'No local', Icons.restaurant_outlined)
-                              ])
-                                ChoiceChip(
-                                    avatar: Icon(opcao.$3, size: 18),
-                                    label: Text(opcao.$2),
-                                    selected: _tipo == opcao.$1,
-                                    onSelected: _salvando
-                                        ? null
-                                        : (_) =>
-                                            setState(() => _tipo = opcao.$1)),
+                              ]) ...[
+                                Expanded(
+                                  child: _cardTipoEntrega(
+                                      valor: opcao.$1,
+                                      texto: opcao.$2,
+                                      icone: opcao.$3),
+                                ),
+                                if (opcao.$1 != '3') const SizedBox(width: 8),
+                              ]
                             ]),
                             const SizedBox(height: 20),
                             Row(children: [
@@ -346,4 +346,74 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                 style:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)))
       ]));
+
+  Widget _cardTipoEntrega({
+    required String valor,
+    required String texto,
+    required IconData icone,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final selecionado = _tipo == valor;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: _salvando ? null : () => setState(() => _tipo = valor),
+        child: AnimatedContainer(
+          key: ValueKey('tipo-entrega-$valor'),
+          duration: const Duration(milliseconds: 150),
+          height: 90,
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
+          decoration: BoxDecoration(
+            color: selecionado
+                ? cs.primaryContainer.withValues(alpha: .55)
+                : cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: selecionado ? cs.primary : cs.outlineVariant,
+                width: selecionado ? 1.5 : 1),
+          ),
+          child: Stack(children: [
+            Align(
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color:
+                          selecionado ? cs.primary : cs.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icone,
+                        size: 20,
+                        color:
+                            selecionado ? cs.onPrimary : cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 5),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(texto,
+                        maxLines: 1,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: selecionado ? cs.primary : cs.onSurface)),
+                  ),
+                ],
+              ),
+            ),
+            if (selecionado)
+              Align(
+                alignment: Alignment.topRight,
+                child: Icon(Icons.check_circle, size: 18, color: cs.primary),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
 }

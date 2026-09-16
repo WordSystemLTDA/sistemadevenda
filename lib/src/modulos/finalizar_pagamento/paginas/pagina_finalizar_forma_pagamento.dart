@@ -17,6 +17,7 @@ import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dar
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_parcelamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -120,6 +121,47 @@ class _PaginaFinalizarFormaPagamentoState
     });
   }
 
+  Future<void> _finalizarDelivery() async {
+    final servico = Modular.get<ServicoDelivery>();
+    final valorRecebido = double.tryParse(_dinheiroController.text) ?? 0;
+    final desconto = widget.desconto > 0 ? widget.desconto : 0.0;
+    final acrescimo = widget.desconto < 0
+        ? widget.desconto.abs()
+        : (double.tryParse(widget.acrescimo) ?? 0);
+    final pedido = await servico.pedido(provedor.idVenda);
+
+    await servico.pagar(
+      pedido,
+      int.parse(widget.pagamentoselecionado),
+      valorRecebido,
+      valorOriginal: widget.totalReceber,
+      valorAPagar: widget.totalReceber,
+      desconto: desconto,
+      acrescimo: acrescimo,
+    );
+
+    final atualizado = await servico.pedido(provedor.idVenda);
+    final quitado = valorRecebido + 0.009 >= widget.totalReceber ||
+        atualizado.restante <= 0.009;
+    if (quitado) {
+      await servico.concluir(atualizado);
+      provedorBalcao.observacaoDoPedido = '';
+      await carrinhoProvedor.removerComandasPedidos();
+      FeedbackUsuario.pedidoFinalizado();
+      if (!mounted) return;
+      Navigator.popUntil(context,
+          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      return;
+    }
+
+    provedor.valor = atualizado.restante > 0
+        ? atualizado.restante
+        : widget.totalReceber - valorRecebido;
+    if (!mounted) return;
+    Navigator.popUntil(
+        context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -215,6 +257,26 @@ class _PaginaFinalizarFormaPagamentoState
 
                         finalizando.value = true;
 
+                        if (provedorCardapio.tipo == TipoCardapio.delivery) {
+                          try {
+                            await _finalizarDelivery();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                content: Text(e is StateError
+                                    ? e.message.toString()
+                                    : 'Não foi possível finalizar o Delivery. Confira o pedido antes de tentar novamente.'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ));
+                            }
+                          } finally {
+                            finalizando.value = false;
+                          }
+                          return;
+                        }
+
                         var (sucesso, mensagem, idvenda) = await context
                             .read<ServicoFinalizarPagamento>()
                             .pagarPedido(
@@ -251,14 +313,22 @@ class _PaginaFinalizarFormaPagamentoState
                             await carrinhoProvedor.listarComandasPedidos();
                             finalizando.value = false;
                             if (!context.mounted) return;
-                            if ((double.tryParse(_dinheiroController.text) ?? 0) >= widget.totalReceber) {
+                            if ((double.tryParse(_dinheiroController.text) ??
+                                    0) >=
+                                widget.totalReceber) {
                               provedorBalcao.observacaoDoPedido = '';
                               FeedbackUsuario.pedidoFinalizado();
-                              Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+                              Navigator.popUntil(
+                                  context, ModalRoute.withName('PaginaBalcao'));
                             } else {
                               provedor.idVenda = idvenda;
-                              provedor.valor = widget.totalReceber - (double.tryParse(_dinheiroController.text) ?? 0);
-                              Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+                              provedor.valor = widget.totalReceber -
+                                  (double.tryParse(_dinheiroController.text) ??
+                                      0);
+                              Navigator.popUntil(
+                                  context,
+                                  ModalRoute.withName(
+                                      'PaginaFinalizarAcrescimo'));
                             }
                             return;
                           }

@@ -169,19 +169,24 @@ class ServicoDelivery {
       'delivery/finalizar_pedido_delivery.php',
       {'id_delivery': pedido.id, 'cliente': pedido.cliente});
 
-  Future<void> pagar(PedidoDelivery pedido, int forma, double recebido) async {
+  Future<void> pagar(PedidoDelivery pedido, int forma, double recebido,
+      {double? valorOriginal,
+      double? valorAPagar,
+      double desconto = 0,
+      double acrescimo = 0}) async {
+    final totalOriginal = valorOriginal ?? pedido.total;
+    final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||
-        forma > 8 ||
+        forma > 9 ||
         pedido.encerrado ||
-        pedido.restante <= 0.009 ||
+        totalAPagar <= 0.009 ||
         recebido <= 0 ||
         !recebido.isFinite) {
       throw StateError('Confira o valor do pagamento.');
     }
-    final troco = forma == 1 && recebido > pedido.restante
-        ? recebido - pedido.restante
-        : 0.0;
-    if (forma != 1 && recebido > pedido.restante + 0.009) {
+    final troco =
+        forma == 1 && recebido > totalAPagar ? recebido - totalAPagar : 0.0;
+    if (forma != 1 && recebido > totalAPagar + 0.009) {
       throw StateError('Valor maior que o saldo do pedido.');
     }
     await salvar('delivery/pagar_pedido.php', {
@@ -191,11 +196,11 @@ class ServicoDelivery {
       'cliente': pedido.cliente,
       'editar_movimentacao': '0',
       'limpar_pagamentos_anteriores': '0',
-      'valor_original': pedido.total.toStringAsFixed(2),
+      'valor_original': totalOriginal.toStringAsFixed(2),
       'valor_lancamento': recebido.toStringAsFixed(2),
       'pagamentoSelecionado': forma,
       'quantidadePessoas': 1,
-      'subTotal': pedido.total.toStringAsFixed(2),
+      'subTotal': totalOriginal.toStringAsFixed(2),
       'dataLancamento': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       'parcelas': '1',
       'parcelasLista': [],
@@ -205,11 +210,11 @@ class ServicoDelivery {
       'valoresProduto': '0',
       'novo': false,
       'tipodeentrega': pedido.tipoEntrega,
-      'valorAPagarOriginal': pedido.total.toStringAsFixed(2),
-      'valorAPagar': pedido.restante.toStringAsFixed(2),
+      'valorAPagarOriginal': totalOriginal.toStringAsFixed(2),
+      'valorAPagar': totalAPagar.toStringAsFixed(2),
       'valordataxadeservico': '0',
-      'valordesconto': pedido.texto('valorDesconto', '0'),
-      'valoracrescimo': pedido.texto('valorAcrescimo', '0'),
+      'valordesconto': desconto.toStringAsFixed(2),
+      'valoracrescimo': acrescimo.toStringAsFixed(2),
       'produtosParaFinalizar': [],
     });
   }

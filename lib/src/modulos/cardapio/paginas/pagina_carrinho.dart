@@ -381,11 +381,11 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     try {
       final contexto = _contextoCarrinho!;
       final itens = await carrinhoProvedor.obterItensParaFinalizar(contexto);
-      await _finalizacao.executar(
+      final servicoDelivery = Modular.get<ServicoDelivery>();
+      final sucesso = await _finalizacao.executar(
         prepararImpressao: () => [],
         registrarPedido: () async {
-          await Modular.get<ServicoDelivery>()
-              .inserirProdutos(contexto.idAtendimento, itens);
+          await servicoDelivery.inserirProdutos(contexto.idAtendimento, itens);
           return true;
         },
         enviarImpressao: (_) async {},
@@ -397,12 +397,23 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
           }
         },
       );
+      if (!sucesso) {
+        throw StateError('Não foi possível salvar o pedido.');
+      }
       if (!mounted) return;
+      final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
+      provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
+      provedorFinalizarPagamento.valor =
+          pedido.restante > 0 ? pedido.restante : pedido.total;
       setState(() => isLoading = false);
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
-      Navigator.popUntil(context,
-          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
+            builder: (_) => const PaginaFinalizarAcrescimo(),
+          ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
