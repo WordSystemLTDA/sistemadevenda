@@ -317,6 +317,44 @@ void main() {
     expect(jsonEncode(produto), contains('Bordas (2)'));
     expect(jsonEncode(produto), contains('Adicionais'));
   });
+  test('comprovante do entregador imprime detalhes da pizza', () async {
+    final servidor = impressao.ServidorTeste();
+    final s = ServicoDeliveryTeste();
+    final produtoCardapio = impressao.produto(
+        id: '1', nome: 'Pizza', codigo: '2', computador: 'COZINHA')
+      ..iditensvenda = '99';
+    final pizzaDetalhada = impressao.produto(id: '1', nome: 'Pizza')
+      ..iditensvenda = '99'
+      ..observacao = 'Sem cebola'
+      ..opcoesPacotesListaFinal = [
+        impressao.saboresPizza(),
+        impressao.bordas(['Cheddar', 'Catupiry']),
+        impressao.adicionais(['Milho']),
+      ];
+    s.produtosCardapio = [produtoCardapio];
+    s.atual = pedidoTeste(campos: {
+      'produtos': [pizzaDetalhada.toMap()],
+      'quantidadeprodutos': '1',
+      'valorVenda': '120.00',
+      'somaValorHistorico': '116.00',
+      'valordaentrega': '4.00',
+    });
+
+    await ImpressaoDelivery.imprimir(s, servidor, s.atual);
+
+    final mensagem = servidor.mensagens.single;
+    final produto = (mensagem['produtos'] as List).single as Map;
+    final opcoes = produto['opcoesPacotesListaFinal'] as List;
+
+    expect(mensagem['tipoImpressao'], '3');
+    expect(mensagem['nomedopc'], 'COZINHA');
+    expect(produto['observacao'], 'Sem cebola');
+    expect(opcoes.map((opcao) => opcao['id']), containsAll([10, 6, 7]));
+    expect(jsonEncode(produto), contains('Calabresa'));
+    expect(jsonEncode(produto), contains('Cheddar'));
+    expect(jsonEncode(produto), contains('Catupiry'));
+    expect(jsonEncode(produto), contains('Milho'));
+  });
   test('atualizacao falha conserva os pedidos visiveis', () async {
     final s = ServicoDeliveryTeste();
     final p = ProvedorDelivery(s);

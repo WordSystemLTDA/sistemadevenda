@@ -13,8 +13,9 @@ class ImpressaoDelivery {
       {bool preparo = false}) async {
     final dados = await servico.dadosCardapio(pedido.id);
     final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
-    final produtos =
-        preparo ? _produtosParaPreparo(pedido, produtosBase) : produtosBase;
+    final produtos = preparo || pedido.tipoEntrega == '1'
+        ? _produtosComDetalhesDoPedido(pedido, produtosBase)
+        : produtosBase;
     if (produtos.isEmpty) {
       throw StateError('O pedido não tem produtos para impressão.');
     }
@@ -31,7 +32,7 @@ class ImpressaoDelivery {
     await server.enviarImpressoes(mensagens);
   }
 
-  static List<Modelowordprodutos> _produtosParaPreparo(
+  static List<Modelowordprodutos> _produtosComDetalhesDoPedido(
     PedidoDelivery pedido,
     List<Modelowordprodutos> produtosBase,
   ) {
@@ -42,7 +43,7 @@ class ImpressaoDelivery {
     final usados = <int>{};
     return [
       for (var indice = 0; indice < produtosBase.length; indice++)
-        _mesclarProdutoPreparo(
+        _mesclarProdutoDetalhado(
           produtosBase[indice],
           _produtoDetalhadoCorrespondente(
             produtosBase[indice],
@@ -54,7 +55,7 @@ class ImpressaoDelivery {
     ];
   }
 
-  static Modelowordprodutos _mesclarProdutoPreparo(
+  static Modelowordprodutos _mesclarProdutoDetalhado(
     Modelowordprodutos base,
     Modelowordprodutos? detalhado,
   ) {
