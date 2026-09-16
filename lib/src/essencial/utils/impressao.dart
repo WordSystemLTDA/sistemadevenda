@@ -390,6 +390,8 @@ class Impressao {
     String nomeCliente = '',
     bool imprimirSomenteLocal = false,
     bool enviarDeVolta = true,
+    TipoCardapio tipoTela = TipoCardapio.delivery,
+    bool agruparPorDestino = true,
   }) async {
     var server = Modular.get<Server>();
     var usuario = Modular.get<UsuarioProvedor>();
@@ -399,15 +401,16 @@ class Impressao {
     }
 
     if (enviarDeVolta == true && produtos.isNotEmpty) {
-      final Map<String, List<Modelowordprodutos>> grupos =
-          _agruparProdutosPorComputadorDestino(produtos);
+      final Map<String, List<Modelowordprodutos>> grupos = agruparPorDestino
+          ? _agruparProdutosPorComputadorDestino(produtos)
+          : <String, List<Modelowordprodutos>>{};
 
       if (grupos.isNotEmpty) {
         for (final MapEntry<String, List<Modelowordprodutos>> grupo
             in grupos.entries) {
           server.write(jsonEncode({
             'idRequisicao': _gerarIdentificadorRequisicao(),
-            'tipo': TipoCardapio.delivery.nome,
+            'tipo': tipoTela.nome,
             'tipoImpressao': '2',
             'nomedopc': grupo.key,
             'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
@@ -436,7 +439,7 @@ class Impressao {
 
       server.write(jsonEncode({
         'idRequisicao': _gerarIdentificadorRequisicao(),
-        'tipo': TipoCardapio.delivery.nome,
+        'tipo': tipoTela.nome,
         'tipoImpressao': '2',
         'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
         'produtos': produtos.map((e) => e.toMap()).toList(),

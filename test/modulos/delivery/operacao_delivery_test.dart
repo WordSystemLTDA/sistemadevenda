@@ -3,6 +3,7 @@ import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/alterar_pedido_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:flutter/material.dart';
@@ -192,6 +193,20 @@ void main() {
     expect(s.gravacoes, hasLength(1));
     expect(s.gravacoes.single.$2['acao'], 'cancelar');
     expect(find.byType(AlertDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo endereco carrega cidade e cep padrao', (tester) async {
+    final s = ServicoDeliveryTeste();
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('86.770-000'), findsOneWidget);
+    expect(find.text('Santa Fe'), findsOneWidget);
+    expect(find.text('PR'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

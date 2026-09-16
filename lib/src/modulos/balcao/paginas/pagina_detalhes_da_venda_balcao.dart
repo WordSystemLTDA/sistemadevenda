@@ -18,10 +18,12 @@ class PaginaDetalhesDaVendaBalcao extends StatefulWidget {
   const PaginaDetalhesDaVendaBalcao({super.key, required this.idVenda});
 
   @override
-  State<PaginaDetalhesDaVendaBalcao> createState() => _PaginaDetalhesDaVendaBalcaoState();
+  State<PaginaDetalhesDaVendaBalcao> createState() =>
+      _PaginaDetalhesDaVendaBalcaoState();
 }
 
-class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalcao> {
+class _PaginaDetalhesDaVendaBalcaoState
+    extends State<PaginaDetalhesDaVendaBalcao> {
   var servico = Modular.get<ServicoBalcao>();
   RetornoListarPorIdBalcao? informacoes;
   bool carregando = true;
@@ -78,32 +80,42 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                   FloatingActionButton.extended(
                     heroTag: null,
                     onPressed: () async {
-                      final duration = DateTime.now().difference(DateTime.parse(informacoes!.informacoes.dataAbertura));
+                      final duration = DateTime.now().difference(DateTime.parse(
+                          informacoes!.informacoes.dataAbertura));
                       final newDuration = ConfigSistema.formatarHora(duration);
 
                       Impressao.comprovanteDoEntregador(
                         nomeCliente: informacoes!.informacoes.nomeCliente,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
-                        nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                          return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                        nomelancamento: List<ModeloNomeLancamento>.from(
+                            parcelas.map((elemento) {
+                          return ModeloNomeLancamento(
+                              nome: elemento.entradaMov,
+                              valor: UtilBrasilFields.converterMoedaParaDouble(
+                                      elemento.valorMovF)
+                                  .toStringAsExponential(2));
                         })),
                         somaValorHistorico: informacoes!.informacoes.subtotal,
                         cnpjEmpresa: informacoes!.informacoes.docempresa,
                         celularEmpresa: informacoes!.informacoes.celularcliente,
-                        enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
+                        enderecoEmpresa:
+                            informacoes!.informacoes.enderecoempresa,
                         permanencia: newDuration,
                         total: informacoes!.informacoes.subtotal,
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
                         celularCliente: informacoes!.informacoes.celularcliente,
-                        enderecoCliente: informacoes!.informacoes.enderecoenderecocliente,
+                        enderecoCliente:
+                            informacoes!.informacoes.enderecoenderecocliente,
                         valortroco: informacoes!.informacoes.valortroco,
                         valorentrega: informacoes!.informacoes.valorentrega,
                         bairroCliente: informacoes!.informacoes.nomebairro,
                         cidadeCliente: informacoes!.informacoes.nomecidade,
-                        complementoCliente: informacoes!.informacoes.complementoenderecocliente,
-                        numeroCliente: informacoes!.informacoes.numeroenderecocliente,
+                        complementoCliente:
+                            informacoes!.informacoes.complementoenderecocliente,
+                        numeroCliente:
+                            informacoes!.informacoes.numeroenderecocliente,
                       );
                       // var sucessoAoImprimir = await Impressao.enviarImpressao(
                       //   tipoImpressao: '3',
@@ -143,28 +155,35 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       //   }
                       // }
                     },
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5)),
                     label: const Text('Comprovante do Entregador'),
                   ),
                   FloatingActionButton.extended(
                     heroTag: null,
                     onPressed: () async {
-                      final duration = DateTime.now().difference(DateTime.parse(informacoes!.informacoes.dataAbertura));
+                      final duration = DateTime.now().difference(DateTime.parse(
+                          informacoes!.informacoes.dataAbertura));
                       final newDuration = ConfigSistema.formatarHora(duration);
 
                       Impressao.comprovanteDeConsumo(
-                        // tipoImpressao: '2',
-                        // tipo: TipoCardapio.balcao,
-                        // nomeCliente: informacoes!.informacoes.nomeCliente,
+                        tipoTela: TipoCardapio.balcao,
+                        agruparPorDestino: false,
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
-                        nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                          return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
+                        nomelancamento: List<ModeloNomeLancamento>.from(
+                            parcelas.map((elemento) {
+                          return ModeloNomeLancamento(
+                              nome: elemento.entradaMov,
+                              valor: UtilBrasilFields.converterMoedaParaDouble(
+                                      elemento.valorMovF)
+                                  .toStringAsExponential(2));
                         })),
                         somaValorHistorico: informacoes!.informacoes.subtotal,
                         cnpjEmpresa: informacoes!.informacoes.docempresa,
                         celularEmpresa: informacoes!.informacoes.celularcliente,
-                        enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
+                        enderecoEmpresa:
+                            informacoes!.informacoes.enderecoempresa,
                         permanencia: newDuration,
                         local: '',
                         total: informacoes!.informacoes.subtotal,
@@ -201,7 +220,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       //   }
                       // }
                     },
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5)),
                     label: const Text('Comprovante de Conta'),
                   ),
                   FloatingActionButton.extended(
@@ -214,7 +234,16 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         comanda: "Balcão ${widget.idVenda}",
                         numeroPedido: informacoes!.informacoes.numerodopedido,
                         // nomeCliente: informacoes!.informacoes.nomeCliente,
-                        nomeCliente: (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente') == 'Sem Cliente' && (informacoes?.informacoes.observacaoDoPedido ?? '').isNotEmpty ? (informacoes?.informacoes.observacaoDoPedido ?? '') : (informacoes?.informacoes.nomeCliente ?? 'Sem Cliente'),
+                        nomeCliente: (informacoes?.informacoes.nomeCliente ??
+                                        'Sem Cliente') ==
+                                    'Sem Cliente' &&
+                                (informacoes?.informacoes.observacaoDoPedido ??
+                                        '')
+                                    .isNotEmpty
+                            ? (informacoes?.informacoes.observacaoDoPedido ??
+                                '')
+                            : (informacoes?.informacoes.nomeCliente ??
+                                'Sem Cliente'),
                         nomeEmpresa: informacoes!.informacoes.nomeempresa,
                         produtos: informacoes!.produtos,
                         tipodeentrega: informacoes!.informacoes.tipodeentrega,
@@ -240,7 +269,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                       //   }
                       // }
                     },
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5)),
                     label: const Text('Imprimir Preparo'),
                   ),
                 ],
@@ -276,17 +306,22 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         builder: (context) {
                           return ModalCancelarVenda(
                             aoSalvar: (justificativa) async {
-                              await servico.excluir(widget.idVenda, justificativa).then((value) {
+                              await servico
+                                  .excluir(widget.idVenda, justificativa)
+                                  .then((value) {
                                 if (value.sucesso == false) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    ScaffoldMessenger.of(context)
+                                        .removeCurrentSnackBar();
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(SnackBar(
                                       content: Text(value.mensagem),
                                     ));
                                   }
                                 } else {
                                   if (context.mounted) {
-                                    var provedor = Modular.get<ProvedorBalcao>();
+                                    var provedor =
+                                        Modular.get<ProvedorBalcao>();
                                     provedor.listar();
                                     Navigator.pop(context);
                                   }
@@ -297,7 +332,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                         },
                       );
                     },
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5)),
                     label: const Text('Cancelar Pedido'),
                   ),
                   // FloatingActionButton.extended(
@@ -338,7 +374,8 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Flexible(
                                     child: Text.rich(
@@ -346,11 +383,14 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                       overflow: TextOverflow.ellipsis,
                                       TextSpan(
                                         text: 'Cliente: ',
-                                        style: const TextStyle(fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
                                         children: [
                                           TextSpan(
-                                            text: informacoes?.informacoes.nomeCliente,
-                                            style: const TextStyle(fontWeight: FontWeight.normal),
+                                            text: informacoes
+                                                ?.informacoes.nomeCliente,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.normal),
                                           ),
                                         ],
                                       ),
@@ -362,11 +402,19 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                       overflow: TextOverflow.ellipsis,
                                       TextSpan(
                                         text: 'Vendedor(a): ',
-                                        style: const TextStyle(fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600),
                                         children: [
                                           TextSpan(
-                                            text: (informacoes?.informacoes.nomevendedor ?? '').isEmpty ? 'Sem Vendedor' : informacoes?.informacoes.nomevendedor,
-                                            style: const TextStyle(fontWeight: FontWeight.normal),
+                                            text: (informacoes?.informacoes
+                                                            .nomevendedor ??
+                                                        '')
+                                                    .isEmpty
+                                                ? 'Sem Vendedor'
+                                                : informacoes
+                                                    ?.informacoes.nomevendedor,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.normal),
                                           ),
                                         ],
                                       ),
@@ -375,16 +423,25 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text.rich(
                                     TextSpan(
                                       text: 'Telefone: ',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
                                       children: [
                                         TextSpan(
-                                          text: (informacoes?.informacoes.telefonecliente ?? '').isEmpty ? 'Sem Telefone' : informacoes?.informacoes.telefonecliente,
-                                          style: const TextStyle(fontWeight: FontWeight.normal),
+                                          text: (informacoes?.informacoes
+                                                          .telefonecliente ??
+                                                      '')
+                                                  .isEmpty
+                                              ? 'Sem Telefone'
+                                              : informacoes
+                                                  ?.informacoes.telefonecliente,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.normal),
                                         ),
                                       ],
                                     ),
@@ -392,11 +449,19 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                   Text.rich(
                                     TextSpan(
                                       text: 'Celular: ',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
                                       children: [
                                         TextSpan(
-                                          text: (informacoes?.informacoes.celularcliente ?? '').isEmpty ? 'Sem Celular' : informacoes?.informacoes.celularcliente,
-                                          style: const TextStyle(fontWeight: FontWeight.normal),
+                                          text: (informacoes?.informacoes
+                                                          .celularcliente ??
+                                                      '')
+                                                  .isEmpty
+                                              ? 'Sem Celular'
+                                              : informacoes
+                                                  ?.informacoes.celularcliente,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.normal),
                                         ),
                                       ],
                                     ),
@@ -404,16 +469,20 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                 ],
                               ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text.rich(
                                     TextSpan(
                                       text: 'Data: ',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
                                       children: [
                                         TextSpan(
-                                          text: informacoes?.informacoes.datalanc,
-                                          style: const TextStyle(fontWeight: FontWeight.normal),
+                                          text:
+                                              informacoes?.informacoes.datalanc,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.normal),
                                         ),
                                       ],
                                     ),
@@ -421,11 +490,14 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                   Text.rich(
                                     TextSpan(
                                       text: 'Pedido: ',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
                                       children: [
                                         TextSpan(
-                                          text: informacoes?.informacoes.numerodopedido,
-                                          style: const TextStyle(fontWeight: FontWeight.normal),
+                                          text: informacoes
+                                              ?.informacoes.numerodopedido,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.normal),
                                         ),
                                       ],
                                     ),
@@ -436,21 +508,26 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                               Text.rich(
                                 TextSpan(
                                   text: 'Endereço: ',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600),
                                   children: [
                                     TextSpan(
-                                      text: '${informacoes?.informacoes.enderecoenderecocliente}, ${informacoes?.informacoes.nomebairro}, ${informacoes?.informacoes.nomecidade} - ${informacoes?.informacoes.nomeestado} ${informacoes?.informacoes.cependerecocliente}.',
-                                      style: const TextStyle(fontWeight: FontWeight.normal),
+                                      text:
+                                          '${informacoes?.informacoes.enderecoenderecocliente}, ${informacoes?.informacoes.nomebairro}, ${informacoes?.informacoes.nomecidade} - ${informacoes?.informacoes.nomeestado} ${informacoes?.informacoes.cependerecocliente}.',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.normal),
                                     ),
                                   ],
                                 ),
                               ),
                               const Divider(),
                               Padding(
-                                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                                padding:
+                                    const EdgeInsets.only(left: 4, bottom: 4),
                                 child: Text(
                                   'Produtos e Serviços (${informacoes?.produtos.length})',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600),
                                 ),
                               ),
                               ListView.builder(
@@ -461,23 +538,36 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                   var item = informacoes?.produtos[index];
 
                                   return Card(
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(5)),
                                     child: Padding(
                                       padding: const EdgeInsets.all(8.0),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text("Código: ${item!.codigo}", style: const TextStyle(fontSize: 13)),
-                                          Text(item.nome, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                          Text("Código: ${item!.codigo}",
+                                              style: const TextStyle(
+                                                  fontSize: 13)),
+                                          Text(item.nome,
+                                              style: const TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold)),
                                           const SizedBox(height: 5),
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(double.parse(item.valorVenda).obterReal()),
+                                              Text(double.parse(item.valorVenda)
+                                                  .obterReal()),
                                               const Text('x'),
                                               Text(item.quantidade.toString()),
                                               const Text('='),
-                                              Text((double.parse(item.valorVenda) * num.parse(item.quantidade.toString())).obterReal()),
+                                              Text((double.parse(
+                                                          item.valorVenda) *
+                                                      num.parse(item.quantidade
+                                                          .toString()))
+                                                  .obterReal()),
                                             ],
                                           ),
                                         ],
@@ -498,10 +588,12 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.only(left: 4, bottom: 4),
+                              padding:
+                                  const EdgeInsets.only(left: 4, bottom: 4),
                               child: Text(
                                 'Meios de Pagamentos (${parcelas.length})',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
                               ),
                             ),
                             ListView.builder(
@@ -512,17 +604,25 @@ class _PaginaDetalhesDaVendaBalcaoState extends State<PaginaDetalhesDaVendaBalca
                                 var item = parcelas[index];
 
                                 return Card(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(5)),
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text("Parcela: ${item.descricaoMov}", style: const TextStyle(fontSize: 13)),
-                                        Text(item.valorMovF, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                        Text("Parcela: ${item.descricaoMov}",
+                                            style:
+                                                const TextStyle(fontSize: 13)),
+                                        Text(item.valorMovF,
+                                            style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold)),
                                         const SizedBox(height: 5),
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(item.entradaMov),
                                             Text(item.vencimentoMovF),

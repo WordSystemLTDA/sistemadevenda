@@ -23,25 +23,30 @@ class ServicoBalcao {
 
   static const caminhoAPI = 'balcao';
 
-  Future<List<ModeloVendasBalcao>> listar(int pagina, int linhasPorPagina, String pesquisa, String dataInicio, String dataFim, String hora) async {
+  Future<List<ModeloVendasBalcao>> listar(int pagina, int linhasPorPagina,
+      String pesquisa, String dataInicio, String dataFim, String hora) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final id = usuarioProvedor.usuario!.id;
 
     List<dynamic> lista = [];
     try {
-      final response = await dio.cliente.post('/$caminhoAPI/listar.php', queryParameters: {
-      'id_empresa': empresa,
-      'id_usuario': id,
-      'pagina': pagina,
-      'linhasPorPagina': linhasPorPagina,
-      'pesquisa': pesquisa,
-      'dataInicio': dataInicio,
-      'dataFim': dataFim,
-      'hora': hora,
+      final response =
+          await dio.cliente.post('/$caminhoAPI/listar.php', queryParameters: {
+        'id_empresa': empresa,
+        'id_usuario': id,
+        'pagina': pagina,
+        'linhasPorPagina': linhasPorPagina,
+        'pesquisa': pesquisa,
+        'dataInicio': dataInicio,
+        'dataFim': dataFim,
+        'hora': hora,
       });
       lista = List<dynamic>.from(response.data);
     } on DioException catch (e) {
-      if (!CacheConsultas.falhaDeConexao(e) || Sincronizador.instancia == null) rethrow;
+      if (!CacheConsultas.falhaDeConexao(e) ||
+          Sincronizador.instancia == null) {
+        rethrow;
+      }
     }
     final vendas = lista.map((e) => ModeloVendasBalcao.fromMap(e)).toList();
     final sync = Sincronizador.instancia;
@@ -49,27 +54,48 @@ class ServicoBalcao {
       final pendentes = await sync.banco.operacoes(sync.escopo);
       for (final op in pendentes.where((op) => op['acao'] == 'venda')) {
         final dados = AtendimentosLocais.dados(op);
-        if (dados['id_venda_origem'] != null) continue;
+        if (dados['id_venda_origem'] != null) {
+          continue;
+        }
         final data = DateTime.fromMillisecondsSinceEpoch(op['criado'] as int);
         final dia = data.toIso8601String().substring(0, 10);
-        if (dia.compareTo(dataInicio) < 0 || dia.compareTo(dataFim) > 0) continue;
-        final cliente = await AtendimentosLocais(sync.banco, sync.escopo).nomeCliente(dados['cliente']?.toString() ?? '0');
+        if (dia.compareTo(dataInicio) < 0 || dia.compareTo(dataFim) > 0) {
+          continue;
+        }
+        final cliente = await AtendimentosLocais(sync.banco, sync.escopo)
+            .nomeCliente(dados['cliente']?.toString() ?? '0');
         final obs = dados['obs']?.toString() ?? '';
-        final nome = cliente.isEmpty ? (obs.isEmpty ? 'Sem Cliente' : obs) : cliente;
-        if (pesquisa.isNotEmpty && !nome.toLowerCase().contains(pesquisa.toLowerCase())) continue;
+        final nome =
+            cliente.isEmpty ? (obs.isEmpty ? 'Sem Cliente' : obs) : cliente;
+        if (pesquisa.isNotEmpty &&
+            !nome.toLowerCase().contains(pesquisa.toLowerCase())) {
+          continue;
+        }
         final resposta = AtendimentosLocais.recibo(op);
-        if (vendas.any((v) => v.id == resposta['idVenda'])) continue;
-        vendas.insert(0, ModeloVendasBalcao(
-          id: op['atendimento'] as String, nomecliente: nome,
-          numeropedido: resposta['numeroPedido']?.toString() ?? '',
-          quantidadeProdutos: (dados['produtos'] as List? ?? []).length.toString(),
-          pagamento: '', subtotal: dados['subTotal'].toString(),
-          status: 'Aguardando envio', nomeusuariocompleto: usuarioProvedor.usuario?.nome ?? '',
-          nomeusuario: usuarioProvedor.usuario?.nome ?? '', dataHora: data.toIso8601String(),
-          valorTotalF: dados['subTotal'].toString(), tamanhoLista: 1,
-          idtipodeentrega: dados['tipodeentrega']?.toString() ?? '', tipodeentrega: '',
-          nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '', observacaoDoPedido: obs,
-        ));
+        if (vendas.any((v) => v.id == resposta['idVenda'])) {
+          continue;
+        }
+        vendas.insert(
+            0,
+            ModeloVendasBalcao(
+              id: op['atendimento'] as String,
+              nomecliente: nome,
+              numeropedido: resposta['numeroPedido']?.toString() ?? '',
+              quantidadeProdutos:
+                  (dados['produtos'] as List? ?? []).length.toString(),
+              pagamento: '',
+              subtotal: dados['subTotal'].toString(),
+              status: 'Aguardando envio',
+              nomeusuariocompleto: usuarioProvedor.usuario?.nome ?? '',
+              nomeusuario: usuarioProvedor.usuario?.nome ?? '',
+              dataHora: data.toIso8601String(),
+              valorTotalF: dados['subTotal'].toString(),
+              tamanhoLista: 1,
+              idtipodeentrega: dados['tipodeentrega']?.toString() ?? '',
+              tipodeentrega: '',
+              nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '',
+              observacaoDoPedido: obs,
+            ));
       }
     }
     return vendas;
@@ -79,7 +105,8 @@ class ServicoBalcao {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
     try {
-      var response = await dio.cliente.get('$caminhoAPI/listar_por_id.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+      var response = await dio.cliente.get(
+          '$caminhoAPI/listar_por_id.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
 
       var jsonData = response.data;
       var dados = jsonData['dados'];
@@ -96,38 +123,52 @@ class ServicoBalcao {
     }
   }
 
-  Future<List<ModeloHistoricoPagamentos>> listarHistoricoPagamentos(String id, TipoCardapio tipo) async {
+  Future<List<ModeloHistoricoPagamentos>> listarHistoricoPagamentos(
+      String id, TipoCardapio tipo) async {
     final sync = Sincronizador.instancia;
     if (sync != null && id.startsWith('venda-local:')) {
       final operacoes = await sync.banco.db.query('operacoes',
-          where: "escopo = ? AND atendimento = ? AND acao = 'venda' AND estado <> 'arquivado'",
-          whereArgs: [sync.escopo, id], orderBy: 'criado, rowid');
-      final total = operacoes.fold<double>(0, (soma, op) => soma +
-          (double.tryParse(AtendimentosLocais.dados(op)['valor_lancamento'].toString()) ?? 0));
+          where:
+              "escopo = ? AND atendimento = ? AND acao = 'venda' AND estado <> 'arquivado'",
+          whereArgs: [sync.escopo, id],
+          orderBy: 'criado, rowid');
+      final total = operacoes.fold<double>(
+          0,
+          (soma, op) =>
+              soma +
+              (double.tryParse(AtendimentosLocais.dados(op)['valor_lancamento']
+                      .toString()) ??
+                  0));
       return operacoes.map((op) {
         final dados = AtendimentosLocais.dados(op);
-        return ModeloHistoricoPagamentos(id: op['id'] as String,
-            valor: dados['valor_lancamento'].toString(), pagamento: 'Pagamento salvo',
+        return ModeloHistoricoPagamentos(
+            id: op['id'] as String,
+            valor: dados['valor_lancamento'].toString(),
+            pagamento: 'Pagamento salvo',
             somaValorHistorico: total.toStringAsFixed(2));
       }).toList();
     }
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
-    var response = await dio.cliente.get('balcao/listar_historico_pagamentos.php?id=$id&empresa=$idEmpresa&id_usuario=$idUsuario');
+    var response = await dio.cliente.get(
+        'balcao/listar_historico_pagamentos.php?id=$id&empresa=$idEmpresa&id_usuario=$idUsuario');
 
     var jsonData = response.data;
-    var produtos = List<ModeloHistoricoPagamentos>.from(jsonData.map((elemento) {
+    var produtos =
+        List<ModeloHistoricoPagamentos>.from(jsonData.map((elemento) {
       return ModeloHistoricoPagamentos.fromMap(elemento);
     }));
 
     return produtos;
   }
 
-  Future<List<Modelolistafinanceirovenda>> listarFinanceiroVenda(String idVenda) async {
+  Future<List<Modelolistafinanceirovenda>> listarFinanceiroVenda(
+      String idVenda) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
-    var response = await dio.cliente.get('$caminhoAPI/listar_financeiro_venda.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+    var response = await dio.cliente.get(
+        '$caminhoAPI/listar_financeiro_venda.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
 
     var jsonData = response.data;
     var dados = jsonData['dados'];
@@ -137,7 +178,8 @@ class ServicoBalcao {
     }));
   }
 
-  Future<({bool sucesso, String mensagem})> excluir(String id, String justificativaCancelamento) async {
+  Future<({bool sucesso, String mensagem})> excluir(
+      String id, String justificativaCancelamento) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
@@ -165,18 +207,38 @@ class ServicoBalcao {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     final empresa = usuarioProvedor.usuario!.empresa;
 
-    final url = 'comandas/listar_clientes.php?pesquisa=$pesquisa&empresa=$empresa';
-    final response = await dio.cliente.get(url);
+    final resultados = <dynamic>[];
+    final idsAdicionados = <String>{};
 
-    return response.data;
+    Future<void> consultar(String termo) async {
+      final response = await dio.cliente.get(
+        'comandas/listar_clientes.php',
+        queryParameters: {'pesquisa': termo, 'empresa': empresa},
+      );
+      final dados = response.data is List ? response.data as List : const [];
+      for (final cliente in dados) {
+        final id = cliente is Map ? '${cliente['id'] ?? ''}' : '$cliente';
+        if (idsAdicionados.add(id)) resultados.add(cliente);
+      }
+    }
+
+    await consultar(pesquisa);
+
+    final semMascara = pesquisa.replaceAll(RegExp(r'\D'), '');
+    if (semMascara.isNotEmpty && semMascara != pesquisa.trim()) {
+      await consultar(semMascara);
+    }
+
+    return resultados;
   }
 
-  Future<List<Modelowordenderecosclientes>> listarEnderecosClientes(String pesquisa, String idCliente) async {
+  Future<List<Modelowordenderecosclientes>> listarEnderecosClientes(
+      String pesquisa, String idCliente) async {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
-    var response =
-        await dio.cliente.post('enderecos_clientes/listar_por_cliente.php?empresa=$idEmpresa&id_usuario=$idUsuario&pesquisa=$pesquisa&cliente=$idCliente');
+    var response = await dio.cliente.post(
+        'enderecos_clientes/listar_por_cliente.php?empresa=$idEmpresa&id_usuario=$idUsuario&pesquisa=$pesquisa&cliente=$idCliente');
     var jsonData = response.data;
 
     dynamic dados = jsonData;
@@ -186,7 +248,8 @@ class ServicoBalcao {
     }));
   }
 
-  Future<({bool sucesso, String idvenda})> inserir(String idCliente, String obs) async {
+  Future<({bool sucesso, String idvenda})> inserir(
+      String idCliente, String obs) async {
     final empresa = usuarioProvedor.usuario!.empresa;
     final usuario = usuarioProvedor.usuario!.id;
 

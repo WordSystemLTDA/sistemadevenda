@@ -9,6 +9,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -441,6 +442,16 @@ void main() {
         expect(consumo.map((item) => item['nome']),
             ['Porcao inteira', 'Coca Cola 2L']);
         expect(servidor.mensagens.first['tipoImpressao'], '2');
+
+        servidor.mensagens.clear();
+        Impressao.comprovanteDeConsumo(
+          produtos: itens,
+          tipoTela: TipoCardapio.balcao,
+          agruparPorDestino: false,
+        );
+        expect(servidor.mensagens, hasLength(1));
+        expect(servidor.mensagens.single['tipo'], TipoCardapio.balcao.nome);
+        expect(servidor.mensagens.single.containsKey('nomedopc'), isFalse);
       });
     }
 

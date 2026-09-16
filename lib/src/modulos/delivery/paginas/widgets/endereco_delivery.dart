@@ -24,8 +24,16 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     ])
       k: TextEditingController()
   };
-  bool _salvando = false, _padrao = false;
+  bool _salvando = false, _padrao = false, _carregandoPadrao = true;
+  bool _bloquearCidade = false;
   String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPadraoEndereco();
+  }
+
   @override
   void dispose() {
     for (final c in _campos.values) {
@@ -34,8 +42,63 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     super.dispose();
   }
 
+  Future<void> _carregarPadraoEndereco() async {
+    try {
+      final resposta =
+          await widget.servico.consultar('config_clientes/listar_cliente.php');
+      if (!mounted) return;
+      final dados = _mapaDaResposta(resposta);
+      if (dados != null) {
+        setState(() {
+          _preencherSeVazio('cep', _texto(dados, ['padrao_cep', 'padraoCep']));
+          _preencherSeVazio('cidade',
+              _texto(dados, ['padrao_nome_cidade', 'padraoNomeCidade']));
+          _preencherSeVazio(
+              'uf', _texto(dados, ['padrao_estado', 'padraoEstado']));
+          _bloquearCidade =
+              _texto(dados, ['bloquear_edicao_cidade', 'bloquearEdicaoCidade'])
+                  .toLowerCase()
+                  .trim()
+                  .startsWith('sim');
+        });
+      }
+    } catch (_) {
+      // Se a configuracao padrao nao vier, o usuario segue preenchendo manualmente.
+    } finally {
+      if (mounted) setState(() => _carregandoPadrao = false);
+    }
+  }
+
+  Map<String, dynamic>? _mapaDaResposta(dynamic resposta) {
+    if (resposta is Map) return Map<String, dynamic>.from(resposta);
+    if (resposta is List && resposta.isNotEmpty && resposta.first is Map) {
+      return Map<String, dynamic>.from(resposta.first as Map);
+    }
+    return null;
+  }
+
+  String _texto(Map<String, dynamic> dados, List<String> chaves) {
+    for (final chave in chaves) {
+      final valor = dados[chave]?.toString().trim() ?? '';
+      if (valor.isNotEmpty) return valor;
+    }
+    return '';
+  }
+
+  void _preencherSeVazio(String campo, String valor) {
+    final controller = _campos[campo];
+    if (controller == null ||
+        valor.isEmpty ||
+        controller.text.trim().isNotEmpty) {
+      return;
+    }
+    controller.text = campo == 'uf' ? valor.toUpperCase() : valor;
+  }
+
   Future<void> _salvar() async {
-    if (_salvando || !_form.currentState!.validate()) return;
+    if (_salvando || _carregandoPadrao || !_form.currentState!.validate()) {
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _salvando = true;
@@ -74,9 +137,18 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             top: false,
             minimum: const EdgeInsets.all(16),
             child: FilledButton.icon(
-                onPressed: _salvando ? null : _salvar,
-                icon: const Icon(Icons.check),
-                label: Text(_salvando ? 'Salvando...' : 'Salvar endereço'))),
+                onPressed: _salvando || _carregandoPadrao ? null : _salvar,
+                icon: _carregandoPadrao || _salvando
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.check),
+                label: Text(_carregandoPadrao
+                    ? 'Carregando dados...'
+                    : _salvando
+                        ? 'Salvando...'
+                        : 'Salvar endereço'))),
         body: Center(
             child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 700),
@@ -100,7 +172,10 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: TextFormField(
                                   controller: _campos[campo.$1],
-                                  enabled: !_salvando,
+                                  enabled: !_salvando && !_carregandoPadrao,
+                                  readOnly: _bloquearCidade &&
+                                      (campo.$1 == 'cidade' ||
+                                          campo.$1 == 'uf'),
                                   textCapitalization: campo.$1 == 'uf'
                                       ? TextCapitalization.characters
                                       : TextCapitalization.words,

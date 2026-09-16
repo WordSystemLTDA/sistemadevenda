@@ -114,6 +114,14 @@ class ServicoDeliveryTeste extends ServicoDelivery {
     if (rota == 'config_bigchef/listar.php') {
       return {'formacobrancaentregadelivery': '1', 'valordaentrega': '5'};
     }
+    if (rota == 'config_clientes/listar_cliente.php') {
+      return {
+        'padrao_cep': '86.770-000',
+        'padrao_nome_cidade': 'Santa Fe',
+        'padrao_estado': 'PR',
+        'bloquear_edicao_cidade': 'Sim',
+      };
+    }
     return [];
   }
 

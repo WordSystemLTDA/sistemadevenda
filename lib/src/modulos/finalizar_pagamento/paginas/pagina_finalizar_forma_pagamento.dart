@@ -387,6 +387,8 @@ class _PaginaFinalizarFormaPagamentoState
                                   ConfigSistema.formatarHora(duration);
 
                               Impressao.comprovanteDeConsumo(
+                                tipoTela: TipoCardapio.balcao,
+                                agruparPorDestino: false,
                                 valorentrega:
                                     informacoes.informacoes.valorentrega,
                                 nomeEmpresa: vendaBalcao.nomeEmpresa,

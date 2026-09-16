@@ -56,6 +56,39 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     super.dispose();
   }
 
+  String _textoCliente(Map<String, dynamic> dados, List<String> chaves) {
+    for (final chave in chaves) {
+      final valor = dados[chave]?.toString().trim() ?? '';
+      if (valor.isNotEmpty) return valor;
+    }
+    return '';
+  }
+
+  String _formatarTelefoneCliente(String valor) {
+    final texto = valor.trim();
+    if (texto.isEmpty) return '';
+    final digitos = texto.replaceAll(RegExp(r'\D'), '');
+    if (digitos.length < 8) return texto;
+    return UtilBrasilFields.obterTelefone(digitos);
+  }
+
+  String _nomeClienteBusca(Map<String, dynamic> dados) {
+    final nome = _textoCliente(dados, ['nome', 'nomeCliente', 'nomecliente']);
+    if (nome.isNotEmpty) return nome;
+    return _textoCliente(dados, ['razao_social', 'razaoSocial']);
+  }
+
+  String _detalheClienteBusca(Map<String, dynamic> dados) {
+    final nome = _nomeClienteBusca(dados);
+    final razao = _textoCliente(dados, ['razao_social', 'razaoSocial']);
+    final celular = _formatarTelefoneCliente(
+        _textoCliente(dados, ['celular', 'telefone', 'celularCliente']));
+    return [
+      if (celular.isNotEmpty) 'Celular: $celular',
+      if (razao.isNotEmpty && razao != nome) 'Razão social: $razao',
+    ].join('\n');
+  }
+
   Future<void> _selecionarCliente({bool novo = false}) async {
     Map<String, dynamic>? resultado;
     if (novo) {
@@ -72,15 +105,16 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
             (await Modular.get<ServicoBalcao>().listarClientes(termo))
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList(),
-        nome: (e) => '${e['nome'] ?? ''}',
-        detalhe: (e) => '${e['celular'] ?? ''}',
+        nome: _nomeClienteBusca,
+        detalhe: _detalheClienteBusca,
       );
     }
     if (!mounted || resultado == null) return;
     setState(() {
       _cliente = '${resultado!['id']}';
-      _nome = '${resultado['nome'] ?? ''}';
-      _telefone = '${resultado['celular'] ?? ''}';
+      _nome = _nomeClienteBusca(resultado);
+      _telefone = _formatarTelefoneCliente(
+          _textoCliente(resultado, ['celular', 'telefone', 'celularCliente']));
       _endereco = null;
       _enderecos = [];
     });

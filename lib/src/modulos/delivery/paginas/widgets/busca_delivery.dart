@@ -104,14 +104,15 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       itemCount: _dados.length,
-                      itemBuilder: (_, i) => ListTile(
-                            title: Text(widget.nome(_dados[i])),
-                            subtitle: widget.detalhe == null
-                                ? null
-                                : Text(widget.detalhe!(_dados[i])),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.pop(context, _dados[i]),
-                          ))),
+                      itemBuilder: (_, i) {
+                        final detalhe = widget.detalhe?.call(_dados[i]) ?? '';
+                        return ListTile(
+                          title: Text(widget.nome(_dados[i])),
+                          subtitle: detalhe.isEmpty ? null : Text(detalhe),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.pop(context, _dados[i]),
+                        );
+                      })),
         ]),
       );
 }

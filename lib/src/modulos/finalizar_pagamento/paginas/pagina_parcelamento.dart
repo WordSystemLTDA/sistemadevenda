@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -12,6 +15,7 @@ import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.
 import 'package:app/src/modulos/finalizar_pagamento/paginas/widgets/bottom_editar_parcelamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
@@ -184,7 +188,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         } else {
           provedor.idVenda = idvenda;
           provedor.valor = double.parse(widget.totalReceber) - widget.valor;
-          Navigator.popUntil(context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+          Navigator.popUntil(
+              context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
         }
         return;
       }
@@ -192,6 +197,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
 
       if (widget.valor >= double.parse(widget.totalReceber)) {
         var provedorBalcao = Modular.get<ProvedorBalcao>();
+        var servico = Modular.get<ServicoBalcao>();
         await provedorBalcao.listar();
 
         var vendaBalcao = provedorBalcao.dados
@@ -217,6 +223,42 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             nomeEmpresa: vendaBalcao.nomeEmpresa,
             produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
             tipodeentrega: vendaBalcao.idtipodeentrega,
+          );
+
+          var informacoes = await servico.listarPorId(idvenda);
+          var parcelas = await servico.listarFinanceiroVenda(idvenda);
+
+          final duration =
+              DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
+          final newDuration = ConfigSistema.formatarHora(duration);
+
+          Impressao.comprovanteDeConsumo(
+            tipoTela: TipoCardapio.balcao,
+            agruparPorDestino: false,
+            valorentrega: informacoes.informacoes.valorentrega,
+            nomeEmpresa: vendaBalcao.nomeEmpresa,
+            produtos: informacoes.produtos,
+            nomelancamento:
+                List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+              return ModeloNomeLancamento(
+                  nome: elemento.entradaMov,
+                  valor: UtilBrasilFields.converterMoedaParaDouble(
+                          elemento.valorMovF)
+                      .toStringAsExponential(2));
+            })),
+            somaValorHistorico: informacoes.informacoes.subtotal,
+            cnpjEmpresa: informacoes.informacoes.docempresa,
+            celularEmpresa: informacoes.informacoes.celularcliente,
+            enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+            permanencia: newDuration,
+            local: '',
+            total: informacoes.informacoes.subtotal,
+            numeroPedido: informacoes.informacoes.numerodopedido,
+            tipodeentrega: informacoes.informacoes.tipodeentrega,
+            nomeCliente: (informacoes.informacoes.nomeCliente == ''
+                    ? null
+                    : informacoes.informacoes.nomeCliente) ??
+                'Sem Cliente',
           );
           FeedbackUsuario.pedidoFinalizado();
 

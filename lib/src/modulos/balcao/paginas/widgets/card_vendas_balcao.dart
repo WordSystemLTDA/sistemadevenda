@@ -233,10 +233,8 @@ class _CardVendasBalcaoState extends State<CardVendasBalcao> {
                                   ConfigSistema.formatarHora(duration);
 
                               Impressao.comprovanteDeConsumo(
-                                // tipoImpressao: '2',
-                                // : TipoCardapio.balcao,
-                                // nomeCliente: item.nomecliente,
-
+                                tipoTela: TipoCardapio.balcao,
+                                agruparPorDestino: false,
                                 valorentrega:
                                     informacoes.informacoes.valorentrega,
                                 nomeEmpresa: item.nomeEmpresa,
