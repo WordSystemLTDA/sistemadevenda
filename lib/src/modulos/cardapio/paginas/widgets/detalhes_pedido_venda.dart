@@ -111,7 +111,7 @@ class DetalhesPedidoVenda extends StatelessWidget {
       if (observacao.isNotEmpty)
         Padding(
             padding: const EdgeInsets.only(top: 12),
-              child: Text('Observação: $observacao')),
+            child: Text('Observação: $observacao')),
       if ((total - recebido).abs() > .009)
         _valor(recebido > total ? 'A devolver' : 'A receber',
             (total - recebido).abs()),

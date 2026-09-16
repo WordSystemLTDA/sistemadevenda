@@ -17,20 +17,17 @@ class ImpressaoDelivery {
     if (produtos.isEmpty) {
       throw StateError('O pedido não tem produtos para impressão.');
     }
-    final mensagens = preparo || ambos
-        ? Impressao.prepararComprovanteDePedido(
+    final mensagens = <String>[
+      if (preparo || ambos) ...Impressao.prepararComprovanteDePedido(
             produtos: produtos,
             tipoTela: TipoCardapio.delivery,
             tipodeentrega: pedido.tipoEntrega,
             nomeCliente: pedido.nome,
             nomeEmpresa: dados.nomeEmpresa ?? '',
             comanda: 'Delivery ${pedido.id}',
-            numeroPedido: pedido.numero)
-        : comprovantes(servico, pedido.comEndereco(dados), produtos);
-    if (ambos) {
-      mensagens
-          .addAll(comprovantes(servico, pedido.comEndereco(dados), produtos));
-    }
+            numeroPedido: pedido.numero),
+      if (!preparo || ambos) ...comprovantes(servico, pedido.comEndereco(dados), produtos),
+    ];
     await server.enviarImpressoes(mensagens);
   }
 

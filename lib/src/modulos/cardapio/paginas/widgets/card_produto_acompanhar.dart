@@ -171,262 +171,267 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
         children: [
           if (widget.cabecalhoAdaptavel)
             _cabecalhoDetalhado(context, valorTotal)
-          else SizedBox(
-            height: temObservacao ? 126 : 105,
-            child: InkWell(
-              onTap: () {
-                _expandOnChanged();
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(7.0),
-                child: Stack(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(height: 5),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                '${widget.item.nome} ',
-                                // '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
-                                // item.nome,
-                                maxLines: 1,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            Row(
-                              children: [
-                                Text(
-                                  valorTotal.obterReal(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                                  maxLines: 1,
-                                ),
-                                const SizedBox(width: 5),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Text("Código: ${item.codigo}"),
-                            const Spacer(),
-                            const Text("Quant.:  ",
-                                style: TextStyle(fontSize: 13)),
-                            Text(quantidade.toStringAsFixed(0),
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 5),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        StreamBuilder<String>(
-                          stream: tempoLancadoController.stream,
-                          initialData: 'Carregando',
-                          builder: (context, snapshot) {
-                            return Text("Item lançado há: ${snapshot.data!}",
-                                style: const TextStyle(fontSize: 13));
-                          },
-                        ),
-                        if (temObservacao) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Observação: $observacao',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        // Row(
-                        //   children: [
-                        //     const Text("Quantidade:  ", style: TextStyle(fontSize: 13)),
-                        //     Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        //   ],
-                        // ),
-                        if (item.tamanho != '' && item.tamanho != '0')
-                          Text(item.tamanho),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 0.0),
-                          child: Row(
+          else
+            SizedBox(
+              height: temObservacao ? 126 : 105,
+              child: InkWell(
+                onTap: () {
+                  _expandOnChanged();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(7.0),
+                  child: Stack(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(height: 5),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (item.destinoDeImpressao != null &&
-                                  item.destinoDeImpressao!.nome.isNotEmpty) ...[
-                                // IconButton(
-                                //   onPressed: () {
-                                //     if (widget.dados != null) {
-                                //       final duration = DateTime.now().difference(DateTime.parse(widget.dados!.dataAbertura!));
-                                //       final newDuration = ConfigSistema.formatarHora(duration);
-
-                                //       Impressao.comprovanteDeConsumo(
-                                //         // tipoImpressao: '2',
-                                //         // tipo: widget.tipo,
-                                //         // comanda: widget.dados!.nome!,
-                                //         numeroPedido: widget.dados!.numeroPedido!,
-                                //         // nomeCliente: widget.dados!.nomeCliente!,
-                                //         nomeEmpresa: widget.dados!.nomeEmpresa!,
-                                //         produtos: [item],
-                                //         celularEmpresa: widget.dados!.celularEmpresa ?? '',
-                                //         cnpjEmpresa: widget.dados!.cnpjEmpresa ?? '',
-                                //         enderecoEmpresa: widget.dados!.enderecoEmpresa ?? '',
-                                //         local: '',
-                                //         nomelancamento: widget.dados!.nomelancamento ?? [],
-                                //         permanencia: newDuration,
-                                //         somaValorHistorico: widget.dados!.somaValorHistorico ?? '',
-                                //         tipodeentrega: widget.dados!.tipodeentrega ?? '',
-                                //         total: widget.dados!.valorTotal ?? '',
-                                //         valorentrega: widget.dados!.valorentrega ?? '',
-                                //         nomeCliente: (widget.dados!.nomeCliente == '' ? null : widget.dados!.nomeCliente) ?? 'Sem Cliente',
-                                //       );
-                                //     }
-                                //   },
-                                //   icon: const Icon(Icons.print_rounded),
-                                // ),
-                              ] else ...[
-                                const SizedBox(),
-                              ],
+                              Flexible(
+                                child: Text(
+                                  '${widget.item.nome} ',
+                                  // '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
+                                  // item.nome,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 30),
                               Row(
                                 children: [
-                                  // IconButton(
-                                  //   icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
-                                  //   onPressed: () {
-                                  //     if (widget.item.quantidade! <= 1) {
-                                  //       showDialog(
-                                  //         context: context,
-                                  //         builder: (context) {
-                                  //           return AlertDialog(
-                                  //             title: const Text('Excluir produto'),
-                                  //             content: const SingleChildScrollView(
-                                  //               child: ListBody(
-                                  //                 children: <Widget>[
-                                  //                   Text('Deseja realmente excluir esse item?'),
-                                  //                 ],
-                                  //               ),
-                                  //             ),
-                                  //             actions: <Widget>[
-                                  //               TextButton(
-                                  //                 child: const Text('Cancelar'),
-                                  //                 onPressed: () {
-                                  //                   Navigator.of(context).pop();
-                                  //                 },
-                                  //               ),
-                                  //               TextButton(
-                                  //                 child: const Text('Excluir'),
-                                  //                 onPressed: () async {
-                                  //                   await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
-                                  //                     if (context.mounted) {
-                                  //                       carrinhoProvedor.listarComandasPedidos();
-                                  //                       Navigator.pop(context);
-                                  //                     }
-
-                                  //                     if (sucesso) return;
-
-                                  //                     if (context.mounted) {
-                                  //                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                                  //                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  //                         content: Text('Ocorreu um erro'),
-                                  //                         showCloseIcon: true,
-                                  //                       ));
-                                  //                     }
-                                  //                   });
-                                  //                 },
-                                  //               ),
-                                  //             ],
-                                  //           );
-                                  //         },
-                                  //       );
-                                  //     } else {
-                                  //       widget.setarQuantidade(false);
-                                  //     }
-                                  //   },
-                                  // ),
-                                  //
-                                  //
-                                  //
-                                  //
-                                  //
-                                  // const SizedBox(width: 10),
-                                  // SizedBox(
-                                  //   width: 30,
-                                  //   child: Text(
-                                  //     widget.item.quantidade!.toStringAsFixed(0),
-                                  //     textAlign: TextAlign.center,
-                                  //     style: const TextStyle(fontSize: 14),
-                                  //   ),
-                                  // ),
-                                  // const SizedBox(width: 60),
-                                  //
-                                  //
-                                  //
-                                  //
-                                  //
-                                  // IconButton(
-                                  //   icon: const Icon(Icons.add_circle_outline_outlined),
-                                  //   onPressed: () {
-                                  //     widget.setarQuantidade(true);
-                                  //   },
-                                  // ),
+                                  Text(
+                                    valorTotal.obterReal(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                  const SizedBox(width: 5),
                                 ],
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
-                      Positioned(
-                        top: 64,
-                        right: 5,
-                        // bottom: 0,
-                        child: SizedBox(
-                          width: 20,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, anim) =>
-                                RotationTransition(
-                              turns: child.key == const ValueKey('icon1')
-                                  ? Tween<double>(begin: 0.75, end: 1)
-                                      .animate(anim)
-                                  : Tween<double>(begin: 1, end: 1)
-                                      .animate(anim),
-                              child: ScaleTransition(scale: anim, child: child),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Text("Código: ${item.codigo}"),
+                              const Spacer(),
+                              const Text("Quant.:  ",
+                                  style: TextStyle(fontSize: 13)),
+                              Text(quantidade.toStringAsFixed(0),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 5),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          StreamBuilder<String>(
+                            stream: tempoLancadoController.stream,
+                            initialData: 'Carregando',
+                            builder: (context, snapshot) {
+                              return Text("Item lançado há: ${snapshot.data!}",
+                                  style: const TextStyle(fontSize: 13));
+                            },
+                          ),
+                          if (temObservacao) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Observação: $observacao',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                             ),
-                            child: _isExpanded
-                                ? const Icon(Icons.keyboard_arrow_down_outlined,
-                                    key: ValueKey('icon1'))
-                                : const Icon(
-                                    Icons.keyboard_arrow_up_outlined,
-                                    key: ValueKey('icon2'),
-                                  ),
+                          ],
+                          // Row(
+                          //   children: [
+                          //     const Text("Quantidade:  ", style: TextStyle(fontSize: 13)),
+                          //     Text(widget.item.quantidade!.toStringAsFixed(0), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          //   ],
+                          // ),
+                          if (item.tamanho != '' && item.tamanho != '0')
+                            Text(item.tamanho),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 0.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (item.destinoDeImpressao != null &&
+                                    item.destinoDeImpressao!.nome
+                                        .isNotEmpty) ...[
+                                  // IconButton(
+                                  //   onPressed: () {
+                                  //     if (widget.dados != null) {
+                                  //       final duration = DateTime.now().difference(DateTime.parse(widget.dados!.dataAbertura!));
+                                  //       final newDuration = ConfigSistema.formatarHora(duration);
+
+                                  //       Impressao.comprovanteDeConsumo(
+                                  //         // tipoImpressao: '2',
+                                  //         // tipo: widget.tipo,
+                                  //         // comanda: widget.dados!.nome!,
+                                  //         numeroPedido: widget.dados!.numeroPedido!,
+                                  //         // nomeCliente: widget.dados!.nomeCliente!,
+                                  //         nomeEmpresa: widget.dados!.nomeEmpresa!,
+                                  //         produtos: [item],
+                                  //         celularEmpresa: widget.dados!.celularEmpresa ?? '',
+                                  //         cnpjEmpresa: widget.dados!.cnpjEmpresa ?? '',
+                                  //         enderecoEmpresa: widget.dados!.enderecoEmpresa ?? '',
+                                  //         local: '',
+                                  //         nomelancamento: widget.dados!.nomelancamento ?? [],
+                                  //         permanencia: newDuration,
+                                  //         somaValorHistorico: widget.dados!.somaValorHistorico ?? '',
+                                  //         tipodeentrega: widget.dados!.tipodeentrega ?? '',
+                                  //         total: widget.dados!.valorTotal ?? '',
+                                  //         valorentrega: widget.dados!.valorentrega ?? '',
+                                  //         nomeCliente: (widget.dados!.nomeCliente == '' ? null : widget.dados!.nomeCliente) ?? 'Sem Cliente',
+                                  //       );
+                                  //     }
+                                  //   },
+                                  //   icon: const Icon(Icons.print_rounded),
+                                  // ),
+                                ] else ...[
+                                  const SizedBox(),
+                                ],
+                                Row(
+                                  children: [
+                                    // IconButton(
+                                    //   icon: widget.item.quantidade! <= 1 ? const Icon(Icons.delete_outline_outlined) : const Icon(Icons.remove_circle_outline_outlined),
+                                    //   onPressed: () {
+                                    //     if (widget.item.quantidade! <= 1) {
+                                    //       showDialog(
+                                    //         context: context,
+                                    //         builder: (context) {
+                                    //           return AlertDialog(
+                                    //             title: const Text('Excluir produto'),
+                                    //             content: const SingleChildScrollView(
+                                    //               child: ListBody(
+                                    //                 children: <Widget>[
+                                    //                   Text('Deseja realmente excluir esse item?'),
+                                    //                 ],
+                                    //               ),
+                                    //             ),
+                                    //             actions: <Widget>[
+                                    //               TextButton(
+                                    //                 child: const Text('Cancelar'),
+                                    //                 onPressed: () {
+                                    //                   Navigator.of(context).pop();
+                                    //                 },
+                                    //               ),
+                                    //               TextButton(
+                                    //                 child: const Text('Excluir'),
+                                    //                 onPressed: () async {
+                                    //                   await carrinhoProvedor.removerComandasPedidos().then((sucesso) {
+                                    //                     if (context.mounted) {
+                                    //                       carrinhoProvedor.listarComandasPedidos();
+                                    //                       Navigator.pop(context);
+                                    //                     }
+
+                                    //                     if (sucesso) return;
+
+                                    //                     if (context.mounted) {
+                                    //                       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    //                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                    //                         content: Text('Ocorreu um erro'),
+                                    //                         showCloseIcon: true,
+                                    //                       ));
+                                    //                     }
+                                    //                   });
+                                    //                 },
+                                    //               ),
+                                    //             ],
+                                    //           );
+                                    //         },
+                                    //       );
+                                    //     } else {
+                                    //       widget.setarQuantidade(false);
+                                    //     }
+                                    //   },
+                                    // ),
+                                    //
+                                    //
+                                    //
+                                    //
+                                    //
+                                    // const SizedBox(width: 10),
+                                    // SizedBox(
+                                    //   width: 30,
+                                    //   child: Text(
+                                    //     widget.item.quantidade!.toStringAsFixed(0),
+                                    //     textAlign: TextAlign.center,
+                                    //     style: const TextStyle(fontSize: 14),
+                                    //   ),
+                                    // ),
+                                    // const SizedBox(width: 60),
+                                    //
+                                    //
+                                    //
+                                    //
+                                    //
+                                    // IconButton(
+                                    //   icon: const Icon(Icons.add_circle_outline_outlined),
+                                    //   onPressed: () {
+                                    //     widget.setarQuantidade(true);
+                                    //   },
+                                    // ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
+                        Positioned(
+                          top: 64,
+                          right: 5,
+                          // bottom: 0,
+                          child: SizedBox(
+                            width: 20,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, anim) =>
+                                  RotationTransition(
+                                turns: child.key == const ValueKey('icon1')
+                                    ? Tween<double>(begin: 0.75, end: 1)
+                                        .animate(anim)
+                                    : Tween<double>(begin: 1, end: 1)
+                                        .animate(anim),
+                                child:
+                                    ScaleTransition(scale: anim, child: child),
+                              ),
+                              child: _isExpanded
+                                  ? const Icon(
+                                      Icons.keyboard_arrow_down_outlined,
+                                      key: ValueKey('icon1'))
+                                  : const Icon(
+                                      Icons.keyboard_arrow_up_outlined,
+                                      key: ValueKey('icon2'),
+                                    ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
           if ((widget.podeEditar && widget.onEditar != null) ||
               (widget.podeExcluir && widget.onExcluir != null)) ...[
             Padding(
@@ -793,30 +798,44 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     final temOpcoes = (item.opcoesPacotesListaFinal ?? []).isNotEmpty;
     final quantidade = item.quantidade ?? 1;
     final textoQuantidade = quantidade == quantidade.roundToDouble()
-        ? quantidade.toInt().toString() : quantidade.toString();
+        ? quantidade.toInt().toString()
+        : quantidade.toString();
     return InkWell(
       onTap: temOpcoes ? _expandOnChanged : null,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(child: Text(item.nome, style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600))),
+            Expanded(
+                child: Text(item.nome,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600))),
             const SizedBox(width: 12),
-            Text(total.obterReal(), style: TextStyle(fontSize: 16,
-                fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary)),
+            Text(total.obterReal(),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary)),
           ]),
           const SizedBox(height: 12),
-          Row(children: [Expanded(child: Text('Código: ${item.codigo}')),
-            Text('Quant.: $textoQuantidade')]),
           Row(children: [
-            Expanded(child: StreamBuilder<String>(stream: tempoLancadoController.stream,
-              initialData: 'agora', builder: (_, snapshot) => Text(
-                'Item lançado há: ${snapshot.data}', style: const TextStyle(fontSize: 13)))),
-            if (temOpcoes) IconButton(
-              tooltip: _isExpanded ? 'Ocultar detalhes' : 'Ver detalhes',
-              onPressed: _expandOnChanged,
-              icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more)),
+            Expanded(child: Text('Código: ${item.codigo}')),
+            Text('Quant.: $textoQuantidade')
+          ]),
+          Row(children: [
+            Expanded(
+                child: StreamBuilder<String>(
+                    stream: tempoLancadoController.stream,
+                    initialData: 'agora',
+                    builder: (_, snapshot) => Text(
+                        'Item lançado há: ${snapshot.data}',
+                        style: const TextStyle(fontSize: 13)))),
+            if (temOpcoes)
+              IconButton(
+                  tooltip: _isExpanded ? 'Ocultar detalhes' : 'Ver detalhes',
+                  onPressed: _expandOnChanged,
+                  icon: Icon(
+                      _isExpanded ? Icons.expand_less : Icons.expand_more)),
           ]),
           if (item.observacao?.trim().isNotEmpty ?? false)
             Text('Observação: ${item.observacao}'),
