@@ -106,7 +106,8 @@ class ServicoBalcao {
     var idUsuario = usuarioProvedor.usuario!.id;
     try {
       var response = await dio.cliente.get(
-          '$caminhoAPI/listar_por_id.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+          '$caminhoAPI/listar_por_id.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda',
+          options: Options(extra: {'semCache': true}));
 
       var jsonData = response.data;
       var dados = jsonData['dados'];
@@ -168,7 +169,8 @@ class ServicoBalcao {
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
     var response = await dio.cliente.get(
-        '$caminhoAPI/listar_financeiro_venda.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda');
+        '$caminhoAPI/listar_financeiro_venda.php?id_empresa=$idEmpresa&id_usuario=$idUsuario&id=$idVenda',
+        options: Options(extra: {'semCache': true}));
 
     var jsonData = response.data;
     var dados = jsonData['dados'];

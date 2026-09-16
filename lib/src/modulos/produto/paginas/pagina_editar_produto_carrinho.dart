@@ -168,10 +168,11 @@ class _PaginaEditarProdutoCarrinhoState
       });
       await WidgetsBinding.instance.endOfFrame;
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (erro) {
       if (mounted) {
-        _avisar(
-            'Não foi possível salvar. Confira se o carrinho ainda está aberto e tente novamente.');
+        _avisar(erro is StateError
+            ? erro.message.toString()
+            : 'Não foi possível salvar. Confira se o carrinho ainda está aberto e tente novamente.');
         setState(() => _salvando = false);
       }
     }

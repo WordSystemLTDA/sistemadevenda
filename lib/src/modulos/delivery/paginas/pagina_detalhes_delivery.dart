@@ -1,22 +1,22 @@
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/detalhes_pedido_venda.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_edicao_pedido.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
-import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
-import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class PaginaDetalhesDelivery extends StatefulWidget {
   final ServicoDelivery servico;
@@ -36,6 +36,10 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
   Modeloworddadoscardapio? _dados;
   bool _carregando = false, _ocupado = false;
   String? _erro;
+  ServicoEdicaoPedido get _edicao => ServicoEdicaoPedido(widget.servico);
+  bool get _podeEditar =>
+      _pedido != null && !_pedido!.cancelado && !_ocupado && !_carregando;
+
   @override
   void initState() {
     super.initState();
@@ -53,12 +57,21 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
         widget.servico.pedido(widget.id),
         widget.servico.dadosCardapio(widget.id)
       ]);
-      if (mounted) {
-        setState(() {
-          _dados = resultados[1] as Modeloworddadoscardapio;
-          _pedido = (resultados[0] as PedidoDelivery).comEndereco(_dados!);
-        });
-      }
+      if (!mounted) return;
+      final dados = resultados[1] as Modeloworddadoscardapio;
+      final pedido = resultados[0] as PedidoDelivery;
+      final produtos = ImpressaoDelivery.produtosComDetalhesDoPedido(
+          pedido, dados.produtos ?? []);
+      dados.produtos = produtos;
+      final atualizado = PedidoDelivery.fromMap({
+        ...pedido.dados,
+        'produtos': produtos.map((p) => p.toMap()).toList()
+      }).comEndereco(dados);
+      setState(() {
+        _dados = dados;
+        _pedido = atualizado;
+      });
+      widget.servico.notificarPedidoAtualizado(atualizado);
     } catch (_) {
       if (mounted) {
         setState(() => _erro = 'Não foi possível atualizar o pedido.');
@@ -68,51 +81,69 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
     }
   }
 
+  void _avisar(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensagem)));
+  }
+
   Future<void> _imprimir(bool preparo) async {
     if (_ocupado || _pedido == null) return;
     setState(() => _ocupado = true);
     try {
+      final atual = await widget.servico.pedido(widget.id);
       await ImpressaoDelivery.imprimir(
-          widget.servico, Modular.get<Server>(), _pedido!,
+          widget.servico, Modular.get<Server>(), atual,
           preparo: preparo);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Não foi possível preparar a impressão.')));
-      }
+      _avisar('Não foi possível preparar a impressão.');
     } finally {
       if (mounted) setState(() => _ocupado = false);
     }
   }
 
-  Future<void> _contato() async {
-    final telefone =
-        _pedido?.texto('celularCliente').replaceAll(RegExp(r'\D'), '') ?? '';
-    if (telefone.isEmpty) return;
+  Future<void> _aposEditar() async {
+    if (mounted) await _listar();
     try {
-      final abriu = await launchUrl(Uri(scheme: 'tel', path: telefone));
-      if (!abriu) throw StateError('Telefone indisponível');
+      final atual = await widget.servico.pedido(widget.id);
+      await ImpressaoDelivery.imprimir(
+          widget.servico, Modular.get<Server>(), atual,
+          ambos: true);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Telefone do cliente: $telefone')));
-      }
+      _avisar(
+          'Alteração salva. Não foi possível reenviar a impressão. Use o botão de imprimir.');
     }
   }
 
-  Future<void> _editarProduto(Modelowordprodutos produto) async {
-    if (_ocupado || _pedido == null) return;
+  Future<void> _editarPedido() async {
+    if (!_podeEditar) return;
+    final original = _pedido!;
     setState(() => _ocupado = true);
     try {
-      final pedido = await widget.servico.pedido(widget.id);
-      if (!mounted) return;
+      final salvo = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => PaginaNovoDelivery(
+                  servico: widget.servico,
+                  editarPedido: original,
+                  aoSalvarEdicao: (dados) => _edicao.salvarDados(
+                      TipoCardapio.delivery, original, dados))));
+      if (salvo == true) await _aposEditar();
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _editarProduto(Modelowordprodutos original) async {
+    if (!_podeEditar) return;
+    setState(() => _ocupado = true);
+    try {
       final edicao = EdicaoProdutoCarrinho(
-        item: Modelowordprodutos.fromMap(produto.toMap()),
-        servico: Modular.get<ServicoProduto>(),
-        categorias: Modular.get<ServicosCategoria>(),
-        usuario: widget.servico.usuario,
-      );
-      await Navigator.push(
+          item: Modelowordprodutos.fromMap(original.toMap()),
+          servico: Modular.get<ServicoProduto>(),
+          categorias: Modular.get<ServicosCategoria>(),
+          usuario: widget.servico.usuario);
+      final salvo = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
               builder: (_) => PaginaEditarProdutoCarrinho(
@@ -120,22 +151,16 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                   mostrarControleQuantidade: true,
                   carregarConfiguracao: () =>
                       Modular.get<ServicoConfigBigchef>().listar(),
-                  aoSalvar: (item) async {
-                    await widget.servico.acao('editarProduto', pedido, {
-                      'produto': normalizarProdutoParaEnvio(item.toMap()),
-                      'valorOriginal': produto.valorVenda,
-                      'quantidadeOriginal': produto.quantidade,
-                    });
+                  aoSalvar: (produto) async {
+                    await _edicao.salvarProduto(
+                        TipoCardapio.delivery, widget.id, original, produto);
                     return true;
                   })));
-      if (mounted) await _listar();
+      if (salvo == true) await _aposEditar();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(e is StateError
-                ? e.message.toString()
-                : 'Não foi possível editar o produto.')));
-      }
+      _avisar(e is StateError
+          ? e.message.toString()
+          : 'Não foi possível editar o produto.');
     } finally {
       if (mounted) setState(() => _ocupado = false);
     }
@@ -143,18 +168,15 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final pedido = _pedido;
     return Scaffold(
       appBar: AppBar(
-          title: Text(pedido == null
-              ? 'Detalhes do Delivery'
-              : 'Pedido #${pedido.numero}'),
-          backgroundColor: cs.inversePrimary,
+          title: const Text('Detalhes do Delivery'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
             IconButton(
                 tooltip: 'Atualizar pedido',
-                onPressed: _carregando ? null : _listar,
+                onPressed: _ocupado || _carregando ? null : _listar,
                 icon: const Icon(Icons.refresh)),
             PopupMenuButton<bool>(
                 enabled: pedido != null && !_ocupado,
@@ -168,50 +190,52 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                           value: false, child: Text('Imprimir comprovante'))
                     ]),
           ]),
-      bottomNavigationBar: pedido == null || pedido.encerrado
+      bottomNavigationBar: pedido == null
           ? null
           : SafeArea(
               top: false,
-              minimum: const EdgeInsets.all(12),
-              child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                        onPressed: _ocupado
-                            ? null
-                            : () async {
-                                await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => PaginaCardapio(
-                                            tipo: TipoCardapio.delivery,
-                                            id: pedido.id,
-                                            idCliente: pedido.cliente,
-                                            tipodeentrega: pedido.tipoEntrega,
-                                            nomeAtendimento:
-                                                'Delivery #${pedido.numero}')));
-                                if (mounted) _listar();
-                              },
-                        icon: const Icon(Icons.add_shopping_cart),
-                        label: const Text('Adicionar produtos')),
-                    if (pedido.restante > .009)
-                      FilledButton.icon(
-                          onPressed: _ocupado
-                              ? null
-                              : () async {
-                                  await receberDelivery(
-                                      context, widget.servico, pedido.id);
-                                  if (mounted) _listar();
-                                },
-                          icon: const Icon(Icons.payments_outlined),
-                          label: const Text('Receber pagamento')),
-                  ])),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                RodapeTotalPedidoVenda(total: pedido.total),
+                if (!pedido.encerrado)
+                  Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Wrap(spacing: 8, runSpacing: 8, children: [
+                        OutlinedButton.icon(
+                            onPressed: _ocupado
+                                ? null
+                                : () async {
+                                    await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => PaginaCardapio(
+                                                tipo: TipoCardapio.delivery,
+                                                id: pedido.id,
+                                                idCliente: pedido.cliente,
+                                                tipodeentrega:
+                                                    pedido.tipoEntrega,
+                                                nomeAtendimento:
+                                                    'Delivery #${pedido.numero}')));
+                                    if (mounted) await _listar();
+                                  },
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('Adicionar produtos')),
+                        if (pedido.restante > .009)
+                          FilledButton.icon(
+                              onPressed: _ocupado
+                                  ? null
+                                  : () async {
+                                      await receberDelivery(
+                                          context, widget.servico, pedido.id);
+                                      if (mounted) await _listar();
+                                    },
+                              icon: const Icon(Icons.payments_outlined),
+                              label: const Text('Receber pagamento')),
+                      ])),
+              ])),
       body: RefreshIndicator(
           onRefresh: _listar,
           child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 if (_carregando || _ocupado) const LinearProgressIndicator(),
@@ -222,77 +246,33 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                           tooltip: 'Tentar novamente',
                           onPressed: _listar,
                           icon: const Icon(Icons.refresh))),
-                if (pedido != null) ...[
-                  ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(pedido.tipoEntrega == '1'
-                          ? Icons.delivery_dining
-                          : Icons.shopping_bag_outlined),
-                      title: Text(pedido.nome,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                          '${pedido.nomeEntrega} · ${pedido.texto('status')}'),
-                      trailing: pedido.texto('celularCliente').isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Ligar para cliente',
-                              onPressed: _contato,
-                              icon: const Icon(Icons.phone_outlined))),
-                  if (pedido.tipoEntrega == '1' && pedido.endereco.isNotEmpty)
-                    Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(pedido.endereco)),
-                  if (pedido.observacao.isNotEmpty)
-                    Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text('Observação: ${pedido.observacao}')),
-                  const Divider(),
-                  _linha('Total', pedido.total.obterReal()),
-                  if (pedido.tipoEntrega == '1')
-                    _linha('Taxa de entrega', pedido.taxaEntrega.obterReal()),
-                  _linha('Recebido', pedido.pago.obterReal()),
-                  _linha('A receber', pedido.restante.obterReal()),
-                  if (pedido.pagamentos.isNotEmpty)
-                    ExpansionTile(
-                        tilePadding: EdgeInsets.zero,
-                        title: const Text('Pagamentos'),
-                        children: [
-                          for (final p in pedido.pagamentos)
-                            ListTile(
-                                title: Text('${p['nome']}'),
-                                trailing:
-                                    Text(valorDelivery(p['valor']).obterReal()))
-                        ]),
-                  const SizedBox(height: 16),
-                  Text('Itens do pedido',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  if (_dados?.produtos?.isEmpty ?? true)
-                    const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text('Nenhum produto adicionado')),
-                  for (final produto in _dados?.produtos ?? [])
-                    CardProdutoAcompanhar(
-                        item: produto,
-                        podeEditar:
-                            widget.editar && !_ocupado && !pedido.cancelado,
-                        onEditar: () => _editarProduto(produto),
-                        dados: _dados,
-                        idComanda: '0',
-                        idComandaPedido: pedido.id,
-                        idMesa: '0',
-                        value: null,
-                        setarQuantidade: (_) {},
-                        tipo: TipoCardapio.delivery),
-                ],
+                if (pedido != null)
+                  DetalhesPedidoVenda(
+                    tipo: TipoCardapio.delivery,
+                    numero: pedido.numero,
+                    cliente: pedido.nome,
+                    telefone: pedido.texto('celularCliente'),
+                    modalidade: pedido.nomeEntrega,
+                    endereco: pedido.tipoEntrega == '1' ? pedido.endereco : '',
+                    observacao: pedido.observacao,
+                    produtos: _dados?.produtos ?? [],
+                    total: pedido.total,
+                    recebido: pedido.pago,
+                    entrega: pedido.taxaEntrega,
+                    desconto: valorDelivery(pedido.dados['valorDesconto']),
+                    acrescimo: valorDelivery(pedido.dados['valorAcrescimo']),
+                    editarPedido: _podeEditar ? _editarPedido : null,
+                    editarProduto: _podeEditar ? _editarProduto : null,
+                    pagamentos: Column(children: [
+                      for (final p in pedido.pagamentos)
+                        ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${p['nome']}'),
+                            trailing:
+                                Text(valorDelivery(p['valor']).obterReal()))
+                    ]),
+                  ),
               ])),
     );
   }
-
-  Widget _linha(String nome, String valor) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        Expanded(child: Text(nome)),
-        Text(valor, style: const TextStyle(fontWeight: FontWeight.w700))
-      ]));
 }

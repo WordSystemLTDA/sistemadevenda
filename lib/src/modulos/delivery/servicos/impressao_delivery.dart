@@ -10,16 +10,14 @@ import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 class ImpressaoDelivery {
   static Future<void> imprimir(
       ServicoDelivery servico, Server server, PedidoDelivery pedido,
-      {bool preparo = false}) async {
+      {bool preparo = false, bool ambos = false}) async {
     final dados = await servico.dadosCardapio(pedido.id);
     final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
-    final produtos = preparo || pedido.tipoEntrega == '1'
-        ? _produtosComDetalhesDoPedido(pedido, produtosBase)
-        : produtosBase;
+    final produtos = produtosComDetalhesDoPedido(pedido, produtosBase);
     if (produtos.isEmpty) {
       throw StateError('O pedido não tem produtos para impressão.');
     }
-    final mensagens = preparo
+    final mensagens = preparo || ambos
         ? Impressao.prepararComprovanteDePedido(
             produtos: produtos,
             tipoTela: TipoCardapio.delivery,
@@ -29,10 +27,14 @@ class ImpressaoDelivery {
             comanda: 'Delivery ${pedido.id}',
             numeroPedido: pedido.numero)
         : comprovantes(servico, pedido.comEndereco(dados), produtos);
+    if (ambos) {
+      mensagens
+          .addAll(comprovantes(servico, pedido.comEndereco(dados), produtos));
+    }
     await server.enviarImpressoes(mensagens);
   }
 
-  static List<Modelowordprodutos> _produtosComDetalhesDoPedido(
+  static List<Modelowordprodutos> produtosComDetalhesDoPedido(
     PedidoDelivery pedido,
     List<Modelowordprodutos> produtosBase,
   ) {
@@ -75,6 +77,9 @@ class ImpressaoDelivery {
         !_vazio(mapaBase['hashprodutos'])) {
       mapa['hashprodutos'] = mapaBase['hashprodutos'];
     }
+    if (_vazio(mapaDetalhado['dataLancado'])) {
+      mapa['dataLancado'] = mapaBase['dataLancado'];
+    }
     if (!_listaTemItens(mapaDetalhado['opcoesPacotesListaFinal']) &&
         _listaTemItens(mapaBase['opcoesPacotesListaFinal'])) {
       mapa['opcoesPacotesListaFinal'] = mapaBase['opcoesPacotesListaFinal'];
@@ -104,6 +109,17 @@ class ImpressaoDelivery {
     Set<int> usados,
     int indice,
   ) {
+    // Dois itens podem ter o mesmo sabor principal, mas montagens diferentes.
+    if (!_vazio(base.iditensvenda)) {
+      for (var i = 0; i < detalhados.length; i++) {
+        if (!usados.contains(i) &&
+            base.iditensvenda == detalhados[i].iditensvenda) {
+          usados.add(i);
+          return detalhados[i];
+        }
+      }
+      return null;
+    }
     final chavesBase = _chavesProduto(base);
     for (var i = 0; i < detalhados.length; i++) {
       if (usados.contains(i)) continue;
@@ -138,11 +154,16 @@ class ImpressaoDelivery {
   static bool _vazio(Object? valor) => (valor?.toString().trim() ?? '').isEmpty;
 
   static List<String> comprovantes(ServicoDelivery servico,
-      PedidoDelivery pedido, List<Modelowordprodutos> produtos) {
+      PedidoDelivery pedido, List<Modelowordprodutos> produtos,
+      {TipoCardapio tipo = TipoCardapio.delivery}) {
     final grupos = <String, List<Modelowordprodutos>>{};
-    for (final p in produtos) {
-      final computador = p.destinoDeImpressao?.nomedopc ?? '';
-      grupos.putIfAbsent(computador, () => []).add(p);
+    if (tipo == TipoCardapio.balcao) {
+      grupos[''] = produtos;
+    } else {
+      for (final p in produtos) {
+        final computador = p.destinoDeImpressao?.nomedopc ?? '';
+        grupos.putIfAbsent(computador, () => []).add(p);
+      }
     }
     final usuario = servico.usuario.usuario;
     return [
@@ -150,7 +171,7 @@ class ImpressaoDelivery {
         jsonEncode({
           'idRequisicao':
               'delivery-${pedido.id}-${DateTime.now().microsecondsSinceEpoch}-${grupo.key}',
-          'tipo': 'Delivery',
+          'tipo': tipo.nome,
           'tipoImpressao': pedido.tipoEntrega == '1' ? '3' : '2',
           'nomedopc': grupo.key,
           'nomeConexao': usuario?.nome ?? '',

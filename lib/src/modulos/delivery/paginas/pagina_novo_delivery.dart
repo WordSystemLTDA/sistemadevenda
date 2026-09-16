@@ -13,8 +13,17 @@ class PaginaNovoDelivery extends StatefulWidget {
   final ServicoDelivery servico;
   final PedidoDelivery? clonar;
   final bool semCliente;
+  final PedidoDelivery? editarPedido;
+  final Future<void> Function(Map<String, dynamic>)? aoSalvarEdicao;
+  final bool permitirEntrega;
   const PaginaNovoDelivery(
-      {super.key, required this.servico, this.clonar, this.semCliente = false});
+      {super.key,
+      required this.servico,
+      this.clonar,
+      this.semCliente = false,
+      this.editarPedido,
+      this.aoSalvarEdicao,
+      this.permitirEntrega = true});
   @override
   State<PaginaNovoDelivery> createState() => _PaginaNovoDeliveryState();
 }
@@ -28,15 +37,24 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   String? _erro;
   String? _idCriado;
   ConfigDelivery? _config;
-  double get _taxa => _tipo == '1'
-      ? _config?.taxaEntrega(_endereco?['valortaxabairro']) ?? 0
-      : 0;
+  double get _taxa {
+    if (_tipo != '1') return 0;
+    final original = widget.editarPedido;
+    if (original != null &&
+        original.tipoEntrega == _tipo &&
+        original.cliente == _cliente &&
+        original.texto('idendereco') == '${_endereco?['id']}') {
+      return original.taxaEntrega;
+    }
+    return _config?.taxaEntrega(_endereco?['valortaxabairro']) ?? 0;
+  }
+
   int _consulta = 0;
   bool _clonePreparado = false;
   @override
   void initState() {
     super.initState();
-    final base = widget.clonar;
+    final base = widget.editarPedido ?? widget.clonar;
     if (base != null) {
       _observacao.text = base.observacao;
       _tipo = base.tipoEntrega;
@@ -172,6 +190,17 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
       _erro = null;
     });
     try {
+      if (widget.editarPedido != null) {
+        await widget.aoSalvarEdicao!({
+          'cliente': _cliente,
+          'endereco': _tipo == '1' ? '${_endereco?['id'] ?? '0'}' : '0',
+          'tipoentrega': _tipo,
+          'taxa': _taxa.toStringAsFixed(2),
+          'observacao': _observacao.text.trim(),
+        });
+        if (mounted) Navigator.pop(context, true);
+        return;
+      }
       _idCriado ??= await widget.servico.criar(
           cliente: _cliente,
           endereco: '${_endereco?['id'] ?? '0'}',
@@ -218,7 +247,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
         canPop: !_salvando,
         child: Scaffold(
           appBar: AppBar(
-              title: const Text('Novo Delivery'),
+              title: Text(widget.editarPedido != null
+                  ? 'Editar pedido'
+                  : 'Novo Delivery'),
               backgroundColor: cs.inversePrimary),
           bottomNavigationBar: SafeArea(
               top: false,
@@ -232,10 +263,16 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.restaurant_menu),
+                          : Icon(widget.editarPedido != null
+                              ? Icons.check
+                              : Icons.restaurant_menu),
                       label: Text(_salvando
-                          ? 'Abrindo pedido...'
-                          : 'Abrir cardápio')))),
+                          ? (widget.editarPedido != null
+                              ? 'Salvando...'
+                              : 'Abrindo pedido...')
+                          : (widget.editarPedido != null
+                              ? 'Salvar alterações'
+                              : 'Abrir cardápio'))))),
           body: AbsorbPointer(
               absorbing: _idCriado != null,
               child: Center(
@@ -248,8 +285,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                           children: [
                             _titulo('Tipo de entrega', Icons.delivery_dining),
                             Row(children: [
-                              for (final opcao in const [
-                                ('1', 'Entrega', Icons.delivery_dining),
+                              for (final opcao in [
+                                if (widget.permitirEntrega)
+                                  ('1', 'Entrega', Icons.delivery_dining),
                                 ('2', 'Retirada', Icons.shopping_bag_outlined),
                                 ('3', 'No local', Icons.restaurant_outlined)
                               ]) ...[

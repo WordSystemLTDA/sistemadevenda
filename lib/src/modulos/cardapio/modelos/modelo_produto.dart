@@ -84,6 +84,7 @@ class Modelowordprodutos {
   String id;
   String? hashprodutos;
   String? iditensvenda;
+  String? versaoEdicao;
   String nome;
   String codigo;
   String imprimirCodigoProdutoPreparo;
@@ -130,6 +131,7 @@ class Modelowordprodutos {
   Modelowordprodutos({
     required this.id,
     this.iditensvenda,
+    this.versaoEdicao,
     this.hashprodutos,
     required this.nome,
     required this.codigo,
@@ -178,6 +180,7 @@ class Modelowordprodutos {
     return <String, dynamic>{
       'id': id,
       'iditensvenda': iditensvenda,
+      'versaoEdicao': versaoEdicao,
       'hashprodutos': hashprodutos,
       'nome': nome,
       'codigo': codigo,
@@ -231,6 +234,7 @@ class Modelowordprodutos {
       limiteSaboresBorda: _inteiroOpcional(map['limiteSaboresBorda']),
       hashprodutos: map['hashprodutos']?.toString(),
       iditensvenda: (map['iditensvenda'] ?? map['id_itens_venda'])?.toString(),
+      versaoEdicao: map['versaoEdicao']?.toString(),
       nome: _texto(map['nome']),
       codigo: _texto(map['codigo']),
       imprimirCodigoProdutoPreparo: (map['imprimirCodigoProdutoPreparo'] ??

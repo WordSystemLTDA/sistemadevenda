@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 class InformacoesRetornoModelo {
+  final String idEndereco, valorRecebido;
   final String cliente;
   final String nomeCliente;
   final String nomevendedor;
@@ -75,6 +76,8 @@ class InformacoesRetornoModelo {
   final String? observacaoDoPedido;
 
   InformacoesRetornoModelo({
+    this.idEndereco = '0',
+    this.valorRecebido = '0',
     required this.cliente,
     required this.nomeCliente,
     required this.nomevendedor,
@@ -150,6 +153,8 @@ class InformacoesRetornoModelo {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
+      'idEndereco': idEndereco,
+      'valorRecebido': valorRecebido,
       'cliente': cliente,
       'nomeCliente': nomeCliente,
       'nomevendedor': nomevendedor,
@@ -226,6 +231,8 @@ class InformacoesRetornoModelo {
 
   factory InformacoesRetornoModelo.fromMap(Map<String, dynamic> map) {
     return InformacoesRetornoModelo(
+      idEndereco: '${map['idEndereco'] ?? '0'}',
+      valorRecebido: '${map['valorRecebido'] ?? '0'}',
       cliente: map['cliente'] as String,
       nomeCliente: map['nomeCliente'] as String,
       nomevendedor: map['nomevendedor'] as String,
@@ -295,12 +302,18 @@ class InformacoesRetornoModelo {
       valortroco: map['valortroco'] as String,
       valorentrega: map['valorentrega'] as String,
       dataAbertura: map['dataAbertura'] as String,
-      motivoCancelamento: map['motivoCancelamento'] != null ? map['motivoCancelamento'] as String : null,
-      observacaoDoPedido: map['observacaoDoPedido'] != null ? map['observacaoDoPedido'] as String : null,
+      motivoCancelamento: map['motivoCancelamento'] != null
+          ? map['motivoCancelamento'] as String
+          : null,
+      observacaoDoPedido: map['observacaoDoPedido'] != null
+          ? map['observacaoDoPedido'] as String
+          : null,
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  factory InformacoesRetornoModelo.fromJson(String source) => InformacoesRetornoModelo.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory InformacoesRetornoModelo.fromJson(String source) =>
+      InformacoesRetornoModelo.fromMap(
+          json.decode(source) as Map<String, dynamic>);
 }

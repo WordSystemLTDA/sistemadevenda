@@ -21,6 +21,7 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final VoidCallback? onEditar;
   final bool podeExcluir;
   final VoidCallback? onExcluir;
+  final bool cabecalhoAdaptavel;
 
   const CardProdutoAcompanhar({
     super.key,
@@ -36,6 +37,7 @@ class CardProdutoAcompanhar extends StatefulWidget {
     this.onEditar,
     this.podeExcluir = false,
     this.onExcluir,
+    this.cabecalhoAdaptavel = false,
   });
 
   @override
@@ -167,7 +169,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
+          if (widget.cabecalhoAdaptavel)
+            _cabecalhoDetalhado(context, valorTotal)
+          else SizedBox(
             height: temObservacao ? 126 : 105,
             child: InkWell(
               onTap: () {
@@ -780,6 +784,43 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _cabecalhoDetalhado(BuildContext context, double total) {
+    final item = widget.item;
+    final temOpcoes = (item.opcoesPacotesListaFinal ?? []).isNotEmpty;
+    final quantidade = item.quantidade ?? 1;
+    final textoQuantidade = quantidade == quantidade.roundToDouble()
+        ? quantidade.toInt().toString() : quantidade.toString();
+    return InkWell(
+      onTap: temOpcoes ? _expandOnChanged : null,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Text(item.nome, style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w600))),
+            const SizedBox(width: 12),
+            Text(total.obterReal(), style: TextStyle(fontSize: 16,
+                fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [Expanded(child: Text('Código: ${item.codigo}')),
+            Text('Quant.: $textoQuantidade')]),
+          Row(children: [
+            Expanded(child: StreamBuilder<String>(stream: tempoLancadoController.stream,
+              initialData: 'agora', builder: (_, snapshot) => Text(
+                'Item lançado há: ${snapshot.data}', style: const TextStyle(fontSize: 13)))),
+            if (temOpcoes) IconButton(
+              tooltip: _isExpanded ? 'Ocultar detalhes' : 'Ver detalhes',
+              onPressed: _expandOnChanged,
+              icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more)),
+          ]),
+          if (item.observacao?.trim().isNotEmpty ?? false)
+            Text('Observação: ${item.observacao}'),
+        ]),
       ),
     );
   }

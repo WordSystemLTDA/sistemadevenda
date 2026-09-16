@@ -1,22 +1,27 @@
-import 'package:app/src/essencial/config_sistema.dart';
-import 'package:app/src/essencial/utils/impressao.dart';
-import 'package:app/src/essencial/widgets/keep_alive_wrapper.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_lista_financeiro_venda.dart';
 import 'package:app/src/modulos/balcao/modelos/retorno_listar_por_id_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/widgets/modal_cancelar_venda.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
-import 'package:brasil_fields/brasil_fields.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/detalhes_pedido_venda.dart';
+import 'package:app/src/modulos/cardapio/servicos/servico_edicao_pedido.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaDetalhesDaVendaBalcao extends StatefulWidget {
   final String idVenda;
   const PaginaDetalhesDaVendaBalcao({super.key, required this.idVenda});
-
   @override
   State<PaginaDetalhesDaVendaBalcao> createState() =>
       _PaginaDetalhesDaVendaBalcaoState();
@@ -24,628 +29,241 @@ class PaginaDetalhesDaVendaBalcao extends StatefulWidget {
 
 class _PaginaDetalhesDaVendaBalcaoState
     extends State<PaginaDetalhesDaVendaBalcao> {
-  var servico = Modular.get<ServicoBalcao>();
-  RetornoListarPorIdBalcao? informacoes;
-  bool carregando = true;
-  List<Modelolistafinanceirovenda> parcelas = [];
+  final servico = Modular.get<ServicoBalcao>();
+  final _delivery = Modular.get<ServicoDelivery>();
+  RetornoListarPorIdBalcao? _dados;
+  List<Modelolistafinanceirovenda> _parcelas = [];
+  bool _carregando = false, _ocupado = false;
+  String? _erro;
+  ServicoEdicaoPedido get _edicao => ServicoEdicaoPedido(_delivery);
+  bool get _podeEditar =>
+      !_ocupado &&
+      !_carregando &&
+      _dados != null &&
+      !_dados!.informacoes.status.startsWith('Cancelad');
+
+  PedidoDelivery get _pedido => PedidoDelivery.fromMap({
+        ...ServicoEdicaoPedido.pedidoBalcao(widget.idVenda, _dados!).dados,
+        'lancamentos': [
+          for (final p in _parcelas)
+            {
+              'nome': p.entradaMov,
+              'valor': valorDelivery(p.valorMovF.replaceAll('R\$', '').trim())
+                  .toStringAsFixed(2)
+            }
+        ],
+      });
 
   @override
   void initState() {
     super.initState();
-    listar();
+    _listar();
   }
 
-  void listar() async {
-    informacoes = await servico.listarPorId(widget.idVenda);
-    parcelas = await servico.listarFinanceiroVenda(widget.idVenda);
-
+  Future<void> _listar() async {
+    if (_carregando) return;
     setState(() {
-      carregando = false;
+      _carregando = true;
+      _erro = null;
     });
+    try {
+      final dados = await servico.listarPorId(widget.idVenda);
+      final parcelas = await servico.listarFinanceiroVenda(widget.idVenda);
+      if (mounted) {
+        setState(() {
+          _dados = dados;
+          _parcelas = parcelas;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _erro = 'Não foi possível atualizar o pedido.');
+      }
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  void _avisar(String mensagem) {
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensagem)));
+    }
+  }
+
+  Future<void> _imprimir(String opcao) async {
+    if (_ocupado || _dados == null) return;
+    setState(() => _ocupado = true);
+    try {
+      await _listar();
+      if (_erro != null) throw StateError(_erro!);
+      await _edicao.reimprimirBalcao(Modular.get<Server>(), _pedido,
+          preparo: opcao != 'comprovante', comprovante: opcao != 'preparo');
+    } catch (_) {
+      _avisar('Não foi possível preparar a impressão.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _aposEditar() async {
+    await _listar();
+    Modular.get<ProvedorBalcao>().listar();
+    try {
+      if (_erro != null) throw StateError(_erro!);
+      await _edicao.reimprimirBalcao(Modular.get<Server>(), _pedido);
+    } catch (_) {
+      _avisar(
+          'Alteração salva. Não foi possível reenviar a impressão. Use o botão de imprimir.');
+    }
+  }
+
+  Future<void> _editarPedido() async {
+    if (!_podeEditar) return;
+    final original = _pedido;
+    setState(() => _ocupado = true);
+    try {
+      final salvo = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => PaginaNovoDelivery(
+                  servico: _delivery,
+                  editarPedido: original,
+                  permitirEntrega: false,
+                  aoSalvarEdicao: (dados) => _edicao.salvarDados(
+                      TipoCardapio.balcao, original, dados))));
+      if (salvo == true && mounted) await _aposEditar();
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _editarProduto(Modelowordprodutos original) async {
+    if (!_podeEditar) return;
+    setState(() => _ocupado = true);
+    try {
+      final edicao = EdicaoProdutoCarrinho(
+          item: Modelowordprodutos.fromMap(original.toMap()),
+          servico: Modular.get<ServicoProduto>(),
+          categorias: Modular.get<ServicosCategoria>(),
+          usuario: servico.usuarioProvedor);
+      final salvo = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => PaginaEditarProdutoCarrinho(
+                  edicao: edicao,
+                  mostrarControleQuantidade: true,
+                  carregarConfiguracao: () =>
+                      Modular.get<ServicoConfigBigchef>().listar(),
+                  aoSalvar: (produto) async {
+                    await _edicao.salvarProduto(
+                        TipoCardapio.balcao, widget.idVenda, original, produto);
+                    return true;
+                  })));
+      if (salvo == true && mounted) await _aposEditar();
+    } catch (e) {
+      _avisar(e is StateError
+          ? e.message.toString()
+          : 'Não foi possível editar o produto.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _cancelar() async {
+    await showDialog<void>(
+        context: context,
+        builder: (_) => ModalCancelarVenda(aoSalvar: (justificativa) async {
+              final resposta =
+                  await servico.excluir(widget.idVenda, justificativa);
+              if (!mounted) return;
+              if (!resposta.sucesso) {
+                _avisar(resposta.mensagem);
+                return;
+              }
+              Modular.get<ProvedorBalcao>().listar();
+              await _listar();
+            }));
   }
 
   @override
   Widget build(BuildContext context) {
+    final pedido = _dados == null ? null : _pedido;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalhes Balcão'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      floatingActionButtonLocation: ExpandableFab.location,
-      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
-      floatingActionButton: Stack(
-        // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Positioned(
-            left: 0,
-            bottom: 0,
-            child: SizedBox(
-              height: 800,
-              width: 300,
-              child: ExpandableFab(
-                distance: 70,
-                pos: ExpandableFabPos.left,
-                type: ExpandableFabType.up,
-                openButtonBuilder: RotateFloatingActionButtonBuilder(
-                  child: const Icon(Icons.print_outlined),
-                  fabSize: ExpandableFabSize.regular,
-                  shape: const CircleBorder(),
-                ),
-                closeButtonBuilder: DefaultFloatingActionButtonBuilder(
-                  child: const Icon(Icons.close),
-                  fabSize: ExpandableFabSize.regular,
-                  shape: const CircleBorder(),
-                ),
-                children: [
-                  FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () async {
-                      final duration = DateTime.now().difference(DateTime.parse(
-                          informacoes!.informacoes.dataAbertura));
-                      final newDuration = ConfigSistema.formatarHora(duration);
-
-                      Impressao.comprovanteDoEntregador(
-                        nomeCliente: informacoes!.informacoes.nomeCliente,
-                        nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                        produtos: informacoes!.produtos,
-                        nomelancamento: List<ModeloNomeLancamento>.from(
-                            parcelas.map((elemento) {
-                          return ModeloNomeLancamento(
-                              nome: elemento.entradaMov,
-                              valor: UtilBrasilFields.converterMoedaParaDouble(
-                                      elemento.valorMovF)
-                                  .toStringAsExponential(2));
-                        })),
-                        somaValorHistorico: informacoes!.informacoes.subtotal,
-                        cnpjEmpresa: informacoes!.informacoes.docempresa,
-                        celularEmpresa: informacoes!.informacoes.celularcliente,
-                        enderecoEmpresa:
-                            informacoes!.informacoes.enderecoempresa,
-                        permanencia: newDuration,
-                        total: informacoes!.informacoes.subtotal,
-                        numeroPedido: informacoes!.informacoes.numerodopedido,
-                        tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                        celularCliente: informacoes!.informacoes.celularcliente,
-                        enderecoCliente:
-                            informacoes!.informacoes.enderecoenderecocliente,
-                        valortroco: informacoes!.informacoes.valortroco,
-                        valorentrega: informacoes!.informacoes.valorentrega,
-                        bairroCliente: informacoes!.informacoes.nomebairro,
-                        cidadeCliente: informacoes!.informacoes.nomecidade,
-                        complementoCliente:
-                            informacoes!.informacoes.complementoenderecocliente,
-                        numeroCliente:
-                            informacoes!.informacoes.numeroenderecocliente,
-                      );
-                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
-                      //   tipoImpressao: '3',
-                      //   tipo: TipoCardapio.balcao,
-                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
-                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                      //   produtos: informacoes!.produtos,
-                      //   nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                      //     return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
-                      //   })),
-                      //   somaValorHistorico: informacoes!.informacoes.subtotal,
-                      //   cnpjEmpresa: informacoes!.informacoes.docempresa,
-                      //   celularEmpresa: informacoes!.informacoes.celularcliente,
-                      //   enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
-                      //   permanencia: newDuration,
-                      //   local: '',
-                      //   total: informacoes!.informacoes.subtotal,
-                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
-                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                      //   celularCliente: informacoes!.informacoes.celularcliente,
-                      //   enderecoCliente: informacoes!.informacoes.enderecoenderecocliente,
-                      //   valortroco: informacoes!.informacoes.valortroco,
-                      //   valorentrega: informacoes!.informacoes.valorentrega,
-                      //   bairroCliente: informacoes!.informacoes.nomebairro,
-                      //   cidadeCliente: informacoes!.informacoes.nomecidade,
-                      //   complementoCliente: informacoes!.informacoes.complementoenderecocliente,
-                      //   numeroCliente: informacoes!.informacoes.numeroenderecocliente,
-                      // );
-
-                      // if (sucessoAoImprimir == false) {
-                      //   if (context.mounted) {
-                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                      //       backgroundColor: Colors.red,
-                      //     ));
-                      //   }
-                      // }
-                    },
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
-                    label: const Text('Comprovante do Entregador'),
-                  ),
-                  FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () async {
-                      final duration = DateTime.now().difference(DateTime.parse(
-                          informacoes!.informacoes.dataAbertura));
-                      final newDuration = ConfigSistema.formatarHora(duration);
-
-                      Impressao.comprovanteDeConsumo(
-                        tipoTela: TipoCardapio.balcao,
-                        agruparPorDestino: false,
-                        nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                        produtos: informacoes!.produtos,
-                        nomelancamento: List<ModeloNomeLancamento>.from(
-                            parcelas.map((elemento) {
-                          return ModeloNomeLancamento(
-                              nome: elemento.entradaMov,
-                              valor: UtilBrasilFields.converterMoedaParaDouble(
-                                      elemento.valorMovF)
-                                  .toStringAsExponential(2));
-                        })),
-                        somaValorHistorico: informacoes!.informacoes.subtotal,
-                        cnpjEmpresa: informacoes!.informacoes.docempresa,
-                        celularEmpresa: informacoes!.informacoes.celularcliente,
-                        enderecoEmpresa:
-                            informacoes!.informacoes.enderecoempresa,
-                        permanencia: newDuration,
-                        local: '',
-                        total: informacoes!.informacoes.subtotal,
-                        numeroPedido: informacoes!.informacoes.numerodopedido,
-                        tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                      );
-                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
-                      //   tipoImpressao: '2',
-                      //   tipo: TipoCardapio.balcao,
-                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
-                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                      //   produtos: informacoes!.produtos,
-                      //   nomelancamento: List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-                      //     return ModeloNomeLancamento(nome: elemento.entradaMov, valor: UtilBrasilFields.converterMoedaParaDouble(elemento.valorMovF).toStringAsExponential(2));
-                      //   })),
-                      //   somaValorHistorico: informacoes!.informacoes.subtotal,
-                      //   cnpjEmpresa: informacoes!.informacoes.docempresa,
-                      //   celularEmpresa: informacoes!.informacoes.celularcliente,
-                      //   enderecoEmpresa: informacoes!.informacoes.enderecoempresa,
-                      //   permanencia: newDuration,
-                      //   local: '',
-                      //   total: informacoes!.informacoes.subtotal,
-                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
-                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                      // );
-
-                      // if (sucessoAoImprimir == false) {
-                      //   if (context.mounted) {
-                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                      //       backgroundColor: Colors.red,
-                      //     ));
-                      //   }
-                      // }
-                    },
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
-                    label: const Text('Comprovante de Conta'),
-                  ),
-                  FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () async {
-                      // var sucessoAoImprimir = await Impressao.comprovanteDePedido(
-                      await Impressao.comprovanteDePedido(
-                        local: "",
-                        tipoTela: TipoCardapio.balcao,
-                        comanda: "Balcão ${widget.idVenda}",
-                        numeroPedido: informacoes!.informacoes.numerodopedido,
-                        // nomeCliente: informacoes!.informacoes.nomeCliente,
-                        nomeCliente: (informacoes?.informacoes.nomeCliente ??
-                                        'Sem Cliente') ==
-                                    'Sem Cliente' &&
-                                (informacoes?.informacoes.observacaoDoPedido ??
-                                        '')
-                                    .isNotEmpty
-                            ? (informacoes?.informacoes.observacaoDoPedido ??
-                                '')
-                            : (informacoes?.informacoes.nomeCliente ??
-                                'Sem Cliente'),
-                        nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                        produtos: informacoes!.produtos,
-                        tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                      );
-                      // var sucessoAoImprimir = await Impressao.enviarImpressao(
-                      //   tipoImpressao: '1',
-                      //   tipo: TipoCardapio.balcao,
-                      //   comanda: "Balcão ${widget.idVenda}",
-                      //   numeroPedido: informacoes!.informacoes.numerodopedido,
-                      //   nomeCliente: informacoes!.informacoes.nomeCliente,
-                      //   nomeEmpresa: informacoes!.informacoes.nomeempresa,
-                      //   produtos: informacoes!.produtos,
-                      //   tipodeentrega: informacoes!.informacoes.tipodeentrega,
-                      // );
-
-                      // if (sucessoAoImprimir == false) {
-                      //   if (context.mounted) {
-                      //     ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      //       content: Text('Não foi possível imprimir, você não está conectado em nenhum servidor.'),
-                      //       backgroundColor: Colors.red,
-                      //     ));
-                      //   }
-                      // }
-                    },
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
-                    label: const Text('Imprimir Preparo'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            bottom: 0,
-            child: SizedBox(
-              height: 800,
-              width: 300,
-              child: ExpandableFab(
-                distance: 70,
-                pos: ExpandableFabPos.right,
-                type: ExpandableFabType.up,
-                openButtonBuilder: RotateFloatingActionButtonBuilder(
-                  child: const Icon(Icons.settings_outlined),
-                  fabSize: ExpandableFabSize.regular,
-                  shape: const CircleBorder(),
-                ),
-                closeButtonBuilder: DefaultFloatingActionButtonBuilder(
-                  child: const Icon(Icons.close),
-                  fabSize: ExpandableFabSize.regular,
-                  shape: const CircleBorder(),
-                ),
-                children: [
-                  FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () async {
-                      showDialog(
-                        context: context,
-                        builder: (context) {
-                          return ModalCancelarVenda(
-                            aoSalvar: (justificativa) async {
-                              await servico
-                                  .excluir(widget.idVenda, justificativa)
-                                  .then((value) {
-                                if (value.sucesso == false) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .removeCurrentSnackBar();
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(SnackBar(
-                                      content: Text(value.mensagem),
-                                    ));
-                                  }
-                                } else {
-                                  if (context.mounted) {
-                                    var provedor =
-                                        Modular.get<ProvedorBalcao>();
-                                    provedor.listar();
-                                    Navigator.pop(context);
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        },
-                      );
-                    },
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
-                    label: const Text('Cancelar Pedido'),
-                  ),
-                  // FloatingActionButton.extended(
-                  //   heroTag: null,
-                  //   onPressed: () {},
-                  //   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                  //   label: const Text('Enviar por e-mail'),
-                  // ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Visibility(
-        visible: informacoes != null,
-        replacement: const Center(child: CircularProgressIndicator()),
-        child: DefaultTabController(
-          length: 2,
-          child: Column(
-            children: [
-              const TabBar(
-                indicatorSize: TabBarIndicatorSize.tab,
-                tabs: [
-                  Tab(child: Text('Geral')),
-                  Tab(child: Text('Financeiro')),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    KeepAliveWrapper(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Text.rich(
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      TextSpan(
-                                        text: 'Cliente: ',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600),
-                                        children: [
-                                          TextSpan(
-                                            text: informacoes
-                                                ?.informacoes.nomeCliente,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.normal),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Flexible(
-                                    child: Text.rich(
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      TextSpan(
-                                        text: 'Vendedor(a): ',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600),
-                                        children: [
-                                          TextSpan(
-                                            text: (informacoes?.informacoes
-                                                            .nomevendedor ??
-                                                        '')
-                                                    .isEmpty
-                                                ? 'Sem Vendedor'
-                                                : informacoes
-                                                    ?.informacoes.nomevendedor,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.normal),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text.rich(
-                                    TextSpan(
-                                      text: 'Telefone: ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                      children: [
-                                        TextSpan(
-                                          text: (informacoes?.informacoes
-                                                          .telefonecliente ??
-                                                      '')
-                                                  .isEmpty
-                                              ? 'Sem Telefone'
-                                              : informacoes
-                                                  ?.informacoes.telefonecliente,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.normal),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text.rich(
-                                    TextSpan(
-                                      text: 'Celular: ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                      children: [
-                                        TextSpan(
-                                          text: (informacoes?.informacoes
-                                                          .celularcliente ??
-                                                      '')
-                                                  .isEmpty
-                                              ? 'Sem Celular'
-                                              : informacoes
-                                                  ?.informacoes.celularcliente,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.normal),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text.rich(
-                                    TextSpan(
-                                      text: 'Data: ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                      children: [
-                                        TextSpan(
-                                          text:
-                                              informacoes?.informacoes.datalanc,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.normal),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text.rich(
-                                    TextSpan(
-                                      text: 'Pedido: ',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600),
-                                      children: [
-                                        TextSpan(
-                                          text: informacoes
-                                              ?.informacoes.numerodopedido,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.normal),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 5),
-                              Text.rich(
-                                TextSpan(
-                                  text: 'Endereço: ',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                  children: [
-                                    TextSpan(
-                                      text:
-                                          '${informacoes?.informacoes.enderecoenderecocliente}, ${informacoes?.informacoes.nomebairro}, ${informacoes?.informacoes.nomecidade} - ${informacoes?.informacoes.nomeestado} ${informacoes?.informacoes.cependerecocliente}.',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.normal),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Divider(),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(left: 4, bottom: 4),
-                                child: Text(
-                                  'Produtos e Serviços (${informacoes?.produtos.length})',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: informacoes?.produtos.length,
-                                itemBuilder: (context, index) {
-                                  var item = informacoes?.produtos[index];
-
-                                  return Card(
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(5)),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text("Código: ${item!.codigo}",
-                                              style: const TextStyle(
-                                                  fontSize: 13)),
-                                          Text(item.nome,
-                                              style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold)),
-                                          const SizedBox(height: 5),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(double.parse(item.valorVenda)
-                                                  .obterReal()),
-                                              const Text('x'),
-                                              Text(item.quantidade.toString()),
-                                              const Text('='),
-                                              Text((double.parse(
-                                                          item.valorVenda) *
-                                                      num.parse(item.quantidade
-                                                          .toString()))
-                                                  .obterReal()),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    KeepAliveWrapper(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(left: 4, bottom: 4),
-                              child: Text(
-                                'Meios de Pagamentos (${parcelas.length})',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: parcelas.length,
-                              itemBuilder: (context, index) {
-                                var item = parcelas[index];
-
-                                return Card(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(5)),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text("Parcela: ${item.descricaoMov}",
-                                            style:
-                                                const TextStyle(fontSize: 13)),
-                                        Text(item.valorMovF,
-                                            style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold)),
-                                        const SizedBox(height: 5),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(item.entradaMov),
-                                            Text(item.vencimentoMovF),
-                                            Text(item.statusMov),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+          title: const Text('Detalhes Balcão'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          actions: [
+            IconButton(
+                tooltip: 'Atualizar pedido',
+                onPressed: _ocupado || _carregando ? null : _listar,
+                icon: const Icon(Icons.refresh)),
+            PopupMenuButton<String>(
+                enabled: pedido != null && !_ocupado,
+                tooltip: 'Imprimir',
+                icon: const Icon(Icons.print_outlined),
+                onSelected: _imprimir,
+                itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'preparo', child: Text('Imprimir preparo')),
+                      PopupMenuItem(
+                          value: 'comprovante',
+                          child: Text('Imprimir comprovante')),
+                      PopupMenuItem(
+                          value: 'ambos', child: Text('Imprimir ambos'))
+                    ]),
+            PopupMenuButton<String>(
+                enabled: _podeEditar,
+                tooltip: 'Opções do pedido',
+                onSelected: (_) => _cancelar(),
+                itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'cancelar', child: Text('Cancelar pedido'))
+                    ]),
+          ]),
+      bottomNavigationBar: pedido == null
+          ? null
+          : SafeArea(
+              top: false, child: RodapeTotalPedidoVenda(total: pedido.total)),
+      body: RefreshIndicator(
+          onRefresh: _listar,
+          child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(12),
+              children: [
+                if (_carregando || _ocupado) const LinearProgressIndicator(),
+                if (_erro != null)
+                  ListTile(
+                      title: Text(_erro!),
+                      trailing: IconButton(
+                          tooltip: 'Tentar novamente',
+                          onPressed: _listar,
+                          icon: const Icon(Icons.refresh))),
+                if (pedido != null)
+                  DetalhesPedidoVenda(
+                      tipo: TipoCardapio.balcao,
+                      numero: pedido.numero,
+                      cliente: pedido.nome,
+                      telefone: pedido.texto('celularCliente'),
+                      modalidade: pedido.nomeEntrega,
+                      observacao: pedido.observacao,
+                      produtos: _dados!.produtos,
+                      total: pedido.total,
+                      recebido: pedido.pago,
+                      desconto: valorDelivery(pedido.dados['valorDesconto']),
+                      acrescimo: valorDelivery(pedido.dados['valorAcrescimo']),
+                      editarPedido: _podeEditar ? _editarPedido : null,
+                      editarProduto: _podeEditar ? _editarProduto : null,
+                      pagamentos: Column(children: [
+                        for (final p in _parcelas)
+                          ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(p.entradaMov),
+                              subtitle:
+                                  Text('${p.vencimentoMovF} · ${p.statusMov}'),
+                              trailing: Text(p.valorMovF))
+                      ])),
+              ])),
     );
   }
 }
