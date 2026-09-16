@@ -15,9 +15,8 @@ class ServicoDelivery {
   final UsuarioProvedor usuario;
   ServicoDelivery(this.dio, this.usuario);
 
-  // O Delivery compartilha os contratos do desktop no mesmo servidor/empresa.
-  static Uri enderecoApi(String servidor) =>
-      Uri.parse(servidor).resolve('../../api_desktop/1.0.01/');
+  // O Delivery usa a mesma API de venda configurada no aplicativo.
+  static Uri enderecoApi(String servidor) => Uri.parse(servidor);
 
   Future<dynamic> consultar(String rota,
           [Map<String, dynamic> campos = const {}]) =>
@@ -102,8 +101,10 @@ class ServicoDelivery {
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async {
     final json = await consultar('cardapio/listar_por_id.php', {
       'id': id,
+      'codigoQrcode': '',
       'tipo': 'Delivery',
       'imprimir': 'false',
+      'mostrar_itens': 'true',
       'nomedopcLocal': '',
     });
     final dados =

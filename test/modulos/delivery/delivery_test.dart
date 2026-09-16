@@ -183,13 +183,13 @@ void main() {
             .taxaEntrega('9'),
         4);
   });
-  test('API desktop permanece no mesmo servidor configurado', () {
+  test('API de venda permanece no mesmo servidor configurado', () {
     for (final versao in ['api1', 'api6']) {
       expect(
           ServicoDelivery.enderecoApi(
                   'https://exemplo/sistema/apis_restaurantes/api_restaurantes_venda/$versao/')
               .toString(),
-          'https://exemplo/sistema/apis_restaurantes/api_desktop/1.0.01/');
+          'https://exemplo/sistema/apis_restaurantes/api_restaurantes_venda/$versao/');
     }
   });
   test('consulta envia empresa e usuario e nunca usa cache de outro modulo',
@@ -212,7 +212,7 @@ void main() {
         horaFim: '05:00:00');
     final r = adapter.chamadas.single;
     expect(r.uri.path,
-        '/sistema/apis_restaurantes/api_desktop/1.0.01/delivery/listar_opcoes.php');
+        '/sistema/apis_restaurantes/api_restaurantes_venda/api1/delivery/listar_opcoes.php');
     expect(r.queryParameters['empresa'], '3');
     expect(r.queryParameters['id_usuario'], '2');
     expect(r.extra['semCache'], isTrue);
