@@ -9,6 +9,7 @@ import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acr
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -23,6 +24,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
 
   int envios = 0;
   int consultas = 0;
+  String pago = '0';
   bool falharConsultaAposSalvar = false;
   bool falharEnvio = false;
   Completer<void>? esperaEnvio;
@@ -43,7 +45,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
         'idCliente': '209',
         'status': 'Pendente',
         'valorVenda': envios > 0 ? '14.00' : '4.00',
-        'somaValorHistorico': '0',
+        'somaValorHistorico': pago,
         'valordaentrega': '4.00',
       },
     };
@@ -87,9 +89,22 @@ void main() {
     final m = _ModuloDelivery();
     m.api.cliente.interceptors.insert(0,
         InterceptorsWrapper(onRequest: (options, handler) {
-          if (options.path.startsWith('/tela_nfe_saida/listar_bancos.php')) {
-        handler.resolve(
-            Response(requestOptions: options, data: <String, dynamic>{}));
+      if (options.path.startsWith('/tela_nfe_saida/listar_bancos.php')) {
+        handler
+            .resolve(Response(requestOptions: options, data: <String, dynamic>{
+          for (final sufixo in [
+            'Pix',
+            'Opcao2',
+            'Opcao3',
+            'Opcao4',
+            'Opcao5'
+          ]) ...{
+            'idBanco$sufixo': '0',
+            'ativoBanco$sufixo': 'Não',
+            'nomeBanco$sufixo': '',
+            'pixdinamico${sufixo.toLowerCase()}': 'Não',
+          },
+        }));
       } else {
         handler.next(options);
       }
@@ -139,7 +154,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('falha apos salvar preserva itens e retoma sem duplicar pedido',
+  testWidgets('falha apos salvar preserva resumo e retoma sem duplicar pedido',
       (tester) async {
     final m = await abrir(tester);
     m.delivery.falharConsultaAposSalvar = true;
@@ -149,7 +164,9 @@ void main() {
     expect(find.byType(PaginaCarrinho), findsOneWidget);
     expect(find.byType(CardCarrinho), findsOneWidget);
     expect(find.text('Seu carrinho está vazio'), findsNothing);
-    expect(m.carrinho.itensCarrinho.precoTotal, 10);
+    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+        contains('10,00'));
+    expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(m.delivery.envios, 1);
 
     m.delivery.falharConsultaAposSalvar = false;
@@ -212,4 +229,44 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('voltar dos descontos permite continuar sem reenviar os itens',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.pago = '5.00';
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 9);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(CardCarrinho), findsOneWidget);
+    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+        contains('9,00'));
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaFinalizarAcrescimo), findsOneWidget);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 9);
+    expect(m.delivery.envios, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final tipo in [TipoCardapio.mesa, TipoCardapio.comanda]) {
+    testWidgets('${tipo.name} finaliza sem entrar no fluxo de delivery',
+        (tester) async {
+      final m = await abrir(tester, tipo: tipo);
+      await tester.tap(find.text('Finalizar'));
+      await tester.pumpAndSettle();
+      expect(m.api.pedidos, hasLength(1));
+      expect(m.api.pedidos.single['id_comanda_pedido'], '10118');
+      expect(m.servidor.impressos, hasLength(1));
+      expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+      expect(find.text('Abrir carrinho'), findsOneWidget);
+      expect(find.byType(PaginaFinalizarAcrescimo), findsNothing);
+      expect(m.delivery.envios, 0);
+      expect(m.delivery.consultas, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 }

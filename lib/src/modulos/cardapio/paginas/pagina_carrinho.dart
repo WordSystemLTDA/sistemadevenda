@@ -12,6 +12,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
+import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -68,6 +69,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
+  ItensModeloComandao? _resumoDelivery;
   double? _saldoDelivery;
   Modeloworddadoscardapio? dados;
   bool carregando = true;
@@ -384,6 +386,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       final contexto = _contextoCarrinho!;
       final itens = await carrinhoProvedor.obterItensParaFinalizar(contexto);
       final servicoDelivery = Modular.get<ServicoDelivery>();
+      if (!_finalizacao.pedidoRegistrado) {
+        _resumoDelivery = carrinhoProvedor.itensCarrinho;
+      }
       final sucesso = await _finalizacao.executar(
         prepararImpressao: () => [],
         registrarPedido: () async {
@@ -392,10 +397,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         },
         enviarImpressao: (_) async {},
         limparCarrinho: () async {
-          // Confirma o saldo antes de remover os itens locais. Uma falha nesta
-          // consulta permite retomar o pagamento sem inserir os produtos de novo.
-          final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
-          _saldoDelivery = pedido.restante;
+          // Os itens enviados deixam o rascunho persistido. O resumo permanece
+          // visivel se a consulta do pagamento falhar, sem permitir reenvio.
           if (!await carrinhoProvedor.removerComandasPedidos(
               contexto: contexto)) {
             throw StateError(
@@ -407,6 +410,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         throw StateError('Não foi possível salvar o pedido.');
       }
       if (!mounted) return;
+      final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
+      if (!mounted) return;
+      _saldoDelivery = pedido.restante;
       provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
       provedorFinalizarPagamento.valor = _saldoDelivery!;
       setState(() => isLoading = false);
@@ -454,7 +460,11 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     return AnimatedBuilder(
       animation: carrinhoProvedor,
       builder: (context, _) {
-        final itens = carrinhoProvedor.itensCarrinho.listaComandosPedidos;
+        final resumo =
+            _tipo == TipoCardapio.delivery && _finalizacao.pedidoRegistrado
+                ? _resumoDelivery ?? carrinhoProvedor.itensCarrinho
+                : carrinhoProvedor.itensCarrinho;
+        final itens = resumo.listaComandosPedidos;
         return PopScope(
           canPop: !isLoading &&
               (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
@@ -532,8 +542,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                         rotulo: 'Finalizar',
                         iconeRotulo: Icons.check_circle_outline_rounded,
                         total: (_tipo == TipoCardapio.delivery
-                                ? _saldoDelivery ??
-                                    carrinhoProvedor.itensCarrinho.precoTotal
+                                ? _saldoDelivery ?? resumo.precoTotal
                                 : carrinhoProvedor.itensCarrinho.precoTotal)
                             .obterReal(),
                         onPressed: _finalizar,
@@ -586,7 +595,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                               idComanda: _idComanda,
                               idMesa: _idMesa,
                               index: index,
-                              value: carrinhoProvedor.itensCarrinho,
+                              value: resumo,
                               aoExcluirItem: () => setState(() {}),
                               setarQuantidade: (increase) async {
                                 final quantidadeAnterior = item.quantidade ?? 1;

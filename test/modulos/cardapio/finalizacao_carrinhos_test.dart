@@ -162,8 +162,10 @@ class ModuloFinalizacaoTeste extends Module {
             ? await recorrentes.inserir(carrinho.contexto!.idAtendimento, item)
             : await carrinho.inserir(
                 item,
-                'Comanda',
-                '0',
+                TipoCardapio.values.byName(carrinho.contexto!.tipo).nome,
+                carrinho.contexto!.tipo == 'mesa'
+                    ? carrinho.contexto!.idRecurso
+                    : '0',
                 carrinho.contexto!.idRecurso,
                 item.valorVenda,
                 '',
