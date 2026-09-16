@@ -75,10 +75,6 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
       await ImpressaoDelivery.imprimir(
           widget.servico, Modular.get<Server>(), _pedido!,
           preparo: preparo);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Comprovante adicionado à fila de impressão.')));
-      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

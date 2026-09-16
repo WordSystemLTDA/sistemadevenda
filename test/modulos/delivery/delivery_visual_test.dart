@@ -23,6 +23,7 @@ void main() {
     expect(s.gravacoes.single.$1, 'delivery/mudar_status_delivery.php');
     expect(s.gravacoes.single.$2['status'], '2');
     expect(s.gravacoes.single.$2['irParaProximo'], isFalse);
+    expect(find.byType(SnackBar), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

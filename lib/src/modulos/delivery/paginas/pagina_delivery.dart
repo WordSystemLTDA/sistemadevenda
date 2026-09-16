@@ -104,9 +104,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       setState(() => _ocupado = pedido.id);
       final atual = await _provedor.servico.pedido(pedido.id);
       if (!mounted) return;
-      final mensagem =
-          await executarAcaoDelivery(context, _provedor.servico, atual, acao);
-      if (mensagem != null) _mensagem(mensagem);
+      await executarAcaoDelivery(context, _provedor.servico, atual, acao);
     } catch (e) {
       _mensagem(e is StateError
           ? e.message.toString()
@@ -206,9 +204,6 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         await ImpressaoDelivery.imprimir(
             _provedor.servico, Modular.get<Server>(), paraImprimir);
       }
-      _mensagem(alvo.impressao == '3'
-          ? 'Pedido concluído.'
-          : 'Pedido em ${alvo.nome}.');
     } catch (e) {
       _mensagem(alterado
           ? 'Etapa atualizada, mas há uma pendência. Confira o pedido e a fila de impressão.'

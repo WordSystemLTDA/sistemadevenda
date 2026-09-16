@@ -103,7 +103,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('PREPARAR'), findsOneWidget);
     expect(find.text('Concluído'), findsNothing);
-    expect(tester.widget<Text>(find.textContaining('Entrega:')).data, contains('4,00'));
+    expect(tester.widget<Text>(find.textContaining('Entrega:')).data,
+        contains('4,00'));
     await tester.tap(find.text('PREPARAR'));
     await tester.tap(find.text('PREPARAR'));
     await tester.pumpAndSettle();
@@ -173,6 +174,12 @@ void main() {
                     child: const Text('Cancelar venda'))))));
     await tester.tap(find.text('Cancelar venda'));
     await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField).first).obscureText,
+        isTrue);
+    await tester.tap(find.byTooltip('Mostrar senha'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(find.byType(TextField).first).obscureText,
+        isFalse);
     await tester.enterText(find.byType(TextField).first, 'errada');
     await tester.enterText(find.byType(TextField).last, 'Cliente desistiu');
     await tester.tap(find.text('Confirmar'));

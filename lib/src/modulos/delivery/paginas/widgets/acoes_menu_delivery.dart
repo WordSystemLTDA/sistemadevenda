@@ -55,9 +55,8 @@ Future<String?> executarAcaoDelivery(
           'Clonar')) {
         return null;
       }
-      final res =
-          await servico.acao(acao.name, pedido, {'idDelivery': pedido.id});
-      return '${res['mensagem'] ?? 'Pedido clonado.'}';
+      await servico.acao(acao.name, pedido, {'idDelivery': pedido.id});
+      return null;
     case AcaoPedidoDelivery.clonarParcial:
     case AcaoPedidoDelivery.clonarSemCliente:
       await Navigator.push(
@@ -81,7 +80,7 @@ Future<String?> executarAcaoDelivery(
           'Enviar')) {
         return null;
       }
-      final res = await servico.acao(acao.name, pedido, {
+      await servico.acao(acao.name, pedido, {
         if (acao == AcaoPedidoDelivery.confirmar) ...{
           'id_empresa': servico.usuario.usuario?.empresa,
           'id_cliente': pedido.cliente,
@@ -93,7 +92,7 @@ Future<String?> executarAcaoDelivery(
           'valorTotalPedido': pedido.total.toStringAsFixed(2),
         },
       });
-      return '${res['mensagem'] ?? 'Mensagem enviada.'}';
+      return null;
     case AcaoPedidoDelivery.receber:
       final recebeu = pedido.restante <= .009 ||
           await receberDelivery(context, servico, pedido.id) == true;
@@ -127,15 +126,13 @@ Future<String?> executarAcaoDelivery(
                   ? AlteracaoDelivery.entrega
                   : AlteracaoDelivery.cancelar));
       if (mudou == true) {
-        return acao == AcaoPedidoDelivery.cancelar
-            ? 'Pedido cancelado.'
-            : 'Entrega atualizada.';
+        return null;
       }
     case AcaoPedidoDelivery.conta:
     case AcaoPedidoDelivery.preparo:
       await ImpressaoDelivery.imprimir(servico, Modular.get<Server>(), pedido,
           preparo: acao == AcaoPedidoDelivery.preparo);
-      return 'Comprovante adicionado à fila de impressão.';
+      return null;
     case AcaoPedidoDelivery.venda:
       final res = await servico.acao('venda', pedido);
       if (!context.mounted) return null;
@@ -182,12 +179,12 @@ Future<String?> executarAcaoDelivery(
               rotulo: 'WhatsApp com DDD',
               inicial: pedido.texto('celularCliente')));
       if (telefone == null || telefone.isEmpty) return null;
-      final res = await servico.acao('enviarNota', pedido, {
+      await servico.acao('enviarNota', pedido, {
         'id_empresa': servico.usuario.usuario?.empresa,
         'id_venda': pedido.texto('idVenda'),
         'celular': telefone.replaceAll(RegExp(r'\D'), ''),
       });
-      return '${res['mensagem'] ?? 'Documento enviado.'}';
+      return null;
     case AcaoPedidoDelivery.nfce:
     case AcaoPedidoDelivery.nfe:
       return null;

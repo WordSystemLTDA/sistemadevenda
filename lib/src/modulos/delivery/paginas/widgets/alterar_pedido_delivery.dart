@@ -24,7 +24,10 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
       text: widget.pedido.taxaEntrega.toStringAsFixed(2).replaceAll('.', ','));
   late String _tipo = widget.pedido.tipoEntrega;
   String? _endereco, _mov, _banco, _erro;
-  bool _carregando = true, _salvando = false, _carregamentoFalhou = false;
+  bool _carregando = true,
+      _salvando = false,
+      _carregamentoFalhou = false,
+      _mostrarSenha = false;
   List<Map<String, dynamic>> _enderecos = [], _pagamentos = [];
   final Map<String, String> _bancos = {
     '1': 'Dinheiro',
@@ -283,7 +286,7 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                       AlteracaoDelivery.cancelar) ...[
                                     TextField(
                                         controller: _senha,
-                                        obscureText: true,
+                                        obscureText: !_mostrarSenha,
                                         autocorrect: false,
                                         enableSuggestions: false,
                                         decoration: InputDecoration(
@@ -292,6 +295,16 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                                 'Senha Admin de cancelamento',
                                             prefixIcon:
                                                 const Icon(Icons.lock_outline),
+                                            suffixIcon: IconButton(
+                                                tooltip: _mostrarSenha
+                                                    ? 'Ocultar senha'
+                                                    : 'Mostrar senha',
+                                                icon: Icon(_mostrarSenha
+                                                    ? Icons.visibility_off
+                                                    : Icons.visibility),
+                                                onPressed: () => setState(() =>
+                                                    _mostrarSenha =
+                                                        !_mostrarSenha)),
                                             border: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(8)))),
