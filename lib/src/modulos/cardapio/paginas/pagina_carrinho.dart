@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
@@ -67,6 +68,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   bool isLoading = false;
   final _finalizacao = FinalizacaoComPreparo();
+  double? _saldoDelivery;
   Modeloworddadoscardapio? dados;
   bool carregando = true;
   bool _tentouEnvioVoz = false;
@@ -390,6 +392,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         },
         enviarImpressao: (_) async {},
         limparCarrinho: () async {
+          // Confirma o saldo antes de remover os itens locais. Uma falha nesta
+          // consulta permite retomar o pagamento sem inserir os produtos de novo.
+          final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
+          _saldoDelivery = pedido.restante;
           if (!await carrinhoProvedor.removerComandasPedidos(
               contexto: contexto)) {
             throw StateError(
@@ -401,10 +407,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         throw StateError('Não foi possível salvar o pedido.');
       }
       if (!mounted) return;
-      final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
       provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
-      provedorFinalizarPagamento.valor =
-          pedido.restante > 0 ? pedido.restante : pedido.total;
+      provedorFinalizarPagamento.valor = _saldoDelivery!;
       setState(() => isLoading = false);
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
@@ -414,11 +418,13 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
             settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
             builder: (_) => const PaginaFinalizarAcrescimo(),
           ));
-    } catch (e) {
+    } catch (e, stack) {
+      developer.log('Falha ao abrir pagamento do Delivery',
+          name: 'PaginaCarrinho', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(_finalizacao.pedidoRegistrado
-                ? 'Pedido salvo. Toque em Finalizar para concluir sem adicionar novamente.'
+                ? 'Pedido salvo. Não foi possível abrir o pagamento. Toque em Finalizar para tentar novamente, sem reenviar os itens.'
                 : e is StateError
                     ? e.message.toString()
                     : 'Não foi possível confirmar o pedido. Confira o Delivery antes de tentar novamente.')));
@@ -525,7 +531,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                         carregando: isLoading,
                         rotulo: 'Finalizar',
                         iconeRotulo: Icons.check_circle_outline_rounded,
-                        total: carrinhoProvedor.itensCarrinho.precoTotal
+                        total: (_tipo == TipoCardapio.delivery
+                                ? _saldoDelivery ??
+                                    carrinhoProvedor.itensCarrinho.precoTotal
+                                : carrinhoProvedor.itensCarrinho.precoTotal)
                             .obterReal(),
                         onPressed: _finalizar,
                       ),

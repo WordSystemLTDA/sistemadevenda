@@ -6,6 +6,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -128,6 +129,7 @@ class ModuloFinalizacaoTeste extends Module {
     i.addInstance<ProvedorCarrinho>(carrinho);
     i.addInstance<ProvedorItensRecorrentes>(recorrentes);
     i.addInstance<ServicoCardapio>(ServicoCardapio(api, usuario));
+    i.addInstance<ServicoConfigBigchef>(ServicoConfigBigchef(api, usuario));
     i.addInstance<ProvedorComanda>(
         ProvedorComanda(ServicoComandas(api, usuario)));
     i.addInstance<ProvedorMesas>(ProvedorMesas(ServicoMesas(api, usuario)));
