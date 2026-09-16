@@ -7,6 +7,7 @@ import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
@@ -288,6 +289,103 @@ class ServicoCardapio {
       return (
         jsonData['sucesso'] == true,
         jsonData['mensagem']?.toString() ?? 'Produto atualizado.'
+      );
+    } on DioException catch (e) {
+      if (e.response == null && kDebugMode) {
+        log('ERRO API', error: e.error);
+      }
+      rethrow;
+    }
+  }
+
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        ModeloDestinoImpressao? destinoCaixa
+      })> cancelarItemFinalizado({
+    required TipoCardapio tipo,
+    required Modeloworddadoscardapio atendimento,
+    required Modelowordprodutos produto,
+    required String idMesa,
+    required String idComanda,
+    required String senhaAdmin,
+  }) async {
+    final idEmpresa = usuarioProvedor.usuario?.empresa ?? '';
+    final idUsuario = usuarioProvedor.usuario?.id ?? '';
+    final idAtendimento = atendimento.id ?? '';
+    final idItemVenda = produto.iditensvenda ?? '';
+    final versao = atendimento.versaoAtendimento ?? '';
+
+    if (idEmpresa.isEmpty || idUsuario.isEmpty) {
+      return (
+        sucesso: false,
+        mensagem: 'Entre novamente para cancelar o item.',
+        destinoCaixa: null,
+      );
+    }
+    if (idAtendimento.isEmpty || idItemVenda.isEmpty) {
+      return (
+        sucesso: false,
+        mensagem: 'Item sem identificador para cancelamento.',
+        destinoCaixa: null,
+      );
+    }
+    if (atendimento.status != 'Andamento') {
+      return (
+        sucesso: false,
+        mensagem: 'Este atendimento nao esta aberto para cancelamento.',
+        destinoCaixa: null,
+      );
+    }
+    if (senhaAdmin.trim().isEmpty) {
+      return (
+        sucesso: false,
+        mensagem: 'Informe a senha Admin de cancelamento.',
+        destinoCaixa: null,
+      );
+    }
+    if (Sincronizador.instancia != null) {
+      return (
+        sucesso: false,
+        mensagem:
+            'Conecte ao servidor para cancelar item finalizado com senha Admin.',
+        destinoCaixa: null,
+      );
+    }
+
+    try {
+      final campos = {
+        'id_itens_venda': idItemVenda,
+        'id_comanda_pedido': idAtendimento,
+        'versao_atendimento': versao,
+        'id_comanda': idComanda.isEmpty ? '0' : idComanda,
+        'id_mesa': idMesa.isEmpty ? '0' : idMesa,
+        'tipo': tipo.name,
+        'empresa': idEmpresa,
+        'id_usuario': idUsuario,
+        'senha_admin_cancelar': senhaAdmin.trim(),
+      };
+
+      final response = await dio.cliente.post(
+        'comandas/cancelar_item_finalizado.php',
+        data: jsonEncode(campos),
+      );
+      final jsonData = response.data;
+      if (jsonData is! Map) {
+        return (
+          sucesso: false,
+          mensagem: 'Resposta invalida do servidor.',
+          destinoCaixa: null,
+        );
+      }
+      final destino = jsonData['destino_impressao_caixa'];
+      return (
+        sucesso: jsonData['sucesso'] == true,
+        mensagem: jsonData['mensagem']?.toString() ?? 'Item cancelado.',
+        destinoCaixa: destino is Map
+            ? ModeloDestinoImpressao.fromMap(Map<String, dynamic>.from(destino))
+            : null,
       );
     } on DioException catch (e) {
       if (e.response == null && kDebugMode) {

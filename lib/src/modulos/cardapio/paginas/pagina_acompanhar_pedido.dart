@@ -49,6 +49,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
   ModeloConfigBigchef? _configBigchef;
   bool _carregando = false;
   bool _abrindoEdicao = false;
+  bool _cancelandoItem = false;
   final Map<String, Modelowordprodutos> _edicoesLocais = {};
 
   @override
@@ -159,6 +160,11 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     }
   }
 
+  void _removerEdicaoLocal(String idItem) {
+    if (idItem.isEmpty) return;
+    _edicoesLocais.remove(idItem);
+  }
+
   bool _ehPizza(Modelowordprodutos item) => (item.opcoesPacotesListaFinal ?? [])
       .any((opcao) => opcao.id == 9 || opcao.id == 10);
 
@@ -175,6 +181,14 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     }
     return config.permiteEditarQuantidadeAposFinalizar ||
         config.permiteEditarObservacaoAposFinalizar;
+  }
+
+  bool _podeExcluirProduto(Modelowordprodutos item) {
+    return !_cancelandoItem &&
+        (widget.tipo == TipoCardapio.comanda ||
+            widget.tipo == TipoCardapio.mesa) &&
+        dados?.status == 'Andamento' &&
+        (item.iditensvenda ?? '').isNotEmpty;
   }
 
   Future<void> _abrirEdicaoProduto(Modelowordprodutos item) async {
@@ -250,6 +264,196 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
       }
     } finally {
       if (mounted) setState(() => _abrindoEdicao = false);
+    }
+  }
+
+  bool _temDestinoConfigurado(Modelowordprodutos item) {
+    final destino = item.destinoDeImpressao;
+    if (destino == null) return false;
+    return destino.nomedopc?.trim().isNotEmpty == true ||
+        destino.nomeDaImpressora.trim().isNotEmpty ||
+        destino.nome.trim().isNotEmpty;
+  }
+
+  String _nomeDestinoCancelamento(Modelowordprodutos item) {
+    final destino = item.destinoDeImpressao;
+    if (_temDestinoConfigurado(item) && destino != null) {
+      final nome = destino.nomeDaImpressora.trim().isNotEmpty
+          ? destino.nomeDaImpressora.trim()
+          : destino.nome.trim();
+      return nome.isEmpty ? 'destino do produto' : nome;
+    }
+    return 'Impressora do Caixa';
+  }
+
+  Future<String?> _pedirSenhaCancelamento(Modelowordprodutos item) {
+    final controller = TextEditingController();
+    var erro = '';
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final cs = Theme.of(dialogContext).colorScheme;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              scrollable: true,
+              icon: Icon(Icons.delete_outline_rounded, color: cs.error),
+              title: const Text('Excluir Item'),
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.nome,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Digite a senha Admin para confirmar o cancelamento.',
+                    style: TextStyle(color: cs.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: cs.errorContainer.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.print_outlined, color: cs.error, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Será impresso em: ${_nomeDestinoCancelamento(item)}',
+                            style: TextStyle(
+                              color: cs.onErrorContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Senha Admin',
+                      errorText: erro.isEmpty ? null : erro,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) {
+                      final senha = controller.text.trim();
+                      if (senha.isEmpty) {
+                        setDialogState(() => erro = 'Informe a senha Admin.');
+                        return;
+                      }
+                      Navigator.pop(dialogContext, senha);
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    final senha = controller.text.trim();
+                    if (senha.isEmpty) {
+                      setDialogState(() => erro = 'Informe a senha Admin.');
+                      return;
+                    }
+                    Navigator.pop(dialogContext, senha);
+                  },
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Confirmar exclusão'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cs.error,
+                    foregroundColor: cs.onError,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).whenComplete(controller.dispose);
+  }
+
+  Future<void> _cancelarItemFinalizado(Modelowordprodutos item) async {
+    if (_cancelandoItem || dados == null) return;
+    if (!_podeExcluirProduto(item)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Este item nao pode ser cancelado agora.')));
+      return;
+    }
+
+    final senha = await _pedirSenhaCancelamento(item);
+    if (!mounted || senha == null) return;
+
+    setState(() => _cancelandoItem = true);
+    try {
+      final idMesa = widget.idMesa ?? dados!.idMesa ?? '0';
+      final idComanda = widget.idComanda ?? dados!.idComanda ?? '0';
+      final resposta = await servicoCardapio.cancelarItemFinalizado(
+        tipo: widget.tipo,
+        atendimento: dados!,
+        produto: item,
+        idMesa: idMesa,
+        idComanda: idComanda,
+        senhaAdmin: senha,
+      );
+
+      if (!mounted) return;
+      if (!resposta.sucesso) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(resposta.mensagem)));
+        return;
+      }
+
+      final mensagens = Impressao.prepararCancelamentoDeItem(
+        produto: item,
+        destinoCaixa: resposta.destinoCaixa,
+        comanda: '${widget.tipo.nome}: ${dados!.nome ?? ''}',
+        numeroPedido: dados!.numeroPedido ?? '0',
+        nomeCliente: dados!.nomeCliente ?? '',
+        nomeEmpresa: dados!.nomeEmpresa ?? _usuario.usuario?.nomeEmpresa ?? '',
+        tipodeentrega: dados!.tipodeentrega ?? '',
+        local: widget.tipo == TipoCardapio.mesa
+            ? (dados!.nomeMesa ?? dados!.nome ?? '')
+            : (dados!.nome ?? ''),
+        tipoTela: widget.tipo,
+      );
+      var impressaoEnviada = true;
+      if (mensagens.isNotEmpty) {
+        try {
+          await _server.enviarImpressoes(mensagens);
+        } catch (_) {
+          impressaoEnviada = false;
+        }
+      }
+
+      _removerEdicaoLocal(item.iditensvenda ?? '');
+      await listarComandasPedidos();
+      if (!mounted) return;
+      final mensagem = impressaoEnviada
+          ? (resposta.mensagem.isEmpty ? 'Item cancelado.' : resposta.mensagem)
+          : 'Item cancelado, mas não foi possível salvar a impressão.';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensagem)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível cancelar este item.')));
+    } finally {
+      if (mounted) setState(() => _cancelandoItem = false);
     }
   }
 
@@ -329,6 +533,8 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
                       tipo: widget.tipo,
                       podeEditar: _podeEditarProduto(item),
                       onEditar: () => _abrirEdicaoProduto(item),
+                      podeExcluir: _podeExcluirProduto(item),
+                      onExcluir: () => _cancelarItemFinalizado(item),
                     );
                   }),
                 ],

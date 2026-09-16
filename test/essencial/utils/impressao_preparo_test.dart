@@ -443,5 +443,39 @@ void main() {
         expect(servidor.mensagens.first['tipoImpressao'], '2');
       });
     }
+
+    test('cancelamento preserva destino do produto', () {
+      final mensagens = Impressao.prepararCancelamentoDeItem(
+        produto: produto(nome: 'Pizza de Queijos', computador: 'Cozinha')
+          ..observacao = 'Sem cebola',
+        comanda: 'Comanda: 1',
+      );
+      final dados = jsonDecode(mensagens.single) as Map<String, dynamic>;
+      final item = (dados['produtos'] as List).single as Map<String, dynamic>;
+
+      expect(dados['cancelamento'], isTrue);
+      expect(dados['tipoComprovante'], 'cancelamento_item');
+      expect(dados['tituloImpressao'], 'CANCELAMENTO DE ITEM');
+      expect(dados['nomedopc'], 'Cozinha');
+      expect(item['nome'], contains('CANCELAMENTO - Pizza de Queijos'));
+      expect(item['observacao'], contains('Sem cebola'));
+    });
+
+    test('cancelamento sem destino usa impressora do caixa', () {
+      final mensagens = Impressao.prepararCancelamentoDeItem(
+        produto: produto(nome: 'Agua sem gas'),
+        destinoCaixa: ModeloDestinoImpressao(
+          nome: 'Caixa',
+          nomeDaImpressora: 'Impressora do Caixa',
+          tamanhoDoPapel: '80',
+          nomedopc: 'Caixa-PC',
+        ),
+      );
+      final dados = jsonDecode(mensagens.single) as Map<String, dynamic>;
+
+      expect(dados['nomedopc'], 'Caixa-PC');
+      expect((dados['produtos'] as List).single['nome'],
+          contains('CANCELAMENTO - Agua sem gas'));
+    });
   });
 }

@@ -99,6 +99,55 @@ class Impressao {
         .toList(growable: false);
   }
 
+  static bool _temDestinoConfigurado(ModeloDestinoImpressao? destino) {
+    if (destino == null) return false;
+    return destino.nomedopc?.trim().isNotEmpty == true ||
+        destino.nomeDaImpressora.trim().isNotEmpty ||
+        destino.nome.trim().isNotEmpty;
+  }
+
+  static List<String> prepararCancelamentoDeItem({
+    required Modelowordprodutos produto,
+    ModeloDestinoImpressao? destinoCaixa,
+    String comanda = 'Sem Comanda',
+    String numeroPedido = '0',
+    String nomeCliente = '',
+    String nomeEmpresa = '',
+    String tipodeentrega = '',
+    String local = '',
+    TipoCardapio tipoTela = TipoCardapio.balcao,
+  }) {
+    final itemCancelado = Modelowordprodutos.fromMap(produto.toMap());
+    final destinoOriginal = produto.destinoDeImpressao;
+    if (!_temDestinoConfigurado(destinoOriginal)) {
+      itemCancelado.destinoDeImpressao = destinoCaixa;
+    }
+    itemCancelado.nome = 'CANCELAMENTO - ${produto.nome}';
+    final observacaoOriginal = (produto.observacao ?? '').trim();
+    itemCancelado.observacao = observacaoOriginal.isEmpty
+        ? 'Item cancelado pelo App Garçom.'
+        : 'Item cancelado pelo App Garçom. Obs. original: $observacaoOriginal';
+
+    final mensagens = prepararComprovanteDePedido(
+      produtos: [itemCancelado],
+      comanda: comanda,
+      numeroPedido: numeroPedido,
+      nomeCliente: nomeCliente,
+      nomeEmpresa: nomeEmpresa,
+      tipodeentrega: tipodeentrega,
+      local: local,
+      tipoTela: tipoTela,
+    );
+
+    return mensagens.map((mensagem) {
+      final dados = jsonDecode(mensagem) as Map<String, dynamic>;
+      dados['cancelamento'] = true;
+      dados['tipoComprovante'] = 'cancelamento_item';
+      dados['tituloImpressao'] = 'CANCELAMENTO DE ITEM';
+      return jsonEncode(dados);
+    }).toList(growable: false);
+  }
+
   static Future<void> comprovanteDePedido({
     List<Modelowordprodutos> produtos = const [],
     String comanda = 'Sem Comanda',

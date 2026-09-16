@@ -19,6 +19,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final Function(bool increase) setarQuantidade;
   final bool podeEditar;
   final VoidCallback? onEditar;
+  final bool podeExcluir;
+  final VoidCallback? onExcluir;
 
   const CardProdutoAcompanhar({
     super.key,
@@ -32,6 +34,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
     required this.tipo,
     this.podeEditar = false,
     this.onEditar,
+    this.podeExcluir = false,
+    this.onExcluir,
   });
 
   @override
@@ -419,21 +423,62 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
               ),
             ),
           ),
-          if (widget.podeEditar && widget.onEditar != null) ...[
+          if ((widget.podeEditar && widget.onEditar != null) ||
+              (widget.podeExcluir && widget.onExcluir != null)) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  onPressed: widget.onEditar,
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  label: const Text('Editar Produto'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 42),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final botoes = <Widget>[
+                    if (widget.podeEditar && widget.onEditar != null)
+                      FilledButton.tonalIcon(
+                        onPressed: widget.onEditar,
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        label: const Text('Editar Produto'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 42),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    if (widget.podeExcluir && widget.onExcluir != null)
+                      OutlinedButton.icon(
+                        onPressed: widget.onExcluir,
+                        icon:
+                            const Icon(Icons.delete_outline_rounded, size: 20),
+                        label: const Text('Excluir Item'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 42),
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.error),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                  ];
+                  if (botoes.length == 1) {
+                    return SizedBox(
+                        width: double.infinity, child: botoes.first);
+                  }
+                  if (constraints.maxWidth < 360) {
+                    return Column(
+                      children: [
+                        for (var i = 0; i < botoes.length; i++) ...[
+                          SizedBox(width: double.infinity, child: botoes[i]),
+                          if (i < botoes.length - 1) const SizedBox(height: 8),
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: botoes.first),
+                      const SizedBox(width: 8),
+                      Expanded(child: botoes.last),
+                    ],
+                  );
+                },
               ),
             ),
           ],
