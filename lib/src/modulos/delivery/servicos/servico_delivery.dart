@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
@@ -19,6 +20,14 @@ class ServicoDelivery {
 
   // O Delivery usa a mesma API de venda configurada no aplicativo.
   static Uri enderecoApi(String servidor) => Uri.parse(servidor);
+  static final _pedidosAtualizados =
+      StreamController<PedidoDelivery>.broadcast();
+  static Stream<PedidoDelivery> get pedidosAtualizados =>
+      _pedidosAtualizados.stream;
+
+  void notificarPedidoAtualizado(PedidoDelivery pedido) {
+    if (!_pedidosAtualizados.isClosed) _pedidosAtualizados.add(pedido);
+  }
 
   Future<dynamic> consultar(String rota,
           [Map<String, dynamic> campos = const {}]) =>

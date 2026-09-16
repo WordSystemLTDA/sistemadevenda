@@ -6,11 +6,13 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -75,6 +77,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
   int consultas = 0;
   ConfigDelivery config =
       const ConfigDelivery(receberNoFinal: true, imprimirPreparo: false);
+  List<Modelowordprodutos> produtosCardapio = [];
   Future<List<EtapaDelivery>> Function()? respostaLista;
   @override
   Future<List<EtapaDelivery>> listar(
@@ -97,10 +100,11 @@ class ServicoDeliveryTeste extends ServicoDelivery {
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async =>
       Modeloworddadoscardapio(
           id: id,
-          produtos: [],
+          produtos: [...produtosCardapio],
           enderecoCliente: 'Rua A',
           numeroCliente: '12',
-          bairroCliente: 'Bairro de entrega');
+          bairroCliente: 'Bairro de entrega',
+          nomeEmpresa: 'Pizzaria Teste');
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
@@ -276,6 +280,43 @@ void main() {
     expect(json['bairroCliente'], 'Bairro correto');
     expect(json['nomedopc'], 'CAIXA');
   });
+  test('preparo do delivery imprime detalhes da pizza e mantem destino',
+      () async {
+    final servidor = impressao.ServidorTeste();
+    Modular.init(impressao.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+
+    final s = ServicoDeliveryTeste();
+    final produtoCardapio = impressao.produto(
+        id: '1', nome: 'Pizza', codigo: '2', computador: 'COZINHA')
+      ..iditensvenda = '99';
+    final pizzaDetalhada = impressao.produto(id: '1', nome: 'Pizza')
+      ..iditensvenda = '99'
+      ..observacao = 'Sem cebola'
+      ..opcoesPacotesListaFinal = [
+        impressao.saboresPizza(),
+        impressao.bordas(['Cheddar', 'Catupiry']),
+        impressao.adicionais(['Milho']),
+      ];
+    s.produtosCardapio = [produtoCardapio];
+    s.atual = pedidoTeste(campos: {
+      'produtos': [pizzaDetalhada.toMap()],
+    });
+
+    await ImpressaoDelivery.imprimir(s, servidor, s.atual, preparo: true);
+
+    final mensagem = servidor.mensagens.single;
+    final produto = (mensagem['produtos'] as List).single as Map;
+    final opcoes = produto['opcoesPacotesListaFinal'] as List;
+
+    expect(mensagem['tipoImpressao'], '1');
+    expect(mensagem['nomedopc'], 'COZINHA');
+    expect(produto['observacao'], 'Sem cebola');
+    expect(opcoes.map((opcao) => opcao['id']), containsAll([10, 6, 7]));
+    expect(jsonEncode(produto), contains('7 - (1/2) Calabresa'));
+    expect(jsonEncode(produto), contains('Bordas (2)'));
+    expect(jsonEncode(produto), contains('Adicionais'));
+  });
   test('atualizacao falha conserva os pedidos visiveis', () async {
     final s = ServicoDeliveryTeste();
     final p = ProvedorDelivery(s);
@@ -286,6 +327,43 @@ void main() {
     expect(p.etapas, hasLength(4));
     expect(p.erro, isNotNull);
     expect(p.carregando, isFalse);
+  });
+  test('pedido atualizado localmente nao volta para rascunho vazio', () async {
+    final s = ServicoDeliveryTeste();
+    final stale = pedidoTeste(campos: {
+      'quantidadeprodutos': '0',
+      'produtos': [],
+      'valorVenda': '4.00',
+      'valordaentrega': '4.00',
+      'somaValorHistorico': '0',
+    });
+    final finalizado = pedidoTeste(campos: {
+      'quantidadeprodutos': '7',
+      'valorVenda': '114.00',
+      'valordaentrega': '4.00',
+      'somaValorHistorico': '114.00',
+      'idVenda': '70',
+      'status': 'Finalizado',
+    });
+    s.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [stale.dados],
+          }),
+          ...etapasTeste().skip(1),
+        ];
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await p.listar();
+    expect(p.etapas.first.pedidos.single.quantidade, 0);
+    p.atualizarPedido(finalizado);
+    expect(p.etapas.first.pedidos.single.quantidade, 7);
+    await p.listar();
+    expect(p.etapas.first.pedidos.single.quantidade, 7);
+    expect(p.etapas.first.pedidos.single.total, 114);
   });
   test('resposta antiga de busca nao substitui a mais recente', () async {
     final s = ServicoDeliveryTeste();

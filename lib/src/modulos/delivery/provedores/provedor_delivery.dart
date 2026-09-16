@@ -18,6 +18,7 @@ class ProvedorDelivery extends ChangeNotifier {
       DateTimeRange(start: DateTime.now(), end: DateTime.now());
   int _consulta = 0;
   bool _descartado = false;
+  final _pedidosRecentes = <String, ({PedidoDelivery pedido, DateTime ate})>{};
 
   Future<void> listar() async {
     final consulta = ++_consulta;
@@ -36,7 +37,7 @@ class ProvedorDelivery extends ChangeNotifier {
         servico.configuracao(),
       ]);
       if (_descartado || consulta != _consulta) return;
-      etapas = respostas[0] as List<EtapaDelivery>;
+      etapas = _mesclarPedidosRecentes(respostas[0] as List<EtapaDelivery>);
       config = respostas[1] as ConfigDelivery;
     } catch (_) {
       if (_descartado || consulta != _consulta) return;
@@ -48,6 +49,40 @@ class ProvedorDelivery extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  void atualizarPedido(PedidoDelivery pedido,
+      {Duration validade = const Duration(seconds: 45)}) {
+    _pedidosRecentes[pedido.id] =
+        (pedido: pedido, ate: DateTime.now().add(validade));
+    etapas = _mesclarPedidosRecentes(etapas);
+    notifyListeners();
+  }
+
+  List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {
+    if (_pedidosRecentes.isEmpty || origem.isEmpty) return origem;
+    final agora = DateTime.now();
+    _pedidosRecentes.removeWhere((_, item) => item.ate.isBefore(agora));
+    if (_pedidosRecentes.isEmpty) return origem;
+    return [
+      for (final etapa in origem)
+        EtapaDelivery.comPedidos(etapa, [
+          for (final pedido in etapa.pedidos)
+            _pedidoMaisCompleto(pedido, _pedidosRecentes[pedido.id]?.pedido)
+        ])
+    ];
+  }
+
+  PedidoDelivery _pedidoMaisCompleto(
+      PedidoDelivery remoto, PedidoDelivery? recente) {
+    if (recente == null || recente.etapa != remoto.etapa) return remoto;
+    final recenteTemProdutos = recente.quantidade > remoto.quantidade;
+    final recenteTemPagamento = recente.pago > remoto.pago + 0.009;
+    final recenteTemTotal = recente.total > remoto.total + 0.009;
+    if (recenteTemProdutos || recenteTemPagamento || recenteTemTotal) {
+      return recente;
+    }
+    return remoto;
   }
 
   @override

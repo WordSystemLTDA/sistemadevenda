@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
@@ -11,7 +12,9 @@ class ImpressaoDelivery {
       ServicoDelivery servico, Server server, PedidoDelivery pedido,
       {bool preparo = false}) async {
     final dados = await servico.dadosCardapio(pedido.id);
-    final produtos = dados.produtos ?? <Modelowordprodutos>[];
+    final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
+    final produtos =
+        preparo ? _produtosParaPreparo(pedido, produtosBase) : produtosBase;
     if (produtos.isEmpty) {
       throw StateError('O pedido não tem produtos para impressão.');
     }
@@ -27,6 +30,111 @@ class ImpressaoDelivery {
         : comprovantes(servico, pedido.comEndereco(dados), produtos);
     await server.enviarImpressoes(mensagens);
   }
+
+  static List<Modelowordprodutos> _produtosParaPreparo(
+    PedidoDelivery pedido,
+    List<Modelowordprodutos> produtosBase,
+  ) {
+    final detalhados = pedido.produtos;
+    if (detalhados.isEmpty) return produtosBase;
+    if (produtosBase.isEmpty) return detalhados;
+
+    final usados = <int>{};
+    return [
+      for (var indice = 0; indice < produtosBase.length; indice++)
+        _mesclarProdutoPreparo(
+          produtosBase[indice],
+          _produtoDetalhadoCorrespondente(
+            produtosBase[indice],
+            detalhados,
+            usados,
+            indice,
+          ),
+        ),
+    ];
+  }
+
+  static Modelowordprodutos _mesclarProdutoPreparo(
+    Modelowordprodutos base,
+    Modelowordprodutos? detalhado,
+  ) {
+    if (detalhado == null) return base;
+    final mapaBase = base.toMap();
+    final mapaDetalhado = detalhado.toMap();
+    final mapa = <String, dynamic>{...mapaBase, ...mapaDetalhado};
+
+    if (_temDestino(base.destinoDeImpressao)) {
+      mapa['destinoDeImpressao'] = base.destinoDeImpressao!.toMap();
+    }
+    if (_vazio(mapaDetalhado['iditensvenda']) &&
+        !_vazio(mapaBase['iditensvenda'])) {
+      mapa['iditensvenda'] = mapaBase['iditensvenda'];
+    }
+    if (_vazio(mapaDetalhado['hashprodutos']) &&
+        !_vazio(mapaBase['hashprodutos'])) {
+      mapa['hashprodutos'] = mapaBase['hashprodutos'];
+    }
+    if (!_listaTemItens(mapaDetalhado['opcoesPacotesListaFinal']) &&
+        _listaTemItens(mapaBase['opcoesPacotesListaFinal'])) {
+      mapa['opcoesPacotesListaFinal'] = mapaBase['opcoesPacotesListaFinal'];
+    }
+    if (!_listaTemItens(mapaDetalhado['opcoesPacotes']) &&
+        _listaTemItens(mapaBase['opcoesPacotes'])) {
+      mapa['opcoesPacotes'] = mapaBase['opcoesPacotes'];
+    }
+    if (!_listaTemItens(mapaDetalhado['ingredientes']) &&
+        _listaTemItens(mapaBase['ingredientes'])) {
+      mapa['ingredientes'] = mapaBase['ingredientes'];
+    }
+    if (_vazio(mapaDetalhado['observacao']) &&
+        !_vazio(mapaBase['observacao'])) {
+      mapa['observacao'] = mapaBase['observacao'];
+    }
+    if (!_vazio(base.imprimirCodigoProdutoPreparo)) {
+      mapa['imprimirCodigoProdutoPreparo'] = base.imprimirCodigoProdutoPreparo;
+    }
+
+    return Modelowordprodutos.fromMap(mapa);
+  }
+
+  static Modelowordprodutos? _produtoDetalhadoCorrespondente(
+    Modelowordprodutos base,
+    List<Modelowordprodutos> detalhados,
+    Set<int> usados,
+    int indice,
+  ) {
+    final chavesBase = _chavesProduto(base);
+    for (var i = 0; i < detalhados.length; i++) {
+      if (usados.contains(i)) continue;
+      final chavesDetalhado = _chavesProduto(detalhados[i]);
+      if (chavesBase.any(chavesDetalhado.contains)) {
+        usados.add(i);
+        return detalhados[i];
+      }
+    }
+    if (indice < detalhados.length && !usados.contains(indice)) {
+      usados.add(indice);
+      return detalhados[indice];
+    }
+    return null;
+  }
+
+  static List<String> _chavesProduto(Modelowordprodutos produto) => [
+        if (!_vazio(produto.iditensvenda)) 'item:${produto.iditensvenda}',
+        if (!_vazio(produto.hashprodutos)) 'hash:${produto.hashprodutos}',
+        if (!_vazio(produto.id)) 'produto:${produto.id}',
+      ];
+
+  static bool _temDestino(ModeloDestinoImpressao? destino) =>
+      destino != null &&
+      (!_vazio(destino.nomedopc) ||
+          !_vazio(destino.nomeDaImpressora) ||
+          !_vazio(destino.nome));
+
+  static bool _listaTemItens(Object? valor) =>
+      valor is List && valor.isNotEmpty;
+
+  static bool _vazio(Object? valor) => (valor?.toString().trim() ?? '').isEmpty;
 
   static List<String> comprovantes(ServicoDelivery servico,
       PedidoDelivery pedido, List<Modelowordprodutos> produtos) {

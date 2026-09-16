@@ -21,6 +21,26 @@ class EtapaDelivery {
   final bool selecionarEntregador;
   final List<PedidoDelivery> pedidos;
 
+  EtapaDelivery._(
+      {required this.id,
+      required this.nome,
+      required this.botao,
+      required this.impressao,
+      required this.cor,
+      required this.selecionarEntregador,
+      required this.pedidos});
+
+  factory EtapaDelivery.comPedidos(
+          EtapaDelivery etapa, List<PedidoDelivery> pedidos) =>
+      EtapaDelivery._(
+          id: etapa.id,
+          nome: etapa.nome,
+          botao: etapa.botao,
+          impressao: etapa.impressao,
+          cor: etapa.cor,
+          selecionarEntregador: etapa.selecionarEntregador,
+          pedidos: pedidos);
+
   EtapaDelivery.fromMap(Map<String, dynamic> map)
       : id = '${map['id']}',
         nome = '${map['nomeOpcao'] ?? ''}',

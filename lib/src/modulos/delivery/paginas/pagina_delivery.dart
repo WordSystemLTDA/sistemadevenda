@@ -30,12 +30,17 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       widget.provedor ?? ProvedorDelivery(Modular.get<ServicoDelivery>());
   final _busca = TextEditingController();
   Timer? _debounce, _timer;
+  StreamSubscription<PedidoDelivery>? _atualizacoes;
   bool _rotaAberta = false, _ativo = true;
   String? _ocupado;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _atualizacoes = ServicoDelivery.pedidosAtualizados.listen((pedido) {
+      if (!mounted) return;
+      _provedor.atualizarPedido(pedido);
+    });
     _provedor.listar();
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_ativo &&
@@ -61,6 +66,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _debounce?.cancel();
+    _atualizacoes?.cancel();
     _busca.dispose();
     if (widget.provedor == null) _provedor.dispose();
     super.dispose();
@@ -231,12 +237,10 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                 onPressed: _ocupado == null ? _provedor.listar : null,
                 icon: const Icon(Icons.refresh)),
           ]),
-      floatingActionButton: FloatingActionButton.extended(
-          onPressed: _ocupado == null
-              ? () => _abrir(PaginaNovoDelivery(servico: _provedor.servico))
-              : null,
-          icon: const Icon(Icons.add),
-          label: const Text('Novo pedido')),
+      floatingActionButton: _BotaoNovoPedido(
+          habilitado: _ocupado == null,
+          onPressed: () =>
+              _abrir(PaginaNovoDelivery(servico: _provedor.servico))),
       body: ListenableBuilder(
           listenable: _provedor,
           builder: (context, child) {
@@ -631,5 +635,56 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
           })
       ])),
     ]);
+  }
+}
+
+class _BotaoNovoPedido extends StatelessWidget {
+  final bool habilitado;
+  final VoidCallback onPressed;
+  const _BotaoNovoPedido({required this.habilitado, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: 'Novo pedido',
+      child: Semantics(
+        label: 'Novo pedido',
+        button: true,
+        enabled: habilitado,
+        child: Opacity(
+          opacity: habilitado ? 1 : .55,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: habilitado ? onPressed : null,
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Icon(Icons.add_rounded, color: Colors.white, size: 26),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

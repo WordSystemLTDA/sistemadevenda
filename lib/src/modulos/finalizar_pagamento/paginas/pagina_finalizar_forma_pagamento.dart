@@ -145,6 +145,13 @@ class _PaginaFinalizarFormaPagamentoState
         atualizado.restante <= 0.009;
     if (quitado) {
       await servico.concluir(atualizado);
+      var pedidoFinalizado = atualizado;
+      try {
+        pedidoFinalizado = await servico.pedido(provedor.idVenda);
+      } catch (_) {
+        pedidoFinalizado = atualizado;
+      }
+      servico.notificarPedidoAtualizado(pedidoFinalizado);
       provedorBalcao.observacaoDoPedido = '';
       await carrinhoProvedor.removerComandasPedidos();
       FeedbackUsuario.pedidoFinalizado();
