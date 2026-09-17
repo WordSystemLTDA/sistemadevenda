@@ -227,6 +227,7 @@ class Modelowordprodutos {
       'idCategoriaCardapio': idCategoriaCardapio,
       'categoriaCardapio': idCategoriaCardapio,
       'id_categoria_cardapio': idCategoriaCardapio,
+      'categoria_cardapio': idCategoriaCardapio,
       'limiteSaboresBorda': limiteSaboresBorda,
       'conferidoNoCarrinho': conferidoNoCarrinho,
     };
@@ -258,7 +259,8 @@ class Modelowordprodutos {
       habilsepardelivery: map['habilsepardelivery']?.toString(),
       idCategoriaCardapio: map['idCategoriaCardapio']?.toString() ??
           map['categoriaCardapio']?.toString() ??
-          map['id_categoria_cardapio']?.toString(),
+          map['id_categoria_cardapio']?.toString() ??
+          map['categoria_cardapio']?.toString(),
       ativarCustoDeProducao: map['ativarCustoDeProducao']?.toString(),
       novo: _boolOpcional(map['novo']),
       destinoDeImpressao: _mapa(map['destinoDeImpressao']) != null

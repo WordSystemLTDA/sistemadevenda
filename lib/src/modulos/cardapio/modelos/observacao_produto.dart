@@ -23,17 +23,45 @@ bool tituloGrupoObservacao(Object? titulo) {
   return normalizado == 'observação' || normalizado == 'observacao';
 }
 
+bool _idCardapioValido(Object? valor) {
+  final texto = (valor ?? '').toString().trim().toLowerCase();
+  return texto.isNotEmpty && texto != '0' && texto != 'null';
+}
+
+bool _grupoMontagemCardapio(ModeloOpcoesPacotes opcao) =>
+    opcao.tipo == 8 ||
+    (opcao.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+        dado.montagemCardapio != null ||
+        _idCardapioValido(dado.idCategoriaCardapio));
+
 bool grupoObservacaoProduto(ModeloOpcoesPacotes opcao) =>
-    opcao.id == idGrupoObservacaoProduto ||
-    tituloGrupoObservacao(opcao.titulo) ||
-    (opcao.id == idGrupoObservacaoProdutoLegado && opcao.tipo == 7);
+    !_grupoMontagemCardapio(opcao) &&
+    (opcao.id == idGrupoObservacaoProduto ||
+        tituloGrupoObservacao(opcao.titulo) ||
+        (opcao.id == idGrupoObservacaoProdutoLegado && opcao.tipo == 7));
 
 bool grupoObservacaoProdutoMap(Map<String, dynamic> opcao) {
   final id = int.tryParse('${opcao['id'] ?? ''}');
   final tipo = int.tryParse('${opcao['tipo'] ?? ''}');
+  if (tipo == 8 || _mapaContemMontagemCardapio(opcao)) return false;
   return id == idGrupoObservacaoProduto ||
       tituloGrupoObservacao(opcao['titulo']) ||
       (id == idGrupoObservacaoProdutoLegado && tipo == 7);
+}
+
+bool _mapaContemMontagemCardapio(Map<String, dynamic> opcao) {
+  for (final dado in _lista(opcao['dados']).map(_mapa)) {
+    if (dado.containsKey('montagemCardapio') ||
+        dado.containsKey('montagem_cardapio') ||
+        dado.containsKey('montagem_json') ||
+        _idCardapioValido(dado['idCategoriaCardapio']) ||
+        _idCardapioValido(dado['categoriaCardapio']) ||
+        _idCardapioValido(dado['id_categoria_cardapio']) ||
+        _idCardapioValido(dado['categoria_cardapio'])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 ModeloOpcoesPacotes montarGrupoObservacaoProduto(Object? valor) {

@@ -4,6 +4,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
@@ -256,6 +257,70 @@ void main() {
 
     expect(find.text('Meio (1/2)'), findsOneWidget);
     expect(find.text('Meio - (1/2) Chocolate ao Leite'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('carrinho exibe montagem do cardapio para conferencia',
+      (tester) async {
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
+    addTearDown(carrinho.dispose);
+    Modular.init(ModuloCarrinhoTeste(carrinho));
+    final item = produtoCarrinho()
+      ..nome = 'Almoço Livre'
+      ..codigo = '151'
+      ..valorVenda = '45.00'
+      ..idCategoriaCardapio = '9'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Observação',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'POUCO Arroz',
+              valor: '0',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Arroz',
+                acao: AcaoIngredienteCardapio.pouco,
+              ),
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'TROCAR Carne de Panela POR 1x Ovo',
+              valor: '0',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Carne de Panela',
+                acao: AcaoIngredienteCardapio.trocar,
+                destinoNome: 'Ovo',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+    await carregarCard(
+      tester,
+      item: item,
+      setarQuantidade: (increase) async {
+        item.quantidade = item.quantidade! + (increase ? 1 : -1);
+        return true;
+      },
+    );
+
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingredientes do Cardápio'), findsOneWidget);
+    expect(find.text('Arroz'), findsOneWidget);
+    expect(find.text('Pouco'), findsOneWidget);
+    expect(find.text('Carne de Panela'), findsOneWidget);
+    expect(find.text('Trocar por 1x Ovo'), findsOneWidget);
+    expect(find.textContaining('POUCO Arroz'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

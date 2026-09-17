@@ -69,6 +69,27 @@ class _CardProdutoState extends State<CardProduto> {
     }
   }
 
+  bool _idCardapioValido(String? id) {
+    final texto = id?.trim().toLowerCase() ?? '';
+    return texto.isNotEmpty && texto != '0' && texto != 'null';
+  }
+
+  bool _temCategoriaCardapio(Modelowordprodutos item) {
+    if (_idCardapioValido(item.idCategoriaCardapio)) return true;
+    return (item.opcoesPacotes ?? const []).any((grupo) =>
+        grupo.tipo == 8 ||
+        (grupo.dados ?? const []).any(
+          (dado) => _idCardapioValido(dado.idCategoriaCardapio),
+        ));
+  }
+
+  bool _produtoPersonalizavel(Modelowordprodutos item) {
+    final habilTipo = item.habilTipo.trim().toLowerCase();
+    return habilTipo == 'pacote' ||
+        habilTipo == 'kit' ||
+        _temCategoriaCardapio(item);
+  }
+
   String _preco(bool pizza) {
     final item = widget.item;
     final selecionado =
@@ -129,8 +150,7 @@ class _CardProdutoState extends State<CardProduto> {
         final cs = Theme.of(context).colorScheme;
 
         final indisponivel = normalizarBusca(item.ativo) == 'nao';
-        final personalizavel =
-            item.habilTipo == 'Pacote' || item.habilTipo == 'kit';
+        final personalizavel = _produtoPersonalizavel(item);
         Future<void> selecionar() async {
           if (indisponivel) return;
 
@@ -168,7 +188,7 @@ class _CardProdutoState extends State<CardProduto> {
             return;
           }
 
-          if (item.habilTipo == 'Pacote' || item.habilTipo == 'kit') {
+          if (personalizavel) {
             if (widget.estaPesquisando) {
               widget.searchController!.closeView(item.nome);
             }
@@ -233,6 +253,7 @@ class _CardProdutoState extends State<CardProduto> {
               dataLancado: item.dataLancado,
               destinoDeImpressao: item.destinoDeImpressao,
               habilItensRetirada: item.habilItensRetirada,
+              idCategoriaCardapio: item.idCategoriaCardapio,
               novo: item.novo,
               observacao: item.observacao,
               opcoesPacotes: item.opcoesPacotes,

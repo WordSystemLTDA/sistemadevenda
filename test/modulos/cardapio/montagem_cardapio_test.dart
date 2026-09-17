@@ -81,7 +81,7 @@ void main() {
       'id': '1',
       'nome': 'Arroz',
       'valor': '0',
-      'id_categoria_cardapio': '9',
+      'categoria_cardapio': '9',
       'dia_semana': 'quinta',
       'montagem_json': jsonEncode({
         'nomeOriginal': 'Arroz',
@@ -113,7 +113,7 @@ void main() {
       observacao: 'Caprichar',
       opcoesPacotesListaFinal: [
         ModeloOpcoesPacotes(
-          id: 99,
+          id: 12,
           titulo: 'Ingredientes do Cardápio',
           tipo: 8,
           obrigatorio: false,
@@ -122,12 +122,22 @@ void main() {
         montarGrupoObservacaoProduto('Caprichar'),
       ],
     );
+    final produtoDoBanco = Modelowordprodutos.fromMap({
+      ...produto.toMap(),
+      'idCategoriaCardapio': null,
+      'categoriaCardapio': null,
+      'id_categoria_cardapio': null,
+      'categoria_cardapio': '9',
+    });
+    expect(produtoDoBanco.idCategoriaCardapio, '9');
 
     final envio = normalizarProdutoParaEnvio(produto.toMap());
     final grupos = envio['opcoesPacotesListaFinal'] as List;
     expect(grupos, hasLength(1));
+    expect((grupos.single as Map)['id'], 12);
     final ingrediente = (grupos.single as Map)['dados'].single as Map;
     expect(ingrediente['id_categoria_cardapio'], '9');
+    expect(ingrediente['categoria_cardapio'], '9');
     expect(ingrediente['montagemCardapio']['acao'], 'mais');
     expect(ingrediente['montagemCardapio']['separado'], isTrue);
   });

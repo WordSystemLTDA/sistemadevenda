@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
@@ -11,6 +12,17 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+
+bool _idCardapioValido(Object? valor) {
+  final texto = (valor ?? '').toString().trim().toLowerCase();
+  return texto.isNotEmpty && texto != '0' && texto != 'null';
+}
+
+bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
+    grupo.tipo == 8 ||
+    (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+        dado.montagemCardapio != null ||
+        _idCardapioValido(dado.idCategoriaCardapio));
 
 class CardCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
@@ -472,12 +484,38 @@ class _CardCarrinhoState extends State<CardCarrinho>
                           itemCount: e.dados!.length,
                           itemBuilder: (context, index) {
                             final dado = e.dados![index];
+                            final montagemCardapio = _grupoMontagemCardapio(e);
+                            final detalhe = montagemCardapio
+                                ? dado.montagemCardapio?.detalheVisualizacao
+                                : null;
 
                             return LinhaValor(
-                              descricao: Text(
-                                _descricaoOpcaoCarrinho(
-                                    e.id, dado, e.dados!.length),
-                                style: const TextStyle(fontSize: 15),
+                              descricao: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _descricaoOpcaoCarrinho(
+                                      e.id,
+                                      dado,
+                                      e.dados!.length,
+                                      montagemCardapio: montagemCardapio,
+                                    ),
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                  if (detalhe != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      detalhe,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               valor: Text(
                                 (double.parse(dado.valor ?? '0') *
@@ -547,7 +585,15 @@ class _CardCarrinhoState extends State<CardCarrinho>
   }
 
   String _descricaoOpcaoCarrinho(
-      int idOpcao, ModeloDadosOpcoesPacotes dado, int totalDados) {
+    int idOpcao,
+    ModeloDadosOpcoesPacotes dado,
+    int totalDados, {
+    bool montagemCardapio = false,
+  }) {
+    if (montagemCardapio) {
+      return dado.montagemCardapio?.nomeOriginal ?? dado.nome;
+    }
+
     if (idOpcao == 10) {
       final proporcao = dado.quantimaximaselecao?.trim();
       final prefixo = proporcao == null || proporcao.isEmpty ? null : proporcao;

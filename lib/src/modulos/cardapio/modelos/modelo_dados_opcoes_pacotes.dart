@@ -94,6 +94,7 @@ class ModeloDadosOpcoesPacotes {
       'idCategoriaCardapio': idCategoriaCardapio,
       'categoriaCardapio': idCategoriaCardapio,
       'id_categoria_cardapio': idCategoriaCardapio,
+      'categoria_cardapio': idCategoriaCardapio,
       'diaSemana': diaSemana,
       'dia_semana': diaSemana,
       if (montagemCardapio != null)
@@ -122,7 +123,8 @@ class ModeloDadosOpcoesPacotes {
       habilsepardelivery: map['habilsepardelivery']?.toString(),
       idCategoriaCardapio: map['idCategoriaCardapio']?.toString() ??
           map['categoriaCardapio']?.toString() ??
-          map['id_categoria_cardapio']?.toString(),
+          map['id_categoria_cardapio']?.toString() ??
+          map['categoria_cardapio']?.toString(),
       diaSemana: map['diaSemana']?.toString() ?? map['dia_semana']?.toString(),
       montagemCardapio: montagem == null
           ? null

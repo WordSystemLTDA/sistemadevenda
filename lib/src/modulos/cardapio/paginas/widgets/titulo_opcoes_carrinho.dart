@@ -5,6 +5,17 @@ import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
+bool _idCardapioValido(Object? valor) {
+  final texto = (valor ?? '').toString().trim().toLowerCase();
+  return texto.isNotEmpty && texto != '0' && texto != 'null';
+}
+
+bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
+    grupo.tipo == 8 ||
+    (grupo.dados ?? const []).any((dado) =>
+        dado.montagemCardapio != null ||
+        _idCardapioValido(dado.idCategoriaCardapio));
+
 class TituloOpcoesCarrinho extends StatelessWidget {
   final Modelowordprodutos item;
   final ModeloOpcoesPacotes grupo;
@@ -14,14 +25,15 @@ class TituloOpcoesCarrinho extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final montagemCardapio = _grupoMontagemCardapio(grupo);
     final titulo = _TituloGrupoCarrinho(
-      titulo: grupo.titulo,
+      titulo: montagemCardapio ? 'Ingredientes do Cardápio' : grupo.titulo,
       meiaBorda: grupo.id == 6 &&
           (grupo.dados ?? []).any((dado) => dado.somenteMetadeBorda),
     );
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
-      child: [6, 7, 10].contains(grupo.id)
+      child: !montagemCardapio && [6, 7, 10].contains(grupo.id)
           ? LinhaValor(
               descricao: titulo,
               valor: Text(

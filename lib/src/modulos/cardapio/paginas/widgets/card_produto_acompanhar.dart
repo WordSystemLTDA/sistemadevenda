@@ -2,11 +2,24 @@ import 'dart:async';
 
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
+
+bool _idCardapioValido(Object? valor) {
+  final texto = (valor ?? '').toString().trim().toLowerCase();
+  return texto.isNotEmpty && texto != '0' && texto != 'null';
+}
+
+bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
+    grupo.tipo == 8 ||
+    (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+        dado.montagemCardapio != null ||
+        _idCardapioValido(dado.idCategoriaCardapio));
 
 class CardProdutoAcompanhar extends StatefulWidget {
   final Modelowordprodutos item;
@@ -506,7 +519,10 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                       if (e.dados != null && e.dados!.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(left: 10, top: 10),
-                          child: Text(e.titulo,
+                          child: Text(
+                              _grupoMontagemCardapio(e)
+                                  ? 'Ingredientes do Cardápio'
+                                  : e.titulo,
                               style: const TextStyle(
                                   fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
@@ -518,25 +534,45 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                           itemCount: e.dados!.length,
                           itemBuilder: (context, index) {
                             final dado = e.dados![index];
+                            final montagemCardapio = _grupoMontagemCardapio(e);
+                            final detalhe = montagemCardapio
+                                ? dado.montagemCardapio?.detalheVisualizacao
+                                : null;
 
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                if (dado.quantimaximaselecao != null) ...[
-                                  Expanded(
-                                    child: Text(
-                                      '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : ''}${dado.nome}',
-                                      style: const TextStyle(fontSize: 15),
-                                    ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        montagemCardapio
+                                            ? dado.montagemCardapio
+                                                    ?.nomeOriginal ??
+                                                dado.nome
+                                            : dado.quantimaximaselecao != null
+                                                ? '(${dado.quantimaximaselecao}) ${dado.nome}'
+                                                : '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                        style: const TextStyle(fontSize: 15),
+                                      ),
+                                      if (detalhe != null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          detalhe,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ] else ...[
-                                  Expanded(
-                                    child: Text(
-                                      '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
-                                      style: const TextStyle(fontSize: 15),
-                                    ),
-                                  ),
-                                ],
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   ((double.tryParse(dado.valor ?? '0') ?? 0) *
