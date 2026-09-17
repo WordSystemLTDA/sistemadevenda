@@ -215,6 +215,38 @@ void main() {
     );
   });
 
+  test('bordas marcadas imprimem somente o que foi pedido', () {
+    final bordasCatalogo = List.generate(
+      14,
+      (index) => ModeloDadosOpcoesPacotes(
+        id: '${index + 1}',
+        nome: index == 5 ? 'Catupiry' : 'Borda ${index + 1}',
+        valor: '0',
+        estaSelecionado: index == 5,
+      ),
+    );
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: bordasCatalogo,
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    final grupoBordas = opcoes.single as Map;
+    final dadosBordas = grupoBordas['dados'] as List;
+
+    expect(grupoBordas['titulo'], 'Bordas (1)');
+    expect(dadosBordas, hasLength(1));
+    expect(dadosBordas.single['nome'], '(1) Catupiry');
+    expect(jsonEncode(dados), isNot(contains('Borda 14')));
+    expect(jsonEncode(dados), isNot(contains('(1/14)')));
+  });
+
   test('adicionais imprimem titulo curto', () {
     final pizza = produto(nome: 'Pizza')
       ..opcoesPacotesListaFinal = [

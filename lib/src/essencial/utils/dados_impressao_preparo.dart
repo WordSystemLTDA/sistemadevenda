@@ -1,3 +1,4 @@
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
@@ -86,7 +87,7 @@ class DadosImpressaoPreparo {
         };
       }).toList();
     } else if (opcao.id == 6) {
-      final bordas = opcao.dados ?? [];
+      final bordas = _dadosSelecionadosQuandoMarcados(opcao);
       final meiaBorda = ValoresPizza.bordaSomenteMetade(bordas);
       dados['titulo'] = meiaBorda
           ? 'Bordas - Meio (1/2) (${bordas.length})'
@@ -102,5 +103,15 @@ class DadosImpressaoPreparo {
       dados['titulo'] = 'Adicionais';
     }
     return dados;
+  }
+
+  static List<ModeloDadosOpcoesPacotes> _dadosSelecionadosQuandoMarcados(
+    ModeloOpcoesPacotes opcao,
+  ) {
+    final dados = opcao.dados ?? [];
+    final temMarcacaoSelecao =
+        dados.any((dado) => dado.estaSelecionado != null);
+    if (!temMarcacaoSelecao) return dados;
+    return dados.where((dado) => dado.estaSelecionado == true).toList();
   }
 }
