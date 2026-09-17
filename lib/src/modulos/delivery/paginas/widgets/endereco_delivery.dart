@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 class EnderecoDelivery extends StatefulWidget {
   final ServicoDelivery servico;
   final String cliente;
+  final Map<String, dynamic>? endereco;
   const EnderecoDelivery(
-      {super.key, required this.servico, required this.cliente});
+      {super.key, required this.servico, required this.cliente, this.endereco});
   @override
   State<EnderecoDelivery> createState() => _EnderecoDeliveryState();
 }
@@ -31,6 +32,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
   @override
   void initState() {
     super.initState();
+    _preencherEnderecoExistente();
     _carregarPadraoEndereco();
   }
 
@@ -40,6 +42,22 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  bool get _editando =>
+      (widget.endereco?['id']?.toString().trim().isNotEmpty ?? false);
+
+  void _preencherEnderecoExistente() {
+    final endereco = widget.endereco;
+    if (endereco == null) return;
+    _preencherSeVazio('cep', _valor(endereco, ['cep']));
+    _preencherSeVazio('endereco', _valor(endereco, ['endereco']));
+    _preencherSeVazio('numero', _valor(endereco, ['numero']));
+    _preencherSeVazio('bairro', _valor(endereco, ['bairro']));
+    _preencherSeVazio('complemento', _valor(endereco, ['complemento']));
+    _preencherSeVazio('cidade', _valor(endereco, ['cidade']));
+    _preencherSeVazio('uf', _valor(endereco, ['estado', 'uf']));
+    _padrao = _ehPadrao(endereco['padrao']);
   }
 
   Future<void> _carregarPadraoEndereco() async {
@@ -125,6 +143,14 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     return '';
   }
 
+  String _valor(Map<String, dynamic> dados, List<String> chaves) {
+    for (final chave in chaves) {
+      final valor = dados[chave]?.toString().trim() ?? '';
+      if (valor.isNotEmpty) return valor;
+    }
+    return '';
+  }
+
   void _preencherSeVazio(String campo, String valor) {
     final controller = _campos[campo];
     if (controller == null ||
@@ -148,7 +174,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       await widget.servico.salvar('clientes/inserir_endereco.php', {
         for (final e in _campos.entries) e.key: e.value.text.trim(),
         'uf': _campos['uf']!.text.trim().toUpperCase(),
-        'id': '',
+        'id': widget.endereco?['id']?.toString() ?? '',
         'idCliente': widget.cliente,
         'padrao': _padrao ? 'Sim' : 'Não',
         'podeInserirNovaCidade': false,
@@ -171,7 +197,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       canPop: !_salvando,
       child: Scaffold(
         appBar: AppBar(
-            title: const Text('Novo endereço'),
+            title: Text(_editando ? 'Editar endereço' : 'Novo endereço'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary),
         bottomNavigationBar: SafeArea(
             top: false,
@@ -188,7 +214,9 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                     ? 'Carregando dados...'
                     : _salvando
                         ? 'Salvando...'
-                        : 'Salvar endereço'))),
+                        : _editando
+                            ? 'Salvar alterações'
+                            : 'Salvar endereço'))),
         body: Center(
             child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 700),

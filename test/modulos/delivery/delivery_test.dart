@@ -412,6 +412,41 @@ void main() {
     expect(p.etapas.first.pedidos.single.quantidade, 7);
     expect(p.etapas.first.pedidos.single.total, 114);
   });
+  test('pedido movido localmente aparece na nova etapa antes da listagem',
+      () async {
+    final s = ServicoDeliveryTeste();
+    final pedido = pedidoTeste();
+    s.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [pedido.dados],
+          }),
+          EtapaDelivery.fromMap({
+            'id': '2',
+            'nomeOpcao': 'PREPARANDO',
+            'nomeBotao': 'PRONTO',
+            'tipodeimpressao': '1',
+            'vendas': [],
+          }),
+        ];
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await p.listar();
+
+    p.moverPedidoParaEtapa(pedido, '2');
+
+    expect(p.etapas[0].pedidos, isEmpty);
+    expect(p.etapas[1].pedidos.single.id, pedido.id);
+    expect(p.etapas[1].pedidos.single.etapa, '2');
+
+    await p.listar();
+
+    expect(p.etapas[0].pedidos, isEmpty);
+    expect(p.etapas[1].pedidos.single.id, pedido.id);
+  });
   test('resposta antiga de busca nao substitui a mais recente', () async {
     final s = ServicoDeliveryTeste();
     final p = ProvedorDelivery(s);

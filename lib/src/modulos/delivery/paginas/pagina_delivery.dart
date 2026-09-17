@@ -190,6 +190,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               'Esta etapa exige um entregador. Confira a configuração do Delivery.');
         }
         alterado = true;
+        _provedor.moverPedidoParaEtapa(conferido, alvo.id);
+        _provedor.servico
+            .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
         final atualizado = await _provedor.servico.pedido(pedido.id);
         if (atualizado.etapa != alvo.id) {
           throw StateError('Não foi possível confirmar a etapa de destino.');

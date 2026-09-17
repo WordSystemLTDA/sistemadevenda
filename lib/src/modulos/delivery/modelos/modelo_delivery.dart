@@ -94,6 +94,8 @@ class PedidoDelivery {
         'bairroCliente': cardapio.bairroCliente,
         'cidadeCliente': cardapio.cidadeCliente,
       });
+  PedidoDelivery comEtapa(String etapa) =>
+      PedidoDelivery.fromMap({...dados, 'idopcoescarrossel': etapa});
   double get total => valorDelivery(dados['valorVenda']);
   double get pago => valorDelivery(dados['somaValorHistorico']);
   double get restante => math.max(0, total - pago);

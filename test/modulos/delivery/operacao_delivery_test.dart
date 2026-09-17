@@ -2,6 +2,7 @@ import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/alterar_pedido_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
@@ -336,6 +337,70 @@ void main() {
     expect(find.text('Campo obrigatório'), findsNothing);
     expect(s.gravacoes, hasLength(1));
     expect(s.gravacoes.single.$1, 'clientes/inserir_endereco.php');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('editar endereco preenche dados e salva com id existente',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([], requeridoEndereco: 'Não');
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+      endereco: const {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'estado': 'PR',
+        'complemento': 'Casa',
+        'padrao': 'Sim',
+      },
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar endereço'), findsOneWidget);
+    expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Rua Atualizada');
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(s.gravacoes.single.$1, 'clientes/inserir_endereco.php');
+    expect(s.gravacoes.single.$2['id'], '10');
+    expect(s.gravacoes.single.$2['endereco'], 'Rua Atualizada');
+    expect(s.gravacoes.single.$2['padrao'], 'Sim');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo delivery abre edicao do endereco selecionado',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'estado': 'PR',
+        'padrao': 'Sim',
+      }
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      editarPedido: pedidoTeste(campos: {'idendereco': '10'}),
+      aoSalvarEdicao: (_) async {},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Editar endereço'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar endereço'), findsOneWidget);
+    expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

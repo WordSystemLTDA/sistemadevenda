@@ -174,6 +174,21 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     }
   }
 
+  Future<void> _abrirEndereco({Map<String, dynamic>? endereco}) async {
+    if (_cliente == '0' || _salvando) return;
+    final salvo = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => EnderecoDelivery(
+                  servico: widget.servico,
+                  cliente: _cliente,
+                  endereco: endereco,
+                )));
+    if (!mounted || salvo != true) return;
+    if (endereco != null) _endereco = endereco;
+    await _carregarEnderecos();
+  }
+
   Future<void> _abrir() async {
     if (_salvando) return;
     FocusManager.instance.primaryFocus?.unfocus();
@@ -343,21 +358,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                     tooltip: 'Cadastrar endereço',
                                     onPressed: _cliente == '0' || _salvando
                                         ? null
-                                        : () async {
-                                            final salvo = await Navigator.push<
-                                                    bool>(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        EnderecoDelivery(
-                                                            servico:
-                                                                widget.servico,
-                                                            cliente:
-                                                                _cliente)));
-                                            if (mounted && salvo == true) {
-                                              await _carregarEnderecos();
-                                            }
-                                          },
+                                        : () => _abrirEndereco(),
                                     icon: const Icon(
                                         Icons.add_location_alt_outlined)),
                               ]),
@@ -390,6 +391,14 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                       leading: Icon(e['id'] == _endereco?['id']
                                           ? Icons.radio_button_checked
                                           : Icons.radio_button_unchecked),
+                                      trailing: IconButton(
+                                          tooltip: 'Editar endereço',
+                                          onPressed: _salvando
+                                              ? null
+                                              : () =>
+                                                  _abrirEndereco(endereco: e),
+                                          icon: const Icon(Icons
+                                              .edit_location_alt_outlined)),
                                       title: Text(
                                           '${e['endereco']}, ${e['numero']}'),
                                       subtitle: Text([

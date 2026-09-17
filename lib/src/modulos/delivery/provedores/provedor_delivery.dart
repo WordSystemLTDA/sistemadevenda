@@ -59,18 +59,37 @@ class ProvedorDelivery extends ChangeNotifier {
     notifyListeners();
   }
 
+  void moverPedidoParaEtapa(PedidoDelivery pedido, String etapa,
+          {Duration validade = const Duration(seconds: 45)}) =>
+      atualizarPedido(pedido.comEtapa(etapa), validade: validade);
+
   List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {
     if (_pedidosRecentes.isEmpty || origem.isEmpty) return origem;
     final agora = DateTime.now();
     _pedidosRecentes.removeWhere((_, item) => item.ate.isBefore(agora));
     if (_pedidosRecentes.isEmpty) return origem;
-    return [
-      for (final etapa in origem)
-        EtapaDelivery.comPedidos(etapa, [
-          for (final pedido in etapa.pedidos)
-            _pedidoMaisCompleto(pedido, _pedidosRecentes[pedido.id]?.pedido)
-        ])
-    ];
+    return [for (final etapa in origem) _mesclarPedidosDaEtapa(etapa)];
+  }
+
+  EtapaDelivery _mesclarPedidosDaEtapa(EtapaDelivery etapa) {
+    final pedidos = <PedidoDelivery>[];
+    final ids = <String>{};
+
+    for (final remoto in etapa.pedidos) {
+      final recente = _pedidosRecentes[remoto.id]?.pedido;
+      if (recente != null && recente.etapa != etapa.id) continue;
+      final pedido = _pedidoMaisCompleto(remoto, recente);
+      pedidos.add(pedido);
+      ids.add(pedido.id);
+    }
+
+    for (final item in _pedidosRecentes.values) {
+      if (item.pedido.etapa == etapa.id && ids.add(item.pedido.id)) {
+        pedidos.add(item.pedido);
+      }
+    }
+
+    return EtapaDelivery.comPedidos(etapa, pedidos);
   }
 
   PedidoDelivery _pedidoMaisCompleto(
