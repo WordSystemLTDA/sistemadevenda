@@ -96,7 +96,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     _provedorProduto.quantidade = 1;
     final valor = widget.valorVenda ?? double.tryParse(produto.valorVenda) ?? 0;
     final bordasSelecionadas = widget.montagemPizza
-        ? _grupoBordasSelecionadas(_provedorProduto.opcoesPacotesListaFinal)
+        ? _grupoBordasSelecionadas(_provedorProduto.opcoesPacotesListaFinal) ??
+            _grupoBordasSelecionadas(produto.opcoesPacotesListaFinal ?? [])
         : null;
     final opcoesIniciais = _opcoesIniciaisProduto(produto);
     _preservarBordasSelecionadas(opcoesIniciais, bordasSelecionadas);
@@ -230,8 +231,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           throw StateError('Os ingredientes do cardápio não foram carregados.');
         }
         if (widget.valorVenda == null) {
-          _provedorProduto.opcoesPacotesListaFinal =
-              _opcoesIniciaisProduto(value);
+          final bordasSelecionadas = widget.montagemPizza
+              ? _grupoBordasSelecionadas(
+                      _provedorProduto.opcoesPacotesListaFinal) ??
+                  _grupoBordasSelecionadas(
+                      widget.produto.opcoesPacotesListaFinal ?? [])
+              : null;
+          final opcoesIniciais = _opcoesIniciaisProduto(value);
+          _preservarBordasSelecionadas(opcoesIniciais, bordasSelecionadas);
+          _provedorProduto.opcoesPacotesListaFinal = opcoesIniciais;
 
           _provedorProduto.valorVenda = double.parse(value.valorVenda);
           _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);

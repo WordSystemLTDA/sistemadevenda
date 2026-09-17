@@ -153,10 +153,21 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
       return;
     }
 
+    final produtoDestino = itemProduto ?? widget.produto;
+    if (temBordaSelecionada && opcaoBorda != null) {
+      final opcoesSalvas = [
+        for (final opcao in produtoDestino.opcoesPacotesListaFinal ??
+            <ModeloOpcoesPacotes>[])
+          if (opcao.id != 6) ModeloOpcoesPacotes.fromMap(opcao.toMap()),
+        ModeloOpcoesPacotes.fromMap(opcaoBorda.toMap()),
+      ];
+      produtoDestino.opcoesPacotesListaFinal = opcoesSalvas;
+    }
+
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) {
         return PaginaProduto(
-          produto: itemProduto ?? widget.produto,
+          produto: produtoDestino,
           valorVenda: widget.valorVenda,
           montagemPizza: true,
         );

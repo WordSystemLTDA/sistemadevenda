@@ -1177,6 +1177,110 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('pagina de adicionais preserva borda recebida no produto',
+      (tester) async {
+    final produtosComBordas = ProdutosComBordasEAdicionaisTeste();
+    produtos = produtosComBordas;
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    final carrinho = Modular.get<ProvedorCarrinho>();
+    await carrinho.selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
+    cardapio
+      ..tipo = TipoCardapio.comanda
+      ..id = '10673'
+      ..idComanda = '3'
+      ..configBigchef = configBigchef(saborlimitedeborda: '2')
+      ..tamanhosPizza = tamanho('G');
+    cardapio.selecionarSaborPizza(produtosComBordas.produtos.first);
+
+    final produto = produtosComBordas.produtoComBordas('Mussarela');
+    produto.opcoesPacotesListaFinal = [
+      ModeloOpcoesPacotes(
+        id: 6,
+        titulo: 'Selecione as Bordas',
+        obrigatorio: false,
+        dados: [
+          ModeloDadosOpcoesPacotes(
+            id: 'Cheddar',
+            nome: 'Cheddar',
+            valor: '12',
+            somenteMetadeBorda: true,
+          ),
+        ],
+      ),
+    ];
+    Modular.get<ProvedorProduto>().resetarTudo();
+
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => ElevatedButton(
+          key: const ValueKey('abrir_produto_com_borda_salva'),
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => PaginaProduto(
+                produto: produto,
+                valorVenda: 50,
+                montagemPizza: true,
+              ),
+            ));
+          },
+          child: const Text('Abrir produto'),
+        ),
+      ),
+    ));
+    await tester
+        .tap(find.byKey(const ValueKey('abrir_produto_com_borda_salva')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecione os Adicionais'), findsOneWidget);
+    expect(find.text('Selecione as Bordas'), findsNothing);
+
+    await tester.tap(find.text('Milho'));
+    await tester.pumpAndSettle();
+    final botao = find.byType(BotaoAcaoPedido);
+    expect(tester.widget<BotaoAcaoPedido>(botao).total, contains('59,00'));
+
+    await tester.tap(botao);
+    await tester.pumpAndSettle();
+
+    final item = carrinho.itensCarrinho.listaComandosPedidos.single;
+    final bordas =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 6);
+    final adicionais =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 7);
+
+    expect(ValoresPizza.somar(bordas), 6);
+    expect(ValoresPizza.somar(adicionais), 3);
+    expect(item.valorVenda, '59.00');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CardCarrinho(
+            item: item,
+            index: 0,
+            idComanda: '3',
+            idMesa: '0',
+            value: null,
+            setarQuantidade: (_) async => true,
+            aoExcluirItem: () {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Meio (1/2)'), findsOneWidget);
+    expect(find.text('Meio - (1/2) Cheddar'), findsOneWidget);
+    expect(find.text('1x Milho'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final largura in [393.0, 800.0]) {
     testWidgets('mantem pizza ao trocar categorias em tela de $largura',
         (tester) async {
