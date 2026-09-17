@@ -309,8 +309,8 @@ void main() {
     final opcao = (dados['opcoesPacotesListaFinal'] as List).single;
     final borda = (opcao['dados'] as List).single;
 
-    expect(opcao['titulo'], 'Bordas - Meio (1/2) (1)');
-    expect(borda['nome'], 'Meio - (1/2) Chocolate');
+    expect(opcao['titulo'], 'Bordas - MEIA PIZZA (1)');
+    expect(borda['nome'], 'MEIA BORDA - (1/2) Chocolate');
     expect(borda['somenteMetadeBorda'], isTrue);
   });
 
@@ -340,9 +340,46 @@ void main() {
     final opcao = (dados['opcoesPacotesListaFinal'] as List).single;
     final bordas = opcao['dados'] as List;
 
-    expect(opcao['titulo'], 'Bordas - Meio (1/2) (2)');
+    expect(opcao['titulo'], 'Bordas - MEIA PIZZA (2)');
     expect(bordas.map((borda) => borda['nome']),
-        ['Meio - (1/4) Chocolate', 'Meio - (1/4) Catupiry']);
+        ['MEIA BORDA - (1/4) Chocolate', 'MEIA BORDA - (1/4) Catupiry']);
+  });
+
+  test('meia borda marcada imprime somente a escolhida no catalogo completo',
+      () {
+    final bordasCatalogo = List.generate(
+      7,
+      (index) => ModeloDadosOpcoesPacotes(
+        id: '${index + 1}',
+        nome: index == 0 ? 'Cheddar' : 'Borda ${index + 1}',
+        valor: index == 0 ? '6.00' : '12.00',
+        valorOriginal: index == 0 ? '12.00' : null,
+        estaSelecionado: index == 0,
+        somenteMetadeBorda: index == 0,
+      ),
+    );
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: bordasCatalogo,
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcao = (dados['opcoesPacotesListaFinal'] as List).single as Map;
+    final bordas = opcao['dados'] as List;
+    final json = jsonEncode(dados);
+
+    expect(opcao['titulo'], 'Bordas - MEIA PIZZA (1)');
+    expect(bordas, hasLength(1));
+    expect(bordas.single['nome'], 'MEIA BORDA - (1/2) Cheddar');
+    expect(bordas.single['somenteMetadeBorda'], isTrue);
+    expect(bordas.single['valor'], '6.00');
+    expect(json, isNot(contains('Borda 7')));
+    expect(json, isNot(contains('(1/7)')));
   });
 
   test('combos formatam produtos internos sem alterar complementos', () {

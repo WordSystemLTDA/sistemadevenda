@@ -7,6 +7,10 @@ class DadosImpressaoPreparo {
   static final RegExp _proporcaoNoInicio = RegExp(r'^\(\d+(?:/\d+)?\)\s+');
   static final RegExp _codigoComProporcaoNoInicio =
       RegExp(r'^\S+\s+-\s+\(\d+(?:/\d+)?\)\s+');
+  static final RegExp _meioBordaNoInicio = RegExp(
+    r'^(Meio|MEIA BORDA|MEIA PIZZA)\s+-\s+',
+    caseSensitive: false,
+  );
 
   static String _nome(String nome, String? codigo, String imprimirCodigo) {
     final codigoProduto = codigo?.trim() ?? '';
@@ -90,12 +94,12 @@ class DadosImpressaoPreparo {
       final bordas = _dadosSelecionadosQuandoMarcados(opcao);
       final meiaBorda = ValoresPizza.bordaSomenteMetade(bordas);
       dados['titulo'] = meiaBorda
-          ? 'Bordas - Meio (1/2) (${bordas.length})'
+          ? 'Bordas - MEIA PIZZA (${bordas.length})'
           : 'Bordas (${bordas.length})';
       dados['dados'] = bordas.map((borda) {
         return {
           ...borda.toMap(),
-          'nome': ValoresPizza.nomeBordaDetalhada(borda, bordas.length),
+          'nome': _nomeBordaPreparo(borda, bordas.length),
           'quantimaximaselecao': null,
         };
       }).toList();
@@ -113,5 +117,18 @@ class DadosImpressaoPreparo {
         dados.any((dado) => dado.estaSelecionado != null);
     if (!temMarcacaoSelecao) return dados;
     return dados.where((dado) => dado.estaSelecionado == true).toList();
+  }
+
+  static String _nomeBordaPreparo(
+    ModeloDadosOpcoesPacotes borda,
+    int totalBordas,
+  ) {
+    final nome = ValoresPizza.nomeBordaDetalhada(borda, totalBordas);
+    if (!borda.somenteMetadeBorda) return nome;
+
+    final nomeLimpo = nome.trimLeft();
+    if (nomeLimpo.toUpperCase().startsWith('MEIA BORDA - ')) return nome;
+
+    return 'MEIA BORDA - ${nomeLimpo.replaceFirst(_meioBordaNoInicio, '')}';
   }
 }

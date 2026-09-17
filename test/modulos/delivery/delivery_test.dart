@@ -373,6 +373,39 @@ void main() {
     expect(jsonEncode(produto), contains('Bordas (2)'));
     expect(jsonEncode(produto), contains('Adicionais'));
   });
+  test('preparo do delivery destaca meia borda e nao imprime nao escolhida',
+      () async {
+    final servidor = impressao.ServidorTeste();
+    Modular.init(impressao.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+
+    final s = ServicoDeliveryTeste();
+    final produtoCardapio = impressao.produto(
+        id: '1', nome: 'Pizza', codigo: '2', computador: 'COZINHA')
+      ..iditensvenda = '99';
+    final bordas = impressao.bordas(['Cheddar', 'Catupiry']);
+    bordas.dados!.first
+      ..estaSelecionado = true
+      ..somenteMetadeBorda = true;
+    bordas.dados!.last.estaSelecionado = false;
+    final pizzaDetalhada = impressao.produto(id: '1', nome: 'Pizza')
+      ..iditensvenda = '99'
+      ..opcoesPacotesListaFinal = [bordas];
+    s.produtosCardapio = [produtoCardapio];
+    s.atual = pedidoTeste(campos: {
+      'produtos': [pizzaDetalhada.toMap()],
+    });
+
+    await ImpressaoDelivery.imprimir(s, servidor, s.atual, preparo: true);
+
+    final mensagem = servidor.mensagens.single;
+    final produto = (mensagem['produtos'] as List).single as Map;
+    final json = jsonEncode(produto);
+
+    expect(json, contains('Bordas - MEIA PIZZA (1)'));
+    expect(json, contains('MEIA BORDA - (1/2) Cheddar'));
+    expect(json, isNot(contains('Catupiry')));
+  });
   test('comprovante do entregador imprime detalhes da pizza', () async {
     final servidor = impressao.ServidorTeste();
     final s = ServicoDeliveryTeste();
