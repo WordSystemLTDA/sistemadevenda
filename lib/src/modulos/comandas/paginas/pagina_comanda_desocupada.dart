@@ -42,6 +42,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   final _mesaDestinoSearchController = TextEditingController();
   final _clienteSearchController = TextEditingController();
   final _obsconstroller = TextEditingController();
+  final _observacaoFocusNode = FocusNode();
 
   bool carregando = true;
   bool salvando = false;
@@ -69,6 +70,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
       listarComandasPedidos();
     } else {
       carregando = false;
+      _focarObservacaoDepoisDoFrame();
     }
   }
 
@@ -77,7 +79,15 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
     _mesaDestinoSearchController.dispose();
     _clienteSearchController.dispose();
     _obsconstroller.dispose();
+    _observacaoFocusNode.dispose();
     super.dispose();
+  }
+
+  void _focarObservacaoDepoisDoFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || carregando || erroConsulta != null) return;
+      _observacaoFocusNode.requestFocus();
+    });
   }
 
   Future<void> listarDados() async {
@@ -117,7 +127,10 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
             () => erroConsulta = 'Não foi possível carregar o atendimento.');
       }
     } finally {
-      if (mounted) setState(() => carregando = false);
+      if (mounted) {
+        setState(() => carregando = false);
+        _focarObservacaoDepoisDoFrame();
+      }
     }
   }
 
@@ -368,7 +381,10 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                             texto: 'Nome / observação',
                             opcional: true),
                         const SizedBox(height: 8),
-                        _CampoObservacao(controller: _obsconstroller),
+                        _CampoObservacao(
+                          controller: _obsconstroller,
+                          focusNode: _observacaoFocusNode,
+                        ),
                       ],
                     ),
                   ),
@@ -766,7 +782,8 @@ class _SeletorCliente extends StatelessWidget {
 
 class _CampoObservacao extends StatelessWidget {
   final TextEditingController controller;
-  const _CampoObservacao({required this.controller});
+  final FocusNode focusNode;
+  const _CampoObservacao({required this.controller, required this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -779,7 +796,9 @@ class _CampoObservacao extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: TextField(
+        key: const Key('observacao_abertura_atendimento'),
         controller: controller,
+        focusNode: focusNode,
         maxLines: 5,
         minLines: 3,
         style: const TextStyle(fontSize: 14),

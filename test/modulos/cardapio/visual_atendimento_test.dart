@@ -12,6 +12,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/mesas/paginas/pagina_abrir_mesa.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -250,6 +251,31 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final tipo in [TipoCardapio.mesa, TipoCardapio.comanda]) {
+    testWidgets('abertura de ${tipo.name} foca nome observacao ao abrir',
+        (tester) async {
+      await abrir(
+          tester,
+          PaginaComandaDesocupada(
+              id: '4', nome: '${tipo.nome}: 4', tipo: tipo));
+      final campo = tester.widget<TextField>(
+          find.byKey(const Key('observacao_abertura_atendimento')));
+      expect(campo.focusNode?.hasFocus, isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets('pagina dedicada de mesa foca observacao ao abrir',
+      (tester) async {
+    await abrir(tester, const PaginaAbrirMesa(id: '4', nome: 'Mesa: 4'));
+    final campo = tester
+        .widget<TextField>(find.byKey(const Key('observacao_abertura_mesa')));
+    expect(campo.focusNode?.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
       'editar mesa abre formulario correto e atualiza detalhes ao voltar',

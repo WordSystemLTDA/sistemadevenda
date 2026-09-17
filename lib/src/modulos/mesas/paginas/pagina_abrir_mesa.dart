@@ -15,6 +15,7 @@ class PaginaAbrirMesa extends StatefulWidget {
 class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
   final _clienteSearchController = SearchController();
   final _observacaoController = TextEditingController();
+  final _observacaoFocusNode = FocusNode();
 
   String _idCliente = '0';
   String _nomeCliente = '';
@@ -23,9 +24,18 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
   final ProvedorMesas _state = Modular.get<ProvedorMesas>();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _observacaoFocusNode.requestFocus();
+    });
+  }
+
+  @override
   void dispose() {
     _clienteSearchController.dispose();
     _observacaoController.dispose();
+    _observacaoFocusNode.dispose();
     super.dispose();
   }
 
@@ -68,7 +78,8 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
       appBar: AppBar(
         backgroundColor: cs.inversePrimary,
         elevation: 0,
-        title: const Text('Abrir mesa', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text('Abrir mesa',
+            style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
@@ -83,17 +94,22 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
                 ? SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: cs.onPrimary),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: cs.onPrimary),
                   )
                 : const Icon(Icons.check_rounded, size: 20),
             label: Text(
               _salvando ? 'Abrindo...' : 'Abrir mesa',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.2),
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: cs.primary,
               foregroundColor: cs.onPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               elevation: 4,
             ),
           ),
@@ -107,7 +123,10 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
           children: [
             _HeroMesa(nome: widget.nome),
             const SizedBox(height: 16),
-            const _LabelCampo(icone: Icons.person_outline_rounded, texto: 'Cliente', opcional: true),
+            const _LabelCampo(
+                icone: Icons.person_outline_rounded,
+                texto: 'Cliente',
+                opcional: true),
             const SizedBox(height: 8),
             _SeletorCliente(
               controller: _clienteSearchController,
@@ -128,9 +147,15 @@ class _PaginaAbrirMesaState extends State<PaginaAbrirMesa> {
               clienteSelecionado: _nomeCliente,
             ),
             const SizedBox(height: 18),
-            const _LabelCampo(icone: Icons.notes_rounded, texto: 'Observação', opcional: true),
+            const _LabelCampo(
+                icone: Icons.notes_rounded,
+                texto: 'Observação',
+                opcional: true),
             const SizedBox(height: 8),
-            _CampoObservacao(controller: _observacaoController),
+            _CampoObservacao(
+              controller: _observacaoController,
+              focusNode: _observacaoFocusNode,
+            ),
           ],
         ),
       ),
@@ -151,7 +176,10 @@ class _HeroMesa extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: cs.outlineVariant),
         boxShadow: [
-          BoxShadow(color: cs.shadow.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2)),
         ],
       ),
       padding: const EdgeInsets.all(16),
@@ -163,7 +191,8 @@ class _HeroMesa extends StatelessWidget {
               color: cs.primaryContainer,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(Icons.table_bar_outlined, size: 28, color: cs.onPrimaryContainer),
+            child: Icon(Icons.table_bar_outlined,
+                size: 28, color: cs.onPrimaryContainer),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -206,7 +235,8 @@ class _LabelCampo extends StatelessWidget {
   final String texto;
   final bool opcional;
 
-  const _LabelCampo({required this.icone, required this.texto, this.opcional = false});
+  const _LabelCampo(
+      {required this.icone, required this.texto, this.opcional = false});
 
   @override
   Widget build(BuildContext context) {
@@ -217,13 +247,20 @@ class _LabelCampo extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           texto,
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onSurface, letterSpacing: 0.1),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+              letterSpacing: 0.1),
         ),
         if (opcional) ...[
           const SizedBox(width: 6),
           Text(
             '(opcional)',
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+            style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: cs.onSurfaceVariant),
           ),
         ],
       ],
@@ -269,20 +306,26 @@ class _SeletorCliente extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    temSelecionado ? Icons.person_rounded : Icons.search_rounded,
+                    temSelecionado
+                        ? Icons.person_rounded
+                        : Icons.search_rounded,
                     size: 20,
                     color: temSelecionado ? cs.primary : cs.onSurfaceVariant,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      temSelecionado ? clienteSelecionado : 'Selecionar cliente',
+                      temSelecionado
+                          ? clienteSelecionado
+                          : 'Selecionar cliente',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: temSelecionado ? FontWeight.w600 : FontWeight.w500,
-                        color: temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
+                        fontWeight:
+                            temSelecionado ? FontWeight.w600 : FontWeight.w500,
+                        color:
+                            temSelecionado ? cs.onSurface : cs.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -290,7 +333,8 @@ class _SeletorCliente extends StatelessWidget {
                     IconButton(
                       tooltip: 'Limpar',
                       onPressed: onLimpar,
-                      icon: Icon(Icons.close_rounded, size: 18, color: cs.onSurfaceVariant),
+                      icon: Icon(Icons.close_rounded,
+                          size: 18, color: cs.onSurfaceVariant),
                       visualDensity: VisualDensity.compact,
                     )
                   else
@@ -303,7 +347,8 @@ class _SeletorCliente extends StatelessWidget {
                         tooltip: 'Cadastrar cliente',
                         onPressed: () async {
                           final result = await Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const InserirCliente()),
+                            MaterialPageRoute(
+                                builder: (context) => const InserirCliente()),
                           );
                           if (result is Map && result['idcliente'] != null) {
                             onSelecionar(
@@ -312,7 +357,8 @@ class _SeletorCliente extends StatelessWidget {
                             );
                           }
                         },
-                        icon: Icon(Icons.person_add_alt_1_rounded, size: 18, color: cs.onPrimaryContainer),
+                        icon: Icon(Icons.person_add_alt_1_rounded,
+                            size: 18, color: cs.onPrimaryContainer),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -347,7 +393,8 @@ class _SeletorCliente extends StatelessWidget {
                     onSelecionar(e['id'].toString(), e['nome'].toString());
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     child: Row(
                       children: [
                         Container(
@@ -356,7 +403,8 @@ class _SeletorCliente extends StatelessWidget {
                             color: cs.primaryContainer,
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.person_outline_rounded, size: 18, color: cs.onPrimaryContainer),
+                          child: Icon(Icons.person_outline_rounded,
+                              size: 18, color: cs.onPrimaryContainer),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -365,13 +413,15 @@ class _SeletorCliente extends StatelessWidget {
                             children: [
                               Text(
                                 e['nome'].toString(),
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 'ID: ${e['id']}',
-                                style: TextStyle(fontSize: 11.5, color: cs.onSurfaceVariant),
+                                style: TextStyle(
+                                    fontSize: 11.5, color: cs.onSurfaceVariant),
                               ),
                             ],
                           ),
@@ -389,7 +439,8 @@ class _SeletorCliente extends StatelessWidget {
 
 class _CampoObservacao extends StatelessWidget {
   final TextEditingController controller;
-  const _CampoObservacao({required this.controller});
+  final FocusNode focusNode;
+  const _CampoObservacao({required this.controller, required this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +453,9 @@ class _CampoObservacao extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: TextField(
+        key: const Key('observacao_abertura_mesa'),
         controller: controller,
+        focusNode: focusNode,
         maxLines: 5,
         minLines: 4,
         style: const TextStyle(fontSize: 14),
