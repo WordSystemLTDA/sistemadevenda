@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
@@ -68,15 +69,151 @@ class ServicoProduto {
 
   Future<Modelowordprodutos?> listarPorId(
       String id, String idtamanhospizza) async {
-    var empresa = usuarioProvedor.usuario!.empresa;
-    var idUsuario = usuarioProvedor.usuario!.id;
+    final empresa = usuarioProvedor.usuario!.empresa ?? '';
+    final idUsuario = usuarioProvedor.usuario!.id ?? '';
     final response = await dio.cliente.get(
         '/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza',
         options: Options(extra: {'atualizarMontagemCardapio': true}));
 
     if (response.data == null) return null;
 
-    return Modelowordprodutos.fromMap(response.data);
+    final produto = Modelowordprodutos.fromMap(response.data);
+    return _completarMontagemCardapioSeNecessario(
+      produto,
+      empresa: empresa,
+      idUsuario: idUsuario,
+      baseGarcom: response.requestOptions.baseUrl,
+    );
+  }
+
+  bool _idCardapioValido(String? id) =>
+      (int.tryParse((id ?? '').trim()) ?? 0) > 0;
+
+  bool _grupoMontagemCardapio(Modelowordprodutos produto) {
+    return (produto.opcoesPacotes ?? []).any((grupo) =>
+        grupo.tipo == 8 ||
+        grupo.id == 12 ||
+        (grupo.dados ?? [])
+            .any((dado) => _idCardapioValido(dado.idCategoriaCardapio)));
+  }
+
+  Future<Modelowordprodutos> _completarMontagemCardapioSeNecessario(
+    Modelowordprodutos produto, {
+    required String empresa,
+    required String idUsuario,
+    required String baseGarcom,
+  }) async {
+    if (_grupoMontagemCardapio(produto) || produto.categoria.trim().isEmpty) {
+      return produto;
+    }
+
+    final baseDesktop = _baseDesktop(baseGarcom);
+    if (baseDesktop == null) return produto;
+
+    final produtoDesktop = await _buscarProdutoDesktop(
+      produto,
+      empresa: empresa,
+      idUsuario: idUsuario,
+      baseDesktop: baseDesktop,
+    );
+    if (produtoDesktop == null || !_grupoMontagemCardapio(produtoDesktop)) {
+      return produto;
+    }
+
+    produto.idCategoriaCardapio ??= produtoDesktop.idCategoriaCardapio;
+    produto.habilTipo = 'Pacote';
+    final montagemDesktop = (produtoDesktop.opcoesPacotes ?? [])
+        .where(_grupoEhMontagemCardapio)
+        .map((grupo) => ModeloOpcoesPacotes.fromMap(grupo.toMap()))
+        .toList();
+    final atuais = (produto.opcoesPacotes ?? [])
+        .where((grupo) => !_grupoEhMontagemCardapio(grupo))
+        .map((grupo) => ModeloOpcoesPacotes.fromMap(grupo.toMap()))
+        .toList();
+    final extrasDesktop = (produtoDesktop.opcoesPacotes ?? [])
+        .where((grupo) => !_grupoEhMontagemCardapio(grupo))
+        .where((grupo) => !atuais.any((atual) => atual.id == grupo.id))
+        .map((grupo) => ModeloOpcoesPacotes.fromMap(grupo.toMap()))
+        .toList();
+
+    produto.opcoesPacotes = [
+      ...montagemDesktop,
+      ...atuais,
+      ...extrasDesktop,
+    ];
+    return produto;
+  }
+
+  bool _grupoEhMontagemCardapio(ModeloOpcoesPacotes grupo) =>
+      grupo.tipo == 8 ||
+      grupo.id == 12 ||
+      (grupo.dados ?? [])
+          .any((dado) => _idCardapioValido(dado.idCategoriaCardapio));
+
+  String? _baseDesktop(String baseGarcom) {
+    if (baseGarcom.isEmpty) return null;
+    final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
+    final local = normalizada.replaceFirst(
+      '/api_restaurantes_venda/api1/',
+      '/api_desktop/1.0.01/',
+    );
+    if (local != normalizada) return local;
+
+    final online = normalizada.replaceFirst(
+      '/api_restaurantes_venda/api6/',
+      '/api_desktop/1.0.01/',
+    );
+    return online == normalizada ? null : online;
+  }
+
+  Future<Modelowordprodutos?> _buscarProdutoDesktop(
+    Modelowordprodutos produto, {
+    required String empresa,
+    required String idUsuario,
+    required String baseDesktop,
+  }) async {
+    for (var pagina = 1; pagina <= 10; pagina++) {
+      try {
+        final response = await dio.cliente.get(
+          'produtos/listar_por_categoria.php',
+          queryParameters: {
+            'categoria': produto.categoria,
+            'empresa': empresa,
+            'id_usuario': idUsuario,
+            'pagina': pagina,
+          },
+          options: Options(extra: {
+            'semCache': true,
+            'servidorFixo': baseDesktop,
+          }),
+        );
+        final lista = _listaMapas(response.data);
+        final encontrado = lista.where((item) =>
+            item['id']?.toString() == produto.id ||
+            (produto.codigo.trim().isNotEmpty &&
+                item['codigo']?.toString() == produto.codigo));
+        if (encontrado.isNotEmpty) {
+          return Modelowordprodutos.fromMap(encontrado.first);
+        }
+        if (lista.isEmpty) return null;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>> _listaMapas(Object? dados) {
+    final lista = dados is List
+        ? dados
+        : dados is Map
+            ? (dados['dados'] ?? dados['produtos'] ?? dados['data'])
+            : null;
+    if (lista is! List) return const [];
+    return [
+      for (final item in lista)
+        if (item is Map) Map<String, dynamic>.from(item)
+    ];
   }
 
   Future<List<AdicionaisModelo>> listarAdicionais(String id) async {
