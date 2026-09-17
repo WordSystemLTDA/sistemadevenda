@@ -716,7 +716,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                 ? _confirmarMontagemCardapio
                 : _confirmarTrocaCardapio;
             return Scaffold(
-              extendBody: true,
+              extendBody: false,
               backgroundColor: VisualAtendimento.fundo(context),
               appBar: AppBar(
                 backgroundColor: cs.inversePrimary,
@@ -737,13 +737,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               ),
               body: SafeArea(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    14,
-                    12,
-                    14,
-                    MediaQuery.paddingOf(context).bottom +
-                        MediaQuery.textScalerOf(context).scale(88),
-                  ),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                   child: itemTroca == null
                       ? EtapaMontagemCardapio(
                           nomeProduto: itemProduto!.nome,

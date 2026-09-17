@@ -29,30 +29,6 @@ class CardIngredientesCardapio extends StatelessWidget {
         montagem.separado && montagem.acao != AcaoIngredienteCardapio.sem;
     final cor = cs.primary;
 
-    Widget controle(List<AcaoIngredienteCardapio> acoes) {
-      return SegmentedButton<AcaoIngredienteCardapio>(
-        showSelectedIcon: false,
-        selected: acoes.contains(montagem.acao) ? {montagem.acao} : {},
-        emptySelectionAllowed: true,
-        onSelectionChanged: (selecionadas) {
-          if (selecionadas.isNotEmpty) aoAlterar(selecionadas.first);
-        },
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          minimumSize: const WidgetStatePropertyAll(Size(48, 38)),
-          padding:
-              const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 8)),
-          shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          ),
-        ),
-        segments: [
-          for (final acao in acoes)
-            ButtonSegment(value: acao, label: Text(acao.rotulo)),
-        ],
-      );
-    }
-
     final cabecalho = Row(children: [
       Icon(
         montagem.acao == AcaoIngredienteCardapio.sem
@@ -100,66 +76,162 @@ class CardIngredientesCardapio extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: LayoutBuilder(builder: (context, constraints) {
-            final fonteAmpliada =
-                MediaQuery.textScalerOf(context).scale(14) > 18;
-            final botoes = Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (fonteAmpliada && constraints.maxWidth < 430)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      controle([
-                        AcaoIngredienteCardapio.sem,
-                        AcaoIngredienteCardapio.pouco,
-                      ]),
-                      const SizedBox(height: 8),
-                      controle([
-                        AcaoIngredienteCardapio.normal,
-                        AcaoIngredienteCardapio.mais,
-                      ]),
-                    ],
-                  )
-                else
-                  controle([
-                    AcaoIngredienteCardapio.sem,
-                    AcaoIngredienteCardapio.pouco,
-                    AcaoIngredienteCardapio.normal,
-                    AcaoIngredienteCardapio.mais,
-                  ]),
-                TextButton.icon(
-                  onPressed: aoTrocar,
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                  label: const Text('Trocar'),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              cabecalho,
+              const SizedBox(height: 10),
+              _ControlePorcaoIngrediente(
+                selecionada: montagem.acao,
+                aoAlterar: aoAlterar,
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: _BotaoSecundarioIngrediente(
+                    icon: Icons.swap_horiz_rounded,
+                    label: 'Trocar',
+                    onPressed: aoTrocar,
+                  ),
                 ),
-                FilterChip(
-                  selected: separado,
-                  onSelected: montagem.acao == AcaoIngredienteCardapio.sem
-                      ? null
-                      : aoSeparar,
-                  label: const Text('Separado'),
-                  avatar: const Icon(Icons.inventory_2_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _BotaoSecundarioIngrediente(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Separado',
+                    selecionado: separado,
+                    onPressed: montagem.acao == AcaoIngredienteCardapio.sem
+                        ? null
+                        : () => aoSeparar(!separado),
+                  ),
                 ),
-              ],
-            );
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-            if (constraints.maxWidth < 640 || fonteAmpliada) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [cabecalho, const SizedBox(height: 10), botoes],
-              );
-            }
+class _ControlePorcaoIngrediente extends StatelessWidget {
+  final AcaoIngredienteCardapio selecionada;
+  final ValueChanged<AcaoIngredienteCardapio> aoAlterar;
 
-            return Row(children: [
-              Expanded(child: cabecalho),
-              const SizedBox(width: 12),
-              Flexible(child: botoes),
-            ]);
-          }),
+  const _ControlePorcaoIngrediente({
+    required this.selecionada,
+    required this.aoAlterar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const acoes = [
+      AcaoIngredienteCardapio.sem,
+      AcaoIngredienteCardapio.pouco,
+      AcaoIngredienteCardapio.normal,
+      AcaoIngredienteCardapio.mais,
+    ];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: cs.outline.withValues(alpha: 0.75)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SizedBox(
+          height: 52,
+          child: Row(children: [
+            for (var i = 0; i < acoes.length; i++) ...[
+              Expanded(
+                child: _OpcaoPorcaoIngrediente(
+                  acao: acoes[i],
+                  selecionada: selecionada == acoes[i],
+                  aoSelecionar: () => aoAlterar(acoes[i]),
+                ),
+              ),
+              if (i < acoes.length - 1)
+                Container(
+                  width: 1,
+                  color: cs.outline.withValues(alpha: 0.55),
+                ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpcaoPorcaoIngrediente extends StatelessWidget {
+  final AcaoIngredienteCardapio acao;
+  final bool selecionada;
+  final VoidCallback aoSelecionar;
+
+  const _OpcaoPorcaoIngrediente({
+    required this.acao,
+    required this.selecionada,
+    required this.aoSelecionar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: selecionada ? cs.primaryContainer : Colors.transparent,
+      child: InkWell(
+        onTap: aoSelecionar,
+        child: Center(
+          child: Text(
+            acao.rotulo,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: selecionada ? cs.primary : cs.onSurface,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BotaoSecundarioIngrediente extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selecionado;
+  final VoidCallback? onPressed;
+
+  const _BotaoSecundarioIngrediente({
+    required this.icon,
+    required this.label,
+    this.selecionado = false,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: selecionado ? cs.primary : cs.onSurfaceVariant,
+          backgroundColor: selecionado
+              ? cs.primaryContainer.withValues(alpha: 0.55)
+              : cs.surface,
+          side: BorderSide(
+            color: selecionado ? cs.primary : cs.outlineVariant,
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

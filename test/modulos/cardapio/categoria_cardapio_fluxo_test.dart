@@ -236,12 +236,13 @@ void main() {
       await tester.tap(find.byType(CardProduto));
       await tester.pumpAndSettle();
       expect(find.byType(EtapaMontagemCardapio), findsOneWidget);
-      final seletores =
-          tester.widgetList<SegmentedButton<AcaoIngredienteCardapio>>(
-              find.byType(SegmentedButton<AcaoIngredienteCardapio>));
-      expect(seletores, hasLength(3));
-      expect(seletores.map((s) => s.selected),
-          everyElement({AcaoIngredienteCardapio.normal}));
+      final cards = tester
+          .widgetList<CardIngredientesCardapio>(
+              find.byType(CardIngredientesCardapio))
+          .toList();
+      expect(cards, hasLength(3));
+      expect(cards.map((card) => card.item.montagemCardapio!.acao),
+          everyElement(AcaoIngredienteCardapio.normal));
       expect(find.text('Selecione os Adicionais'), findsNothing);
       await capturarTela(tester, 'almoco_montagem_${largura.toInt()}');
 
