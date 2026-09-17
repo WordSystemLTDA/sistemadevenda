@@ -3,6 +3,7 @@ import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/inserir_cliente.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class PaginaNovaVendaBalcao extends StatefulWidget {
@@ -33,15 +34,26 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_aoEventoTeclado);
     // listarDados();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_aoEventoTeclado);
     obsController.dispose();
     clienteController.dispose();
     enderecoController.dispose();
     super.dispose();
+  }
+
+  bool _aoEventoTeclado(KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.f8) {
+      abrir();
+      return true;
+    }
+
+    return false;
   }
 
   bool verificarAbrirComanda() {
@@ -117,7 +129,7 @@ class _PaginaNovaVendaBalcaoState extends State<PaginaNovaVendaBalcao> {
                         color: Colors.white, size: 20),
                     SizedBox(width: 10),
                     Text(
-                      'Abrir Cardápio',
+                      '[F8] Abrir Cardápio',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 15.5,
