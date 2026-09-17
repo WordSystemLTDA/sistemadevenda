@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math';
 
 import 'package:app/src/app_widget.dart';
@@ -70,10 +71,25 @@ class Impressao {
     final usuario = Modular.get<UsuarioProvedor>();
     final localImpressao = _normalizarLocal(local);
     final grupos = <String, List<Modelowordprodutos>>{};
-    for (final produto in produtos) {
+    void adicionar(Modelowordprodutos produto) {
+      if (!_temDestinoConfigurado(produto.destinoDeImpressao)) return;
       final destino = _normalizarNomeComputadorDestino(
           produto.destinoDeImpressao?.nomedopc);
       grupos.putIfAbsent(destino, () => []).add(produto);
+    }
+
+    for (final produto in produtos) {
+      final opcoes =
+          produto.opcoesPacotesListaFinal ?? produto.opcoesPacotes ?? [];
+      if (opcoes.isNotEmpty &&
+          opcoes.every((opcao) => opcao.titulo == 'Combos')) {
+        for (final componente in opcoes
+            .expand((opcao) => opcao.produtos ?? <Modelowordprodutos>[])) {
+          adicionar(componente);
+        }
+      } else {
+        adicionar(produto);
+      }
     }
     // Serializa todos os destinos antes de qualquer operacao assincrona ou limpeza do carrinho.
     return grupos.entries
@@ -81,6 +97,7 @@ class Impressao {
               'idRequisicao': _gerarIdentificadorRequisicao(),
               'tipo': tipoTela.nome,
               'tipoImpressao': '1',
+              'protocoloImpressao': 2,
               if (grupo.key.isNotEmpty) 'nomedopc': grupo.key,
               'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
               'produtos':
@@ -101,9 +118,8 @@ class Impressao {
 
   static bool _temDestinoConfigurado(ModeloDestinoImpressao? destino) {
     if (destino == null) return false;
-    return destino.nomedopc?.trim().isNotEmpty == true ||
-        destino.nomeDaImpressora.trim().isNotEmpty ||
-        destino.nome.trim().isNotEmpty;
+    final nome = destino.nomeDaImpressora.trim().toLowerCase();
+    return nome.isNotEmpty && nome != 'sem impressora';
   }
 
   static List<String> prepararCancelamentoDeItem({
@@ -119,7 +135,9 @@ class Impressao {
   }) {
     final itemCancelado = Modelowordprodutos.fromMap(produto.toMap());
     final destinoOriginal = produto.destinoDeImpressao;
-    if (!_temDestinoConfigurado(destinoOriginal)) {
+    if (!_temDestinoConfigurado(destinoOriginal) &&
+        destinoOriginal?.nomeDaImpressora.trim().toLowerCase() !=
+            'sem impressora') {
       itemCancelado.destinoDeImpressao = destinoCaixa;
     }
     itemCancelado.nome = 'CANCELAMENTO - ${produto.nome}';
@@ -172,36 +190,20 @@ class Impressao {
       enviarDeVolta: enviarDeVolta,
     );
     if (mensagens.isNotEmpty) {
-      // No balcao, o pagamento ja foi salvo: repetir somente o envio, nunca a cobranca.
-      while (true) {
+      // O pagamento ja foi salvo. A falha de impressao nao bloqueia a saida.
+      unawaited(() async {
         try {
           await Modular.get<Server>().enviarImpressoes(mensagens);
-          return;
         } catch (_) {
           final context = navigatorKey?.currentContext;
-          if (context == null || !context.mounted) rethrow;
-          await showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => PopScope(
-              canPop: false,
-              child: AlertDialog(
-                scrollable: true,
-                title: const Text('Impressão não salva'),
-                content: const Text(
-                    'O pedido já foi registrado, mas não foi possível salvar o envio para a cozinha. Verifique o armazenamento do aparelho. A nova tentativa não repetirá o pagamento.'),
-                actions: [
-                  FilledButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Tentar novamente'),
-                  ),
-                ],
-              ),
-            ),
-          );
+          if (context == null || !context.mounted) return;
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+            content: Text(
+                'Pedido salvo. A impressão não foi salva; confira com a cozinha.'),
+            showCloseIcon: true,
+          ));
         }
-      }
+      }());
     }
   }
 

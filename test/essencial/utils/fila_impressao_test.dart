@@ -88,19 +88,27 @@ void main() {
     expect(limpou, isTrue);
   });
 
-  test('falha antes de salvar comprovante impede registro do pedido', () async {
+  test('falha ao salvar impressao libera registro do pedido e avisa usuario',
+      () async {
     final finalizacao = FinalizacaoComPreparo();
-    await expectLater(
-        finalizacao.executar(
+    var avisos = 0;
+    var limpezas = 0;
+    expect(
+        await finalizacao.executar(
           prepararImpressao: () => [mensagem('nao-salva')],
           salvarImpressaoAntesDoPedido: (_) async =>
               throw StateError('Disco cheio'),
-          registrarPedido: () async =>
-              fail('Nao pode registrar sem comprovante salvo'),
-          enviarImpressao: (_) async => fail('Nao pode enviar'),
-          limparCarrinho: () async => fail('Nao pode perder os produtos'),
+          registrarPedido: () async => true,
+          enviarImpressao: (_) async => throw StateError('Disco cheio'),
+          limparCarrinho: () async {
+            limpezas++;
+          },
+          aoFalharImpressao: (_) => avisos++,
         ),
-        throwsStateError);
+        isTrue);
+    expect(avisos, 2);
+    expect(limpezas, 1);
+    expect(finalizacao.erroImpressao, isA<StateError>());
   });
 
   test(
@@ -202,9 +210,7 @@ void main() {
     expect(fila.itens.map((e) => e.id), ['bebida']);
   });
 
-  test(
-      'finalizacao preserva snapshot e tenta apenas impressao apos gravar pedido',
-      () async {
+  test('falha de impressao nao prende finalizacao nem repete pedido', () async {
     final finalizacao = FinalizacaoComPreparo();
     final carrinho = [mensagem('pizza'), mensagem('bebida')];
     var registros = 0;
@@ -226,13 +232,13 @@ void main() {
             carrinho.clear();
           },
         );
-    await expectLater(executar(), throwsStateError);
-    expect(limpezas, 0);
+    expect(await executar(), isTrue);
+    expect(limpezas, 1);
     expect(finalizacao.pedidoRegistrado, isTrue);
     carrinho.add(mensagem('nao-pertence-ao-pedido'));
     expect(await executar(), isTrue);
     expect(registros, 1);
-    expect(envios, 2);
+    expect(envios, 1);
     expect(limpezas, 1);
   });
 

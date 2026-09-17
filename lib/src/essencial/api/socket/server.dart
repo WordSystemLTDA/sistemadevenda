@@ -24,6 +24,8 @@ class Server extends ChangeNotifier {
   bool _descartado = false;
   Timer? _retentativaImpressao;
   final Map<String, DateTime> _consultasImpressao = {};
+  final Map<String, int> _quantidadeConsultas = {};
+  DateTime? _ultimoAvisoImpressao;
   final DateTime Function() _agora;
 
   Server({FilaImpressao? filaImpressao, DateTime Function()? agora})
@@ -33,10 +35,13 @@ class Server extends ChangeNotifier {
   }
 
   void _atualizarFilaImpressao() {
-    if (filaImpressao.itens.isEmpty) {
+    if (filaImpressao.itens.every((item) =>
+        item.estado == EstadoImpressao.pausada ||
+        item.estado == EstadoImpressao.aguardandoPedido)) {
       _retentativaImpressao?.cancel();
       _retentativaImpressao = null;
       _consultasImpressao.clear();
+      _quantidadeConsultas.clear();
       _avisoImpressaoVisivel?.close();
       _avisoImpressaoVisivel = null;
     } else if (!_descartado && !_desconexaoIntencional) {
@@ -53,9 +58,13 @@ class Server extends ChangeNotifier {
         builder: (_) => PendenciasImpressao(
               fila: filaImpressao,
               reenviar: (id) async {
-                await filaImpressao.autorizarReenvio(id);
+                _quantidadeConsultas.remove(id);
+                _consultasImpressao.remove(id);
+                await filaImpressao.autorizarReenvio(id, manual: true);
                 await _reenviarMensagensPendentes();
               },
+              limpar: limparImpressoes,
+              pertenceAoEscopo: _pertenceAConexao,
             )));
   }
 
@@ -63,14 +72,20 @@ class Server extends ChangeNotifier {
 
   void _avisarImpressaoPendente() {
     if (_descartado || filaImpressao.itens.isEmpty) return;
+    if (_ultimoAvisoImpressao != null &&
+        _agora().difference(_ultimoAvisoImpressao!) <
+            const Duration(minutes: 1)) {
+      return;
+    }
     final context = navigatorKey?.currentContext;
     if (context == null || !context.mounted) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.hideCurrentSnackBar();
-    _avisoImpressaoVisivel = messenger?.showSnackBar(SnackBar(
-      duration: const Duration(days: 1),
-      content: const Text(
-          'Impressao pendente. O envio sera retomado automaticamente.'),
+    if (messenger == null) return;
+    _ultimoAvisoImpressao = _agora();
+    _avisoImpressaoVisivel?.close();
+    _avisoImpressaoVisivel = messenger.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 5),
+      content: const Text('Impressão pendente. O atendimento pode continuar.'),
       action: SnackBarAction(
           label: 'Conferir',
           onPressed: () => abrirPendenciasImpressao(context)),
@@ -78,9 +93,13 @@ class Server extends ChangeNotifier {
   }
 
   Future<void> enviarImpressoes(List<String> mensagens) async {
+    if (mensagens.isEmpty) return;
     await filaImpressao.registrar(mensagens,
         servidor: hostname.isEmpty ? '' : '$hostname:$port');
-    await processarImpressoesPendentes();
+    // Escrever no socket nao aguarda a impressora. Conectar fica em segundo plano.
+    if (connected) {
+      await _reenviarMensagensPendentes();
+    }
     if (!connected) _avisarImpressaoPendente();
   }
 
@@ -88,6 +107,33 @@ class Server extends ChangeNotifier {
       filaImpressao.registrar(mensagens,
           servidor: hostname.isEmpty ? '' : '$hostname:$port',
           estado: EstadoImpressao.aguardandoPedido);
+
+  Future<void> limparImpressoes(List<String> ids) async {
+    final cancelar = <String>{};
+    for (final id in ids) {
+      final item =
+          filaImpressao.itens.where((item) => item.id == id).firstOrNull;
+      if (item == null ||
+          !_pertenceAConexao(item) ||
+          item.estado == EstadoImpressao.aguardandoPedido) {
+        continue;
+      }
+      cancelar.add(id);
+      _consultasImpressao.remove(id);
+    }
+    await filaImpressao.cancelarLote(cancelar);
+    unawaited(processarImpressoesPendentes());
+  }
+
+  void avisarFalhaImpressao(Object erro) {
+    log('Falha ao salvar impressão; atendimento liberado', error: erro);
+    final context = navigatorKey?.currentContext;
+    if (context == null || !context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+      content: Text('Impressão não salva. Confira o pedido com a cozinha.'),
+      showCloseIcon: true,
+    ));
+  }
 
   Future<void> processarImpressoesPendentes(
       {bool reconectarAgora = false}) async {
@@ -133,18 +179,49 @@ class Server extends ChangeNotifier {
 
   Future<void> _enviarImpressoesAguardando() async {
     await filaImpressao.carregar();
+    var enviados = 0;
     for (final item in filaImpressao.itens) {
+      if (enviados >= 3) break;
       if (!connected || channel == null) break;
       if (!_pertenceAConexao(item)) continue;
-      if (item.estado == EstadoImpressao.aguardandoPedido) continue;
-      if (item.estado != EstadoImpressao.aguardandoEnvio) {
-        if (item.dados['tipoImpressao']?.toString() != '1') continue;
-        final ultima = _consultasImpressao[item.id] ?? item.ultimaTentativa;
+      if (item.estado == EstadoImpressao.aguardandoPedido ||
+          item.estado == EstadoImpressao.pausada) {
+        continue;
+      }
+      if (item.estado == EstadoImpressao.cancelamentoPendente) {
+        final ultima = _consultasImpressao[item.id];
         if (ultima != null &&
-            _agora().difference(ultima) < const Duration(seconds: 15)) {
+            _agora().difference(ultima) < const Duration(minutes: 1)) {
           continue;
         }
         _consultasImpressao[item.id] = _agora();
+        _enviarMensagemNoCanal(jsonEncode({
+          'tipo': 'CancelarImpressao',
+          'protocoloImpressao': 2,
+          'idRequisicao': item.id,
+          'idEmpresa': item.dados['idEmpresa'],
+          'nomedopc': item.dados['nomedopc'],
+        }));
+        enviados++;
+        continue;
+      }
+      if (item.estado != EstadoImpressao.aguardandoEnvio) {
+        if (item.dados['tipoImpressao']?.toString() != '1') continue;
+        final ultima = _consultasImpressao[item.id] ?? item.ultimaTentativa;
+        final intervalo = !_consultasImpressao.containsKey(item.id)
+            ? const Duration(seconds: 15)
+            : const Duration(minutes: 1);
+        if (ultima != null && _agora().difference(ultima) < intervalo) {
+          continue;
+        }
+        _consultasImpressao[item.id] = _agora();
+        final consultas = _quantidadeConsultas
+            .update(item.id, (valor) => valor + 1, ifAbsent: () => 1);
+        if (consultas > 3) {
+          await filaImpressao.pausar(item.id,
+              'Recuperação pausada. Confira a cozinha ou limpe a pendência.');
+          continue;
+        }
         // Consulta o mesmo ID antes de repetir: o ACK pode ter se perdido.
         final enviada = _enviarMensagemNoCanal(jsonEncode({
           'tipo': 'ConsultarImpressao',
@@ -157,9 +234,11 @@ class Server extends ChangeNotifier {
           _processarQuedaConexao();
           break;
         }
+        enviados++;
         continue;
       }
       if (!await filaImpressao.iniciarEnvio(item.id, agora: _agora())) continue;
+      enviados++;
       if (!_enviarMensagemNoCanal(
           jsonEncode({...item.dados, 'protocoloImpressao': 2}))) {
         await filaImpressao.registrarErro(item.id,
@@ -656,7 +735,7 @@ class Server extends ChangeNotifier {
         final context = navigatorKey?.currentContext;
         if (context != null && context.mounted) {
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
-            duration: Duration(days: 1),
+            duration: Duration(seconds: 5),
             content: Text(
                 'Falha ao salvar a impressao. Confira o pedido com a cozinha antes de sair.'),
           ));
@@ -783,14 +862,31 @@ class Server extends ChangeNotifier {
               item.estado == EstadoImpressao.aguardandoPedido) {
             return;
           }
+          final empresaResposta = mensagem['idEmpresa']?.toString() ?? '';
+          if (empresaResposta.isNotEmpty &&
+              empresaResposta != item.dados['idEmpresa']?.toString()) {
+            return;
+          }
           final protocoloConfirmado = mensagem['protocoloImpressao'] == 2 ||
               item.dados['tipoImpressao']?.toString() != '1';
-          if (mensagem['statusResposta'] == 'sucesso' && protocoloConfirmado) {
-            await filaImpressao.confirmar(idRequisicao);
+          if ((mensagem['statusResposta'] == 'sucesso' ||
+                  mensagem['statusResposta'] == 'cancelada' ||
+                  mensagem['statusResposta'] == 'dispensada') &&
+              protocoloConfirmado) {
+            await filaImpressao.confirmar(idRequisicao,
+                cancelada: mensagem['statusResposta'] == 'cancelada');
             _consultasImpressao.remove(idRequisicao);
+            _quantidadeConsultas.remove(idRequisicao);
+          } else if (item.estado == EstadoImpressao.cancelamentoPendente) {
+            return;
+          } else if (mensagem['statusResposta'] == 'pausada') {
+            await filaImpressao.pausar(
+                idRequisicao,
+                mensagem['mensagemErro']?.toString() ??
+                    'Impressão pausada no servidor.');
           } else if (mensagem['statusResposta'] == 'naoEncontrada' &&
               protocoloConfirmado) {
-            if (item.dados['protocoloImpressao'] == 2) {
+            if (item.dados['protocoloImpressao'] == 2 && item.tentativas < 3) {
               await filaImpressao.autorizarReenvio(idRequisicao);
               unawaited(processarImpressoesPendentes());
             } else {

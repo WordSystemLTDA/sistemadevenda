@@ -3,10 +3,55 @@ import 'package:flutter/material.dart';
 
 class PendenciasImpressao extends StatelessWidget {
   const PendenciasImpressao(
-      {super.key, required this.fila, required this.reenviar});
+      {super.key,
+      required this.fila,
+      required this.reenviar,
+      this.limpar,
+      this.pertenceAoEscopo});
 
   final FilaImpressao fila;
   final Future<void> Function(String id) reenviar;
+  final Future<void> Function(List<String> ids)? limpar;
+  final bool Function(ImpressaoPendente)? pertenceAoEscopo;
+
+  List<ImpressaoPendente> get _itens =>
+      fila.itens.where((item) => pertenceAoEscopo?.call(item) ?? true).toList();
+
+  Future<void> _limpar(BuildContext context) async {
+    final ids = _itens
+        .where((item) =>
+            item.estado != EstadoImpressao.aguardandoPedido &&
+            item.estado != EstadoImpressao.cancelamentoPendente)
+        .map((item) => item.id)
+        .toList();
+    if (ids.isEmpty) return;
+    final confirmou = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              scrollable: true,
+              title: const Text('Limpar impressões?'),
+              content: Text(
+                  'Cancelar ${ids.length} impressão(ões) pendente(s)? Os pedidos serão mantidos. Se estiver sem conexão, o cancelamento será enviado ao reconectar. Uma via já enviada à impressora ainda pode sair.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Voltar')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Limpar')),
+              ],
+            ));
+    if (confirmou != true) return;
+    try {
+      await limpar!(ids);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível limpar todas as impressões. Confira as pendências.')));
+      }
+    }
+  }
 
   static List<Map<String, dynamic>> _produtos(Object? valor) {
     if (valor is! List) return const [];
@@ -59,17 +104,23 @@ class PendenciasImpressao extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Impressões pendentes')),
+        appBar: AppBar(title: const Text('Impressões pendentes'), actions: [
+          if (limpar != null)
+            IconButton(
+                tooltip: 'Limpar pendências',
+                onPressed: () => _limpar(context),
+                icon: const Icon(Icons.clear_all)),
+        ]),
         body: ListenableBuilder(
           listenable: fila,
-          builder: (context, _) => fila.itens.isEmpty
+          builder: (context, _) => _itens.isEmpty
               ? const Center(child: Text('Nenhuma impressão pendente'))
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: fila.itens.length,
+                  itemCount: _itens.length,
                   separatorBuilder: (_, __) => const Divider(height: 24),
                   itemBuilder: (context, index) {
-                    final item = fila.itens[index];
+                    final item = _itens[index];
                     final dados = item.dados;
                     final produtos = _produtos(dados['produtos']);
                     return Column(
@@ -95,6 +146,10 @@ class PendenciasImpressao extends StatelessWidget {
                                 'Aguardando confirmacao. Recuperacao automatica em andamento.',
                               EstadoImpressao.erro =>
                                 item.erro ?? 'Falha informada pelo servidor',
+                              EstadoImpressao.pausada => item.erro ??
+                                  'Impressão pausada. Confira a cozinha.',
+                              EstadoImpressao.cancelamentoPendente =>
+                                'Cancelamento aguardando confirmação do servidor. O pedido foi mantido.',
                             },
                             style: TextStyle(
                                 color: Theme.of(context).colorScheme.error)),
@@ -102,14 +157,19 @@ class PendenciasImpressao extends StatelessWidget {
                           alignment: MainAxisAlignment.end,
                           overflowAlignment: OverflowBarAlignment.end,
                           children: [
-                            if (dados['protocoloImpressao'] != 2)
+                            if (dados['protocoloImpressao'] != 2 &&
+                                item.estado !=
+                                    EstadoImpressao.cancelamentoPendente)
                               TextButton.icon(
                                 onPressed: () =>
                                     _confirmar(context, item, false),
                                 icon: const Icon(Icons.check),
                                 label: const Text('Recebido na cozinha'),
                               ),
-                            if (item.estado != EstadoImpressao.aguardandoEnvio)
+                            if (item.estado !=
+                                    EstadoImpressao.aguardandoEnvio &&
+                                item.estado !=
+                                    EstadoImpressao.cancelamentoPendente)
                               TextButton.icon(
                                 onPressed: () =>
                                     _confirmar(context, item, true),

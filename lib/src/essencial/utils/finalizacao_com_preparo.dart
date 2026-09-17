@@ -4,6 +4,7 @@ class FinalizacaoComPreparo {
   bool _impressaoRegistrada = false;
   bool _executando = false;
   List<String>? _mensagens;
+  Object? erroImpressao;
 
   Future<bool> executar({
     required List<String> Function() prepararImpressao,
@@ -13,6 +14,7 @@ class FinalizacaoComPreparo {
     Future<void> Function(List<String>)? salvarImpressaoAntesDoPedido,
     Future<void> Function(List<String>)? cancelarImpressaoPreparada,
     Future<void> Function(List<String>)? registrarPedidoDuravel,
+    void Function(Object erro)? aoFalharImpressao,
   }) async {
     if (concluido) return true;
     if (_executando) return false;
@@ -29,7 +31,14 @@ class FinalizacaoComPreparo {
         _mensagens = List.unmodifiable(prepararImpressao());
         // O comprovante sobrevive ao fechamento do app durante a chamada HTTP.
         // A fila so o libera para envio depois de confirmar o registro do pedido.
-        await salvarImpressaoAntesDoPedido?.call(_mensagens!);
+        try {
+          if (_mensagens!.isNotEmpty) {
+            await salvarImpressaoAntesDoPedido?.call(_mensagens!);
+          }
+        } catch (erro) {
+          erroImpressao = erro;
+          aoFalharImpressao?.call(erro);
+        }
         pedidoRegistrado = await registrarPedido();
         if (!pedidoRegistrado) {
           await cancelarImpressaoPreparada?.call(_mensagens!);
@@ -37,7 +46,12 @@ class FinalizacaoComPreparo {
         }
       }
       if (!_impressaoRegistrada) {
-        await enviarImpressao(_mensagens!);
+        try {
+          if (_mensagens!.isNotEmpty) await enviarImpressao(_mensagens!);
+        } catch (erro) {
+          erroImpressao = erro;
+          aoFalharImpressao?.call(erro);
+        }
         _impressaoRegistrada = true;
       }
       await limparCarrinho();

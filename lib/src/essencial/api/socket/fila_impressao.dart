@@ -4,7 +4,14 @@ import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum EstadoImpressao { aguardandoPedido, aguardandoEnvio, semConfirmacao, erro }
+enum EstadoImpressao {
+  aguardandoPedido,
+  aguardandoEnvio,
+  semConfirmacao,
+  erro,
+  pausada,
+  cancelamentoPendente
+}
 
 class ImpressaoPendente {
   final String mensagem;
@@ -172,12 +179,17 @@ class FilaImpressao extends ChangeNotifier {
       _executar(() async {
         await _carregar();
         final proximos = [..._itens];
+        final prefs = await SharedPreferences.getInstance();
+        final canceladas =
+            prefs.getStringList('impressoes_canceladas_v1')?.toSet() ??
+                <String>{};
         for (final mensagem in mensagens) {
           final item =
               ImpressaoPendente(mensagem, servidor: servidor, estado: estado);
           if (item.dados['idRequisicao'] == null || item.id.trim().isEmpty) {
             throw ArgumentError('Impressao sem identificador.');
           }
+          if (canceladas.contains(item.id)) continue;
           if (await BancoLocal.instancia
                   ?.ler('impressaoConfirmada:${item.id}') !=
               null) {
@@ -230,7 +242,8 @@ class FilaImpressao extends ChangeNotifier {
         return true;
       });
 
-  Future<void> confirmar(String id) => _executar(() async {
+  Future<void> confirmar(String id, {bool cancelada = false}) =>
+      _executar(() async {
         await _carregar();
         if (!_itens.any((e) => e.id == id)) return;
         final banco = BancoLocal.instancia;
@@ -246,28 +259,81 @@ class FilaImpressao extends ChangeNotifier {
           _notificar();
           return;
         }
+        if (cancelada ||
+            _itens.any((item) =>
+                item.id == id &&
+                item.estado == EstadoImpressao.cancelamentoPendente)) {
+          final prefs = await SharedPreferences.getInstance();
+          final canceladas =
+              prefs.getStringList('impressoes_canceladas_v1')?.toSet() ??
+                  <String>{};
+          canceladas.add(id);
+          if (!await prefs.setStringList(
+              'impressoes_canceladas_v1', canceladas.toList())) {
+            throw StateError('Não foi possível salvar o cancelamento.');
+          }
+        }
         await _salvar(_itens.where((e) => e.id != id).toList());
       });
 
   Future<void> registrarErro(String id, String erro) =>
       _alterarEstado(id, EstadoImpressao.erro, erro);
 
-  Future<void> autorizarReenvio(String id) =>
-      _alterarEstado(id, EstadoImpressao.aguardandoEnvio, null);
+  Future<void> pausar(String id, String erro) =>
+      _alterarEstado(id, EstadoImpressao.pausada, erro);
 
-  Future<void> _alterarEstado(
-          String id, EstadoImpressao estado, String? erro) =>
+  Future<void> cancelar(String id) =>
+      _alterarEstado(id, EstadoImpressao.cancelamentoPendente, null);
+
+  Future<void> cancelarLote(Set<String> ids) => _executar(() async {
+        await _carregar();
+        await _salvar(_itens
+            .map((item) => !ids.contains(item.id) ||
+                    item.estado == EstadoImpressao.aguardandoPedido
+                ? item
+                : ImpressaoPendente(
+                    item.mensagem,
+                    estado: EstadoImpressao.cancelamentoPendente,
+                    servidor: item.servidor,
+                    tentativas: item.tentativas,
+                    ultimaTentativa: item.ultimaTentativa,
+                  ))
+            .toList());
+      });
+
+  Future<void> autorizarReenvio(String id, {bool manual = false}) =>
+      _alterarEstado(id, EstadoImpressao.aguardandoEnvio, null,
+          retomar: manual);
+
+  Future<void> _alterarEstado(String id, EstadoImpressao estado, String? erro,
+          {bool retomar = false}) =>
       _executar(() async {
         await _carregar();
         final index = _itens.indexWhere((e) => e.id == id);
         if (index < 0) return;
+        if (_itens[index].estado == EstadoImpressao.cancelamentoPendente &&
+            estado != EstadoImpressao.cancelamentoPendente) {
+          return;
+        }
+        if (!retomar &&
+            _itens[index].estado == estado &&
+            _itens[index].erro == erro) {
+          return;
+        }
         final proximos = [..._itens];
-        proximos[index] = ImpressaoPendente(proximos[index].mensagem,
+        final mensagem = retomar
+            ? jsonEncode({
+                ...proximos[index].dados,
+                'retomadaImpressao':
+                    DateTime.now().microsecondsSinceEpoch.toString()
+              })
+            : proximos[index].mensagem;
+        proximos[index] = ImpressaoPendente(mensagem,
             estado: estado,
             erro: erro,
             servidor: proximos[index].servidor,
-            tentativas: proximos[index].tentativas,
-            ultimaTentativa: proximos[index].ultimaTentativa);
+            tentativas: retomar ? 0 : proximos[index].tentativas,
+            ultimaTentativa: retomar ? null : proximos[index].ultimaTentativa);
         await _salvar(proximos);
       });
 

@@ -249,7 +249,8 @@ void main() {
       enviados.add(Map<String, dynamic>.from(
           jsonDecode(data as String)['data']['customData']));
     }));
-    agora = agora.add(const Duration(seconds: 16));
+    // Reconectar preserva o intervalo crescente das consultas anteriores.
+    agora = agora.add(const Duration(minutes: 1));
     await server.processarImpressoesPendentes();
     expect(enviados.single['tipo'], 'ConsultarImpressao');
     expect(enviados.single['idRequisicao'], 'consulta-interrompida');

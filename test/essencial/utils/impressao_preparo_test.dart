@@ -362,7 +362,7 @@ void main() {
 
     tearDown(Modular.destroy);
 
-    test('preserva produtos sem computador em pedido com varios destinos',
+    test('preserva destinos validos e nao enfileira produto sem impressora',
         () async {
       final pizza = produto(nome: 'Pizza de Queijos', computador: 'Cozinha')
         ..observacao = 'Sem cebola'
@@ -376,28 +376,28 @@ void main() {
       pizza.opcoesPacotesListaFinal!.clear();
       itens.clear();
       await servidor.enviarImpressoes(mensagens);
-      expect(servidor.mensagens, hasLength(3));
+      expect(servidor.mensagens, hasLength(2));
       final enviados =
           servidor.mensagens.expand((e) => e['produtos'] as List).toList();
-      expect(enviados.map((e) => e['id']), ['100', 'bebida', 'sem-destino']);
+      expect(enviados.map((e) => e['id']), ['100', 'bebida']);
       expect(enviados.first['observacao'], 'Sem cebola');
       expect(
           enviados.first['opcoesPacotesListaFinal'][0]['dados'], hasLength(2));
       expect(servidor.mensagens.map((mensagem) => mensagem['local']).toSet(),
           {'Sem Mesa'});
       expect(servidor.mensagens.map((e) => e['idRequisicao']).toSet(),
-          hasLength(3));
+          hasLength(2));
     });
 
     test('local vazio vira Sem Mesa e local informado e preservado', () async {
       final mensagensSemMesa = Impressao.prepararComprovanteDePedido(
-        produtos: [produto()],
+        produtos: [produto(computador: '')],
         local: '',
       );
       expect(jsonDecode(mensagensSemMesa.single)['local'], 'Sem Mesa');
 
       final mensagensComMesa = Impressao.prepararComprovanteDePedido(
-        produtos: [produto()],
+        produtos: [produto(computador: '')],
         local: 'Mesa 4',
       );
       expect(jsonDecode(mensagensComMesa.single)['local'], 'Mesa 4');
@@ -407,13 +407,13 @@ void main() {
       test('pedido misto aplica regra no envio, agrupado=$agruparPorDestino',
           () async {
         final itens = [
-          produto(computador: agruparPorDestino ? 'Cozinha' : null),
+          produto(computador: agruparPorDestino ? 'Cozinha' : ''),
           produto(
             id: '200',
             nome: 'Coca Cola 2L',
             codigo: '1010',
             imprimirCodigo: 'Não',
-            computador: agruparPorDestino ? 'Bar' : null,
+            computador: agruparPorDestino ? 'Bar' : '',
           ),
         ];
         final controlador = TextEditingController(text: '1');

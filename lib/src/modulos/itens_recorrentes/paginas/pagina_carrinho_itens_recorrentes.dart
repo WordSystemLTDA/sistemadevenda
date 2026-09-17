@@ -599,6 +599,7 @@ class _PaginaCarrinhoItensRecorrentesState
           return resposta.$1;
         },
         enviarImpressao: server.enviarImpressoes,
+        aoFalharImpressao: server.avisarFalhaImpressao,
         salvarImpressaoAntesDoPedido: server.prepararImpressoes,
         cancelarImpressaoPreparada: server.filaImpressao.cancelarPreparacao,
         limparCarrinho: () async {
