@@ -21,6 +21,11 @@ o mobile oferece Limpar pendencias na tela de impressoes. Pedidos sao mantidos.
 - A cada 5 segundos, o aplicativo verifica as pendencias, com no maximo tres
   mensagens por ciclo. Consulta depois de 15 segundos e passa a um minuto;
   depois de tres consultas por sessao sem conclusao, pausa o acompanhamento.
+  Ajuste de 17/09: novos envios elegiveis continuam em lotes de tres a cada
+  50 ms, sem aguardar o ciclo de recuperacao. Eles precedem consultas antigas;
+  mensagens ja enviadas continuam aguardando ACK, sem repeticao por lote.
+  O executor atualizado serializa impressoes simultaneas sem tratar ocupacao
+  normal como falha. Conserva uma chamada nativa ativa e espera limitada.
 - O servidor salva o pedido antes de despachar e processa sequencialmente,
   no maximo tres registros por ciclo e tres tentativas por ID. Os intervalos
   de 15 segundos/um minuto e o limite sao persistidos, inclusive no reinicio.

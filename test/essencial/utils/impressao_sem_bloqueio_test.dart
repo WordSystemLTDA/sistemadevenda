@@ -73,6 +73,65 @@ void main() {
     expect(server.filaImpressao.itens, hasLength(50));
   });
 
+  testWidgets('lotes seguintes saem sem esperar cinco segundos e sem duplicar',
+      (tester) async {
+    final server = Server()..connected = true;
+    final enviados = <dynamic>[];
+    server.channel = CanalTeste(SaidaTeste(enviados.add));
+    await server
+        .enviarImpressoes(List.generate(7, (i) => mensagem('rapido-$i')));
+    expect(enviados, hasLength(3));
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump();
+    expect(enviados, hasLength(6));
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump();
+    expect(enviados, hasLength(7));
+    await tester.pump(const Duration(seconds: 1));
+    expect(enviados, hasLength(7));
+    expect(server.filaImpressao.itens, hasLength(7));
+    server.dispose();
+  });
+
+  testWidgets('falha de armazenamento nao cria repeticoes rapidas',
+      (tester) async {
+    final fila = _FilaSemGravacao();
+    final server = Server(filaImpressao: fila)..connected = true;
+    server.channel =
+        CanalTeste(SaidaTeste((_) => fail('Nao deve enviar sem gravar')));
+    await server.enviarImpressoes([mensagem('sem-disco')]);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(fila.tentativas, 1);
+    expect(fila.itens.single.estado, EstadoImpressao.aguardandoEnvio);
+    server.dispose();
+  });
+
+  test(
+      'pedido novo tem prioridade sobre consultas antigas sem reenviar as vias',
+      () async {
+    final server = Server(agora: () => DateTime(2026))..connected = true;
+    addTearDown(server.dispose);
+    final enviados = <Map<String, dynamic>>[];
+    server.channel = CanalTeste(SaidaTeste((data) => enviados.add(
+        Map<String, dynamic>.from(
+            jsonDecode(data as String)['data']['customData']))));
+    for (var i = 0; i < 4; i++) {
+      await server.filaImpressao.registrar([mensagem('antigo-$i')]);
+      await server.filaImpressao
+          .iniciarEnvio('antigo-$i', agora: DateTime(2020));
+    }
+    await server.enviarImpressoes([mensagem('novo')]);
+    expect(enviados, hasLength(3));
+    expect(enviados.first['idRequisicao'], 'novo');
+    expect(
+        enviados
+            .skip(1)
+            .every((dados) => dados['tipo'] == 'ConsultarImpressao'),
+        isTrue);
+  });
+
   test('servidor sem resposta para de consultar e conserva pendencia pausada',
       () async {
     var agora = DateTime(2026);
@@ -184,5 +243,14 @@ void main() {
       expect(fila.itens.single.estado, EstadoImpressao.cancelamentoPendente);
       expect(tester.takeException(), isNull);
     });
+  }
+}
+
+class _FilaSemGravacao extends FilaImpressao {
+  int tentativas = 0;
+  @override
+  Future<bool> iniciarEnvio(String id, {DateTime? agora}) async {
+    tentativas++;
+    throw StateError('Disco indisponivel');
   }
 }

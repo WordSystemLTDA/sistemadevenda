@@ -23,6 +23,7 @@ class Server extends ChangeNotifier {
       _avisoImpressaoVisivel;
   bool _descartado = false;
   Timer? _retentativaImpressao;
+  Timer? _proximoLoteImpressao;
   final Map<String, DateTime> _consultasImpressao = {};
   final Map<String, int> _quantidadeConsultas = {};
   DateTime? _ultimoAvisoImpressao;
@@ -180,7 +181,12 @@ class Server extends ChangeNotifier {
   Future<void> _enviarImpressoesAguardando() async {
     await filaImpressao.carregar();
     var enviados = 0;
-    for (final item in filaImpressao.itens) {
+    // Envios novos nao aguardam as consultas dos pedidos anteriores.
+    final itens = filaImpressao.itens;
+    for (final item in [
+      ...itens.where((item) => item.estado == EstadoImpressao.aguardandoEnvio),
+      ...itens.where((item) => item.estado != EstadoImpressao.aguardandoEnvio),
+    ]) {
       if (enviados >= 3) break;
       if (!connected || channel == null) break;
       if (!_pertenceAConexao(item)) continue;
@@ -801,9 +807,11 @@ class Server extends ChangeNotifier {
 
     _reenviandoMensagensPendentes = true;
     _novoEnvioSolicitado = false;
+    var loteConcluido = false;
 
     try {
       await _enviarImpressoesAguardando();
+      loteConcluido = true;
 
       final List<String> pendentes = await _carregarMensagensPendentes();
       if (pendentes.isEmpty) {
@@ -827,11 +835,21 @@ class Server extends ChangeNotifier {
       log('Falha ao reenviar mensagens pendentes',
           error: e, stackTrace: stackTrace);
       _novoEnvioSolicitado = false;
+      loteConcluido = false;
       _avisarImpressaoPendente();
     } finally {
       _reenviandoMensagensPendentes = false;
-      if (connected && _novoEnvioSolicitado) {
-        unawaited(_reenviarMensagensPendentes());
+      if (loteConcluido &&
+          !_descartado &&
+          connected &&
+          (_novoEnvioSolicitado ||
+              filaImpressao.itens.any((item) =>
+                  item.estado == EstadoImpressao.aguardandoEnvio &&
+                  _pertenceAConexao(item)))) {
+        _proximoLoteImpressao ??= Timer(const Duration(milliseconds: 50), () {
+          _proximoLoteImpressao = null;
+          unawaited(_reenviarMensagensPendentes());
+        });
       }
     }
   }
@@ -933,6 +951,7 @@ class Server extends ChangeNotifier {
   @override
   void dispose() {
     _descartado = true;
+    _proximoLoteImpressao?.cancel();
     _cancelarTentativaConexao();
     unawaited(_encerrarCanalAtual());
     _temporizadorReconexao?.cancel();
