@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -121,6 +122,15 @@ class _PaginaFinalizarFormaPagamentoState
     });
   }
 
+  void _notificarDeliveryFinalizadoEmSegundoPlano(
+      ServicoDelivery servico, String id) {
+    unawaited(() async {
+      try {
+        servico.notificarPedidoAtualizado(await servico.pedido(id));
+      } catch (_) {}
+    }());
+  }
+
   Future<void> _finalizarDelivery() async {
     final servico = Modular.get<ServicoDelivery>();
     final valorRecebido = double.tryParse(_dinheiroController.text) ?? 0;
@@ -140,18 +150,13 @@ class _PaginaFinalizarFormaPagamentoState
       acrescimo: acrescimo,
     );
 
-    final atualizado = await servico.pedido(provedor.idVenda);
-    final quitado = valorRecebido + 0.009 >= widget.totalReceber ||
-        atualizado.restante <= 0.009;
+    final pagamentoIntegral = valorRecebido + 0.009 >= widget.totalReceber;
+    final atualizado =
+        pagamentoIntegral ? pedido : await servico.pedido(provedor.idVenda);
+    final quitado = pagamentoIntegral || atualizado.restante <= 0.009;
     if (quitado) {
       await servico.concluir(atualizado);
-      var pedidoFinalizado = atualizado;
-      try {
-        pedidoFinalizado = await servico.pedido(provedor.idVenda);
-      } catch (_) {
-        pedidoFinalizado = atualizado;
-      }
-      servico.notificarPedidoAtualizado(pedidoFinalizado);
+      _notificarDeliveryFinalizadoEmSegundoPlano(servico, provedor.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       await carrinhoProvedor.removerComandasPedidos();
       FeedbackUsuario.pedidoFinalizado();

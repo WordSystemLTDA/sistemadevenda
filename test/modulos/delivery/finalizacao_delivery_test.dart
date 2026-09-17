@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:app/src/app_widget.dart' as app;
+import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
+import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
@@ -24,16 +27,22 @@ class _DeliveryFinalizacao extends ServicoDelivery {
 
   int envios = 0;
   int consultas = 0;
+  int pagamentos = 0;
+  int conclusoes = 0;
   String pago = '0';
   bool falharConsultaAposSalvar = false;
   bool falharEnvio = false;
   Completer<void>? esperaEnvio;
+  Completer<void>? consultaFinalBloqueada;
 
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
     expect(rota, 'delivery/listar_opcoes_por_id.php');
     consultas++;
+    if (conclusoes > 0 && consultaFinalBloqueada != null) {
+      await consultaFinalBloqueada!.future;
+    }
     if (envios > 0 && falharConsultaAposSalvar) {
       throw StateError('Falha na consulta do pedido salvo');
     }
@@ -41,9 +50,9 @@ class _DeliveryFinalizacao extends ServicoDelivery {
       'sucesso': true,
       'dados': {
         'id': campos['id'],
-        'idVenda': '0',
+        'idVenda': conclusoes > 0 ? '77' : '0',
         'idCliente': '209',
-        'status': 'Pendente',
+        'status': conclusoes > 0 ? 'Finalizado' : 'Pendente',
         'valorVenda': envios > 0 ? '14.00' : '4.00',
         'somaValorHistorico': pago,
         'valordaentrega': '4.00',
@@ -54,13 +63,26 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   @override
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
-    expect(rota, 'delivery/inserir_produtos.php');
-    expect(campos['id_delivery'], '10118');
-    expect(campos['produtos'], hasLength(1));
-    if (falharEnvio) throw StateError('Não foi possível salvar.');
-    envios++;
-    await esperaEnvio?.future;
-    return {'sucesso': true};
+    if (rota == 'delivery/inserir_produtos.php') {
+      expect(campos['id_delivery'], '10118');
+      expect(campos['produtos'], hasLength(1));
+      if (falharEnvio) throw StateError('Não foi possível salvar.');
+      envios++;
+      await esperaEnvio?.future;
+      return {'sucesso': true};
+    }
+    if (rota == 'delivery/pagar_pedido.php') {
+      expect(campos['id'], '10118');
+      pagamentos++;
+      pago = campos['valor_lancamento']?.toString() ?? pago;
+      return {'sucesso': true};
+    }
+    if (rota == 'delivery/finalizar_pedido_delivery.php') {
+      expect(campos['id_delivery'], '10118');
+      conclusoes++;
+      return {'sucesso': true};
+    }
+    fail('Rota inesperada no delivery: $rota');
   }
 }
 
@@ -70,6 +92,7 @@ class _ModuloDelivery extends ModuloFinalizacaoTeste {
   @override
   void binds(Injector i) {
     super.binds(i);
+    i.addInstance<ProvedorBalcao>(ProvedorBalcao(ServicoBalcao(api, usuario)));
     i.addInstance<ServicoDelivery>(delivery);
     i.addInstance<ServicoFinalizarPagamento>(
         ServicoFinalizarPagamento(api, usuario));
@@ -150,6 +173,35 @@ void main() {
                 find.byType(PaginaSelecionarPagamento))
             .totalReceber,
         14);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('pagamento integral do delivery nao espera consulta final lenta',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsOneWidget);
+
+    final consultasAntesDoPagamento = m.delivery.consultas;
+    m.delivery.consultaFinalBloqueada = Completer<void>();
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));
+
+    expect(m.delivery.pagamentos, 1);
+    expect(m.delivery.conclusoes, 1);
+    expect(m.delivery.consultas, consultasAntesDoPagamento + 2);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+
+    m.delivery.consultaFinalBloqueada!.complete();
+    await tester.pump();
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
