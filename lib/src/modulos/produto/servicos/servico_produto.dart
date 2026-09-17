@@ -120,7 +120,9 @@ class ServicoProduto {
       return produto;
     }
 
-    produto.idCategoriaCardapio ??= produtoDesktop.idCategoriaCardapio;
+    if (!_idCardapioValido(produto.idCategoriaCardapio)) {
+      produto.idCategoriaCardapio = produtoDesktop.idCategoriaCardapio;
+    }
     produto.habilTipo = 'Pacote';
     final montagemDesktop = (produtoDesktop.opcoesPacotes ?? [])
         .where(_grupoEhMontagemCardapio)
