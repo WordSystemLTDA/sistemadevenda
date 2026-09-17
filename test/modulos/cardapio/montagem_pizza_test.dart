@@ -15,7 +15,9 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
@@ -206,6 +208,30 @@ class ProdutosComBordasTeste extends ProdutosTeste {
             ],
           ),
         ];
+}
+
+class ProdutosComBordasEAdicionaisTeste extends ProdutosComBordasTeste {
+  @override
+  Modelowordprodutos produtoComBordas(String id) {
+    final produto = super.produtoComBordas(id);
+    produto.opcoesPacotes = [
+      ...(produto.opcoesPacotes ?? []),
+      ModeloOpcoesPacotes(
+        id: 7,
+        titulo: 'Selecione os Adicionais',
+        obrigatorio: false,
+        tipo: 3,
+        dados: [
+          ModeloDadosOpcoesPacotes(
+            id: 'Milho',
+            nome: 'Milho',
+            valor: '3',
+          ),
+        ],
+      ),
+    ];
+    return produto;
+  }
 }
 
 class ProdutosComBordasLentoTeste extends ProdutosComBordasTeste {
@@ -1053,6 +1079,102 @@ void main() {
             .single
             .somenteMetadeBorda,
         isTrue);
+  });
+
+  testWidgets('meia borda segue para o carrinho com adicional e total correto',
+      (tester) async {
+    produtos = ProdutosComBordasEAdicionaisTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    final carrinho = Modular.get<ProvedorCarrinho>();
+    await carrinho.selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '10673', idRecurso: '3');
+    cardapio
+      ..tipo = TipoCardapio.comanda
+      ..id = '10673'
+      ..idComanda = '3'
+      ..configBigchef = configBigchef(saborlimitedeborda: '2')
+      ..tamanhosPizza = tamanho('G');
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    var botao = find.byType(BotaoAcaoPedido);
+    await tester.tap(find.text('1 sabor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cheddar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Meia'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(botao).total, contains('56,00'));
+
+    await tester.tap(botao);
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaProduto), findsOneWidget);
+    expect(find.text('Selecione os Adicionais'), findsOneWidget);
+
+    await tester.tap(find.text('Milho'));
+    await tester.pumpAndSettle();
+    botao = find.byType(BotaoAcaoPedido);
+    expect(tester.widget<BotaoAcaoPedido>(botao).total, contains('59,00'));
+
+    await tester.tap(botao);
+    await tester.pumpAndSettle();
+
+    final item = carrinho.itensCarrinho.listaComandosPedidos.single;
+    expect(item.valorVenda, '59.00');
+    final tamanhoPizza =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 9);
+    final sabores =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 10);
+    final bordas =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 6);
+    final adicionais =
+        item.opcoesPacotesListaFinal!.firstWhere((opcao) => opcao.id == 7);
+
+    expect(ValoresPizza.somar(tamanhoPizza), 50);
+    expect(ValoresPizza.somar(sabores), 50);
+    expect(ValoresPizza.somar(bordas), 6);
+    expect(ValoresPizza.somar(adicionais), 3);
+    expect(bordas.dados!.single.nome, 'Cheddar');
+    expect(bordas.dados!.single.valor, '6.00');
+    expect(bordas.dados!.single.valorOriginal, '12.00');
+    expect(bordas.dados!.single.somenteMetadeBorda, isTrue);
+    expect(adicionais.dados!.single.nome, 'Milho');
+    expect(adicionais.dados!.single.valor, '3');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: CardCarrinho(
+            item: item,
+            index: 0,
+            idComanda: '3',
+            idMesa: '0',
+            value: null,
+            setarQuantidade: (_) async => true,
+            aoExcluirItem: () {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Meio (1/2)'), findsOneWidget);
+    expect(find.text('Meio - (1/2) Cheddar'), findsOneWidget);
+    expect(find.text('Selecione os Adicionais'), findsOneWidget);
+    expect(find.text('1x Milho'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   for (final largura in [393.0, 800.0]) {

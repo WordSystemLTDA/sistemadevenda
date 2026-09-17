@@ -95,10 +95,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     itemProduto = produto;
     _provedorProduto.quantidade = 1;
     final valor = widget.valorVenda ?? double.tryParse(produto.valorVenda) ?? 0;
+    final bordasSelecionadas = widget.montagemPizza
+        ? _grupoBordasSelecionadas(_provedorProduto.opcoesPacotesListaFinal)
+        : null;
+    final opcoesIniciais = _opcoesIniciaisProduto(produto);
+    _preservarBordasSelecionadas(opcoesIniciais, bordasSelecionadas);
     _provedorProduto.valorVenda = valor;
     _provedorProduto.valorVendaOriginal = _provedorProduto.valorVenda;
     _provedorProduto.definirOpcoesPacotesListaFinal(
-      _opcoesIniciaisProduto(produto),
+      opcoesIniciais,
       notificar: false,
     );
     _provedorProduto.calcularValorVenda(false, '0', notificar: false);
@@ -151,6 +156,31 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       e.dados = [];
       return e;
     }).toList();
+  }
+
+  ModeloOpcoesPacotes? _grupoBordasSelecionadas(
+    List<ModeloOpcoesPacotes> opcoes,
+  ) {
+    final bordas = opcoes.where((opcao) => opcao.id == 6).firstOrNull;
+    if (bordas == null || (bordas.dados?.isNotEmpty ?? false) == false) {
+      return null;
+    }
+    return ModeloOpcoesPacotes.fromMap(bordas.toMap());
+  }
+
+  void _preservarBordasSelecionadas(
+    List<ModeloOpcoesPacotes> opcoes,
+    ModeloOpcoesPacotes? bordasSelecionadas,
+  ) {
+    if (bordasSelecionadas == null) return;
+
+    final index = opcoes.indexWhere((opcao) => opcao.id == 6);
+    if (index < 0) {
+      opcoes.add(bordasSelecionadas);
+      return;
+    }
+
+    opcoes[index] = bordasSelecionadas;
   }
 
   @override
@@ -855,16 +885,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     onDiminuir: _provedorProduto.aoDiminuirQuantidade,
                     onAumentar: _provedorProduto.aoAumentarQuantidade,
                   ),
-                  if (_produtoTemMontagemCardapio) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-                      child: _ResumoMontagemProduto(
-                        ingredientes: _ingredientesMontagemCardapio,
-                        onEditar: () =>
-                            setState(() => _montagemConfirmada = false),
-                      ),
-                    ),
-                  ],
                   if (opcoesProduto.isNotEmpty) ...[
                     if (temAdicionais || temRetirada)
                       Padding(
@@ -1017,109 +1037,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       default:
         return Icons.tune_rounded;
     }
-  }
-}
-
-class _ResumoMontagemProduto extends StatelessWidget {
-  final List<ModeloDadosOpcoesPacotes> ingredientes;
-  final VoidCallback onEditar;
-
-  const _ResumoMontagemProduto({
-    required this.ingredientes,
-    required this.onEditar,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final alterados = ingredientes.where((item) {
-      final montagem = item.montagemCardapio;
-      return montagem != null &&
-          (montagem.acao != AcaoIngredienteCardapio.normal ||
-              montagem.separado);
-    }).toList();
-    final linhas =
-        alterados.isEmpty ? ingredientes.take(3).toList() : alterados;
-
-    return _SecaoProduto(
-      icon: Icons.restaurant_menu_rounded,
-      titulo: 'Ingredientes do Cardápio',
-      contagem: alterados.length,
-      obrigatorio: false,
-      child: Material(
-        color: VisualAtendimento.superficie(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (linhas.isEmpty)
-              Text('Montagem padrão',
-                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))
-            else
-              for (final item in linhas) ...[
-                _LinhaResumoMontagem(item: item),
-                if (item != linhas.last) const SizedBox(height: 8),
-              ],
-            if (alterados.isEmpty && ingredientes.length > linhas.length) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Demais ingredientes em quantidade normal',
-                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-              ),
-            ],
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                key: const ValueKey('editar_montagem_cardapio'),
-                onPressed: onEditar,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Editar montagem'),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _LinhaResumoMontagem extends StatelessWidget {
-  final ModeloDadosOpcoesPacotes item;
-
-  const _LinhaResumoMontagem({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final montagem = item.montagemCardapio;
-    final cs = Theme.of(context).colorScheme;
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(Icons.circle, size: 7, color: cs.primary),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(
-            montagem?.nomeOriginal ?? item.nome,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          if (montagem?.detalheVisualizacao != null)
-            Text(
-              montagem!.detalheVisualizacao!,
-              style: TextStyle(
-                  fontSize: 12, color: cs.primary, fontWeight: FontWeight.w600),
-            ),
-        ]),
-      ),
-      Text(
-        ((double.tryParse(item.valor ?? '0') ?? 0) * (item.quantidade ?? 1))
-            .obterReal(),
-        style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
-      ),
-    ]);
   }
 }
 

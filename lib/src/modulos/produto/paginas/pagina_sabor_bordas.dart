@@ -78,6 +78,31 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     }).toList();
   }
 
+  ModeloOpcoesPacotes? _grupoBordasSelecionadas() {
+    final bordas = _provedorProduto.opcoesPacotesListaFinal
+        .where((opcao) => opcao.id == 6)
+        .firstOrNull;
+    if (bordas == null || (bordas.dados?.isNotEmpty ?? false) == false) {
+      return null;
+    }
+    return ModeloOpcoesPacotes.fromMap(bordas.toMap());
+  }
+
+  void _preservarBordasSelecionadas(
+    List<ModeloOpcoesPacotes> opcoes,
+    ModeloOpcoesPacotes? bordasSelecionadas,
+  ) {
+    if (bordasSelecionadas == null) return;
+
+    final index = opcoes.indexWhere((opcao) => opcao.id == 6);
+    if (index < 0) {
+      opcoes.add(bordasSelecionadas);
+      return;
+    }
+
+    opcoes[index] = bordasSelecionadas;
+  }
+
   Future<void> listar() async {
     if (!carregando) {
       setState(() {
@@ -92,8 +117,10 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
       if (!mounted) return;
       itemProduto = value;
       if (value != null) {
-        _provedorProduto.opcoesPacotesListaFinal =
-            _opcoesIniciais(value.opcoesPacotes ?? []);
+        final bordasSelecionadas = _grupoBordasSelecionadas();
+        final opcoesIniciais = _opcoesIniciais(value.opcoesPacotes ?? []);
+        _preservarBordasSelecionadas(opcoesIniciais, bordasSelecionadas);
+        _provedorProduto.opcoesPacotesListaFinal = opcoesIniciais;
 
         final valor =
             widget.valorVenda ?? double.tryParse(value.valorVenda) ?? 0;
@@ -129,7 +156,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (context) {
         return PaginaProduto(
-          produto: widget.produto,
+          produto: itemProduto ?? widget.produto,
           valorVenda: widget.valorVenda,
           montagemPizza: true,
         );

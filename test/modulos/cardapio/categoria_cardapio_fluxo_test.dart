@@ -265,6 +265,7 @@ void main() {
       await tester.tap(find.byType(BotaoAcaoPedido));
       await tester.pumpAndSettle();
       expect(find.text('Selecione os Adicionais'), findsOneWidget);
+      expect(find.text('Ingredientes do Cardápio'), findsNothing);
       await tester.tap(find.text('Ovo'));
       await tester.pumpAndSettle();
       await tester.tap(find.textContaining('Adicionar ao', findRichText: true));
