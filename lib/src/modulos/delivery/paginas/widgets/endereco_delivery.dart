@@ -25,7 +25,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       k: TextEditingController()
   };
   bool _salvando = false, _padrao = false, _carregandoPadrao = true;
-  bool _bloquearCidade = false;
+  bool _bloquearCidade = false, _enderecoObrigatorio = true;
   String? _erro;
 
   @override
@@ -43,30 +43,70 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
   }
 
   Future<void> _carregarPadraoEndereco() async {
+    Map<String, dynamic>? dados;
+    bool? temEnderecoPadrao;
     try {
       final resposta =
           await widget.servico.consultar('config_clientes/listar_cliente.php');
-      if (!mounted) return;
-      final dados = _mapaDaResposta(resposta);
-      if (dados != null) {
-        setState(() {
-          _preencherSeVazio('cep', _texto(dados, ['padrao_cep', 'padraoCep']));
-          _preencherSeVazio('cidade',
-              _texto(dados, ['padrao_nome_cidade', 'padraoNomeCidade']));
-          _preencherSeVazio(
-              'uf', _texto(dados, ['padrao_estado', 'padraoEstado']));
-          _bloquearCidade =
-              _texto(dados, ['bloquear_edicao_cidade', 'bloquearEdicaoCidade'])
-                  .toLowerCase()
-                  .trim()
-                  .startsWith('sim');
-        });
-      }
+      dados = _mapaDaResposta(resposta);
     } catch (_) {
       // Se a configuracao padrao nao vier, o usuario segue preenchendo manualmente.
-    } finally {
-      if (mounted) setState(() => _carregandoPadrao = false);
     }
+
+    try {
+      temEnderecoPadrao = await _clienteTemEnderecoPadrao();
+    } catch (_) {
+      // Se a consulta falhar, mantem a escolha manual do usuario.
+    } finally {
+      if (mounted) {
+        setState(() {
+          final configuracao = dados;
+          if (configuracao != null) {
+            _preencherSeVazio(
+                'cep', _texto(configuracao, ['padrao_cep', 'padraoCep']));
+            _preencherSeVazio(
+                'cidade',
+                _texto(
+                    configuracao, ['padrao_nome_cidade', 'padraoNomeCidade']));
+            _preencherSeVazio(
+                'uf', _texto(configuracao, ['padrao_estado', 'padraoEstado']));
+            _bloquearCidade = _texto(configuracao, [
+              'bloquear_edicao_cidade',
+              'bloquearEdicaoCidade'
+            ]).toLowerCase().trim().startsWith('sim');
+            final requeridoEndereco = _texto(configuracao,
+                ['requerido_endereco', 'requeridoEndereco', 'endereco']);
+            if (requeridoEndereco.isNotEmpty) {
+              _enderecoObrigatorio = _valorAtivo(requeridoEndereco);
+            }
+          }
+          if (temEnderecoPadrao == false) _padrao = true;
+          _carregandoPadrao = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _clienteTemEnderecoPadrao() async {
+    final resposta = await widget.servico
+        .consultar('enderecos_clientes/listar_por_cliente.php', {
+      'cliente': widget.cliente,
+      'pesquisa': '',
+    });
+    final enderecos = resposta is List ? resposta : const [];
+    return enderecos.any((endereco) {
+      if (endereco is! Map) return false;
+      return _ehPadrao(endereco['padrao']);
+    });
+  }
+
+  bool _ehPadrao(Object? valor) {
+    return _valorAtivo(valor);
+  }
+
+  bool _valorAtivo(Object? valor) {
+    final texto = valor?.toString().trim().toLowerCase() ?? '';
+    return texto == 'sim' || texto == 's' || texto == '1' || texto == 'true';
   }
 
   Map<String, dynamic>? _mapaDaResposta(dynamic resposta) {
@@ -184,10 +224,11 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                                   onTapOutside: (_) => FocusManager
                                       .instance.primaryFocus
                                       ?.unfocus(),
-                                  validator: (v) =>
-                                      campo.$3 && (v?.trim().isEmpty ?? true)
-                                          ? 'Campo obrigatório'
-                                          : null,
+                                  validator: (v) => campo.$3 &&
+                                          _enderecoObrigatorio &&
+                                          (v?.trim().isEmpty ?? true)
+                                      ? 'Campo obrigatório'
+                                      : null,
                                   decoration: InputDecoration(
                                       labelText: campo.$2,
                                       border: const OutlineInputBorder()),
@@ -196,7 +237,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Endereço padrão'),
                               value: _padrao,
-                              onChanged: _salvando
+                              onChanged: _salvando || _carregandoPadrao
                                   ? null
                                   : (v) => setState(() => _padrao = v)),
                           if (_erro != null)

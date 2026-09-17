@@ -44,7 +44,7 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
 
   void _atualizarTelas() {
     if (!mounted) return;
-    for (final tipo in ['Mesa', 'Comanda', 'Balcão', 'Cardapio']) {
+    for (final tipo in ['Mesa', 'Comanda', 'Balcão', 'Delivery', 'Cardapio']) {
       AtualizacaoDeTela().call(ModeloRetornoSocket(tipo: tipo));
     }
   }

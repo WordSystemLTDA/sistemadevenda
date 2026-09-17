@@ -235,6 +235,55 @@ class ProdutosComAdicionaisTeste extends ProdutosTeste {
   }
 }
 
+class ProdutosComAdicionaisERetiradaTeste extends ProdutosTeste {
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+    consultasPorId.add((id, tamanho));
+    return Modelowordprodutos.fromMap(
+        produtos.firstWhere((p) => p.id == id).toMap())
+      ..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          obrigatorio: false,
+          tipo: 3,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: 'Milho',
+              nome: 'Milho',
+              valor: '3',
+              quantidade: 1,
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: 'Bacon',
+              nome: 'Bacon',
+              valor: '4',
+              quantidade: 1,
+            ),
+          ],
+        ),
+        ModeloOpcoesPacotes(
+          id: 8,
+          titulo: 'Selecione os Itens Para Retirar',
+          obrigatorio: false,
+          tipo: 4,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: 'Cebola',
+              nome: 'Cebola',
+              valor: '0',
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: 'Tomate',
+              nome: 'Tomate',
+              valor: '0',
+            ),
+          ],
+        ),
+      ];
+  }
+}
+
 class DioClienteTeste extends Fake implements DioCliente {}
 
 class CarrinhoComFalha extends ServicosItensComanda {
@@ -671,6 +720,46 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Adicionar ao (3)');
+  });
+
+  testWidgets('produto filtra adicionais e alterna para itens de retirada',
+      (tester) async {
+    produtos = ProdutosComAdicionaisERetiradaTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    final bebida = sabor('Bebida com complementos', 'Bebidas', '10')
+      ..tamanhosPizza = []
+      ..habilTipo = 'Pacote'
+      ..valorVenda = '10';
+    produtos.produtos.add(bebida);
+
+    await tester.pumpWidget(MaterialApp(home: PaginaProduto(produto: bebida)));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('pesquisa_opcoes_produto')), findsOneWidget);
+    expect(find.text('Milho'), findsOneWidget);
+    expect(find.text('Bacon'), findsOneWidget);
+    expect(find.text('Cebola'), findsOneWidget);
+
+    await tester.enterText(
+        find.byKey(const ValueKey('pesquisa_opcoes_produto')), 'bac');
+    await tester.pumpAndSettle();
+    expect(find.text('Milho'), findsNothing);
+    expect(find.text('Bacon'), findsOneWidget);
+    expect(find.text('Cebola'), findsNothing);
+
+    await tester
+        .tap(find.byKey(const ValueKey('limpar_pesquisa_opcoes_produto')));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const ValueKey('filtro_itens_retirar_produto')));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecione os Adicionais'), findsNothing);
+    expect(find.text('Selecione os Itens Para Retirar'), findsOneWidget);
+    expect(find.text('Cebola'), findsOneWidget);
+    expect(find.text('Tomate'), findsOneWidget);
+    expect(find.text('Milho'), findsNothing);
   });
 
   testWidgets('pesquisa reaproveita tamanhos da listagem ja carregada',

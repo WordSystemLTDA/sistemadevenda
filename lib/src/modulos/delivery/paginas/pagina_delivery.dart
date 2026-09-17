@@ -70,7 +70,6 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     _debounce?.cancel();
     _atualizacoes?.cancel();
     _busca.dispose();
-    if (widget.provedor == null) _provedor.dispose();
     super.dispose();
   }
 

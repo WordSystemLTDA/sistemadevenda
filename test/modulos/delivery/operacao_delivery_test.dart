@@ -25,6 +25,28 @@ class ServicoCancelamentoTeste extends ServicoDeliveryTeste {
   }
 }
 
+class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
+  final List<Map<String, dynamic>> enderecos;
+  final String requeridoEndereco;
+  ServicoEnderecoPadraoTeste(this.enderecos, {this.requeridoEndereco = 'Sim'});
+
+  @override
+  Future<dynamic> consultar(String rota,
+      [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'enderecos_clientes/listar_por_cliente.php') {
+      return enderecos;
+    }
+    if (rota == 'config_clientes/listar_cliente.php') {
+      final resposta = await super.consultar(rota, campos);
+      return {
+        if (resposta is Map) ...Map<String, dynamic>.from(resposta),
+        'requerido_endereco': requeridoEndereco,
+      };
+    }
+    return super.consultar(rota, campos);
+  }
+}
+
 void main() {
   setUpAll(carregarFontesDeTeste);
   test('pagamento nao encerra preparo nem remove taxa da entrega', () {
@@ -248,7 +270,7 @@ void main() {
   });
 
   testWidgets('novo endereco carrega cidade e cep padrao', (tester) async {
-    final s = ServicoDeliveryTeste();
+    final s = ServicoEnderecoPadraoTeste([]);
     await tester.pumpWidget(MaterialApp(
         home: EnderecoDelivery(
       servico: s,
@@ -258,6 +280,62 @@ void main() {
     expect(find.text('86.770-000'), findsOneWidget);
     expect(find.text('Santa Fe'), findsOneWidget);
     expect(find.text('PR'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo endereco nao marca padrao se cliente ja tem um',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {'id': '10', 'padrao': 'Sim'}
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo endereco exige campos quando configuracao obriga endereco',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([]);
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Campo obrigatório'), findsWidgets);
+    expect(s.gravacoes, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'novo endereco permite salvar campos vazios quando endereco nao e obrigatorio',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([], requeridoEndereco: 'Não');
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Campo obrigatório'), findsNothing);
+    expect(s.gravacoes, hasLength(1));
+    expect(s.gravacoes.single.$1, 'clientes/inserir_endereco.php');
     expect(tester.takeException(), isNull);
   });
 

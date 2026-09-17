@@ -17,6 +17,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+enum _FiltroComplementos { todos, adicionais, retirada }
+
 class PaginaProduto extends StatefulWidget {
   final Modelowordprodutos produto;
   final double? valorVenda;
@@ -48,13 +50,17 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   bool carregando = false;
   String? erroConsulta;
   TextEditingController obsController = TextEditingController();
+  final TextEditingController _pesquisaOpcoesController =
+      TextEditingController();
   final _focoObservacao = FocusNode();
+  _FiltroComplementos _filtroComplementos = _FiltroComplementos.todos;
   String _baseHostImagens = 'https://bigchef.com.br';
 
   @override
   void initState() {
     super.initState();
     if (widget.editar) obsController.text = widget.produto.observacao ?? '';
+    _pesquisaOpcoesController.addListener(_atualizarPesquisaOpcoes);
     _carregarBaseHostImagens();
 
     if (widget.editar == false) {
@@ -72,9 +78,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
   @override
   void dispose() {
+    _pesquisaOpcoesController.removeListener(_atualizarPesquisaOpcoes);
+    _pesquisaOpcoesController.dispose();
     obsController.dispose();
     _focoObservacao.dispose();
     super.dispose();
+  }
+
+  void _atualizarPesquisaOpcoes() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _carregarBaseHostImagens() async {
@@ -328,6 +340,66 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     });
   }
 
+  bool _grupoComplemento(ModeloOpcoesPacotes opcoesPacote) =>
+      opcoesPacote.id == 7 || opcoesPacote.id == 8;
+
+  bool _mostrarGrupoOpcoes(ModeloOpcoesPacotes opcoesPacote) {
+    if (opcoesPacote.id == 6) return false;
+    if (!_grupoComplemento(opcoesPacote)) return true;
+    return switch (_filtroComplementos) {
+      _FiltroComplementos.todos => true,
+      _FiltroComplementos.adicionais => opcoesPacote.id == 7,
+      _FiltroComplementos.retirada => opcoesPacote.id == 8,
+    };
+  }
+
+  List<ModeloDadosOpcoesPacotes> _dadosFiltrados(
+      ModeloOpcoesPacotes opcoesPacote) {
+    final dados = opcoesPacote.dados ?? const <ModeloDadosOpcoesPacotes>[];
+    if (!_grupoComplemento(opcoesPacote)) return dados;
+
+    final pesquisa = _normalizarPesquisa(_pesquisaOpcoesController.text);
+    if (pesquisa.isEmpty) return dados;
+
+    return dados
+        .where((item) => _normalizarPesquisa(item.nome).contains(pesquisa))
+        .toList();
+  }
+
+  String _normalizarPesquisa(String texto) {
+    const acentos = {
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+    };
+    final buffer = StringBuffer();
+    for (final codigo in texto.toLowerCase().runes) {
+      final char = String.fromCharCode(codigo);
+      buffer.write(acentos[char] ?? char);
+    }
+    return buffer.toString().trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -394,6 +466,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                   .obterReal();
           final quantidadeAdicionaisSelecionados =
               _quantidadeAdicionaisSelecionados;
+          final opcoesProduto = itemProduto!.opcoesPacotes ?? [];
+          final temAdicionais = opcoesProduto.any(
+              (opcao) => opcao.id == 7 && (opcao.dados?.isNotEmpty ?? false));
+          final temRetirada = opcoesProduto.any(
+              (opcao) => opcao.id == 8 && (opcao.dados?.isNotEmpty ?? false));
 
           return Scaffold(
             extendBody: alturaTeclado == 0,
@@ -464,12 +541,26 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     onDiminuir: _provedorProduto.aoDiminuirQuantidade,
                     onAumentar: _provedorProduto.aoAumentarQuantidade,
                   ),
-                  if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
-                    ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
-                      if (opcoesPacote.id == 6) return const SizedBox();
+                  if (opcoesProduto.isNotEmpty) ...[
+                    if (temAdicionais || temRetirada)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                        child: _FiltroComplementosProduto(
+                          controller: _pesquisaOpcoesController,
+                          filtro: _filtroComplementos,
+                          temAdicionais: temAdicionais,
+                          temRetirada: temRetirada,
+                          onFiltroAlterado: (filtro) =>
+                              setState(() => _filtroComplementos = filtro),
+                        ),
+                      ),
+                    ...opcoesProduto
+                        .where(_mostrarGrupoOpcoes)
+                        .map((opcoesPacote) {
+                      final dados = _dadosFiltrados(opcoesPacote);
                       final count = opcoesPacote.id == 2
                           ? opcoesPacote.produtos!.length
-                          : opcoesPacote.dados!.length;
+                          : dados.length;
 
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
@@ -478,24 +569,30 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                           titulo: opcoesPacote.titulo,
                           contagem: count,
                           obrigatorio: opcoesPacote.obrigatorio,
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: count,
-                            padding: const EdgeInsets.only(bottom: 8),
-                            itemBuilder: (context, index) {
-                              if (opcoesPacote.id == 2) {
-                                return CardKit(
-                                    item: opcoesPacote.produtos![index]);
-                              }
-                              return CardOpcoesPacotes(
-                                opcoesPacote: opcoesPacote,
-                                item: opcoesPacote.dados![index],
-                                kit: false,
-                                idProduto: '0',
-                              );
-                            },
-                          ),
+                          child: count == 0 &&
+                                  _grupoComplemento(opcoesPacote) &&
+                                  _pesquisaOpcoesController.text
+                                      .trim()
+                                      .isNotEmpty
+                              ? const _EstadoOpcoesVazio()
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: count,
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  itemBuilder: (context, index) {
+                                    if (opcoesPacote.id == 2) {
+                                      return CardKit(
+                                          item: opcoesPacote.produtos![index]);
+                                    }
+                                    return CardOpcoesPacotes(
+                                      opcoesPacote: opcoesPacote,
+                                      item: dados[index],
+                                      kit: false,
+                                      idProduto: '0',
+                                    );
+                                  },
+                                ),
                         ),
                       );
                     }),
@@ -587,11 +684,129 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         return Icons.straighten_rounded; // tamanho
       case 5:
         return Icons.restaurant_menu_rounded; // acompanhamentos
+      case 7:
+        return Icons.add_circle_outline_rounded; // adicionais
+      case 8:
+        return Icons.remove_circle_outline_rounded; // itens para retirar
       case 11:
         return Icons.local_pizza_rounded; // sabor
       default:
         return Icons.tune_rounded;
     }
+  }
+}
+
+class _FiltroComplementosProduto extends StatelessWidget {
+  final TextEditingController controller;
+  final _FiltroComplementos filtro;
+  final bool temAdicionais;
+  final bool temRetirada;
+  final ValueChanged<_FiltroComplementos> onFiltroAlterado;
+
+  const _FiltroComplementosProduto({
+    required this.controller,
+    required this.filtro,
+    required this.temAdicionais,
+    required this.temRetirada,
+    required this.onFiltroAlterado,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      TextField(
+        key: const ValueKey('pesquisa_opcoes_produto'),
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  key: const ValueKey('limpar_pesquisa_opcoes_produto'),
+                  tooltip: 'Limpar pesquisa',
+                  onPressed: controller.clear,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+          hintText: temRetirada
+              ? 'Pesquisar adicional ou item'
+              : 'Pesquisar adicional',
+          filled: true,
+          fillColor: VisualAtendimento.superficie(context),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.outline.withValues(alpha: 0.35)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide:
+                BorderSide(color: cs.outlineVariant.withValues(alpha: 0.8)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: cs.primary, width: 1.4),
+          ),
+        ),
+      ),
+      if (temAdicionais && temRetirada) ...[
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<_FiltroComplementos>(
+            showSelectedIcon: false,
+            selected: {filtro},
+            onSelectionChanged: (selecionado) =>
+                onFiltroAlterado(selecionado.single),
+            segments: const [
+              ButtonSegment(
+                value: _FiltroComplementos.todos,
+                icon: Icon(Icons.layers_outlined),
+                label: Text('Todos'),
+              ),
+              ButtonSegment(
+                value: _FiltroComplementos.adicionais,
+                icon: Icon(Icons.add_circle_outline_rounded),
+                label: Text(
+                  'Adicionais',
+                  key: ValueKey('filtro_adicionais_produto'),
+                ),
+              ),
+              ButtonSegment(
+                value: _FiltroComplementos.retirada,
+                icon: Icon(Icons.remove_circle_outline_rounded),
+                label: Text(
+                  'Retirada',
+                  key: ValueKey('filtro_itens_retirar_produto'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _EstadoOpcoesVazio extends StatelessWidget {
+  const _EstadoOpcoesVazio();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(children: [
+        Icon(Icons.search_off_rounded, size: 20, color: cs.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Nenhum item encontrado',
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+          ),
+        ),
+      ]),
+    );
   }
 }
 

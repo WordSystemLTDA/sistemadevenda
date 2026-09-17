@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/notificador_atualizacao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_enderecos_clientes.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_historico_pagamentos.dart';
@@ -203,6 +204,8 @@ class ServicoBalcao {
     bool sucesso = jsonData['sucesso'];
     String mensagem = jsonData['mensagem'];
 
+    if (sucesso) NotificadorAtualizacao.atendimento('Balcão');
+
     return (sucesso: sucesso, mensagem: mensagem);
   }
 
@@ -269,6 +272,8 @@ class ServicoBalcao {
 
     bool sucesso = response.data['sucesso'];
     String idvenda = response.data['idvenda'];
+
+    if (sucesso) NotificadorAtualizacao.atendimento('Balcão');
 
     return (sucesso: sucesso, idvenda: idvenda);
   }

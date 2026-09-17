@@ -120,6 +120,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
         'padrao_nome_cidade': 'Santa Fe',
         'padrao_estado': 'PR',
         'bloquear_edicao_cidade': 'Sim',
+        'requerido_endereco': 'Sim',
       };
     }
     return [];

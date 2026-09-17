@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/notificador_atualizacao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -119,6 +120,9 @@ class ServicoFinalizarPagamento {
       bool sucesso = jsonData['sucesso'];
       String mensagem = jsonData['mensagem'];
       String idVenda = jsonData['idVenda'] ?? '0';
+      if (sucesso && tipo == TipoCardapio.balcao) {
+        NotificadorAtualizacao.atendimento('Balcão');
+      }
 
       return (sucesso, mensagem, idVenda);
     } catch (erro) {

@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/notificador_atualizacao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
@@ -41,7 +42,18 @@ class ServicoDelivery {
           ? (resposta['mensagem'] ?? 'Não foi possível salvar.').toString()
           : 'Resposta inválida do servidor.');
     }
+    final tipo = _tipoAtualizacao(rota, campos);
+    if (tipo != null) NotificadorAtualizacao.atendimento(tipo);
     return Map<String, dynamic>.from(resposta);
+  }
+
+  String? _tipoAtualizacao(String rota, Map<String, dynamic> campos) {
+    final tipo = campos['tipo']?.toString();
+    if (tipo == 'Delivery' || tipo == 'Balcão') return tipo;
+    if (rota.startsWith('delivery/') || campos.containsKey('id_delivery')) {
+      return 'Delivery';
+    }
+    return null;
   }
 
   Future<dynamic> _requisicao(

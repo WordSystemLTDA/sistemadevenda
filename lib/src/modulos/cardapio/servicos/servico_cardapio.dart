@@ -349,19 +349,31 @@ class ServicoCardapio {
         destinoCaixa: null,
       );
     }
-    if (Sincronizador.instancia != null) {
-      return (
-        sucesso: false,
-        mensagem:
-            'Conecte ao servidor para cancelar item finalizado com senha Admin.',
-        destinoCaixa: null,
+    var idAtendimentoServidor = idAtendimento;
+    final sync = Sincronizador.instancia;
+    if (sync != null && AtendimentosLocais.local(idAtendimento)) {
+      await sync.configurar();
+      final abertura =
+          await AtendimentosLocais(sync.banco, sync.escopo).abertura(
+        idAtendimento,
       );
+      final real = abertura == null
+          ? null
+          : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+      if (real == null) {
+        return (
+          sucesso: false,
+          mensagem: 'Aguarde o envio da abertura antes de cancelar o item.',
+          destinoCaixa: null,
+        );
+      }
+      idAtendimentoServidor = real.toString();
     }
 
     try {
       final campos = {
         'id_itens_venda': idItemVenda,
-        'id_comanda_pedido': idAtendimento,
+        'id_comanda_pedido': idAtendimentoServidor,
         'versao_atendimento': versao,
         'id_comanda': idComanda.isEmpty ? '0' : idComanda,
         'id_mesa': idMesa.isEmpty ? '0' : idMesa,
@@ -392,6 +404,14 @@ class ServicoCardapio {
             : null,
       );
     } on DioException catch (e) {
+      if (CacheConsultas.falhaDeConexao(e)) {
+        return (
+          sucesso: false,
+          mensagem:
+              'Conecte ao servidor para cancelar item finalizado com senha Admin.',
+          destinoCaixa: null,
+        );
+      }
       if (e.response == null && kDebugMode) {
         log('ERRO API', error: e.error);
       }
