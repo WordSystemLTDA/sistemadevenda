@@ -771,7 +771,9 @@ void main() {
     await mostrar(tester, find.byKey(const ValueKey('abrir_edicao_opcao_7')));
     await tester.tap(find.byKey(const ValueKey('abrir_edicao_opcao_7')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Milho'));
+    await tester.tap(find.byTooltip('Diminuir Milho'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Diminuir Milho'));
     await tester.pumpAndSettle();
     expect(find.text('Salvar (0)'), findsOneWidget);
     await tester.tap(find.byKey(const Key('salvar_etapa_produto')));

@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_opcoes_carrinho.dart';
@@ -557,10 +558,21 @@ class _PaginaEditarProdutoCarrinhoState
         onTap: () => _abrirEtapa(),
       );
 
+  bool _grupoMontagemCardapio(ModeloOpcoesPacotes opcao) {
+    if (opcao.tipo == 8) return true;
+    final selecionados =
+        edicao.produto.retornarDadosPorID([opcao.id], false, '0');
+    return selecionados.any((dado) =>
+        dado.montagemCardapio != null ||
+        ((dado.idCategoriaCardapio ?? '').trim().isNotEmpty &&
+            dado.idCategoriaCardapio != '0'));
+  }
+
   Widget _secaoOpcoes(ModeloOpcoesPacotes opcao) {
     final selecionados =
         edicao.produto.retornarDadosPorID([opcao.id], false, '0');
     final titulo = switch (opcao.id) {
+      _ when _grupoMontagemCardapio(opcao) => 'Ingredientes do Cardápio',
       6 => 'Bordas',
       7 => 'Adicionais',
       8 => 'Itens para retirar',
@@ -575,6 +587,8 @@ class _PaginaEditarProdutoCarrinhoState
           titulo: '$titulo (${selecionados.length})',
           tooltip: 'Editar ${titulo.toLowerCase()}',
           icone: switch (opcao.id) {
+            _ when _grupoMontagemCardapio(opcao) =>
+              Icons.restaurant_menu_rounded,
             6 => Icons.donut_large_outlined,
             8 => Icons.remove_circle_outline,
             _ => Icons.tune,
@@ -585,16 +599,33 @@ class _PaginaEditarProdutoCarrinhoState
             _ => cs.primary,
           },
           resumo: [
-            Text(selecionados.isEmpty
-                ? 'Nenhum selecionado'
-                : selecionados
-                    .map((d) =>
-                        '${opcao.id == 7 ? '${d.quantidade ?? 1}x ' : ''}${d.nome}')
-                    .join(', ')),
+            Text(_grupoMontagemCardapio(opcao)
+                ? _resumoMontagem(selecionados)
+                : selecionados.isEmpty
+                    ? 'Nenhum selecionado'
+                    : selecionados
+                        .map((d) =>
+                            '${opcao.id == 7 ? '${d.quantidade ?? 1}x ' : ''}${d.nome}')
+                        .join(', ')),
           ],
           onTap: () => _abrirEtapa(idOpcao: opcao.id),
         ),
       ],
     );
+  }
+
+  String _resumoMontagem(List selecionados) {
+    final alterados = selecionados.where((dado) {
+      final montagem = dado.montagemCardapio;
+      return montagem != null &&
+          (montagem.acao != AcaoIngredienteCardapio.normal ||
+              montagem.separado == true);
+    }).toList();
+    if (alterados.isEmpty) return 'Montagem padrão';
+    return alterados
+        .map((dado) => dado.montagemCardapio?.detalheVisualizacao == null
+            ? dado.nome
+            : '${dado.montagemCardapio!.nomeOriginal}: ${dado.montagemCardapio!.detalheVisualizacao}')
+        .join(', ');
   }
 }

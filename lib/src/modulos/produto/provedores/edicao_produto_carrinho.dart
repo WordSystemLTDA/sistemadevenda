@@ -13,6 +13,7 @@ import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/foundation.dart';
@@ -57,6 +58,19 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
 
   static bool _ehObservacao(ModeloOpcoesPacotes opcao) =>
       grupoObservacaoProduto(opcao);
+
+  static bool _idCardapioValido(String? id) {
+    final texto = id?.trim() ?? '';
+    return texto.isNotEmpty && texto != '0' && texto.toLowerCase() != 'null';
+  }
+
+  static bool _ehMontagemCardapio(ModeloOpcoesPacotes opcao) {
+    if (_ehObservacao(opcao)) return false;
+    if (opcao.tipo == 8) return true;
+    return (opcao.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+        dado.montagemCardapio != null ||
+        _idCardapioValido(dado.idCategoriaCardapio));
+  }
 
   static double _valor(Object? valor) {
     final texto = (valor ?? '0').toString().replaceAll(',', '.');
@@ -251,8 +265,11 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       }
       for (final opcao in opcoes) {
         if (!selecionadas.any((o) => o.id == opcao.id)) {
-          selecionadas
-              .add(ModeloOpcoesPacotes.fromMap(opcao.toMap())..dados = []);
+          final copia = ModeloOpcoesPacotes.fromMap(opcao.toMap());
+          copia.dados = _ehMontagemCardapio(copia)
+              ? MontagemCardapio.iniciar(copia.dados ?? [])
+              : [];
+          selecionadas.add(copia);
         }
       }
       produto.opcoesPacotesListaFinal = selecionadas;

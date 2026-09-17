@@ -2,13 +2,18 @@ import 'dart:async';
 
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_bordas.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/etapa_montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +44,10 @@ class _PaginaEditarOpcoesCarrinhoState
   Timer? _debounce;
   String _categoria = '0';
   bool _permitirSair = false;
+  ModeloDadosOpcoesPacotes? _itemTrocaCardapio;
+  ModeloDadosOpcoesPacotes? _destinoTrocaCardapio;
+  String? _tipoDestinoTrocaCardapio;
+  int _quantidadeTrocaCardapio = 1;
   late final _categorias = [
     ModeloCategoria(id: '0', nomeCategoria: 'Todos', quantidadeProdutos: '0'),
     ...edicao.cardapio.categorias
@@ -70,6 +79,169 @@ class _PaginaEditarOpcoesCarrinhoState
     } else {
       edicao.pesquisa.listarProdutosPorNome(_busca.text, _categoria, '0');
     }
+  }
+
+  bool _idCardapioValido(String? id) {
+    final texto = id?.trim() ?? '';
+    return texto.isNotEmpty && texto != '0' && texto.toLowerCase() != 'null';
+  }
+
+  bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) {
+    if (grupoObservacaoProduto(grupo)) return false;
+    if (grupo.tipo == 8) return true;
+    return (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any(
+      (dado) =>
+          dado.montagemCardapio != null ||
+          _idCardapioValido(dado.idCategoriaCardapio),
+    );
+  }
+
+  ModeloOpcoesPacotes? get _grupoMontagemSelecionado =>
+      edicao.produto.opcoesPacotesListaFinal
+          .where(_grupoMontagemCardapio)
+          .firstOrNull;
+
+  List<ModeloDadosOpcoesPacotes> get _ingredientesMontagemCardapio =>
+      _grupoMontagemSelecionado?.dados ?? const <ModeloDadosOpcoesPacotes>[];
+
+  List<ModeloDadosOpcoesPacotes> _adicionaisDisponiveisTrocaCardapio() {
+    return edicao.opcoes
+        .where((grupo) => grupo.id == 7 || grupo.tipo == 3)
+        .expand((grupo) => grupo.dados ?? const <ModeloDadosOpcoesPacotes>[])
+        .map((dado) => ModeloDadosOpcoesPacotes.fromMap(dado.toMap()))
+        .toList();
+  }
+
+  void _alterarIngredienteCardapio(
+    ModeloDadosOpcoesPacotes item,
+    AcaoIngredienteCardapio acao,
+  ) {
+    final dados = _grupoMontagemSelecionado?.dados;
+    if (dados == null) return;
+    final index = dados.indexWhere((dado) => dado.id == item.id);
+    if (index < 0) return;
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    final montagem = montagemAtual.copyWith(
+      acao: acao,
+      limparDestino: acao != AcaoIngredienteCardapio.trocar,
+      separado: acao == AcaoIngredienteCardapio.sem ||
+              acao == AcaoIngredienteCardapio.normal
+          ? false
+          : montagemAtual.separado,
+    );
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(atual, montagem);
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+    });
+    edicao.produto.calcularValorVenda(false, '0');
+    FeedbackUsuario.selecaoAlterada();
+  }
+
+  void _separarIngredienteCardapio(
+    ModeloDadosOpcoesPacotes item,
+    bool separado,
+  ) {
+    final dados = _grupoMontagemSelecionado?.dados;
+    if (dados == null) return;
+    final index = dados.indexWhere((dado) => dado.id == item.id);
+    if (index < 0) return;
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    if (montagemAtual.acao == AcaoIngredienteCardapio.sem) return;
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(
+        atual,
+        montagemAtual.copyWith(separado: separado),
+      );
+    });
+    edicao.produto.calcularValorVenda(false, '0');
+    FeedbackUsuario.selecaoAlterada();
+  }
+
+  void _iniciarTrocaCardapio(ModeloDadosOpcoesPacotes item) {
+    setState(() {
+      _itemTrocaCardapio = item;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = item.montagemCardapio?.quantidadeTroca ?? 1;
+      _busca.clear();
+    });
+  }
+
+  void _selecionarDestinoTrocaCardapio(
+    ModeloDadosOpcoesPacotes item,
+    String tipo,
+  ) {
+    setState(() {
+      _destinoTrocaCardapio = item;
+      _tipoDestinoTrocaCardapio = tipo;
+    });
+  }
+
+  void _confirmarTrocaCardapio() {
+    final origem = _itemTrocaCardapio;
+    final destino = _destinoTrocaCardapio;
+    final tipo = _tipoDestinoTrocaCardapio;
+    final dados = _grupoMontagemSelecionado?.dados;
+    if (origem == null || destino == null || tipo == null || dados == null) {
+      return;
+    }
+    final erro =
+        MontagemCardapio.validarTroca(dados, origem.id, destino.id, tipo);
+    if (erro != null) {
+      _avisar(erro);
+      return;
+    }
+
+    final index = dados.indexWhere((dado) => dado.id == origem.id);
+    if (index < 0) return;
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    final nomeDestino = destino.montagemCardapio?.nomeOriginal ?? destino.nome;
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(
+        atual,
+        montagemAtual.copyWith(
+          acao: AcaoIngredienteCardapio.trocar,
+          destinoId: destino.id,
+          destinoNome: nomeDestino,
+          destinoTipo: tipo,
+          quantidadeTroca: _quantidadeTrocaCardapio,
+        ),
+      );
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+      _busca.clear();
+    });
+    edicao.produto.calcularValorVenda(false, '0');
+    FeedbackUsuario.selecaoAlterada();
+  }
+
+  void _restaurarMontagemCardapio() {
+    final grupo = _grupoMontagemSelecionado;
+    if (grupo == null) return;
+    setState(() {
+      grupo.dados = MontagemCardapio.iniciar(grupo.dados ?? []);
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+      _busca.clear();
+    });
+    edicao.produto.calcularValorVenda(false, '0');
+    FeedbackUsuario.selecaoAlterada();
   }
 
   Future<void> _salvar() async {
@@ -156,8 +328,15 @@ class _PaginaEditarOpcoesCarrinhoState
         builder: (context, _) {
           final quantidade = sabores
               ? edicao.cardapio.saboresPizzaSelecionados.length
-              : edicao.produto
-                  .retornarDadosPorID([opcao.id], false, '0').length;
+              : _grupoMontagemCardapio(opcao)
+                  ? _ingredientesMontagemCardapio
+                      .where((item) =>
+                          item.montagemCardapio?.acao !=
+                              AcaoIngredienteCardapio.normal ||
+                          item.montagemCardapio?.separado == true)
+                      .length
+                  : edicao.produto
+                      .retornarDadosPorID([opcao.id], false, '0').length;
           return PopScope(
             canPop: _permitirSair || !edicao.alterado,
             onPopInvokedWithResult: (didPop, _) {
@@ -170,6 +349,7 @@ class _PaginaEditarOpcoesCarrinhoState
                 title: Text(sabores
                     ? 'Cardápio'
                     : switch (opcao.id) {
+                        _ when _grupoMontagemCardapio(opcao) => 'Montagem',
                         6 => 'Bordas',
                         7 => 'Adicionais',
                         8 => 'Itens para retirar',
@@ -204,11 +384,61 @@ class _PaginaEditarOpcoesCarrinhoState
                   ),
                 ),
               ),
-              body: sabores ? _listaSabores() : _listaOpcoes(),
+              body: sabores
+                  ? _listaSabores()
+                  : _grupoMontagemCardapio(opcao)
+                      ? _listaMontagem()
+                      : _listaOpcoes(),
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _listaMontagem() {
+    final itemTroca = _itemTrocaCardapio;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        14,
+        12,
+        14,
+        MediaQuery.paddingOf(context).bottom +
+            MediaQuery.textScalerOf(context).scale(88),
+      ),
+      child: itemTroca == null
+          ? EtapaMontagemCardapio(
+              nomeProduto: edicao.original.nome,
+              valor: edicao.original.valorVenda,
+              ingredientes: _ingredientesMontagemCardapio,
+              pesquisaController: _busca,
+              aoAlterar: _alterarIngredienteCardapio,
+              aoSeparar: _separarIngredienteCardapio,
+              aoTrocar: _iniciarTrocaCardapio,
+              aoRestaurar: _restaurarMontagemCardapio,
+              aoVoltar: () => Navigator.pop(context, false),
+              aoContinuar: _salvar,
+            )
+          : EtapaTrocaCardapio(
+              item: itemTroca,
+              ingredientes: _ingredientesMontagemCardapio,
+              adicionais: _adicionaisDisponiveisTrocaCardapio(),
+              destinoSelecionado: _destinoTrocaCardapio,
+              tipoSelecionado: _tipoDestinoTrocaCardapio,
+              quantidade: _quantidadeTrocaCardapio,
+              pesquisaController: _busca,
+              aoVoltar: () => setState(() {
+                _itemTrocaCardapio = null;
+                _destinoTrocaCardapio = null;
+                _tipoDestinoTrocaCardapio = null;
+                _quantidadeTrocaCardapio = 1;
+                _busca.clear();
+              }),
+              aoSelecionar: _selecionarDestinoTrocaCardapio,
+              aoAlterarQuantidade: (quantidade) =>
+                  setState(() => _quantidadeTrocaCardapio = quantidade),
+              aoConfirmar: _confirmarTrocaCardapio,
+            ),
     );
   }
 

@@ -125,6 +125,7 @@ class Modelowordprodutos {
   List<ModeloOpcoesPacotes>? opcoesPacotesListaFinal;
   ModeloDescontoProduto? descontoProduto;
   String? habilsepardelivery;
+  String? idCategoriaCardapio;
   int? limiteSaboresBorda;
   bool conferidoNoCarrinho;
 
@@ -172,6 +173,7 @@ class Modelowordprodutos {
     this.opcoesPacotesListaFinal,
     this.descontoProduto,
     this.habilsepardelivery,
+    this.idCategoriaCardapio,
     this.limiteSaboresBorda,
     this.conferidoNoCarrinho = false,
   });
@@ -222,6 +224,9 @@ class Modelowordprodutos {
           opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
       'descontoProduto': descontoProduto?.toMap(),
       'habilsepardelivery': habilsepardelivery,
+      'idCategoriaCardapio': idCategoriaCardapio,
+      'categoriaCardapio': idCategoriaCardapio,
+      'id_categoria_cardapio': idCategoriaCardapio,
       'limiteSaboresBorda': limiteSaboresBorda,
       'conferidoNoCarrinho': conferidoNoCarrinho,
     };
@@ -251,6 +256,9 @@ class Modelowordprodutos {
       nomeCategoria: _texto(map['nomeCategoria']),
       dataLancado: map['dataLancado']?.toString(),
       habilsepardelivery: map['habilsepardelivery']?.toString(),
+      idCategoriaCardapio: map['idCategoriaCardapio']?.toString() ??
+          map['categoriaCardapio']?.toString() ??
+          map['id_categoria_cardapio']?.toString(),
       ativarCustoDeProducao: map['ativarCustoDeProducao']?.toString(),
       novo: _boolOpcional(map['novo']),
       destinoDeImpressao: _mapa(map['destinoDeImpressao']) != null

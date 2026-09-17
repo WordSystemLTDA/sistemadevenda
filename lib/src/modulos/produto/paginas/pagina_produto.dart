@@ -3,13 +3,16 @@ import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/sugestoes_observacao.dart';
+import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/etapa_montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -52,9 +55,17 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   TextEditingController obsController = TextEditingController();
   final TextEditingController _pesquisaOpcoesController =
       TextEditingController();
+  final TextEditingController _pesquisaMontagemController =
+      TextEditingController();
   final _focoObservacao = FocusNode();
   _FiltroComplementos _filtroComplementos = _FiltroComplementos.todos;
   String _baseHostImagens = 'https://bigchef.com.br';
+  bool _montagemConfirmada = false;
+  bool _montagemJaConfirmada = false;
+  ModeloDadosOpcoesPacotes? _itemTrocaCardapio;
+  ModeloDadosOpcoesPacotes? _destinoTrocaCardapio;
+  String? _tipoDestinoTrocaCardapio;
+  int _quantidadeTrocaCardapio = 1;
 
   @override
   void initState() {
@@ -67,6 +78,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       listar();
     } else {
       itemProduto = widget.produto;
+      _montagemConfirmada = true;
+      _montagemJaConfirmada = true;
       _provedorProduto.opcoesPacotesListaFinal =
           widget.produto.opcoesPacotesListaFinal ?? [];
       _provedorProduto.valorVenda = double.parse(widget.produto.valorVenda);
@@ -80,6 +93,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   void dispose() {
     _pesquisaOpcoesController.removeListener(_atualizarPesquisaOpcoes);
     _pesquisaOpcoesController.dispose();
+    _pesquisaMontagemController.dispose();
     obsController.dispose();
     _focoObservacao.dispose();
     super.dispose();
@@ -120,6 +134,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
             for (var elm in value.opcoesPacotes!)
               ModeloOpcoesPacotes.fromMap(elm.toMap())
           ].map((e) {
+            if (_grupoMontagemCardapio(e)) {
+              final salvos = widget.produto.opcoesPacotesListaFinal
+                  ?.where(_grupoMontagemCardapio)
+                  .firstOrNull
+                  ?.dados;
+              e.dados = MontagemCardapio.iniciar(e.dados ?? [], salvos: salvos);
+              return e;
+            }
+
             // SE FOR KITS/COMBOS
             if (e.id == 2) {
               var a = e.produtos!.map((e1) {
@@ -333,6 +356,218 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     setState(() => carregando = !carregando);
   }
 
+  bool _idCardapioValido(String? id) {
+    final texto = id?.trim() ?? '';
+    return texto.isNotEmpty && texto != '0' && texto.toLowerCase() != 'null';
+  }
+
+  bool _grupoMontagemCardapio(ModeloOpcoesPacotes opcoesPacote) {
+    if (grupoObservacaoProduto(opcoesPacote)) return false;
+    if (opcoesPacote.tipo == 8) return true;
+    return (opcoesPacote.dados ?? const <ModeloDadosOpcoesPacotes>[]).any(
+      (dado) =>
+          dado.montagemCardapio != null ||
+          _idCardapioValido(dado.idCategoriaCardapio),
+    );
+  }
+
+  ModeloOpcoesPacotes? get _grupoMontagemSelecionado =>
+      _provedorProduto.opcoesPacotesListaFinal
+          .where(_grupoMontagemCardapio)
+          .firstOrNull;
+
+  bool get _produtoTemMontagemCardapio {
+    final grupo = _grupoMontagemSelecionado;
+    if (grupo == null || (grupo.dados?.isEmpty ?? true)) return false;
+    return _idCardapioValido(itemProduto?.idCategoriaCardapio) ||
+        grupo.tipo == 8 ||
+        (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+            dado.montagemCardapio != null ||
+            _idCardapioValido(dado.idCategoriaCardapio));
+  }
+
+  List<ModeloDadosOpcoesPacotes> get _ingredientesMontagemCardapio =>
+      _grupoMontagemSelecionado?.dados ?? const <ModeloDadosOpcoesPacotes>[];
+
+  List<ModeloDadosOpcoesPacotes> _adicionaisDisponiveisTrocaCardapio() {
+    final opcoes = itemProduto?.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
+    return opcoes
+        .where((grupo) => grupo.id == 7 || grupo.tipo == 3)
+        .expand((grupo) => grupo.dados ?? const <ModeloDadosOpcoesPacotes>[])
+        .map((dado) => ModeloDadosOpcoesPacotes.fromMap(dado.toMap()))
+        .toList();
+  }
+
+  void _alterarIngredienteCardapio(
+    ModeloDadosOpcoesPacotes item,
+    AcaoIngredienteCardapio acao,
+  ) {
+    final grupo = _grupoMontagemSelecionado;
+    final dados = grupo?.dados;
+    if (dados == null) return;
+    final index = dados.indexWhere((dado) => dado.id == item.id);
+    if (index < 0) return;
+
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    final montagem = montagemAtual.copyWith(
+      acao: acao,
+      limparDestino: acao != AcaoIngredienteCardapio.trocar,
+      separado: acao == AcaoIngredienteCardapio.sem ||
+              acao == AcaoIngredienteCardapio.normal
+          ? false
+          : montagemAtual.separado,
+    );
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(atual, montagem);
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+    });
+    _provedorProduto.calcularValorVenda(false, '0');
+  }
+
+  void _separarIngredienteCardapio(
+    ModeloDadosOpcoesPacotes item,
+    bool separado,
+  ) {
+    final grupo = _grupoMontagemSelecionado;
+    final dados = grupo?.dados;
+    if (dados == null) return;
+    final index = dados.indexWhere((dado) => dado.id == item.id);
+    if (index < 0) return;
+
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    if (montagemAtual.acao == AcaoIngredienteCardapio.sem) return;
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(
+        atual,
+        montagemAtual.copyWith(separado: separado),
+      );
+    });
+    _provedorProduto.calcularValorVenda(false, '0');
+  }
+
+  void _iniciarTrocaCardapio(ModeloDadosOpcoesPacotes item) {
+    setState(() {
+      _itemTrocaCardapio = item;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = item.montagemCardapio?.quantidadeTroca ?? 1;
+      _pesquisaMontagemController.clear();
+    });
+  }
+
+  void _selecionarDestinoTrocaCardapio(
+    ModeloDadosOpcoesPacotes item,
+    String tipo,
+  ) {
+    setState(() {
+      _destinoTrocaCardapio = item;
+      _tipoDestinoTrocaCardapio = tipo;
+    });
+  }
+
+  void _confirmarTrocaCardapio() {
+    final origem = _itemTrocaCardapio;
+    final destino = _destinoTrocaCardapio;
+    final tipo = _tipoDestinoTrocaCardapio;
+    final grupo = _grupoMontagemSelecionado;
+    final dados = grupo?.dados;
+    if (origem == null || destino == null || tipo == null || dados == null) {
+      return;
+    }
+
+    final erro = MontagemCardapio.validarTroca(
+      dados,
+      origem.id,
+      destino.id,
+      tipo,
+    );
+    if (erro != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(erro)));
+      return;
+    }
+
+    final index = dados.indexWhere((dado) => dado.id == origem.id);
+    if (index < 0) return;
+    final atual = dados[index];
+    final montagemAtual = atual.montagemCardapio ??
+        MontagemIngredienteCardapio(nomeOriginal: atual.nome);
+    final nomeDestino = destino.montagemCardapio?.nomeOriginal ?? destino.nome;
+
+    setState(() {
+      dados[index] = MontagemCardapio.aplicar(
+        atual,
+        montagemAtual.copyWith(
+          acao: AcaoIngredienteCardapio.trocar,
+          destinoId: destino.id,
+          destinoNome: nomeDestino,
+          destinoTipo: tipo,
+          quantidadeTroca: _quantidadeTrocaCardapio,
+        ),
+      );
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+      _pesquisaMontagemController.clear();
+    });
+    _provedorProduto.calcularValorVenda(false, '0');
+  }
+
+  void _restaurarMontagemCardapio() {
+    final grupo = _grupoMontagemSelecionado;
+    if (grupo == null) return;
+    setState(() {
+      grupo.dados = MontagemCardapio.iniciar(grupo.dados ?? []);
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+      _pesquisaMontagemController.clear();
+    });
+    _provedorProduto.calcularValorVenda(false, '0');
+  }
+
+  void _confirmarMontagemCardapio() {
+    setState(() {
+      _montagemConfirmada = true;
+      _montagemJaConfirmada = true;
+      _itemTrocaCardapio = null;
+      _destinoTrocaCardapio = null;
+      _tipoDestinoTrocaCardapio = null;
+      _quantidadeTrocaCardapio = 1;
+      _pesquisaMontagemController.clear();
+    });
+  }
+
+  void _voltarMontagemCardapio() {
+    if (_itemTrocaCardapio != null) {
+      setState(() {
+        _itemTrocaCardapio = null;
+        _destinoTrocaCardapio = null;
+        _tipoDestinoTrocaCardapio = null;
+        _quantidadeTrocaCardapio = 1;
+        _pesquisaMontagemController.clear();
+      });
+      return;
+    }
+    if (_montagemJaConfirmada) {
+      setState(() => _montagemConfirmada = true);
+      return;
+    }
+    Navigator.pop(context);
+  }
+
   int get _quantidadeAdicionaisSelecionados {
     return _provedorProduto.retornarDadosPorID([7], false, '0').fold<int>(0,
         (total, adicional) {
@@ -341,9 +576,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 
   bool _grupoComplemento(ModeloOpcoesPacotes opcoesPacote) =>
-      opcoesPacote.id == 7 || opcoesPacote.id == 8;
+      !_grupoMontagemCardapio(opcoesPacote) &&
+      (opcoesPacote.id == 7 || opcoesPacote.id == 8);
 
   bool _mostrarGrupoOpcoes(ModeloOpcoesPacotes opcoesPacote) {
+    if (_grupoMontagemCardapio(opcoesPacote)) return false;
     if (opcoesPacote.id == 6) return false;
     if (!_grupoComplemento(opcoesPacote)) return true;
     return switch (_filtroComplementos) {
@@ -449,6 +686,50 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       child: AnimatedBuilder(
         animation: Listenable.merge([_provedorProduto, _focoObservacao]),
         builder: (context, _) {
+          if (_produtoTemMontagemCardapio && !_montagemConfirmada) {
+            final itemTroca = _itemTrocaCardapio;
+            return Scaffold(
+              backgroundColor: VisualAtendimento.fundo(context),
+              appBar: AppBar(
+                backgroundColor: cs.inversePrimary,
+                elevation: 0,
+                title: const Text('Montagem do produto'),
+              ),
+              body: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  child: itemTroca == null
+                      ? EtapaMontagemCardapio(
+                          nomeProduto: itemProduto!.nome,
+                          valor: itemProduto!.valorVenda,
+                          ingredientes: _ingredientesMontagemCardapio,
+                          pesquisaController: _pesquisaMontagemController,
+                          aoAlterar: _alterarIngredienteCardapio,
+                          aoSeparar: _separarIngredienteCardapio,
+                          aoTrocar: _iniciarTrocaCardapio,
+                          aoRestaurar: _restaurarMontagemCardapio,
+                          aoVoltar: _voltarMontagemCardapio,
+                          aoContinuar: _confirmarMontagemCardapio,
+                        )
+                      : EtapaTrocaCardapio(
+                          item: itemTroca,
+                          ingredientes: _ingredientesMontagemCardapio,
+                          adicionais: _adicionaisDisponiveisTrocaCardapio(),
+                          destinoSelecionado: _destinoTrocaCardapio,
+                          tipoSelecionado: _tipoDestinoTrocaCardapio,
+                          quantidade: _quantidadeTrocaCardapio,
+                          pesquisaController: _pesquisaMontagemController,
+                          aoVoltar: _voltarMontagemCardapio,
+                          aoSelecionar: _selecionarDestinoTrocaCardapio,
+                          aoAlterarQuantidade: (quantidade) => setState(
+                              () => _quantidadeTrocaCardapio = quantidade),
+                          aoConfirmar: _confirmarTrocaCardapio,
+                        ),
+                ),
+              ),
+            );
+          }
+
           final faixaPreco =
               (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
                   _provedorProduto
@@ -469,8 +750,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           final opcoesProduto = itemProduto!.opcoesPacotes ?? [];
           final temAdicionais = opcoesProduto.any(
               (opcao) => opcao.id == 7 && (opcao.dados?.isNotEmpty ?? false));
-          final temRetirada = opcoesProduto.any(
-              (opcao) => opcao.id == 8 && (opcao.dados?.isNotEmpty ?? false));
+          final temRetirada = opcoesProduto.any((opcao) =>
+              !_grupoMontagemCardapio(opcao) &&
+              opcao.id == 8 &&
+              (opcao.dados?.isNotEmpty ?? false));
 
           return Scaffold(
             extendBody: alturaTeclado == 0,
@@ -541,6 +824,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                     onDiminuir: _provedorProduto.aoDiminuirQuantidade,
                     onAumentar: _provedorProduto.aoAumentarQuantidade,
                   ),
+                  if (_produtoTemMontagemCardapio) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                      child: _ResumoMontagemProduto(
+                        ingredientes: _ingredientesMontagemCardapio,
+                        onEditar: () =>
+                            setState(() => _montagemConfirmada = false),
+                      ),
+                    ),
+                  ],
                   if (opcoesProduto.isNotEmpty) ...[
                     if (temAdicionais || temRetirada)
                       Padding(
@@ -693,6 +986,109 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       default:
         return Icons.tune_rounded;
     }
+  }
+}
+
+class _ResumoMontagemProduto extends StatelessWidget {
+  final List<ModeloDadosOpcoesPacotes> ingredientes;
+  final VoidCallback onEditar;
+
+  const _ResumoMontagemProduto({
+    required this.ingredientes,
+    required this.onEditar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final alterados = ingredientes.where((item) {
+      final montagem = item.montagemCardapio;
+      return montagem != null &&
+          (montagem.acao != AcaoIngredienteCardapio.normal ||
+              montagem.separado);
+    }).toList();
+    final linhas =
+        alterados.isEmpty ? ingredientes.take(3).toList() : alterados;
+
+    return _SecaoProduto(
+      icon: Icons.restaurant_menu_rounded,
+      titulo: 'Ingredientes do Cardápio',
+      contagem: alterados.length,
+      obrigatorio: false,
+      child: Material(
+        color: VisualAtendimento.superficie(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (linhas.isEmpty)
+              Text('Montagem padrão',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))
+            else
+              for (final item in linhas) ...[
+                _LinhaResumoMontagem(item: item),
+                if (item != linhas.last) const SizedBox(height: 8),
+              ],
+            if (alterados.isEmpty && ingredientes.length > linhas.length) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Demais ingredientes em quantidade normal',
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: const ValueKey('editar_montagem_cardapio'),
+                onPressed: onEditar,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Editar montagem'),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _LinhaResumoMontagem extends StatelessWidget {
+  final ModeloDadosOpcoesPacotes item;
+
+  const _LinhaResumoMontagem({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final montagem = item.montagemCardapio;
+    final cs = Theme.of(context).colorScheme;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(Icons.circle, size: 7, color: cs.primary),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            montagem?.nomeOriginal ?? item.nome,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          if (montagem?.detalheVisualizacao != null)
+            Text(
+              montagem!.detalheVisualizacao!,
+              style: TextStyle(
+                  fontSize: 12, color: cs.primary, fontWeight: FontWeight.w600),
+            ),
+        ]),
+      ),
+      Text(
+        ((double.tryParse(item.valor ?? '0') ?? 0) * (item.quantidade ?? 1))
+            .obterReal(),
+        style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+      ),
+    ]);
   }
 }
 

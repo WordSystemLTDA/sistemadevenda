@@ -260,4 +260,54 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('toque no card de adicional soma uma unidade', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(
+          empresa: '32', configuracoes: fixture.ConfiguracoesTeste('media')));
+    final cardapio = ProvedorCardapio(fixture.CategoriasTeste(), usuario);
+    Modular.init(
+        fixture.ModuloTeste(cardapio, usuario, fixture.ProdutosTeste()));
+    final provedor = Modular.get<ProvedorProduto>();
+    provedor.valorVendaOriginal = 57;
+    provedor.opcoesPacotesListaFinal = [
+      ModeloOpcoesPacotes(
+          id: 7, titulo: 'Adicionais', obrigatorio: false, dados: []),
+    ];
+    final milho = ModeloDadosOpcoesPacotes(id: '7', nome: 'Milho', valor: '3');
+    final grupo = ModeloOpcoesPacotes(
+        id: 7, titulo: 'Adicionais', obrigatorio: false, dados: [milho]);
+    addTearDown(() {
+      Modular.destroy();
+      cardapio.dispose();
+      usuario.dispose();
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ListenableBuilder(
+          listenable: provedor,
+          builder: (_, child) => CardOpcoesPacotes(
+            kit: false,
+            opcoesPacote: grupo,
+            item: milho,
+            idProduto: '0',
+          ),
+        ),
+      ),
+    ));
+
+    final card = find.byKey(const ValueKey('opcao_7_7'));
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    expect(provedor.retornarDadosPorID([7], false, '0').single.quantidade, 1);
+    expect(provedor.valorVenda, 60);
+
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+    expect(provedor.retornarDadosPorID([7], false, '0').single.quantidade, 2);
+    expect(provedor.valorVenda, 63);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -49,7 +49,22 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     }
 
     final estadoAnterior = _assinaturaOpcaoSelecionada();
-    if (widget.opcoesPacote.id == 7) widget.item.quantidade ??= 1;
+    if (widget.opcoesPacote.id == 7) {
+      final selecionado = _provedorProduto
+          .retornarDadosPorID(
+              [widget.opcoesPacote.id], widget.kit, widget.idProduto)
+          .where((dado) => dado.id == widget.item.id)
+          .firstOrNull;
+      if (selecionado != null) {
+        setState(() {
+          selecionado.quantidade = (selecionado.quantidade ?? 1) + 1;
+        });
+        FeedbackUsuario.selecaoAlterada();
+        _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
+        return;
+      }
+      widget.item.quantidade ??= 1;
+    }
     _provedorProduto.selecionarItem(
       widget.item,
       widget.opcoesPacote,
@@ -79,9 +94,9 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
   }
 
   void _alterarQuantidade(int diferenca) {
-    final selecionado = _provedorProduto
-        .retornarDadosPorID(
-            [widget.opcoesPacote.id], widget.kit, widget.idProduto)
+    final dadosSelecionados = _provedorProduto.retornarDadosPorID(
+        [widget.opcoesPacote.id], widget.kit, widget.idProduto);
+    final selecionado = dadosSelecionados
         .where((dado) => dado.id == widget.item.id)
         .firstOrNull;
     if (selecionado == null) {
@@ -90,7 +105,15 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     }
     final quantidade = selecionado.quantidade ?? 1;
     if (quantidade + diferenca < 1) {
-      _selecionarItem(context);
+      if (widget.opcoesPacote.id == 7) {
+        setState(() {
+          dadosSelecionados.removeWhere((dado) => dado.id == widget.item.id);
+        });
+        FeedbackUsuario.selecaoAlterada();
+        _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
+      } else {
+        _selecionarItem(context);
+      }
       return;
     }
     setState(() => selecionado.quantidade = quantidade + diferenca);
