@@ -129,9 +129,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       if (!mounted) return;
       itemProduto = value;
       if (value != null) {
+        value.idCategoriaCardapio ??= widget.produto.idCategoriaCardapio;
+        if (_idCardapioValido(value.idCategoriaCardapio) &&
+            !(value.opcoesPacotes?.any(_grupoMontagemCardapio) ?? false)) {
+          itemProduto = null;
+          throw StateError('Os ingredientes do cardápio não foram carregados.');
+        }
         if (widget.valorVenda == null) {
           _provedorProduto.opcoesPacotesListaFinal = [
-            for (var elm in value.opcoesPacotes!)
+            for (var elm in value.opcoesPacotes ?? <ModeloOpcoesPacotes>[])
               ModeloOpcoesPacotes.fromMap(elm.toMap())
           ].map((e) {
             if (_grupoMontagemCardapio(e)) {
@@ -378,7 +384,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
   bool get _produtoTemMontagemCardapio {
     final grupo = _grupoMontagemSelecionado;
-    if (grupo == null || (grupo.dados?.isEmpty ?? true)) return false;
+    if (grupo == null) return false;
     return _idCardapioValido(itemProduto?.idCategoriaCardapio) ||
         grupo.tipo == 8 ||
         (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>

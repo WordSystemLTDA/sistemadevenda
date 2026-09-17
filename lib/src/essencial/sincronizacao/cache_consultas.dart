@@ -64,6 +64,36 @@ class CacheConsultas extends Interceptor {
         SplayTreeMap<String, String>.from(opcoes.uri.queryParameters),
       ]);
 
+  static const _chavesCategoriaCardapio = [
+    'idCategoriaCardapio',
+    'categoriaCardapio',
+    'id_categoria_cardapio',
+    'categoria_cardapio',
+  ];
+
+  static bool _produtoComMontagem(Object dados) =>
+      dados is Map &&
+      (_chavesCategoriaCardapio.any(
+            (chave) => (int.tryParse('${dados[chave]}') ?? 0) > 0,
+          ) ||
+          (dados['opcoesPacotes'] as List? ?? []).whereType<Map>().any(
+                (grupo) => '${grupo['tipo']}' == '8',
+              ));
+
+  static bool _catalogoSemVinculoCardapio(String rota, Object dados) {
+    if (![
+      'produtos/listar.php',
+      'produtos/listar_por_categoria.php',
+      'produtos/listar_por_id.php',
+    ].contains(rota)) {
+      return false;
+    }
+    final produtos = dados is List ? dados : [dados];
+    return produtos
+        .whereType<Map>()
+        .any((produto) => !_chavesCategoriaCardapio.any(produto.containsKey));
+  }
+
   bool _permitido(RequestOptions opcoes) {
     if (escopo.isEmpty ||
         (opcoes.method != 'GET' && caminho(opcoes) != 'balcao/listar.php') ||
@@ -105,7 +135,13 @@ class CacheConsultas extends Interceptor {
       Object? dados =
           consulta == null ? null : jsonDecode(consulta['valor'] as String);
       dados ??= await _derivar(options, alvo);
-      if (dados != null) {
+      final falhouRecentemente = _ultimaFalha != null &&
+          DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
+      if (dados != null &&
+          (falhouRecentemente ||
+              (!(options.extra['atualizarMontagemCardapio'] == true &&
+                      _produtoComMontagem(dados)) &&
+                  !_catalogoSemVinculoCardapio(caminho(options), dados)))) {
         final recente = consulta != null &&
             DateTime.now().millisecondsSinceEpoch -
                     (consulta['atualizado'] as int) <
@@ -117,9 +153,7 @@ class CacheConsultas extends Interceptor {
             data: dados,
             extra: {'cacheLocal': true}));
       }
-      if (_ultimaFalha != null &&
-          DateTime.now().difference(_ultimaFalha!) <
-              const Duration(seconds: 5)) {
+      if (falhouRecentemente) {
         return handler.reject(DioException(
             requestOptions: options,
             type: DioExceptionType.connectionError,

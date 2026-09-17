@@ -1,0 +1,36 @@
+{
+  "id": "436",
+  "codigo": "151",
+  "nome": "Almoço Livre",
+  "categoria": "62",
+  "nomeCategoria": "Almoço",
+  "ativo": "Sim",
+  "habilTipo": "Pacote",
+  "valorVenda": "45.00",
+  "idCategoriaCardapio": "3",
+  "id_categoria_cardapio": "3",
+  "ingredientes": [],
+  "opcoesPacotes": [
+    {
+      "id": 12,
+      "titulo": "Ingredientes do Cardápio",
+      "tipo": 8,
+      "obrigatorio": false,
+      "dados": [
+        {"id": "6", "nome": "Arroz", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true},
+        {"id": "10", "nome": "Carne de Panela", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true},
+        {"id": "7", "nome": "Feijão", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true}
+      ]
+    },
+    {
+      "id": 7,
+      "titulo": "Selecione os Adicionais",
+      "tipo": 3,
+      "obrigatorio": false,
+      "dados": [
+        {"id": "19", "nome": "Ovo", "valor": "1.00", "quantidade": 1, "estaSelecionado": false},
+        {"id": "20", "nome": "Bisteca", "valor": "5.00", "quantidade": 1, "estaSelecionado": false}
+      ]
+    }
+  ]
+}

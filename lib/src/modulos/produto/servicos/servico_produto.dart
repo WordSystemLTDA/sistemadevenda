@@ -4,6 +4,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
+import 'package:dio/dio.dart';
 
 class ServicoProduto {
   final DioCliente dio;
@@ -70,7 +71,8 @@ class ServicoProduto {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
     final response = await dio.cliente.get(
-        '/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza');
+        '/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza',
+        options: Options(extra: {'atualizarMontagemCardapio': true}));
 
     if (response.data == null) return null;
 
