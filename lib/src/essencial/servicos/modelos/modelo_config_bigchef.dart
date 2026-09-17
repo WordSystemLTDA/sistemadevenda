@@ -28,6 +28,12 @@ class ModeloConfigBigchef {
   final String valordiferenca;
   final String saborlimitedeborda;
   final String autenticarcomtag;
+  final String numerodopedidodestaquecomprovante;
+  final String numerodopedidodestaquepreparo;
+  final String ativarnumerooperacionalpedido;
+  final String imprimirnumerooperacionalentregador;
+  final String imprimirnumerooperacionalconsumacao;
+  final String imprimirnumerooperacionalpreparo;
   final String? modeloValorAdicionalPizza;
   final String permitireditarquantidadeappaposfinalizar;
   final String permitireditarobservacaoappaposfinalizar;
@@ -54,6 +60,12 @@ class ModeloConfigBigchef {
     required this.valordiferenca,
     required this.saborlimitedeborda,
     required this.autenticarcomtag,
+    this.numerodopedidodestaquecomprovante = 'Não',
+    this.numerodopedidodestaquepreparo = 'Não',
+    this.ativarnumerooperacionalpedido = '',
+    this.imprimirnumerooperacionalentregador = '',
+    this.imprimirnumerooperacionalconsumacao = '',
+    this.imprimirnumerooperacionalpreparo = '',
     this.modeloValorAdicionalPizza,
     this.permitireditarquantidadeappaposfinalizar = 'Não',
     this.permitireditarobservacaoappaposfinalizar = 'Não',
@@ -72,6 +84,23 @@ class ModeloConfigBigchef {
       _sim(permitireditarbordaappaposfinalizar);
   bool get permiteEditarAdicionalAposFinalizar =>
       _sim(permitireditaradicionalappaposfinalizar);
+  bool get controlaNumeroOperacionalPedido =>
+      ativarnumerooperacionalpedido.trim().isNotEmpty ||
+      imprimirnumerooperacionalentregador.trim().isNotEmpty ||
+      imprimirnumerooperacionalconsumacao.trim().isNotEmpty ||
+      imprimirnumerooperacionalpreparo.trim().isNotEmpty;
+  bool get _numeroOperacionalAtivo =>
+      ativarnumerooperacionalpedido.trim().isEmpty ||
+      _sim(ativarnumerooperacionalpedido);
+  bool _permiteNumeroOperacional(String valor) =>
+      !controlaNumeroOperacionalPedido ||
+      (_numeroOperacionalAtivo && (valor.trim().isEmpty || _sim(valor)));
+  bool get imprimeNumeroOperacionalEntregador =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalentregador);
+  bool get imprimeNumeroOperacionalConsumacao =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalconsumacao);
+  bool get imprimeNumeroOperacionalPreparo =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalpreparo);
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -94,6 +123,14 @@ class ModeloConfigBigchef {
       'valordiferenca': valordiferenca,
       'saborlimitedeborda': saborlimitedeborda,
       'autenticarcomtag': autenticarcomtag,
+      'numerodopedidodestaquecomprovante': numerodopedidodestaquecomprovante,
+      'numerodopedidodestaquepreparo': numerodopedidodestaquepreparo,
+      'ativarnumerooperacionalpedido': ativarnumerooperacionalpedido,
+      'imprimirnumerooperacionalentregador':
+          imprimirnumerooperacionalentregador,
+      'imprimirnumerooperacionalconsumacao':
+          imprimirnumerooperacionalconsumacao,
+      'imprimirnumerooperacionalpreparo': imprimirnumerooperacionalpreparo,
       'modelo_valor_adicional_pizza': modeloValorAdicionalPizza,
       'permitireditarquantidadeappaposfinalizar':
           permitireditarquantidadeappaposfinalizar,
@@ -130,6 +167,18 @@ class ModeloConfigBigchef {
       valordiferenca: _texto(map, 'valordiferenca', '0'),
       saborlimitedeborda: _texto(map, 'saborlimitedeborda', '0'),
       autenticarcomtag: _texto(map, 'autenticarcomtag'),
+      numerodopedidodestaquecomprovante:
+          _texto(map, 'numerodopedidodestaquecomprovante', 'Não'),
+      numerodopedidodestaquepreparo:
+          _texto(map, 'numerodopedidodestaquepreparo', 'Não'),
+      ativarnumerooperacionalpedido:
+          _texto(map, 'ativarnumerooperacionalpedido'),
+      imprimirnumerooperacionalentregador:
+          _texto(map, 'imprimirnumerooperacionalentregador'),
+      imprimirnumerooperacionalconsumacao:
+          _texto(map, 'imprimirnumerooperacionalconsumacao'),
+      imprimirnumerooperacionalpreparo:
+          _texto(map, 'imprimirnumerooperacionalpreparo'),
       modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ??
               map['modelovaloradicionalpizza'])
           ?.toString(),

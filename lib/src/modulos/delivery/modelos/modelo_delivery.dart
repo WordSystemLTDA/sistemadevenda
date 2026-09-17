@@ -122,6 +122,12 @@ class PedidoDelivery {
 class ConfigDelivery {
   final bool receberNoFinal, imprimirPreparo;
   final String entregadorFixo, valorEntrega, cobrancaEntrega;
+  final String numerodopedidodestaquecomprovante;
+  final String numerodopedidodestaquepreparo;
+  final String ativarnumerooperacionalpedido;
+  final String imprimirnumerooperacionalentregador;
+  final String imprimirnumerooperacionalconsumacao;
+  final String imprimirnumerooperacionalpreparo;
   final double diferencaEntrega;
   const ConfigDelivery(
       {this.receberNoFinal = false,
@@ -129,6 +135,12 @@ class ConfigDelivery {
       this.entregadorFixo = '',
       this.valorEntrega = '0',
       this.cobrancaEntrega = '0',
+      this.numerodopedidodestaquecomprovante = 'Não',
+      this.numerodopedidodestaquepreparo = 'Não',
+      this.ativarnumerooperacionalpedido = '',
+      this.imprimirnumerooperacionalentregador = '',
+      this.imprimirnumerooperacionalconsumacao = '',
+      this.imprimirnumerooperacionalpreparo = '',
       this.diferencaEntrega = 0});
   factory ConfigDelivery.fromMap(Map<String, dynamic> map) => ConfigDelivery(
         receberNoFinal: map['receberpedidonofinal'] == 'Sim',
@@ -139,6 +151,18 @@ class ConfigDelivery {
             : '',
         valorEntrega: '${map['valordaentrega'] ?? '0'}',
         cobrancaEntrega: '${map['formacobrancaentregadelivery'] ?? '0'}',
+        numerodopedidodestaquecomprovante:
+            '${map['numerodopedidodestaquecomprovante'] ?? 'Não'}',
+        numerodopedidodestaquepreparo:
+            '${map['numerodopedidodestaquepreparo'] ?? 'Não'}',
+        ativarnumerooperacionalpedido:
+            '${map['ativarnumerooperacionalpedido'] ?? ''}',
+        imprimirnumerooperacionalentregador:
+            '${map['imprimirnumerooperacionalentregador'] ?? ''}',
+        imprimirnumerooperacionalconsumacao:
+            '${map['imprimirnumerooperacionalconsumacao'] ?? ''}',
+        imprimirnumerooperacionalpreparo:
+            '${map['imprimirnumerooperacionalpreparo'] ?? ''}',
         diferencaEntrega: valorDelivery(map['valordiferenca']),
       );
 
@@ -150,4 +174,25 @@ class ConfigDelivery {
 
   bool exigePagamento(PedidoDelivery pedido, EtapaDelivery destino) =>
       pedido.restante > 0.009 && (!receberNoFinal || destino.impressao == '3');
+
+  bool get controlaNumeroOperacionalPedido =>
+      ativarnumerooperacionalpedido.trim().isNotEmpty ||
+      imprimirnumerooperacionalentregador.trim().isNotEmpty ||
+      imprimirnumerooperacionalconsumacao.trim().isNotEmpty ||
+      imprimirnumerooperacionalpreparo.trim().isNotEmpty;
+
+  bool get _numeroOperacionalAtivo =>
+      ativarnumerooperacionalpedido.trim().isEmpty ||
+      ativarnumerooperacionalpedido == 'Sim';
+
+  bool _permiteNumeroOperacional(String valor) =>
+      !controlaNumeroOperacionalPedido ||
+      (_numeroOperacionalAtivo && (valor.trim().isEmpty || valor == 'Sim'));
+
+  bool get imprimeNumeroOperacionalPreparo =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalpreparo);
+  bool get imprimeNumeroOperacionalEntregador =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalentregador);
+  bool get imprimeNumeroOperacionalConsumacao =>
+      _permiteNumeroOperacional(imprimirnumerooperacionalconsumacao);
 }

@@ -191,6 +191,18 @@ void main() {
     expect(config.exigePagamento(pedidoTeste(), etapasTeste().last), isTrue);
     expect(config.taxaEntrega('6.00'), 8.5);
     expect(config.entregadorFixo, isEmpty);
+    final configNumero = ConfigDelivery.fromMap({
+      'ativarnumerooperacionalpedido': 'Sim',
+      'imprimirnumerooperacionalentregador': 'Sim',
+      'imprimirnumerooperacionalconsumacao': 'Não',
+      'imprimirnumerooperacionalpreparo': 'Sim',
+      'numerodopedidodestaquecomprovante': 'Sim',
+      'numerodopedidodestaquepreparo': 'Sim',
+    });
+    expect(configNumero.controlaNumeroOperacionalPedido, isTrue);
+    expect(configNumero.imprimeNumeroOperacionalEntregador, isTrue);
+    expect(configNumero.imprimeNumeroOperacionalConsumacao, isFalse);
+    expect(configNumero.imprimeNumeroOperacionalPreparo, isTrue);
     expect(
         const ConfigDelivery(cobrancaEntrega: '1', valorEntrega: '4')
             .taxaEntrega('9'),
@@ -288,6 +300,32 @@ void main() {
     expect(json['tipoImpressao'], '3');
     expect(json['bairroCliente'], 'Bairro correto');
     expect(json['nomedopc'], 'CAIXA');
+    expect(json['numeroPedido'], '14');
+    expect(json['comanda'], 'Delivery 25');
+    expect(json['protocoloImpressao'], 2);
+  });
+  test('comprovante envia configuracao do numero operacional ao servidor', () {
+    final s = ServicoDeliveryTeste();
+    final mensagens = ImpressaoDelivery.comprovantes(
+      s,
+      pedidoTeste(),
+      [impressao.produto(computador: 'CAIXA')],
+      config: const ConfigDelivery(
+        ativarnumerooperacionalpedido: 'Sim',
+        imprimirnumerooperacionalentregador: 'Sim',
+        imprimirnumerooperacionalconsumacao: 'Não',
+        imprimirnumerooperacionalpreparo: 'Sim',
+        numerodopedidodestaquecomprovante: 'Sim',
+        numerodopedidodestaquepreparo: 'Não',
+      ),
+    );
+    final json = jsonDecode(mensagens.single) as Map;
+    expect(json['ativarnumerooperacionalpedido'], 'Sim');
+    expect(json['imprimirnumerooperacionalentregador'], 'Sim');
+    expect(json['imprimirnumerooperacionalconsumacao'], 'Não');
+    expect(json['imprimirnumerooperacionalpreparo'], 'Sim');
+    expect(json['numerodopedidodestaquecomprovante'], 'Sim');
+    expect(json['numerodopedidodestaquepreparo'], 'Não');
   });
   test('preparo do delivery imprime detalhes da pizza e mantem destino',
       () async {
@@ -311,6 +349,11 @@ void main() {
     s.atual = pedidoTeste(campos: {
       'produtos': [pizzaDetalhada.toMap()],
     });
+    s.config = const ConfigDelivery(
+      ativarnumerooperacionalpedido: 'Sim',
+      imprimirnumerooperacionalpreparo: 'Sim',
+      numerodopedidodestaquepreparo: 'Sim',
+    );
 
     await ImpressaoDelivery.imprimir(s, servidor, s.atual, preparo: true);
 
@@ -320,6 +363,10 @@ void main() {
 
     expect(mensagem['tipoImpressao'], '1');
     expect(mensagem['nomedopc'], 'COZINHA');
+    expect(mensagem['numeroPedido'], '14');
+    expect(mensagem['ativarnumerooperacionalpedido'], 'Sim');
+    expect(mensagem['imprimirnumerooperacionalpreparo'], 'Sim');
+    expect(mensagem['numerodopedidodestaquepreparo'], 'Sim');
     expect(produto['observacao'], 'Sem cebola');
     expect(opcoes.map((opcao) => opcao['id']), containsAll([10, 6, 7]));
     expect(jsonEncode(produto), contains('7 - (1/2) Calabresa'));

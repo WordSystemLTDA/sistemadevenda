@@ -202,11 +202,12 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       if (['1', '4'].contains(alvo.impressao) && config.imprimirPreparo) {
         await ImpressaoDelivery.imprimir(
             _provedor.servico, Modular.get<Server>(), paraImprimir,
-            preparo: true);
+            preparo: true, config: config);
       }
       if (['2', '4'].contains(alvo.impressao)) {
         await ImpressaoDelivery.imprimir(
-            _provedor.servico, Modular.get<Server>(), paraImprimir);
+            _provedor.servico, Modular.get<Server>(), paraImprimir,
+            config: config);
       }
     } catch (e) {
       _mensagem(alterado

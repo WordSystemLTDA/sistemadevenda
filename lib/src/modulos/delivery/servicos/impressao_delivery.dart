@@ -10,8 +10,11 @@ import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 class ImpressaoDelivery {
   static Future<void> imprimir(
       ServicoDelivery servico, Server server, PedidoDelivery pedido,
-      {bool preparo = false, bool ambos = false}) async {
+      {bool preparo = false,
+      bool ambos = false,
+      ConfigDelivery? config}) async {
     final dados = await servico.dadosCardapio(pedido.id);
+    final configuracao = config ?? await _configuracao(servico);
     final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
     final produtos = produtosComDetalhesDoPedido(pedido, produtosBase);
     if (produtos.isEmpty) {
@@ -19,18 +22,30 @@ class ImpressaoDelivery {
     }
     final mensagens = <String>[
       if (preparo || ambos)
-        ...Impressao.prepararComprovanteDePedido(
-            produtos: produtos,
-            tipoTela: TipoCardapio.delivery,
-            tipodeentrega: pedido.tipoEntrega,
-            nomeCliente: pedido.nome,
-            nomeEmpresa: dados.nomeEmpresa ?? '',
-            comanda: 'Delivery ${pedido.id}',
-            numeroPedido: pedido.numero),
+        ..._comCamposNumeroOperacional(
+          Impressao.prepararComprovanteDePedido(
+              produtos: produtos,
+              tipoTela: TipoCardapio.delivery,
+              tipodeentrega: pedido.tipoEntrega,
+              nomeCliente: pedido.nome,
+              nomeEmpresa: dados.nomeEmpresa ?? '',
+              comanda: 'Delivery ${pedido.id}',
+              numeroPedido: pedido.numero),
+          configuracao,
+        ),
       if (!preparo || ambos)
-        ...comprovantes(servico, pedido.comEndereco(dados), produtos),
+        ...comprovantes(servico, pedido.comEndereco(dados), produtos,
+            config: configuracao),
     ];
     await server.enviarImpressoes(mensagens);
+  }
+
+  static Future<ConfigDelivery?> _configuracao(ServicoDelivery servico) async {
+    try {
+      return await servico.configuracao();
+    } catch (_) {
+      return null;
+    }
   }
 
   static List<Modelowordprodutos> produtosComDetalhesDoPedido(
@@ -154,7 +169,7 @@ class ImpressaoDelivery {
 
   static List<String> comprovantes(ServicoDelivery servico,
       PedidoDelivery pedido, List<Modelowordprodutos> produtos,
-      {TipoCardapio tipo = TipoCardapio.delivery}) {
+      {TipoCardapio tipo = TipoCardapio.delivery, ConfigDelivery? config}) {
     final grupos = <String, List<Modelowordprodutos>>{};
     if (tipo == TipoCardapio.balcao) {
       grupos[''] = produtos;
@@ -165,6 +180,9 @@ class ImpressaoDelivery {
       }
     }
     final usuario = servico.usuario.usuario;
+    final comanda = tipo == TipoCardapio.balcao
+        ? 'Balcão ${pedido.id}'
+        : 'Delivery ${pedido.id}';
     return [
       for (final grupo in grupos.entries)
         jsonEncode({
@@ -172,11 +190,13 @@ class ImpressaoDelivery {
               'delivery-${pedido.id}-${DateTime.now().microsecondsSinceEpoch}-${grupo.key}',
           'tipo': tipo.nome,
           'tipoImpressao': pedido.tipoEntrega == '1' ? '3' : '2',
+          'protocoloImpressao': 2,
           'nomedopc': grupo.key,
           'nomeConexao': usuario?.nome ?? '',
           'produtos': grupo.value.map((p) => p.toMap()).toList(),
           'nomelancamento': pedido.pagamentos,
           'somaValorHistorico': pedido.pago.toStringAsFixed(2),
+          'comanda': comanda,
           for (final campo in [
             'celularEmpresa',
             'cnpjEmpresa',
@@ -203,8 +223,37 @@ class ImpressaoDelivery {
           'nomeUsuario': usuario?.nome ?? '',
           'idEmpresa': usuario?.empresa ?? '',
           'idUsuario': usuario?.id ?? '',
+          ..._camposNumeroOperacional(config),
           'enviarDeVolta': true,
         })
+    ];
+  }
+
+  static Map<String, dynamic> _camposNumeroOperacional(ConfigDelivery? config) {
+    if (config == null) return const {};
+    return {
+      'numerodopedidodestaquecomprovante':
+          config.numerodopedidodestaquecomprovante,
+      'numerodopedidodestaquepreparo': config.numerodopedidodestaquepreparo,
+      if (config.controlaNumeroOperacionalPedido) ...{
+        'ativarnumerooperacionalpedido': config.ativarnumerooperacionalpedido,
+        'imprimirnumerooperacionalentregador':
+            config.imprimirnumerooperacionalentregador,
+        'imprimirnumerooperacionalconsumacao':
+            config.imprimirnumerooperacionalconsumacao,
+        'imprimirnumerooperacionalpreparo':
+            config.imprimirnumerooperacionalpreparo,
+      },
+    };
+  }
+
+  static List<String> _comCamposNumeroOperacional(
+      List<String> mensagens, ConfigDelivery? config) {
+    final campos = _camposNumeroOperacional(config);
+    if (campos.isEmpty) return mensagens;
+    return [
+      for (final mensagem in mensagens)
+        jsonEncode({...jsonDecode(mensagem) as Map<String, dynamic>, ...campos})
     ];
   }
 }
