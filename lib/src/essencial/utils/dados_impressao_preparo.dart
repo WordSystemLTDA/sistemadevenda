@@ -1,6 +1,7 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 
 class DadosImpressaoPreparo {
@@ -66,11 +67,36 @@ class DadosImpressaoPreparo {
     }
     dados['quantidadeController'] = null;
     final opcoesFinais = produto.opcoesPacotesListaFinal;
+    final observacao = normalizarObservacaoProduto(produto.observacao);
+    dados['observacao'] = observacao.isNotEmpty
+        ? observacao
+        : _observacaoNasOpcoes(opcoesFinais) ??
+            _observacaoNasOpcoes(produto.opcoesPacotes) ??
+            '';
     dados['opcoesPacotes'] = opcoesFinais == null
-        ? produto.opcoesPacotes?.map(_opcao).toList()
+        ? _opcoesSemObservacao(produto.opcoesPacotes)?.map(_opcao).toList()
         : null;
-    dados['opcoesPacotesListaFinal'] = opcoesFinais?.map(_opcao).toList();
+    dados['opcoesPacotesListaFinal'] =
+        _opcoesSemObservacao(opcoesFinais)?.map(_opcao).toList();
     return dados;
+  }
+
+  static List<ModeloOpcoesPacotes>? _opcoesSemObservacao(
+    List<ModeloOpcoesPacotes>? opcoes,
+  ) {
+    if (opcoes == null) return null;
+    return opcoes.where((opcao) => !grupoObservacaoProduto(opcao)).toList();
+  }
+
+  static String? _observacaoNasOpcoes(List<ModeloOpcoesPacotes>? opcoes) {
+    for (final opcao in opcoes ?? const <ModeloOpcoesPacotes>[]) {
+      if (!grupoObservacaoProduto(opcao)) continue;
+      final dados = opcao.dados ?? const <ModeloDadosOpcoesPacotes>[];
+      if (dados.isEmpty) continue;
+      final texto = normalizarObservacaoProduto(dados.first.nome);
+      if (texto.isNotEmpty) return texto;
+    }
+    return null;
   }
 
   static Map<String, dynamic> _opcao(ModeloOpcoesPacotes opcao) {

@@ -7,8 +7,10 @@ import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -255,6 +257,67 @@ void main() {
     final dados = DadosImpressaoPreparo.produto(pizza);
     final opcoes = dados['opcoesPacotesListaFinal'] as List;
     expect(opcoes.single['titulo'], 'Adicionais');
+  });
+
+  test('observacao da pizza nao vira montagem de cardapio no preparo', () {
+    final pizza = produto(nome: 'Pizza')
+      ..observacao = ''
+      ..opcoesPacotesListaFinal = [
+        saboresPizza(),
+        bordas(['Cheddar', 'Catupiry']),
+        adicionais(['Milho', 'Ervilha']),
+        montarGrupoObservacaoProduto('Bruno Masson e ruim'),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(pizza);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    final json = jsonEncode(dados);
+
+    expect(dados['observacao'], 'Bruno Masson e ruim');
+    expect(opcoes.map((opcao) => (opcao as Map)['id']), [10, 6, 7]);
+    expect(json, contains('Sabores Pizza (2)'));
+    expect(json, contains('Bordas (2)'));
+    expect(json, contains('Adicionais'));
+    expect(json, isNot(contains('Observação')));
+    expect(json, isNot(contains('Ingredientes do Cardápio')));
+    expect(json, isNot(contains('MONTAGEM POR UNIDADE')));
+  });
+
+  test('categoria cardapio continua separada da observacao no preparo', () {
+    final almoco = produto(nome: 'Almoco Livre')
+      ..observacao = 'Talher descartavel'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Arroz',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Arroz',
+                acao: AcaoIngredienteCardapio.pouco,
+              ),
+            ),
+          ],
+        ),
+        montarGrupoObservacaoProduto('Talher descartavel'),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(almoco);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    final montagem = opcoes.single as Map;
+
+    expect(dados['observacao'], 'Talher descartavel');
+    expect(opcoes, hasLength(1));
+    expect(montagem['id'], 12);
+    expect(montagem['tipo'], 8);
+    expect(montagem['titulo'], 'Ingredientes do Cardápio');
+    expect((montagem['dados'] as List).single['montagemCardapio']['acao'],
+        'pouco');
   });
 
   test('comprovante usa lista final e nao envia catalogo marcado', () {
