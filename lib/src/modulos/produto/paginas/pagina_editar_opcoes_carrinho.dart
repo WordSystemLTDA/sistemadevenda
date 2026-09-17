@@ -337,6 +337,9 @@ class _PaginaEditarOpcoesCarrinhoState
                       .length
                   : edicao.produto
                       .retornarDadosPorID([opcao.id], false, '0').length;
+          final trocaMontagem = !sabores &&
+              _grupoMontagemCardapio(opcao) &&
+              _itemTrocaCardapio != null;
           return PopScope(
             canPop: _permitirSair || !edicao.alterado,
             onPopInvokedWithResult: (didPop, _) {
@@ -378,9 +381,13 @@ class _PaginaEditarOpcoesCarrinhoState
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                   child: BotaoAcaoPedido(
                     key: const Key('salvar_etapa_produto'),
-                    rotulo: 'Salvar ($quantidade)',
+                    rotulo: trocaMontagem
+                        ? 'Confirmar troca'
+                        : 'Salvar ($quantidade)',
                     total: edicao.total.obterReal(),
-                    onPressed: _salvar,
+                    habilitado: !trocaMontagem || _destinoTrocaCardapio != null,
+                    onPressed:
+                        trocaMontagem ? _confirmarTrocaCardapio : _salvar,
                   ),
                 ),
               ),
@@ -417,7 +424,6 @@ class _PaginaEditarOpcoesCarrinhoState
               aoTrocar: _iniciarTrocaCardapio,
               aoRestaurar: _restaurarMontagemCardapio,
               aoVoltar: () => Navigator.pop(context, false),
-              aoContinuar: _salvar,
             )
           : EtapaTrocaCardapio(
               item: itemTroca,
@@ -437,7 +443,6 @@ class _PaginaEditarOpcoesCarrinhoState
               aoSelecionar: _selecionarDestinoTrocaCardapio,
               aoAlterarQuantidade: (quantidade) =>
                   setState(() => _quantidadeTrocaCardapio = quantidade),
-              aoConfirmar: _confirmarTrocaCardapio,
             ),
     );
   }

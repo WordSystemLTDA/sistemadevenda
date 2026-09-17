@@ -7,6 +7,7 @@ class BotaoAcaoPedido extends StatelessWidget {
   final String? rotuloSemantico;
   final int? quantidade;
   final bool carregando;
+  final bool habilitado;
   final VoidCallback onPressed;
 
   const BotaoAcaoPedido({
@@ -18,28 +19,30 @@ class BotaoAcaoPedido extends StatelessWidget {
     this.rotuloSemantico,
     this.quantidade,
     this.carregando = false,
+    this.habilitado = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final corTexto = cs.onPrimary;
+    final ativo = habilitado && !carregando;
+    final corTexto = habilitado ? cs.onPrimary : cs.onSurfaceVariant;
 
     return Semantics(
       button: true,
-      enabled: !carregando,
+      enabled: ativo,
       child: Container(
         width: double.infinity,
         constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
-          color: cs.primary,
+          color: habilitado ? cs.primary : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
-            onTap: carregando ? null : onPressed,
+            onTap: ativo ? onPressed : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Stack(

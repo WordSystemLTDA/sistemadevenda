@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
@@ -11,6 +13,8 @@ class ServicoProduto {
   final DioCliente dio;
   final UsuarioProvedor usuarioProvedor;
   ServicoProduto(this.dio, this.usuarioProvedor);
+  static final Map<String, Future<List<Map<String, dynamic>>>>
+      _catalogosDesktop = {};
   // final sharedPrefs = SharedPrefsConfig();
 
   // var usuarioProvider = usuarioProvider.getUsuario();
@@ -28,9 +32,21 @@ class ServicoProduto {
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        return List<Modelowordprodutos>.from(response.data.map((elemento) {
+        final produtos =
+            List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
+        final baseDesktop = _baseDesktop(response.requestOptions.baseUrl);
+        if (baseDesktop != null) {
+          unawaited(_listarCategoriaDesktop(
+            categoria: categoria,
+            empresa: empresa?.toString() ?? '',
+            idUsuario: idusuario?.toString() ?? '',
+            pagina: pagina,
+            baseDesktop: baseDesktop,
+          ));
+        }
+        return produtos;
       } else {
         return [];
       }
@@ -176,20 +192,13 @@ class ServicoProduto {
   }) async {
     for (var pagina = 1; pagina <= 10; pagina++) {
       try {
-        final response = await dio.cliente.get(
-          'produtos/listar_por_categoria.php',
-          queryParameters: {
-            'categoria': produto.categoria,
-            'empresa': empresa,
-            'id_usuario': idUsuario,
-            'pagina': pagina,
-          },
-          options: Options(extra: {
-            'semCache': true,
-            'servidorFixo': baseDesktop,
-          }),
+        final lista = await _listarCategoriaDesktop(
+          categoria: produto.categoria,
+          empresa: empresa,
+          idUsuario: idUsuario,
+          pagina: pagina,
+          baseDesktop: baseDesktop,
         );
-        final lista = _listaMapas(response.data);
         final encontrado = lista.where((item) =>
             item['id']?.toString() == produto.id ||
             (produto.codigo.trim().isNotEmpty &&
@@ -203,6 +212,37 @@ class ServicoProduto {
       }
     }
     return null;
+  }
+
+  Future<List<Map<String, dynamic>>> _listarCategoriaDesktop({
+    required String categoria,
+    required String empresa,
+    required String idUsuario,
+    required int pagina,
+    required String baseDesktop,
+  }) {
+    final chave = '$baseDesktop|$empresa|$idUsuario|$categoria|$pagina';
+    return _catalogosDesktop.putIfAbsent(chave, () async {
+      try {
+        final response = await dio.cliente.get(
+          'produtos/listar_por_categoria.php',
+          queryParameters: {
+            'categoria': categoria,
+            'empresa': empresa,
+            'id_usuario': idUsuario,
+            'pagina': pagina,
+          },
+          options: Options(extra: {
+            'semCache': true,
+            'servidorFixo': baseDesktop,
+          }),
+        );
+        return _listaMapas(response.data);
+      } catch (_) {
+        _catalogosDesktop.remove(chave);
+        return const <Map<String, dynamic>>[];
+      }
+    });
   }
 
   List<Map<String, dynamic>> _listaMapas(Object? dados) {

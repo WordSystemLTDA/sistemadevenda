@@ -17,7 +17,6 @@ class EtapaMontagemCardapio extends StatefulWidget {
   final ValueChanged<ModeloDadosOpcoesPacotes> aoTrocar;
   final VoidCallback aoRestaurar;
   final VoidCallback aoVoltar;
-  final VoidCallback aoContinuar;
 
   const EtapaMontagemCardapio({
     super.key,
@@ -30,7 +29,6 @@ class EtapaMontagemCardapio extends StatefulWidget {
     required this.aoTrocar,
     required this.aoRestaurar,
     required this.aoVoltar,
-    required this.aoContinuar,
   });
 
   @override
@@ -134,26 +132,17 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
             icon: const Icon(Icons.restart_alt_rounded),
           ),
         ]);
-        final acoes = Row(mainAxisSize: MainAxisSize.min, children: [
-          Flexible(
-            child: Text(
-              resumo,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: alteracoes == 0 ? cs.onSurfaceVariant : cs.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+        final resumoMontagem = Text(
+          resumo,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: alteracoes == 0 ? cs.onSurfaceVariant : cs.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(width: 8),
-          _BotaoConfirmarMontagemCardapio(
-            habilitado: widget.ingredientes.isNotEmpty,
-            onPressed: widget.aoContinuar,
-          ),
-        ]);
+        );
 
         if (compacto) {
           return Column(
@@ -164,8 +153,8 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
-                    child: acoes,
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: resumoMontagem,
                   ),
                 ),
               ]);
@@ -174,7 +163,7 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
         return Row(children: [
           Expanded(child: titulo),
           const SizedBox(width: 12),
-          SizedBox(width: 320, child: acoes),
+          SizedBox(width: 180, child: resumoMontagem),
         ]);
       }),
       const SizedBox(height: 12),
@@ -219,7 +208,6 @@ class EtapaTrocaCardapio extends StatefulWidget {
   final VoidCallback aoVoltar;
   final void Function(ModeloDadosOpcoesPacotes item, String tipo) aoSelecionar;
   final ValueChanged<int> aoAlterarQuantidade;
-  final VoidCallback aoConfirmar;
 
   const EtapaTrocaCardapio({
     super.key,
@@ -233,7 +221,6 @@ class EtapaTrocaCardapio extends StatefulWidget {
     required this.aoVoltar,
     required this.aoSelecionar,
     required this.aoAlterarQuantidade,
-    required this.aoConfirmar,
   });
 
   @override
@@ -338,25 +325,16 @@ class _EtapaTrocaCardapioState extends State<EtapaTrocaCardapio> {
         ),
       ]),
       const SizedBox(height: 8),
-      Row(children: [
-        Expanded(
-          child: Text(
-            destinoNome,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: destino == null ? cs.onSurfaceVariant : cs.primary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+      Text(
+        destinoNome,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          color: destino == null ? cs.onSurfaceVariant : cs.primary,
+          fontWeight: FontWeight.w700,
         ),
-        const SizedBox(width: 8),
-        _BotaoConfirmarMontagemCardapio(
-          habilitado: destino != null,
-          onPressed: widget.aoConfirmar,
-        ),
-      ]),
+      ),
       if (destino != null) ...[
         const SizedBox(height: 8),
         _ControleQuantidadeTrocaCardapio(
@@ -565,33 +543,6 @@ class _CampoBuscaMontagemCardapio extends StatelessWidget {
             borderSide: BorderSide(color: cs.primary, width: 1.4),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _BotaoConfirmarMontagemCardapio extends StatelessWidget {
-  final bool habilitado;
-  final VoidCallback onPressed;
-
-  const _BotaoConfirmarMontagemCardapio({
-    required this.habilitado,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: habilitado ? onPressed : null,
-      icon: const Icon(Icons.check_rounded, size: 18),
-      label:
-          const Text('Confirmar', maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(132, 40),
-        fixedSize: const Size(132, 40),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
       ),
     );
   }

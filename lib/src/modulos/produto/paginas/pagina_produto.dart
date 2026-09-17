@@ -75,7 +75,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     _carregarBaseHostImagens();
 
     if (widget.editar == false) {
-      listar();
+      itemProduto = widget.produto;
+      _prepararProdutoParaExibicao(widget.produto);
+      listar(forcar: true);
     } else {
       itemProduto = widget.produto;
       _montagemConfirmada = true;
@@ -87,6 +89,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           double.parse(widget.produto.valorVenda);
       _provedorProduto.calcularValorVenda(false, '0');
     }
+  }
+
+  void _prepararProdutoParaExibicao(Modelowordprodutos produto) {
+    _provedorProduto.valorVenda = double.tryParse(produto.valorVenda) ?? 0;
+    _provedorProduto.valorVendaOriginal = _provedorProduto.valorVenda;
+    _provedorProduto.opcoesPacotesListaFinal = [
+      for (final opcao in produto.opcoesPacotes ?? <ModeloOpcoesPacotes>[])
+        ModeloOpcoesPacotes.fromMap(opcao.toMap())
+    ];
+    _provedorProduto.calcularValorVenda(false, '0');
   }
 
   @override
@@ -113,8 +125,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     });
   }
 
-  Future<void> listar() async {
-    if (carregando) return;
+  Future<void> listar({bool forcar = false}) async {
+    if (carregando && !forcar) return;
     setState(() {
       carregando = true;
       erroConsulta = null;
@@ -203,7 +215,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       }
     }).catchError((Object erro) {
       if (mounted) {
-        setState(() => erroConsulta = 'Não foi possível carregar o produto.');
+        setState(() {
+          itemProduto = null;
+          erroConsulta = 'Não foi possível carregar o produto.';
+        });
       }
     }).whenComplete(() {
       if (mounted) setState(() => carregando = false);
@@ -694,16 +709,41 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         builder: (context, _) {
           if (_produtoTemMontagemCardapio && !_montagemConfirmada) {
             final itemTroca = _itemTrocaCardapio;
+            final confirmarHabilitado = itemTroca == null
+                ? _ingredientesMontagemCardapio.isNotEmpty
+                : _destinoTrocaCardapio != null;
+            final confirmar = itemTroca == null
+                ? _confirmarMontagemCardapio
+                : _confirmarTrocaCardapio;
             return Scaffold(
+              extendBody: true,
               backgroundColor: VisualAtendimento.fundo(context),
               appBar: AppBar(
                 backgroundColor: cs.inversePrimary,
                 elevation: 0,
                 title: const Text('Montagem do produto'),
               ),
+              bottomNavigationBar: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                  child: BotaoAcaoPedido(
+                    rotulo: itemTroca == null ? 'Confirmar' : 'Confirmar troca',
+                    total: _provedorProduto.valorVenda.obterReal(),
+                    habilitado: confirmarHabilitado,
+                    onPressed: confirmar,
+                  ),
+                ),
+              ),
               body: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    14,
+                    12,
+                    14,
+                    MediaQuery.paddingOf(context).bottom +
+                        MediaQuery.textScalerOf(context).scale(88),
+                  ),
                   child: itemTroca == null
                       ? EtapaMontagemCardapio(
                           nomeProduto: itemProduto!.nome,
@@ -715,7 +755,6 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                           aoTrocar: _iniciarTrocaCardapio,
                           aoRestaurar: _restaurarMontagemCardapio,
                           aoVoltar: _voltarMontagemCardapio,
-                          aoContinuar: _confirmarMontagemCardapio,
                         )
                       : EtapaTrocaCardapio(
                           item: itemTroca,
@@ -729,31 +768,28 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                           aoSelecionar: _selecionarDestinoTrocaCardapio,
                           aoAlterarQuantidade: (quantidade) => setState(
                               () => _quantidadeTrocaCardapio = quantidade),
-                          aoConfirmar: _confirmarTrocaCardapio,
                         ),
                 ),
               ),
             );
           }
 
-          final faixaPreco =
-              (_provedorProduto.retornarDadosPorID([4], false, '0').isEmpty &&
-                  _provedorProduto
-                          .retornarDadosPorID([4], false, '0').firstOrNull ==
-                      null &&
-                  itemProduto!.opcoesPacotes!
-                          .where((element) => element.id == 4)
-                          .firstOrNull !=
-                      null);
+          final opcoesProduto = itemProduto!.opcoesPacotes ?? [];
+          final faixaPreco = (_provedorProduto
+                  .retornarDadosPorID([4], false, '0').isEmpty &&
+              _provedorProduto
+                      .retornarDadosPorID([4], false, '0').firstOrNull ==
+                  null &&
+              opcoesProduto.where((element) => element.id == 4).firstOrNull !=
+                  null);
           final precoExibido = faixaPreco
-              ? "${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(itemProduto!.opcoesPacotes!.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
+              ? "${double.parse(opcoesProduto.where((element) => element.id == 4).first.dados!.first.valor ?? '0').obterReal()} à ${double.parse(opcoesProduto.where((element) => element.id == 4).first.dados!.last.valor ?? '0').obterReal()}"
               : (_provedorProduto.valorVenda).obterReal();
           final total =
               (_provedorProduto.valorVenda * _provedorProduto.quantidade)
                   .obterReal();
           final quantidadeAdicionaisSelecionados =
               _quantidadeAdicionaisSelecionados;
-          final opcoesProduto = itemProduto!.opcoesPacotes ?? [];
           final temAdicionais = opcoesProduto.any(
               (opcao) => opcao.id == 7 && (opcao.dados?.isNotEmpty ?? false));
           final temRetirada = opcoesProduto.any((opcao) =>

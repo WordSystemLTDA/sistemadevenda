@@ -13,6 +13,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_ingredientes_cardapio.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/etapa_montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:dio/dio.dart';
@@ -185,11 +186,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nenhum ingrediente disponível hoje.'), findsOneWidget);
     expect(
-        tester
-            .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Confirmar'))
-            .onPressed,
-        isNull);
+        tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).habilitado,
+        isFalse);
     expect(
         find.textContaining('Adicionar ao', findRichText: true), findsNothing);
   });
@@ -259,11 +257,11 @@ void main() {
       await tester.tap(find.text('Arroz'));
       await tester.pumpAndSettle();
       await capturarTela(tester, 'almoco_troca_${largura.toInt()}');
-      await tester.tap(find.text('Confirmar'));
+      await tester.tap(find.byType(BotaoAcaoPedido));
       await tester.pumpAndSettle();
       expect(find.byType(EtapaMontagemCardapio), findsOneWidget);
       expect(find.text('Trocar por 1x Arroz'), findsOneWidget);
-      await tester.tap(find.text('Confirmar'));
+      await tester.tap(find.byType(BotaoAcaoPedido));
       await tester.pumpAndSettle();
       expect(find.text('Selecione os Adicionais'), findsOneWidget);
       await tester.tap(find.text('Ovo'));
