@@ -134,12 +134,14 @@ class _ControlePorcaoIngrediente extends StatelessWidget {
       AcaoIngredienteCardapio.mais,
     ];
 
+    final raio = BorderRadius.circular(8);
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
+      borderRadius: raio,
+      child: Container(
+        foregroundDecoration: BoxDecoration(
           border: Border.all(color: cs.outline.withValues(alpha: 0.75)),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: raio,
         ),
         child: SizedBox(
           height: 52,
@@ -150,6 +152,12 @@ class _ControlePorcaoIngrediente extends StatelessWidget {
                   acao: acoes[i],
                   selecionada: selecionada == acoes[i],
                   aoSelecionar: () => aoAlterar(acoes[i]),
+                  borderRadius: i == 0
+                      ? const BorderRadius.horizontal(left: Radius.circular(8))
+                      : i == acoes.length - 1
+                          ? const BorderRadius.horizontal(
+                              right: Radius.circular(8))
+                          : BorderRadius.zero,
                 ),
               ),
               if (i < acoes.length - 1)
@@ -169,11 +177,13 @@ class _OpcaoPorcaoIngrediente extends StatelessWidget {
   final AcaoIngredienteCardapio acao;
   final bool selecionada;
   final VoidCallback aoSelecionar;
+  final BorderRadius borderRadius;
 
   const _OpcaoPorcaoIngrediente({
     required this.acao,
     required this.selecionada,
     required this.aoSelecionar,
+    required this.borderRadius,
   });
 
   @override
@@ -181,19 +191,39 @@ class _OpcaoPorcaoIngrediente extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: selecionada ? cs.primaryContainer : Colors.transparent,
+      borderRadius: borderRadius,
       child: InkWell(
         onTap: aoSelecionar,
-        child: Center(
-          child: Text(
-            acao.rotulo,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: selecionada ? cs.primary : cs.onSurface,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+        borderRadius: borderRadius,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Text(
+                acao.rotulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selecionada ? cs.primary : cs.onSurface,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-          ),
+            if (selecionada)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: cs.outline.withValues(alpha: 0.75),
+                      ),
+                      borderRadius: borderRadius,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

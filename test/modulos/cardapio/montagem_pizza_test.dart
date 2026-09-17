@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/constantes/assets_constantes.dart';
@@ -179,28 +181,46 @@ class ProdutosComBordasTeste extends ProdutosTeste {
   @override
   Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
     consultasPorId.add((id, tamanho));
-    return Modelowordprodutos.fromMap(
-        produtos.firstWhere((p) => p.id == id).toMap())
-      ..opcoesPacotes = [
-        ModeloOpcoesPacotes(
-          id: 6,
-          titulo: 'Selecione as Bordas',
-          obrigatorio: false,
-          tipo: 4,
-          dados: [
-            ModeloDadosOpcoesPacotes(
-              id: 'Cheddar',
-              nome: 'Cheddar',
-              valor: '12',
-            ),
-            ModeloDadosOpcoesPacotes(
-              id: 'Catupiry',
-              nome: 'Catupiry',
-              valor: '12',
-            ),
-          ],
-        ),
-      ];
+    return produtoComBordas(id);
+  }
+
+  Modelowordprodutos produtoComBordas(String id) =>
+      Modelowordprodutos.fromMap(produtos.firstWhere((p) => p.id == id).toMap())
+        ..opcoesPacotes = [
+          ModeloOpcoesPacotes(
+            id: 6,
+            titulo: 'Selecione as Bordas',
+            obrigatorio: false,
+            tipo: 4,
+            dados: [
+              ModeloDadosOpcoesPacotes(
+                id: 'Cheddar',
+                nome: 'Cheddar',
+                valor: '12',
+              ),
+              ModeloDadosOpcoesPacotes(
+                id: 'Catupiry',
+                nome: 'Catupiry',
+                valor: '12',
+              ),
+            ],
+          ),
+        ];
+}
+
+class ProdutosComBordasLentoTeste extends ProdutosComBordasTeste {
+  final Completer<Modelowordprodutos?> resposta = Completer();
+
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) {
+    consultasPorId.add((id, tamanho));
+    return resposta.future;
+  }
+
+  void concluirConsulta(String id) {
+    if (!resposta.isCompleted) {
+      resposta.complete(produtoComBordas(id));
+    }
   }
 }
 
@@ -932,6 +952,37 @@ void main() {
     await tester.tap(find.text('Catupiry'));
     await tester.pumpAndSettle();
     expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (2)');
+  });
+
+  testWidgets('tela de bordas abre sem carregamento circular de tela cheia',
+      (tester) async {
+    final produtosLentos = ProdutosComBordasLentoTeste();
+    produtos = produtosLentos;
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.configBigchef = configBigchef(saborlimitedeborda: '2');
+    cardapio.tamanhosPizza = tamanho('G');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byType(PaginaSaborBordas), findsOneWidget);
+    expect(find.textContaining('Mussarela'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    produtosLentos.concluirConsulta('Mussarela');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Cheddar'), findsOneWidget);
+    expect(find.text('Catupiry'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('controle de aplicacao da borda aparece com padrao inteira',

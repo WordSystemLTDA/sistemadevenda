@@ -38,55 +38,76 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
   @override
   void initState() {
     super.initState();
-
+    _prepararProdutoParaExibicao(widget.produto);
     listar();
   }
 
-  void listar() async {
-    if (carregando == false) {
+  void _prepararProdutoParaExibicao(Modelowordprodutos produto) {
+    itemProduto = produto;
+    _provedorProduto.definirOpcoesPacotesListaFinal(
+      _opcoesIniciais(produto.opcoesPacotes ?? []),
+      notificar: false,
+    );
+    final valor = widget.valorVenda ?? double.tryParse(produto.valorVenda) ?? 0;
+    _provedorProduto.valorVenda = valor;
+    _provedorProduto.valorVendaOriginal = valor;
+    _provedorProduto.calcularValorVenda(false, '0', notificar: false);
+  }
+
+  List<ModeloOpcoesPacotes> _opcoesIniciais(
+    List<ModeloOpcoesPacotes> opcoes,
+  ) {
+    return [for (var elm in opcoes) ModeloOpcoesPacotes.fromMap(elm.toMap())]
+        .map((e) {
+      // se for acompanhamentos retorna todos
+      if (e.id == 5) {
+        return e;
+      }
+
+      // se for cortesia
+      if (e.id == 1) {
+        e.dados = e.dados!
+            .where((element) => element.estaSelecionado == true)
+            .toList();
+        return e;
+      }
+
+      e.dados = [];
+
+      return e;
+    }).toList();
+  }
+
+  Future<void> listar() async {
+    if (!carregando) {
       setState(() {
         carregando = true;
       });
     }
 
     var inicioServico = Modular.get<ServicoProduto>();
-    await inicioServico
-        .listarPorId(
-            widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0')
-        .then((value) {
+    try {
+      final value = await inicioServico.listarPorId(
+          widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0');
+      if (!mounted) return;
       itemProduto = value;
       if (value != null) {
-        _provedorProduto.opcoesPacotesListaFinal = [
-          for (var elm in value.opcoesPacotes!)
-            ModeloOpcoesPacotes.fromMap(elm.toMap())
-        ].map((e) {
-          // se for acompanhamentos retorna todos
-          if (e.id == 5) {
-            return e;
-          }
+        _provedorProduto.opcoesPacotesListaFinal =
+            _opcoesIniciais(value.opcoesPacotes ?? []);
 
-          // se for cortesia
-          if (e.id == 1) {
-            e.dados = e.dados!
-                .where((element) => element.estaSelecionado == true)
-                .toList();
-            return e;
-          }
-
-          e.dados = [];
-
-          return e;
-        }).toList();
-
-        _provedorProduto.valorVenda = widget.valorVenda ?? 0;
-        _provedorProduto.valorVendaOriginal = widget.valorVenda ?? 0;
+        final valor =
+            widget.valorVenda ?? double.tryParse(value.valorVenda) ?? 0;
+        _provedorProduto.valorVenda = valor;
+        _provedorProduto.valorVendaOriginal = valor;
         _provedorProduto.calcularValorVenda(false, '0');
       }
-    }).whenComplete(() {
-      setState(() {
-        carregando = false;
-      });
-    });
+    } finally {
+      if (mounted) {
+        setState(() {
+          carregando = false;
+        });
+      }
+    }
   }
 
   void avancar() async {
@@ -128,16 +149,13 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
   @override
   Widget build(BuildContext context) {
     if (itemProduto == null) {
-      if (carregando == false) {
-        return const Scaffold(
-          body: Center(child: Text('Produto não existe')),
-        );
-      }
-
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: Text('Produto não existe')),
       );
     }
+
+    final opcoesProduto =
+        itemProduto!.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -170,7 +188,6 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                         ? 'Avançar ($quantidadeBordasSelecionadas)'
                         : 'Avançar',
                     total: _provedorProduto.valorVenda.obterReal(),
-                    carregando: carregando,
                     onPressed: avancar,
                   ),
                 ),
@@ -183,8 +200,9 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (itemProduto!.opcoesPacotes!.isNotEmpty) ...[
-                      ...itemProduto!.opcoesPacotes!.map((opcoesPacote) {
+                    if (carregando) const LinearProgressIndicator(),
+                    if (opcoesProduto.isNotEmpty) ...[
+                      ...opcoesProduto.map((opcoesPacote) {
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Column(

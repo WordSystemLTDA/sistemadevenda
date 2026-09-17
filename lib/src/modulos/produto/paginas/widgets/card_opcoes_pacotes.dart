@@ -63,7 +63,6 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
         _provedorProduto.calcularValorVenda(widget.kit, widget.idProduto);
         return;
       }
-      widget.item.quantidade ??= 1;
     }
     _provedorProduto.selecionarItem(
       widget.item,

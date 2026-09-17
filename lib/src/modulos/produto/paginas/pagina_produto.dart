@@ -92,13 +92,65 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 
   void _prepararProdutoParaExibicao(Modelowordprodutos produto) {
-    _provedorProduto.valorVenda = double.tryParse(produto.valorVenda) ?? 0;
+    itemProduto = produto;
+    _provedorProduto.quantidade = 1;
+    final valor = widget.valorVenda ?? double.tryParse(produto.valorVenda) ?? 0;
+    _provedorProduto.valorVenda = valor;
     _provedorProduto.valorVendaOriginal = _provedorProduto.valorVenda;
-    _provedorProduto.opcoesPacotesListaFinal = [
+    _provedorProduto.definirOpcoesPacotesListaFinal(
+      _opcoesIniciaisProduto(produto),
+      notificar: false,
+    );
+    _provedorProduto.calcularValorVenda(false, '0', notificar: false);
+  }
+
+  List<ModeloOpcoesPacotes> _opcoesIniciaisProduto(
+    Modelowordprodutos produto,
+  ) {
+    return [
       for (final opcao in produto.opcoesPacotes ?? <ModeloOpcoesPacotes>[])
         ModeloOpcoesPacotes.fromMap(opcao.toMap())
-    ];
-    _provedorProduto.calcularValorVenda(false, '0');
+    ].map((e) {
+      if (_grupoMontagemCardapio(e)) {
+        final salvos = widget.produto.opcoesPacotesListaFinal
+            ?.where(_grupoMontagemCardapio)
+            .firstOrNull
+            ?.dados;
+        e.dados = MontagemCardapio.iniciar(e.dados ?? [], salvos: salvos);
+        return e;
+      }
+
+      if (e.id == 2) {
+        e.produtos = e.produtos?.map((produto) {
+          produto.opcoesPacotes = produto.opcoesPacotes?.map((opcao) {
+            if (opcao.id == 5) return opcao;
+            if (opcao.id == 1) {
+              opcao.dados = (opcao.dados ?? [])
+                  .where((element) => element.estaSelecionado == true)
+                  .toList();
+              return opcao;
+            }
+            opcao.dados = [];
+            return opcao;
+          }).toList();
+          return produto;
+        }).toList();
+
+        return e;
+      }
+
+      if (e.id == 5) return e;
+
+      if (e.id == 1) {
+        e.dados = (e.dados ?? [])
+            .where((element) => element.estaSelecionado == true)
+            .toList();
+        return e;
+      }
+
+      e.dados = [];
+      return e;
+    }).toList();
   }
 
   @override
@@ -148,65 +200,8 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           throw StateError('Os ingredientes do cardápio não foram carregados.');
         }
         if (widget.valorVenda == null) {
-          _provedorProduto.opcoesPacotesListaFinal = [
-            for (var elm in value.opcoesPacotes ?? <ModeloOpcoesPacotes>[])
-              ModeloOpcoesPacotes.fromMap(elm.toMap())
-          ].map((e) {
-            if (_grupoMontagemCardapio(e)) {
-              final salvos = widget.produto.opcoesPacotesListaFinal
-                  ?.where(_grupoMontagemCardapio)
-                  .firstOrNull
-                  ?.dados;
-              e.dados = MontagemCardapio.iniciar(e.dados ?? [], salvos: salvos);
-              return e;
-            }
-
-            // SE FOR KITS/COMBOS
-            if (e.id == 2) {
-              var a = e.produtos!.map((e1) {
-                e1.opcoesPacotes?.map((e2) {
-                  // se for acompanhamentos retorna todos
-                  if (e2.id == 5) {
-                    return e2;
-                  }
-
-                  // se for cortesia
-                  if (e2.id == 1) {
-                    e2.dados = e2.dados!
-                        .where((element) => element.estaSelecionado == true)
-                        .toList();
-                    return e2;
-                  }
-
-                  e2.dados = [];
-                  return e2;
-                }).toList();
-
-                return e1;
-              }).toList();
-
-              e.produtos = a;
-
-              return e;
-            }
-
-            // se for acompanhamentos retorna todos
-            if (e.id == 5) {
-              return e;
-            }
-
-            // se for cortesia
-            if (e.id == 1) {
-              e.dados = e.dados!
-                  .where((element) => element.estaSelecionado == true)
-                  .toList();
-              return e;
-            }
-
-            e.dados = [];
-
-            return e;
-          }).toList();
+          _provedorProduto.opcoesPacotesListaFinal =
+              _opcoesIniciaisProduto(value);
 
           _provedorProduto.valorVenda = double.parse(value.valorVenda);
           _provedorProduto.valorVendaOriginal = double.parse(value.valorVenda);

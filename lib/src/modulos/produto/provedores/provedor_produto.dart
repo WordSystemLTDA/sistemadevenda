@@ -19,9 +19,16 @@ class ProvedorProduto extends ChangeNotifier {
   List<ModeloOpcoesPacotes> get opcoesPacotesListaFinal =>
       _opcoesPacotesListaFinal;
   set opcoesPacotesListaFinal(List<ModeloOpcoesPacotes> value) {
+    definirOpcoesPacotesListaFinal(value);
+  }
+
+  void definirOpcoesPacotesListaFinal(
+    List<ModeloOpcoesPacotes> value, {
+    bool notificar = true,
+  }) {
     _opcoesPacotesListaFinal = value;
     _resetarPreferenciaBordaSemSelecao(value);
-    notifyListeners();
+    if (notificar) notifyListeners();
   }
 
   int quantidade = 1;
@@ -48,7 +55,11 @@ class ProvedorProduto extends ChangeNotifier {
     notifyListeners();
   }
 
-  void calcularValorVenda(bool kit, String idProduto) {
+  void calcularValorVenda(
+    bool kit,
+    String idProduto, {
+    bool notificar = true,
+  }) {
     double soma = 0;
 
     if (opcoesPacotesListaFinal.isNotEmpty) {
@@ -101,7 +112,7 @@ class ProvedorProduto extends ChangeNotifier {
             soma;
 
     valorVenda = double.parse(valorFinal.toStringAsFixed(2));
-    notifyListeners();
+    if (notificar) notifyListeners();
   }
 
   void mudarExpandido1(bool valor) {
@@ -209,6 +220,14 @@ class ProvedorProduto extends ChangeNotifier {
     calcularValorVenda(kit, idProduto);
   }
 
+  ModeloDadosOpcoesPacotes _adicionalParaNovaSelecao(
+    ModeloDadosOpcoesPacotes item,
+  ) {
+    return ModeloDadosOpcoesPacotes.fromMap(item.toMap())
+      ..quantidade = 1
+      ..estaSelecionado = true;
+  }
+
   void selecionarItem(ModeloDadosOpcoesPacotes item,
       ModeloOpcoesPacotes opcoesPacote, bool kit, String idProduto) {
     var dadosID = retornarDadosPorID([opcoesPacote.id], kit, idProduto);
@@ -217,7 +236,9 @@ class ProvedorProduto extends ChangeNotifier {
       return;
     }
 
-    item.estaSelecionado = true;
+    if (opcoesPacote.id != 7) {
+      item.estaSelecionado = true;
+    }
 
     // CORTESIA
     if (opcoesPacote.tipo == 6) {
@@ -291,7 +312,7 @@ class ProvedorProduto extends ChangeNotifier {
       if (opcoesPacote.id == 6) {
         item.somenteMetadeBorda = bordaSomenteMetadeSelecionada(kit, idProduto);
       }
-      dadosID.add(item);
+      dadosID.add(opcoesPacote.id == 7 ? _adicionalParaNovaSelecao(item) : item);
     }
 
     calcularValorVenda(kit, idProduto);
