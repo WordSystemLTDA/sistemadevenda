@@ -225,7 +225,9 @@ class ProvedorProduto extends ChangeNotifier {
   ) {
     return ModeloDadosOpcoesPacotes.fromMap(item.toMap())
       ..quantidade = 1
-      ..estaSelecionado = true;
+      ..estaSelecionado = true
+      ..excluir = false
+      ..somenteMetadeBorda = false;
   }
 
   void selecionarItem(ModeloDadosOpcoesPacotes item,
@@ -312,7 +314,8 @@ class ProvedorProduto extends ChangeNotifier {
       if (opcoesPacote.id == 6) {
         item.somenteMetadeBorda = bordaSomenteMetadeSelecionada(kit, idProduto);
       }
-      dadosID.add(opcoesPacote.id == 7 ? _adicionalParaNovaSelecao(item) : item);
+      dadosID
+          .add(opcoesPacote.id == 7 ? _adicionalParaNovaSelecao(item) : item);
     }
 
     calcularValorVenda(kit, idProduto);

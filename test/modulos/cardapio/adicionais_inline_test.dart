@@ -176,6 +176,74 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+      'pagina de produto nao reaproveita quantidade antiga de adicional',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(
+          empresa: '32', configuracoes: fixture.ConfiguracoesTeste('media')));
+    final cardapio = ProvedorCardapio(fixture.CategoriasTeste(), usuario);
+    final produtos = ProdutosLentos();
+    final pizza = fixture.sabor('Pizza de Queijos', 'Queijos', '125')
+      ..tamanhosPizza = []
+      ..habilTipo = 'Pacote'
+      ..valorVenda = '125'
+      ..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          obrigatorio: false,
+          tipo: 3,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: 'Milho',
+              nome: 'Milho',
+              valor: '3',
+              quantidade: 3,
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: 'Bacon',
+              nome: 'Bacon',
+              valor: '4',
+              quantidade: 2,
+            ),
+          ],
+        ),
+      ];
+    produtos.produtos.add(pizza);
+    Modular.init(fixture.ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(() {
+      Modular.destroy();
+      cardapio.dispose();
+      usuario.dispose();
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaProduto(
+        produto: pizza,
+        valorVenda: 125,
+        montagemPizza: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final provedor = Modular.get<ProvedorProduto>();
+    expect(provedor.retornarDadosPorID([7], false, '0'), isEmpty);
+    expect(find.text('Adicionar ao'), findsOneWidget);
+    expect(find.textContaining('Adicionar ao ('), findsNothing);
+
+    await tester.tap(find.byTooltip('Aumentar Milho'));
+    await tester.pumpAndSettle();
+
+    final selecionado = provedor.retornarDadosPorID([7], false, '0').single;
+    expect(selecionado.id, 'Milho');
+    expect(selecionado.quantidade, 1);
+    expect(pizza.opcoesPacotes!.single.dados!.first.quantidade, 3);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final (largura, escala) in [
     (320.0, 1.0),
     (393.0, 1.0),
@@ -275,7 +343,14 @@ void main() {
       ModeloOpcoesPacotes(
           id: 7, titulo: 'Adicionais', obrigatorio: false, dados: []),
     ];
-    final milho = ModeloDadosOpcoesPacotes(id: '7', nome: 'Milho', valor: '3');
+    final milho = ModeloDadosOpcoesPacotes(
+      id: '7',
+      nome: 'Milho',
+      valor: '3',
+      quantidade: 5,
+      excluir: true,
+      somenteMetadeBorda: true,
+    );
     final grupo = ModeloOpcoesPacotes(
         id: 7, titulo: 'Adicionais', obrigatorio: false, dados: [milho]);
     addTearDown(() {
@@ -301,7 +376,13 @@ void main() {
     final card = find.byKey(const ValueKey('opcao_7_7'));
     await tester.tap(card);
     await tester.pumpAndSettle();
-    expect(provedor.retornarDadosPorID([7], false, '0').single.quantidade, 1);
+    final selecionado = provedor.retornarDadosPorID([7], false, '0').single;
+    expect(selecionado.quantidade, 1);
+    expect(selecionado.excluir, isFalse);
+    expect(selecionado.somenteMetadeBorda, isFalse);
+    expect(milho.quantidade, 5);
+    expect(milho.excluir, isTrue);
+    expect(milho.somenteMetadeBorda, isTrue);
     expect(provedor.valorVenda, 60);
 
     await tester.tap(card);
