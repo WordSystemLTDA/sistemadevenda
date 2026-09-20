@@ -43,8 +43,7 @@ class Server extends ChangeNotifier {
       _retentativaImpressao = null;
       _consultasImpressao.clear();
       _quantidadeConsultas.clear();
-      _avisoImpressaoVisivel?.close();
-      _avisoImpressaoVisivel = null;
+      _fecharAvisoImpressao();
     } else if (!_descartado && !_desconexaoIntencional) {
       _retentativaImpressao ??= Timer.periodic(
         const Duration(seconds: 5),
@@ -58,18 +57,49 @@ class Server extends ChangeNotifier {
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => PendenciasImpressao(
               fila: filaImpressao,
-              reenviar: (id) async {
-                _quantidadeConsultas.remove(id);
-                _consultasImpressao.remove(id);
-                await filaImpressao.autorizarReenvio(id, manual: true);
-                await _reenviarMensagensPendentes();
-              },
+              reenviar: reenviarImpressao,
               limpar: limparImpressoes,
-              pertenceAoEscopo: _pertenceAConexao,
+              pertenceAoEscopo: pertenceAEmpresaAtual,
             )));
   }
 
+  Future<void> reenviarImpressao(String id) async {
+    _quantidadeConsultas.remove(id);
+    _consultasImpressao.remove(id);
+    final servidorAtual =
+        connected && hostname.isNotEmpty && port > 0 ? '$hostname:$port' : '';
+    await filaImpressao.autorizarReenvio(id,
+        manual: true, servidor: servidorAtual);
+    await processarImpressoesPendentes(reconectarAgora: true);
+  }
+
   void Function(String tipo)? aoAtualizarDados;
+
+  void _fecharAvisoImpressao() {
+    final aviso = _avisoImpressaoVisivel;
+    _avisoImpressaoVisivel = null;
+    if (aviso == null) return;
+
+    try {
+      aviso.close();
+    } catch (erro, stack) {
+      // O ScaffoldMessenger pode ter removido o SnackBar por navegacao ou por
+      // outro aviso. Fechar novamente e apenas uma limpeza e nao deve afetar o
+      // socket nem a fila de impressoes.
+      log('Aviso de impressao ja estava encerrado',
+          error: erro, stackTrace: stack);
+    }
+  }
+
+  void _acompanharAvisoImpressao(
+      ScaffoldFeatureController<SnackBar, SnackBarClosedReason> aviso) {
+    _avisoImpressaoVisivel = aviso;
+    unawaited(aviso.closed.then((_) {
+      if (identical(_avisoImpressaoVisivel, aviso)) {
+        _avisoImpressaoVisivel = null;
+      }
+    }));
+  }
 
   void _avisarImpressaoPendente() {
     if (_descartado || filaImpressao.itens.isEmpty) return;
@@ -83,14 +113,16 @@ class Server extends ChangeNotifier {
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
     _ultimoAvisoImpressao = _agora();
-    _avisoImpressaoVisivel?.close();
-    _avisoImpressaoVisivel = messenger.showSnackBar(SnackBar(
+    _fecharAvisoImpressao();
+    final aviso = messenger.showSnackBar(SnackBar(
       duration: const Duration(seconds: 5),
+      persist: false,
       content: const Text('Impressão pendente. O atendimento pode continuar.'),
       action: SnackBarAction(
           label: 'Conferir',
           onPressed: () => abrirPendenciasImpressao(context)),
     ));
+    _acompanharAvisoImpressao(aviso);
   }
 
   Future<void> enviarImpressoes(List<String> mensagens) async {
@@ -171,12 +203,16 @@ class Server extends ChangeNotifier {
     }
   }
 
+  bool pertenceAEmpresaAtual(ImpressaoPendente item) {
+    final empresa = item.dados['idEmpresa']?.toString() ?? '';
+    return empresa.isEmpty || empresa == usuarioProvedor.usuario?.empresa;
+  }
+
   bool _pertenceAConexao(ImpressaoPendente item) {
     if (item.servidor.isNotEmpty && item.servidor != '$hostname:$port') {
       return false;
     }
-    final empresa = item.dados['idEmpresa']?.toString() ?? '';
-    return empresa.isEmpty || empresa == usuarioProvedor.usuario?.empresa;
+    return pertenceAEmpresaAtual(item);
   }
 
   Future<Set<String>> _adotarImpressoesNaoEnviadasNoServidorAtual() async {
@@ -714,12 +750,11 @@ class Server extends ChangeNotifier {
       return null;
     }
 
-    final List<String> partes = referenciaNormalizada.split('|');
-    if (partes.isEmpty) {
-      return null;
-    }
-
-    final String ultimoTrecho = partes.last.trim();
+    // Evita depender de `Iterable.last`: referencias incompletas ou alteradas
+    // pelo servidor nunca devem gerar "Bad state: No element" no cliente.
+    final int ultimoSeparador = referenciaNormalizada.lastIndexOf('|');
+    final String ultimoTrecho =
+        referenciaNormalizada.substring(ultimoSeparador + 1).trim();
     if (ultimoTrecho.isEmpty || ultimoTrecho == '-') {
       return null;
     }

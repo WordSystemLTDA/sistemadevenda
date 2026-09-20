@@ -51,7 +51,9 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
 
   Future<void> _carregar() async {
     try {
-      if (widget.alteracao == AlteracaoDelivery.entrega) {
+      if (widget.alteracao == AlteracaoDelivery.cancelar) {
+        _config = await widget.servico.configuracao();
+      } else if (widget.alteracao == AlteracaoDelivery.entrega) {
         _config = await widget.servico.configuracao();
         final dados = await widget.servico.consultar(
             'enderecos_clientes/listar_por_cliente.php',
@@ -115,8 +117,12 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
     try {
       switch (widget.alteracao) {
         case AlteracaoDelivery.cancelar:
-          if (_senha.text.trim().isEmpty || _motivo.text.trim().isEmpty) {
-            throw StateError('Informe a senha Admin e o motivo.');
+          if (_senha.text.trim().isEmpty) {
+            throw StateError('Informe a senha Admin.');
+          }
+          if ((_config?.motivoCancelamentoObrigatorio ?? false) &&
+              _motivo.text.trim().isEmpty) {
+            throw StateError('Informe o motivo do cancelamento.');
           }
           await widget.servico.acao('cancelar', widget.pedido,
               {'senha': _senha.text, 'motivo': _motivo.text.trim()});
@@ -170,7 +176,9 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
     };
     final descricao = switch (widget.alteracao) {
       AlteracaoDelivery.cancelar =>
-        'Confirme com a senha Admin e informe o motivo.',
+        (_config?.motivoCancelamentoObrigatorio ?? false)
+            ? 'Confirme com a senha Admin e informe o motivo.'
+            : 'Confirme com a senha Admin. O motivo é opcional.',
       AlteracaoDelivery.entrega => 'Atualize como o pedido será entregue.',
       AlteracaoDelivery.pagamento => 'Escolha o lançamento e a nova forma.',
     };
@@ -318,7 +326,11 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                         decoration: InputDecoration(
                                             filled: true,
                                             alignLabelWithHint: true,
-                                            labelText: 'Motivo do cancelamento',
+                                            labelText: (_config
+                                                        ?.motivoCancelamentoObrigatorio ??
+                                                    false)
+                                                ? 'Motivo do cancelamento *'
+                                                : 'Motivo do cancelamento (opcional)',
                                             prefixIcon: const Padding(
                                                 padding:
                                                     EdgeInsets.only(bottom: 54),

@@ -139,7 +139,7 @@ class PedidoDelivery {
 }
 
 class ConfigDelivery {
-  final bool receberNoFinal, imprimirPreparo;
+  final bool receberNoFinal, imprimirPreparo, motivoCancelamentoObrigatorio;
   final String entregadorFixo, valorEntrega, cobrancaEntrega;
   final String numerodopedidodestaquecomprovante;
   final String numerodopedidodestaquepreparo;
@@ -151,6 +151,7 @@ class ConfigDelivery {
   const ConfigDelivery(
       {this.receberNoFinal = false,
       this.imprimirPreparo = true,
+      this.motivoCancelamentoObrigatorio = false,
       this.entregadorFixo = '',
       this.valorEntrega = '0',
       this.cobrancaEntrega = '0',
@@ -164,6 +165,11 @@ class ConfigDelivery {
   factory ConfigDelivery.fromMap(Map<String, dynamic> map) => ConfigDelivery(
         receberNoFinal: map['receberpedidonofinal'] == 'Sim',
         imprimirPreparo: map['imprimirpreparodelivery'] != 'Não',
+        motivoCancelamentoObrigatorio: map['obrigarjustifcancelarpedido']
+                ?.toString()
+                .trim()
+                .toLowerCase() ==
+            'sim',
         entregadorFixo: map['entregadorfixo']?.toString() == '1' &&
                 (int.tryParse('${map['identregador']}') ?? 0) > 0
             ? '${map['identregador'] ?? ''}'

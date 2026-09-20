@@ -116,6 +116,38 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('excluir remove pendencia local somente depois da confirmacao',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([mensagem('ja-impressa')]);
+    await fila.registrarErro('ja-impressa', 'Servidor indisponivel');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PendenciasImpressao(fila: fila, reenviar: (_) async {}),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Excluir'));
+    await tester.pumpAndSettle();
+    expect(fila.itens, hasLength(1));
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(fila.itens, hasLength(1));
+
+    await tester.tap(find.widgetWithText(TextButton, 'Excluir'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Excluir'));
+    await tester.pumpAndSettle();
+
+    expect(fila.itens, isEmpty);
+    expect(find.text('Nenhuma impressão pendente'), findsOneWidget);
+    await fila.registrar([mensagem('ja-impressa')]);
+    expect(fila.itens, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   group('atalhos de impressoes pendentes', () {
     testWidgets('envio automatico nao pode ser apagado apenas no celular',
         (tester) async {

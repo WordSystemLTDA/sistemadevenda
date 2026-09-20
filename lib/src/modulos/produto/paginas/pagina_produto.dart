@@ -463,6 +463,15 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     if (index < 0) return;
 
     final atual = dados[index];
+    if (!atual.permiteMontagemCardapio(acao)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(
+              'A opção ${acao.rotulo} não está liberada para este ingrediente.'),
+        ));
+      return;
+    }
     final montagemAtual = atual.montagemCardapio ??
         MontagemIngredienteCardapio(nomeOriginal: atual.nome);
     final montagem = montagemAtual.copyWith(
@@ -509,6 +518,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   }
 
   void _iniciarTrocaCardapio(ModeloDadosOpcoesPacotes item) {
+    if (!item.permiteMontagemCardapio(AcaoIngredienteCardapio.trocar)) {
+      return;
+    }
     setState(() {
       _itemTrocaCardapio = item;
       _destinoTrocaCardapio = null;
@@ -554,6 +566,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final index = dados.indexWhere((dado) => dado.id == origem.id);
     if (index < 0) return;
     final atual = dados[index];
+    if (!atual.permiteMontagemCardapio(AcaoIngredienteCardapio.trocar)) {
+      return;
+    }
     final montagemAtual = atual.montagemCardapio ??
         MontagemIngredienteCardapio(nomeOriginal: atual.nome);
     final nomeDestino = destino.montagemCardapio?.nomeOriginal ?? destino.nome;

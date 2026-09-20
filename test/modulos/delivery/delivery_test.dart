@@ -182,12 +182,14 @@ void main() {
       () {
     final config = ConfigDelivery.fromMap({
       'receberpedidonofinal': 'Sim',
+      'obrigarjustifcancelarpedido': 'Sim',
       'formacobrancaentregadelivery': '2',
       'valordiferenca': '2.50',
       'entregadorfixo': '1',
       'identregador': '0'
     });
     expect(config.exigePagamento(pedidoTeste(), etapasTeste()[1]), isFalse);
+    expect(config.motivoCancelamentoObrigatorio, isTrue);
     expect(config.exigePagamento(pedidoTeste(), etapasTeste().last), isTrue);
     expect(config.taxaEntrega('6.00'), 8.5);
     expect(config.entregadorFixo, isEmpty);

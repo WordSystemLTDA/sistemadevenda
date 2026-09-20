@@ -142,6 +142,42 @@ void main() {
     expect(ingrediente['montagemCardapio']['separado'], isTrue);
   });
 
+  test('permissoes do banco removem a acao sem e sobrevivem a serializacao',
+      () {
+    final arroz = ModeloDadosOpcoesPacotes.fromMap({
+      'id': '6',
+      'nome': 'Arroz',
+      'permitir_sem': 'Não',
+      'permitir_pouco': 'Sim',
+      'permitir_normal': 'Sim',
+      'permitir_mais': 'Sim',
+      'permitir_trocar': 'Sim',
+    });
+
+    expect(arroz.permiteMontagemCardapio(AcaoIngredienteCardapio.sem), isFalse);
+    expect(
+        arroz.permiteMontagemCardapio(AcaoIngredienteCardapio.pouco), isTrue);
+    expect(
+      ModeloDadosOpcoesPacotes.fromMap(arroz.toMap())
+          .permiteMontagemCardapio(AcaoIngredienteCardapio.sem),
+      isFalse,
+    );
+
+    final iniciado = MontagemCardapio.iniciar([arroz]).single;
+    expect(iniciado.montagemCardapio!.acao, AcaoIngredienteCardapio.normal);
+
+    final salvoInvalido = MontagemCardapio.aplicar(
+      arroz,
+      const MontagemIngredienteCardapio(
+        nomeOriginal: 'Arroz',
+        acao: AcaoIngredienteCardapio.sem,
+      ),
+    );
+    final reaberto =
+        MontagemCardapio.iniciar([arroz], salvos: [salvoInvalido]).single;
+    expect(reaberto.montagemCardapio!.acao, AcaoIngredienteCardapio.normal);
+  });
+
   test('validacao bloqueia troca para ingrediente removido ou ja trocado', () {
     final itens = MontagemCardapio.iniciar(ingredientes());
     itens[1] = MontagemCardapio.aplicar(

@@ -364,18 +364,6 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                         : _carregarEnderecos,
                                     icon: const Icon(Icons.refresh)),
                               ]),
-                              SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: FilledButton.tonalIcon(
-                                      key: const ValueKey('novo-endereco'),
-                                      onPressed: _cliente == '0' || _salvando
-                                          ? null
-                                          : () => _abrirEndereco(),
-                                      icon: const Icon(
-                                          Icons.add_location_alt_outlined),
-                                      label: const Text('Novo endereço'))),
-                              const SizedBox(height: 8),
                               if (_carregando)
                                 const LinearProgressIndicator()
                               else if (_enderecos.isEmpty)
@@ -428,6 +416,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                           ? null
                                           : () => setState(() => _endereco = e),
                                     ))),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: FilledButton.tonalIcon(
+                                      key: const ValueKey('novo-endereco'),
+                                      onPressed: _cliente == '0' || _salvando
+                                          ? null
+                                          : () => _abrirEndereco(),
+                                      icon: const Icon(
+                                          Icons.add_location_alt_outlined),
+                                      label: const Text('Novo endereço'))),
                               if (_endereco != null && !_carregando)
                                 Padding(
                                     padding: const EdgeInsets.only(top: 12),

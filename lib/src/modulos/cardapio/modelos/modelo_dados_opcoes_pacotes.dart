@@ -52,6 +52,7 @@ class ModeloDadosOpcoesPacotes {
   final String? idCategoriaCardapio;
   final String? diaSemana;
   final MontagemIngredienteCardapio? montagemCardapio;
+  final Map<String, bool> permissoesMontagemCardapio;
   bool? estaSelecionado;
   bool? excluir;
   int? quantidade;
@@ -72,6 +73,7 @@ class ModeloDadosOpcoesPacotes {
     this.idCategoriaCardapio,
     this.diaSemana,
     this.montagemCardapio,
+    this.permissoesMontagemCardapio = const {},
     this.estaSelecionado,
     this.excluir,
     this.quantidade,
@@ -99,6 +101,8 @@ class ModeloDadosOpcoesPacotes {
       'dia_semana': diaSemana,
       if (montagemCardapio != null)
         'montagemCardapio': montagemCardapio!.toMap(),
+      if (permissoesMontagemCardapio.isNotEmpty)
+        'permissoesMontagemCardapio': permissoesMontagemCardapio,
       'estaSelecionado': estaSelecionado,
       'excluir': excluir,
       'quantidade': quantidade,
@@ -129,6 +133,7 @@ class ModeloDadosOpcoesPacotes {
       montagemCardapio: montagem == null
           ? null
           : MontagemIngredienteCardapio.fromMap(montagem),
+      permissoesMontagemCardapio: _permissoesMontagem(map),
       estaSelecionado: _boolOpcional(map['estaSelecionado']),
       excluir: _boolOpcional(map['excluir']),
       quantidade: _inteiroOpcional(map['quantidade']),
@@ -140,6 +145,51 @@ class ModeloDadosOpcoesPacotes {
               ?.toString() ??
           'Não',
     );
+  }
+
+  static Map<String, bool> _permissoesMontagem(
+    Map<String, dynamic> map,
+  ) {
+    final bruto = _mapa(map['permissoesMontagemCardapio'] ??
+        map['permissoes_montagem_cardapio']);
+    final possuiPermissoes = bruto != null ||
+        const [
+          'permitirSem',
+          'permitir_sem',
+          'permitirPouco',
+          'permitir_pouco',
+          'permitirNormal',
+          'permitir_normal',
+          'permitirMais',
+          'permitir_mais',
+          'permitirTrocar',
+          'permitir_trocar',
+        ].any(map.containsKey);
+    if (!possuiPermissoes) return const {};
+    return <String, bool>{
+      'sem': _boolOpcional(
+              bruto?['sem'] ?? map['permitirSem'] ?? map['permitir_sem']) ??
+          true,
+      'pouco': _boolOpcional(bruto?['pouco'] ??
+              map['permitirPouco'] ??
+              map['permitir_pouco']) ??
+          true,
+      'normal': _boolOpcional(bruto?['normal'] ??
+              map['permitirNormal'] ??
+              map['permitir_normal']) ??
+          true,
+      'mais': _boolOpcional(
+              bruto?['mais'] ?? map['permitirMais'] ?? map['permitir_mais']) ??
+          true,
+      'trocar': _boolOpcional(bruto?['trocar'] ??
+              map['permitirTrocar'] ??
+              map['permitir_trocar']) ??
+          true,
+    };
+  }
+
+  bool permiteMontagemCardapio(AcaoIngredienteCardapio acao) {
+    return permissoesMontagemCardapio[acao.name] ?? true;
   }
 
   String toJson() => json.encode(toMap());

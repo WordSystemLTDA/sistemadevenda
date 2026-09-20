@@ -17,6 +17,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../cardapio/finalizacao_carrinhos_test.dart';
@@ -253,17 +254,46 @@ void main() {
       expect(find.text(prazo), findsOneWidget);
     }
 
+    final hoje = DateUtils.dateOnly(DateTime.now());
+    final primeiroVencimento = hoje.add(const Duration(days: 30));
+    expect(
+      find.text(DateFormat('dd/MM/yyyy').format(primeiroVencimento)),
+      findsNWidgets(2),
+    );
+
     await tester.tap(find.text('Adicionar'));
     await tester.pump();
-    await tester.tap(find.text('30 dias'));
+    await tester.tap(find.text('45 dias'));
     await tester.pump();
+
+    final vencimentoEm45Dias = hoje.add(const Duration(days: 45));
+    final vencimentoEm75Dias = hoje.add(const Duration(days: 75));
+    expect(
+      find.text(DateFormat('dd/MM/yyyy').format(vencimentoEm45Dias)),
+      findsNWidgets(2),
+    );
+    expect(
+      find.text(DateFormat('dd/MM/yyyy').format(vencimentoEm75Dias)),
+      findsOneWidget,
+    );
+
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
 
     expect(modulo.delivery.pagamentos, 1);
     expect(modulo.delivery.conclusoes, 1);
-    expect(modulo.delivery.vencimento, isNotNull);
+    expect(
+      modulo.delivery.vencimento,
+      DateFormat('yyyy-MM-dd').format(vencimentoEm45Dias),
+    );
     expect(modulo.delivery.parcelas, hasLength(2));
+    expect(
+      modulo.delivery.parcelas.map((parcela) => parcela.vencimento).toList(),
+      [
+        DateFormat('yyyy-MM-dd').format(vencimentoEm45Dias),
+        DateFormat('yyyy-MM-dd').format(vencimentoEm75Dias),
+      ],
+    );
     expect(
       modulo.delivery.parcelas
           .map((parcela) => parcela.valorController?.text)

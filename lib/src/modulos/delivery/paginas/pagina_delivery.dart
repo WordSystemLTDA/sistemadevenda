@@ -241,6 +241,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
           habilitado: _ocupado == null,
           onPressed: () =>
               _abrir(PaginaNovoDelivery(servico: _provedor.servico))),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: ListenableBuilder(
           listenable: _provedor,
           builder: (context, child) {
@@ -872,6 +873,8 @@ class _BotaoNovoPedido extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final largura =
+        (MediaQuery.sizeOf(context).width - 32).clamp(0.0, 560.0).toDouble();
     return Tooltip(
       message: 'Novo Delivery',
       child: Semantics(
@@ -883,6 +886,7 @@ class _BotaoNovoPedido extends StatelessWidget {
           opacity: habilitado ? 1 : .55,
           child: Container(
             key: const ValueKey('novo-delivery'),
+            width: largura,
             constraints: const BoxConstraints(minHeight: 64),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -906,9 +910,10 @@ class _BotaoNovoPedido extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 onTap: habilitado ? onPressed : null,
                 child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.add_rounded, color: Colors.white, size: 28),
                       SizedBox(width: 10),

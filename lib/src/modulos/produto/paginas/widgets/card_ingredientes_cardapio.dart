@@ -28,6 +28,8 @@ class CardIngredientesCardapio extends StatelessWidget {
     final separado =
         montagem.separado && montagem.acao != AcaoIngredienteCardapio.sem;
     final cor = cs.primary;
+    final permiteTrocar =
+        item.permiteMontagemCardapio(AcaoIngredienteCardapio.trocar);
 
     final cabecalho = Row(children: [
       Icon(
@@ -83,19 +85,22 @@ class CardIngredientesCardapio extends StatelessWidget {
               cabecalho,
               const SizedBox(height: 10),
               _ControlePorcaoIngrediente(
+                item: item,
                 selecionada: montagem.acao,
                 aoAlterar: aoAlterar,
               ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(
-                  child: _BotaoSecundarioIngrediente(
-                    icon: Icons.swap_horiz_rounded,
-                    label: 'Trocar',
-                    onPressed: aoTrocar,
+                if (permiteTrocar) ...[
+                  Expanded(
+                    child: _BotaoSecundarioIngrediente(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Trocar',
+                      onPressed: aoTrocar,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: _BotaoSecundarioIngrediente(
                     icon: Icons.inventory_2_outlined,
@@ -116,10 +121,12 @@ class CardIngredientesCardapio extends StatelessWidget {
 }
 
 class _ControlePorcaoIngrediente extends StatelessWidget {
+  final ModeloDadosOpcoesPacotes item;
   final AcaoIngredienteCardapio selecionada;
   final ValueChanged<AcaoIngredienteCardapio> aoAlterar;
 
   const _ControlePorcaoIngrediente({
+    required this.item,
     required this.selecionada,
     required this.aoAlterar,
   });
@@ -127,12 +134,12 @@ class _ControlePorcaoIngrediente extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    const acoes = [
+    final acoes = <AcaoIngredienteCardapio>[
       AcaoIngredienteCardapio.sem,
       AcaoIngredienteCardapio.pouco,
       AcaoIngredienteCardapio.normal,
       AcaoIngredienteCardapio.mais,
-    ];
+    ].where(item.permiteMontagemCardapio).toList();
 
     final raio = BorderRadius.circular(8);
 

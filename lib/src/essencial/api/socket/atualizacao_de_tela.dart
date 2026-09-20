@@ -8,13 +8,13 @@ import 'package:flutter_modular/flutter_modular.dart';
 class AtualizacaoDeTela {
   void call(ModeloRetornoSocket dados) {
     if (dados.tipo == 'Mesa') {
-      Modular.get<ProvedorMesas>().listarMesas('');
+      Modular.tryGet<ProvedorMesas>()?.listarMesas('');
     } else if (dados.tipo == 'Comanda') {
-      Modular.get<ProvedorComanda>().listarComandas('');
+      Modular.tryGet<ProvedorComanda>()?.listarComandas('');
     } else if (dados.tipo == 'Balcão') {
-      Modular.get<ProvedorBalcao>().listar();
+      Modular.tryGet<ProvedorBalcao>()?.listar();
     } else if (dados.tipo == 'Delivery') {
-      Modular.get<ProvedorDelivery>().listar();
+      Modular.tryGet<ProvedorDelivery>()?.listar();
     }
   }
 }

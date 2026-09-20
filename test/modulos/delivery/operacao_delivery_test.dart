@@ -270,6 +270,69 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('cancelamento permite motivo vazio quando configuracao nao exige',
+      (tester) async {
+    final s = ServicoCancelamentoTeste();
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => Scaffold(
+                body: TextButton(
+                    onPressed: () => showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlterarPedidoDelivery(
+                            servico: s,
+                            pedido: pedidoTeste(),
+                            alteracao: AlteracaoDelivery.cancelar)),
+                    child: const Text('Cancelar venda'))))));
+
+    await tester.tap(find.text('Cancelar venda'));
+    await tester.pumpAndSettle();
+    expect(find.text('Motivo do cancelamento (opcional)'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'senha-teste');
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+
+    expect(s.gravacoes, hasLength(1));
+    expect(s.gravacoes.single.$2['motivo'], isEmpty);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cancelamento exige motivo quando permissao esta ativa',
+      (tester) async {
+    final s = ServicoCancelamentoTeste()
+      ..config = const ConfigDelivery(motivoCancelamentoObrigatorio: true);
+    await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => Scaffold(
+                body: TextButton(
+                    onPressed: () => showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlterarPedidoDelivery(
+                            servico: s,
+                            pedido: pedidoTeste(),
+                            alteracao: AlteracaoDelivery.cancelar)),
+                    child: const Text('Cancelar venda'))))));
+
+    await tester.tap(find.text('Cancelar venda'));
+    await tester.pumpAndSettle();
+    expect(find.text('Motivo do cancelamento *'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'senha-teste');
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Informe o motivo do cancelamento.'), findsOneWidget);
+    expect(s.gravacoes, isEmpty);
+
+    await tester.enterText(find.byType(TextField).last, 'Cliente desistiu');
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+
+    expect(s.gravacoes, hasLength(1));
+    expect(s.gravacoes.single.$2['motivo'], 'Cliente desistiu');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('novo endereco carrega cidade e cep padrao', (tester) async {
     final s = ServicoEnderecoPadraoTeste([]);
     await tester.pumpWidget(MaterialApp(
@@ -397,6 +460,15 @@ void main() {
     await tester.pumpAndSettle();
 
     final editarEndereco = find.byTooltip('Editar endereço');
+    final novoEndereco = find.byKey(const ValueKey('novo-endereco'));
+    await tester.scrollUntilVisible(novoEndereco, 200);
+    await tester.pumpAndSettle();
+    expect(editarEndereco, findsOneWidget);
+    expect(novoEndereco, findsOneWidget);
+    expect(
+      tester.getBottomLeft(editarEndereco).dy,
+      lessThan(tester.getTopLeft(novoEndereco).dy),
+    );
     await tester.ensureVisible(editarEndereco);
     await tester.pumpAndSettle();
     await tester.tap(editarEndereco);

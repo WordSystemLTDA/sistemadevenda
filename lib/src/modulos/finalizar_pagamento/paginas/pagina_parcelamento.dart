@@ -62,6 +62,9 @@ class PaginaParcelamento extends StatefulWidget {
 }
 
 class _PaginaParcelamentoState extends State<PaginaParcelamento> {
+  static const int _prazoPadraoDias = 30;
+  static const int _intervaloEntreParcelasDias = 30;
+
   final ProvedorFinalizarPagamento provedor =
       Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
@@ -71,10 +74,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   final Server server = Modular.get<Server>();
 
   final _valorController = TextEditingController();
-
-  final _dataController = TextEditingController(
-      text: DateFormat('dd/MM/yyyy').format(DateTime.now()));
-  String dataOriginal = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  late final TextEditingController _dataController;
+  late String dataOriginal;
 
   final ValueNotifier<bool> finalizando = ValueNotifier(false);
   final ValueNotifier<List<ParcelasModelo>> listaParcelas = ValueNotifier([]);
@@ -89,6 +90,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   void initState() {
     super.initState();
 
+    final primeiroVencimento = DateUtils.dateOnly(DateTime.now())
+        .add(const Duration(days: _prazoPadraoDias));
+    _dataController = TextEditingController(
+      text: DateFormat('dd/MM/yyyy').format(primeiroVencimento),
+    );
+    dataOriginal = DateFormat('yyyy-MM-dd').format(primeiroVencimento);
     _valorController.text =
         widget.valor.toStringAsFixed(2).replaceAll('.', ',');
 
@@ -122,8 +129,9 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     final resto = totalCentavos - (valorBase * _parcelas);
 
     return List.generate(_parcelas, (index) {
-      final vencimento = DateTime(primeiroVencimento.year,
-          primeiroVencimento.month + index, primeiroVencimento.day);
+      final vencimento = DateUtils.dateOnly(primeiroVencimento).add(
+        Duration(days: index * _intervaloEntreParcelasDias),
+      );
       final valorCentavos = valorBase + (index == _parcelas - 1 ? resto : 0);
       final valor = (valorCentavos / 100).toStringAsFixed(2);
       return ParcelasModelo(
@@ -156,7 +164,22 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   void _selecionarPrazo(String valor) {
     final dias = int.tryParse(valor.trim());
     if (dias == null || dias < 0) return;
-    _definirPrimeiroVencimento(DateTime.now().add(Duration(days: dias)));
+    _definirPrimeiroVencimento(
+      DateUtils.dateOnly(DateTime.now()).add(Duration(days: dias)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _valorController.dispose();
+    _dataController.dispose();
+    finalizando.dispose();
+    for (final parcela in listaParcelas.value) {
+      parcela.valorController?.dispose();
+      parcela.vencimentoController?.dispose();
+    }
+    listaParcelas.dispose();
+    super.dispose();
   }
 
   int _valorEmCentavos(String valor) =>

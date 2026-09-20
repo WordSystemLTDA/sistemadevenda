@@ -102,6 +102,40 @@ class PendenciasImpressao extends StatelessWidget {
     }
   }
 
+  Future<void> _excluir(BuildContext context, ImpressaoPendente item) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: const Text('Excluir pendência?'),
+        content: const Text(
+            'Use esta opção se o comprovante já foi impresso ou não deve mais ser enviado. O pedido será mantido. Uma impressão que já chegou ao servidor ainda poderá sair.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar')),
+          FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError),
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Excluir')),
+        ],
+      ),
+    );
+    if (confirmou != true) return;
+    try {
+      await fila.confirmar(item.id, cancelada: true);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível excluir a pendência. Tente novamente.')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Impressões pendentes'), actions: [
@@ -157,6 +191,15 @@ class PendenciasImpressao extends StatelessWidget {
                           alignment: MainAxisAlignment.end,
                           overflowAlignment: OverflowBarAlignment.end,
                           children: [
+                            if (item.estado != EstadoImpressao.aguardandoPedido)
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                    foregroundColor:
+                                        Theme.of(context).colorScheme.error),
+                                onPressed: () => _excluir(context, item),
+                                icon: const Icon(Icons.delete_outline),
+                                label: const Text('Excluir'),
+                              ),
                             if (dados['protocoloImpressao'] != 2 &&
                                 item.estado !=
                                     EstadoImpressao.cancelamentoPendente)

@@ -43,6 +43,10 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
     _server?.abrirPendenciasImpressao(context);
   }
 
+  int get _quantidade => _fila.itens
+      .where((item) => _server?.pertenceAEmpresaAtual(item) ?? true)
+      .length;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -51,7 +55,7 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
     return ListenableBuilder(
       listenable: _fila,
       builder: (context, _) {
-        final quantidade = _fila.itens.length;
+        final quantidade = _quantidade;
         final temPendencia = quantidade > 0;
         final corDestaque = temPendencia ? cs.error : cs.primary;
         final subtitulo = temPendencia
@@ -204,6 +208,10 @@ class _BotaoFlutuantePendenciasImpressaoState
     _server?.abrirPendenciasImpressao(context);
   }
 
+  int get _quantidade => _fila.itens
+      .where((item) => _server?.pertenceAEmpresaAtual(item) ?? true)
+      .length;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -211,7 +219,7 @@ class _BotaoFlutuantePendenciasImpressaoState
     return ListenableBuilder(
       listenable: _fila,
       builder: (context, _) {
-        final quantidade = _fila.itens.length;
+        final quantidade = _quantidade;
         final temPendencia = quantidade > 0;
         final corFundo = temPendencia ? cs.error : cs.primary;
         final corBotao = corFundo.withValues(alpha: temPendencia ? 0.62 : 0.52);

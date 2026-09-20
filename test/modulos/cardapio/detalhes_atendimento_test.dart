@@ -188,6 +188,14 @@ void main() {
           findsOneWidget);
       expect(modulo.servidor.filaImpressao.itens, isEmpty);
 
+      final dialogo = tester.getRect(find.byType(Dialog));
+      final cancelar =
+          tester.getRect(find.widgetWithText(TextButton, 'Cancelar'));
+      final reimprimir =
+          tester.getRect(find.widgetWithText(FilledButton, 'Reimprimir'));
+      expect(cancelar.center.dx, greaterThan(dialogo.center.dx));
+      expect(dialogo.right - reimprimir.right, lessThanOrEqualTo(64));
+
       await tester.tap(find.widgetWithText(FilledButton, 'Reimprimir'));
       await tester.pumpAndSettle();
 

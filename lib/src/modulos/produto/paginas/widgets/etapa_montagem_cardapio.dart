@@ -177,8 +177,10 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
                 aoAlterar: (acao) => widget.aoAlterar(item, acao),
                 aoSeparar: (separado) => widget.aoSeparar(item, separado),
                 aoTrocar: () => widget.aoTrocar(item),
-                aoRestaurar: () =>
-                    widget.aoAlterar(item, AcaoIngredienteCardapio.normal),
+                aoRestaurar: () => widget.aoAlterar(
+                  item,
+                  MontagemCardapio.acaoInicial(item),
+                ),
               ),
             if (widget.ingredientes.isEmpty)
               const Padding(

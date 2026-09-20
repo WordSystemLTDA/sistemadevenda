@@ -28,19 +28,64 @@ class MontagemCardapio {
     return [
       for (final ingrediente in disponiveis)
         if (salvosPorId[ingrediente.id]?.montagemCardapio != null)
-          ModeloDadosOpcoesPacotes.fromMap(salvosPorId[ingrediente.id]!.toMap())
+          _restaurarSalvo(
+            ingrediente,
+            salvosPorId[ingrediente.id]!,
+          )
         else
           aplicar(
             ingrediente,
             MontagemIngredienteCardapio(
               nomeOriginal: ingrediente.montagemCardapio?.nomeOriginal ??
                   ingrediente.nome,
-              acao: possuiSalvos
-                  ? AcaoIngredienteCardapio.sem
-                  : AcaoIngredienteCardapio.normal,
+              acao: acaoInicial(
+                ingrediente,
+                preferirSem: possuiSalvos,
+              ),
             ),
           ),
     ];
+  }
+
+  static ModeloDadosOpcoesPacotes _restaurarSalvo(
+    ModeloDadosOpcoesPacotes disponivel,
+    ModeloDadosOpcoesPacotes salvo,
+  ) {
+    final permissoes = disponivel.permissoesMontagemCardapio.isNotEmpty
+        ? disponivel.permissoesMontagemCardapio
+        : salvo.permissoesMontagemCardapio;
+    final atualizado = ModeloDadosOpcoesPacotes.fromMap({
+      ...salvo.toMap(),
+      if (permissoes.isNotEmpty) 'permissoesMontagemCardapio': permissoes,
+    });
+    final montagem = atualizado.montagemCardapio;
+    if (montagem == null || atualizado.permiteMontagemCardapio(montagem.acao)) {
+      return atualizado;
+    }
+    return aplicar(
+      atualizado,
+      montagem.copyWith(acao: acaoInicial(atualizado)),
+    );
+  }
+
+  static AcaoIngredienteCardapio acaoInicial(
+    ModeloDadosOpcoesPacotes item, {
+    bool preferirSem = false,
+  }) {
+    final preferencia = preferirSem
+        ? AcaoIngredienteCardapio.sem
+        : AcaoIngredienteCardapio.normal;
+    if (item.permiteMontagemCardapio(preferencia)) return preferencia;
+
+    for (final acao in const [
+      AcaoIngredienteCardapio.normal,
+      AcaoIngredienteCardapio.pouco,
+      AcaoIngredienteCardapio.mais,
+      AcaoIngredienteCardapio.sem,
+    ]) {
+      if (item.permiteMontagemCardapio(acao)) return acao;
+    }
+    return AcaoIngredienteCardapio.normal;
   }
 
   static String? validarTroca(

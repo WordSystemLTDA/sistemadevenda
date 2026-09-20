@@ -203,7 +203,7 @@ class _InserirClienteState extends State<InserirCliente> {
     if (!_incluiEndereco || !_configuracaoEndereco.enderecoObrigatorio) {
       return null;
     }
-    const obrigatorios = {'endereco', 'numero', 'bairro', 'cidade', 'uf'};
+    const obrigatorios = {'endereco', 'numero', 'bairro'};
     return obrigatorios.contains(campo) && (valor?.trim().isEmpty ?? true)
         ? 'Campo obrigatório'
         : null;
@@ -311,8 +311,6 @@ class _InserirClienteState extends State<InserirCliente> {
                     ('endereco', 'Rua / avenida', Icons.signpost_outlined),
                     ('numero', 'Número', Icons.pin_outlined),
                     ('bairro', 'Bairro', Icons.location_city_outlined),
-                    ('cidade', 'Cidade', Icons.apartment_outlined),
-                    ('uf', 'UF', Icons.map_outlined),
                   ]) ...[
                     _LabelCampo(
                       icone: campo.$3,
@@ -330,18 +328,13 @@ class _InserirClienteState extends State<InserirCliente> {
                           ? TextInputType.number
                           : TextInputType.streetAddress,
                       textInputAction: TextInputAction.next,
-                      textCapitalization: campo.$1 == 'uf'
-                          ? TextCapitalization.characters
-                          : TextCapitalization.words,
+                      textCapitalization: TextCapitalization.words,
                       inputFormatters: campo.$1 == 'cep'
                           ? [
                               FilteringTextInputFormatter.digitsOnly,
                               CepInputFormatter(),
                             ]
                           : null,
-                      maxLength: campo.$1 == 'uf' ? 2 : null,
-                      readOnly: _configuracaoEndereco.bloquearCidade &&
-                          (campo.$1 == 'cidade' || campo.$1 == 'uf'),
                       validator: (valor) => _validarEndereco(campo.$1, valor),
                     ),
                     const SizedBox(height: 18),
@@ -534,8 +527,6 @@ class _CampoTexto extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
   final int maxLines;
-  final int? maxLength;
-  final bool readOnly;
   final String? Function(String?)? validator;
 
   const _CampoTexto({
@@ -548,8 +539,6 @@ class _CampoTexto extends StatelessWidget {
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
     this.maxLines = 1,
-    this.maxLength,
-    this.readOnly = false,
     this.validator,
   });
 
@@ -558,9 +547,7 @@ class _CampoTexto extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: readOnly
-            ? cs.surfaceContainerHighest.withValues(alpha: 0.6)
-            : cs.surfaceContainerLow,
+        color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant),
       ),
@@ -585,8 +572,6 @@ class _CampoTexto extends StatelessWidget {
               inputFormatters: inputFormatters,
               maxLines: maxLines,
               minLines: maxLines > 1 ? maxLines - 1 : 1,
-              maxLength: maxLength,
-              readOnly: readOnly,
               validator: validator,
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(

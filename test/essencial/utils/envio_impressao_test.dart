@@ -26,10 +26,13 @@ class SaidaTeste extends Fake implements WebSocketSink {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({
-        'conexao':
-            jsonEncode({'tipoConexao': 'local', 'servidor': '', 'porta': ''}),
-      }));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'conexao':
+          jsonEncode({'tipoConexao': 'local', 'servidor': '', 'porta': ''}),
+    });
+    app.usuarioProvedor = UsuarioProvedor();
+  });
 
   test(
       'ACK antigo de recebimento nao apaga comprovante sem impressao confirmada',
@@ -323,6 +326,44 @@ void main() {
     await server.processarImpressoesPendentes();
 
     expect(recebidos, ['trocar-servidor']);
+    expect(server.filaImpressao.itens.single.servidor, 'cozinha-nova:456');
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.semConfirmacao);
+  });
+
+  test('lista pendencia antiga e reenvia manualmente pelo servidor novo',
+      () async {
+    app.usuarioProvedor = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(empresa: '32'));
+    final server = Server()
+      ..hostname = 'cozinha-antiga'
+      ..port = 123
+      ..connected = true;
+    addTearDown(server.dispose);
+    server.channel = CanalTeste(SaidaTeste((_) {}));
+    await server.enviarImpressoes([
+      jsonEncode({
+        ...jsonDecode(mensagem('reenviar-no-novo')),
+        'idEmpresa': '32',
+      })
+    ]);
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.semConfirmacao);
+
+    final enviadosNoNovo = <String>[];
+    server
+      ..hostname = 'cozinha-nova'
+      ..port = 456
+      ..channel = CanalTeste(SaidaTeste((data) {
+        enviadosNoNovo.add(jsonDecode(data as String)['data']['customData']
+            ['idRequisicao'] as String);
+      }));
+
+    expect(server.pertenceAEmpresaAtual(server.filaImpressao.itens.single),
+        isTrue);
+    await server.reenviarImpressao('reenviar-no-novo');
+
+    expect(enviadosNoNovo, ['reenviar-no-novo']);
     expect(server.filaImpressao.itens.single.servidor, 'cozinha-nova:456');
     expect(server.filaImpressao.itens.single.estado,
         EstadoImpressao.semConfirmacao);

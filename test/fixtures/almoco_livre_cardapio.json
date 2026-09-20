@@ -17,9 +17,9 @@
       "tipo": 8,
       "obrigatorio": false,
       "dados": [
-        {"id": "6", "nome": "Arroz", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true},
-        {"id": "10", "nome": "Carne de Panela", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true},
-        {"id": "7", "nome": "Feijão", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "estaSelecionado": true}
+        {"id": "6", "nome": "Arroz", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "permissoesMontagemCardapio": {"sem": false, "pouco": true, "normal": true, "mais": true, "trocar": true}, "estaSelecionado": true},
+        {"id": "10", "nome": "Carne de Panela", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "permissoesMontagemCardapio": {"sem": true, "pouco": true, "normal": true, "mais": true, "trocar": true}, "estaSelecionado": true},
+        {"id": "7", "nome": "Feijão", "valor": "0", "idCategoriaCardapio": "3", "diaSemana": "quinta", "permissoesMontagemCardapio": {"sem": true, "pouco": true, "normal": true, "mais": true, "trocar": true}, "estaSelecionado": true}
       ]
     },
     {

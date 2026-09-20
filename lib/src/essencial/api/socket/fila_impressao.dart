@@ -301,9 +301,10 @@ class FilaImpressao extends ChangeNotifier {
             .toList());
       });
 
-  Future<void> autorizarReenvio(String id, {bool manual = false}) =>
+  Future<void> autorizarReenvio(String id,
+          {bool manual = false, String servidor = ''}) =>
       _alterarEstado(id, EstadoImpressao.aguardandoEnvio, null,
-          retomar: manual);
+          retomar: manual, servidor: servidor);
 
   /// Move para a conexao atual apenas comprovantes que ainda nao chegaram a
   /// ser escritos em nenhum socket ou cuja escrita falhou imediatamente.
@@ -346,7 +347,7 @@ class FilaImpressao extends ChangeNotifier {
       });
 
   Future<void> _alterarEstado(String id, EstadoImpressao estado, String? erro,
-          {bool retomar = false}) =>
+          {bool retomar = false, String servidor = ''}) =>
       _executar(() async {
         await _carregar();
         final index = _itens.indexWhere((e) => e.id == id);
@@ -371,7 +372,9 @@ class FilaImpressao extends ChangeNotifier {
         proximos[index] = ImpressaoPendente(mensagem,
             estado: estado,
             erro: erro,
-            servidor: proximos[index].servidor,
+            servidor: servidor.trim().isEmpty
+                ? proximos[index].servidor
+                : servidor.trim(),
             tentativas: retomar ? 0 : proximos[index].tentativas,
             ultimaTentativa: retomar ? null : proximos[index].ultimaTentativa);
         await _salvar(proximos);

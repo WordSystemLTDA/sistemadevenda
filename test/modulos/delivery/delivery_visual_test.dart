@@ -76,7 +76,11 @@ void main() {
       final tamanhoBotao =
           tester.getSize(find.byKey(const ValueKey('novo-delivery')));
       expect(tamanhoBotao.height, greaterThanOrEqualTo(64));
-      expect(tamanhoBotao.width, greaterThan(150));
+      expect(tamanhoBotao.width, greaterThan(280));
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('novo-delivery'))).dx,
+        closeTo(size.width / 2, 0.1),
+      );
       expect(find.text('Bruno Masson'), findsWidgets);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_$nome');

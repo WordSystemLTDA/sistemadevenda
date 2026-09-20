@@ -185,6 +185,25 @@ void main() {
     expect(restaurada.itens.map((e) => e.id), ['bebida']);
   });
 
+  test('reenvio manual move a pendencia para o servidor atual', () async {
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([mensagem('trocar-manualmente')],
+        servidor: 'cozinha-antiga:9980');
+    await fila.iniciarEnvio('trocar-manualmente', agora: DateTime(2026));
+
+    await fila.autorizarReenvio('trocar-manualmente',
+        manual: true, servidor: 'cozinha-nova:9981');
+
+    final item = fila.itens.single;
+    expect(item.id, 'trocar-manualmente');
+    expect(item.servidor, 'cozinha-nova:9981');
+    expect(item.estado, EstadoImpressao.aguardandoEnvio);
+    expect(item.tentativas, 0);
+    expect(item.ultimaTentativa, isNull);
+    expect(item.dados['retomadaImpressao'], isNotNull);
+  });
+
   test('troca servidor apenas para impressoes que nunca foram enviadas',
       () async {
     final fila = FilaImpressao();

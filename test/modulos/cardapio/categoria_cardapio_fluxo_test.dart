@@ -243,6 +243,17 @@ void main() {
       expect(cards, hasLength(3));
       expect(cards.map((card) => card.item.montagemCardapio!.acao),
           everyElement(AcaoIngredienteCardapio.normal));
+      final cardArroz = find.ancestor(
+          of: find.text('Arroz'),
+          matching: find.byType(CardIngredientesCardapio));
+      expect(find.descendant(of: cardArroz, matching: find.text('Sem')),
+          findsNothing);
+      expect(find.descendant(of: cardArroz, matching: find.text('Pouco')),
+          findsOneWidget);
+      expect(find.descendant(of: cardArroz, matching: find.text('Normal')),
+          findsOneWidget);
+      expect(find.descendant(of: cardArroz, matching: find.text('Mais')),
+          findsOneWidget);
       expect(find.text('Selecione os Adicionais'), findsNothing);
       await capturarTela(tester, 'almoco_montagem_${largura.toInt()}');
 

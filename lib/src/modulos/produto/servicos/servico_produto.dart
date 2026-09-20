@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/modelos/acompanhamentos_modelo.dart';
@@ -94,8 +95,14 @@ class ServicoProduto {
     if (response.data == null) return null;
 
     final produto = Modelowordprodutos.fromMap(response.data);
-    return _completarMontagemCardapioSeNecessario(
+    final produtoCompleto = await _completarMontagemCardapioSeNecessario(
       produto,
+      empresa: empresa,
+      idUsuario: idUsuario,
+      baseGarcom: response.requestOptions.baseUrl,
+    );
+    return _completarPermissoesMontagemCardapio(
+      produtoCompleto,
       empresa: empresa,
       idUsuario: idUsuario,
       baseGarcom: response.requestOptions.baseUrl,
@@ -160,6 +167,104 @@ class ServicoProduto {
       ...extrasDesktop,
     ];
     return produto;
+  }
+
+  Future<Modelowordprodutos> _completarPermissoesMontagemCardapio(
+    Modelowordprodutos produto, {
+    required String empresa,
+    required String idUsuario,
+    required String baseGarcom,
+  }) async {
+    final grupos =
+        (produto.opcoesPacotes ?? []).where(_grupoEhMontagemCardapio).toList();
+    final ingredientes = grupos
+        .expand((grupo) => grupo.dados ?? const <ModeloDadosOpcoesPacotes>[])
+        .toList();
+    if (ingredientes.isEmpty ||
+        ingredientes
+            .every((item) => item.permissoesMontagemCardapio.isNotEmpty)) {
+      return produto;
+    }
+
+    final categoria = ingredientes
+        .map((item) => item.idCategoriaCardapio)
+        .whereType<String>()
+        .where(_idCardapioValido)
+        .firstOrNull;
+    final diaSemana = ingredientes
+        .map((item) => item.diaSemana)
+        .whereType<String>()
+        .where((dia) => dia.trim().isNotEmpty)
+        .firstOrNull;
+    final baseDesktop = _baseDesktop(baseGarcom);
+    if (categoria == null || diaSemana == null || baseDesktop == null) {
+      return produto;
+    }
+
+    try {
+      final response = await dio.cliente.get(
+        'cardapio/vincular_cardapio/listar_ingredientes_dia.php',
+        queryParameters: {
+          'empresa': empresa,
+          'id_usuario': idUsuario,
+          'id_categoria_cardapio': categoria,
+          'dia_semana': diaSemana,
+        },
+        options: Options(extra: {
+          'semCache': true,
+          'servidorFixo': baseDesktop,
+        }),
+      );
+      final resposta = response.data;
+      final lista = resposta is Map ? resposta['ingredientes'] : null;
+      if (lista is! List) return produto;
+
+      final permissoesPorIngrediente = <String, Map<String, bool>>{};
+      for (final bruto in lista) {
+        if (bruto is! Map) continue;
+        final mapa = Map<String, dynamic>.from(bruto);
+        final id = (mapa['idIngredienteCardapio'] ??
+                mapa['id_ingrediente_cardapio'] ??
+                mapa['id'])
+            ?.toString();
+        if (id == null || id.isEmpty) continue;
+        permissoesPorIngrediente[id] = {
+          'sem': _permissaoAtiva(mapa['permitirSem'] ?? mapa['permitir_sem']),
+          'pouco':
+              _permissaoAtiva(mapa['permitirPouco'] ?? mapa['permitir_pouco']),
+          'normal': _permissaoAtiva(
+              mapa['permitirNormal'] ?? mapa['permitir_normal']),
+          'mais':
+              _permissaoAtiva(mapa['permitirMais'] ?? mapa['permitir_mais']),
+          'trocar': _permissaoAtiva(
+              mapa['permitirTrocar'] ?? mapa['permitir_trocar']),
+        };
+      }
+
+      for (final grupo in grupos) {
+        final dados = grupo.dados;
+        if (dados == null) continue;
+        for (var i = 0; i < dados.length; i++) {
+          if (dados[i].permissoesMontagemCardapio.isNotEmpty) continue;
+          final permissoes = permissoesPorIngrediente[dados[i].id];
+          if (permissoes == null) continue;
+          dados[i] = ModeloDadosOpcoesPacotes.fromMap({
+            ...dados[i].toMap(),
+            'permissoesMontagemCardapio': permissoes,
+          });
+        }
+      }
+    } catch (_) {
+      return produto;
+    }
+    return produto;
+  }
+
+  bool _permissaoAtiva(Object? valor) {
+    if (valor == null) return true;
+    if (valor is bool) return valor;
+    final texto = valor.toString().trim().toLowerCase();
+    return texto == 'sim' || texto == '1' || texto == 'true';
   }
 
   bool _grupoEhMontagemCardapio(ModeloOpcoesPacotes grupo) =>
