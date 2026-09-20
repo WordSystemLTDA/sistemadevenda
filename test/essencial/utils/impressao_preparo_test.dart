@@ -299,6 +299,15 @@ void main() {
               idCategoriaCardapio: '9',
               montagemCardapio: const MontagemIngredienteCardapio(
                 nomeOriginal: 'Arroz',
+                acao: AcaoIngredienteCardapio.normal,
+              ),
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Feijao',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Feijao',
                 acao: AcaoIngredienteCardapio.pouco,
               ),
             ),
@@ -316,8 +325,38 @@ void main() {
     expect(montagem['id'], 12);
     expect(montagem['tipo'], 8);
     expect(montagem['titulo'], 'Ingredientes do Cardápio');
-    expect((montagem['dados'] as List).single['montagemCardapio']['acao'],
-        'pouco');
+    final ingredientes = montagem['dados'] as List;
+    expect(ingredientes, hasLength(1));
+    expect(ingredientes.single['nome'], 'Feijao');
+    expect(ingredientes.single['montagemCardapio']['acao'], 'pouco');
+    expect(jsonEncode(dados), isNot(contains('Arroz')));
+  });
+
+  test('preparo omite grupo de cardapio quando tudo esta normal', () {
+    final almoco = produto(nome: 'Almoco Livre')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Arroz',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Arroz',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(almoco);
+
+    expect(dados['opcoesPacotesListaFinal'], isEmpty);
+    expect(jsonEncode(dados), isNot(contains('Ingredientes do Cardápio')));
   });
 
   test('comprovante usa lista final e nao envia catalogo marcado', () {

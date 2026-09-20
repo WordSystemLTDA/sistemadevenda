@@ -280,16 +280,26 @@ void main() {
           dados: [
             ModeloDadosOpcoesPacotes(
               id: '1',
-              nome: 'POUCO Arroz',
+              nome: 'Arroz',
               valor: '0',
               idCategoriaCardapio: '9',
               montagemCardapio: const MontagemIngredienteCardapio(
                 nomeOriginal: 'Arroz',
-                acao: AcaoIngredienteCardapio.pouco,
+                acao: AcaoIngredienteCardapio.normal,
               ),
             ),
             ModeloDadosOpcoesPacotes(
               id: '2',
+              nome: 'SEM Salada',
+              valor: '0',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Salada',
+                acao: AcaoIngredienteCardapio.sem,
+              ),
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '3',
               nome: 'TROCAR Carne de Panela POR 1x Ovo',
               valor: '0',
               idCategoriaCardapio: '9',
@@ -316,11 +326,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ingredientes do Cardápio'), findsOneWidget);
-    expect(find.text('Arroz'), findsOneWidget);
-    expect(find.text('Pouco'), findsOneWidget);
+    expect(find.text('Arroz'), findsNothing);
+    expect(find.text('Salada'), findsOneWidget);
+    expect(find.text('Sem'), findsOneWidget);
     expect(find.text('Carne de Panela'), findsOneWidget);
     expect(find.text('Trocar por 1x Ovo'), findsOneWidget);
-    expect(find.textContaining('POUCO Arroz'), findsNothing);
+    expect(find.textContaining('SEM Salada'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('carrinho oculta grupo de cardapio quando tudo esta normal',
+      (tester) async {
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
+    addTearDown(carrinho.dispose);
+    Modular.init(ModuloCarrinhoTeste(carrinho));
+    final item = produtoCarrinho()
+      ..nome = 'Almoço Livre'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Arroz',
+              valor: '0',
+              idCategoriaCardapio: '9',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Arroz',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+    await carregarCard(
+      tester,
+      item: item,
+      setarQuantidade: (_) async => true,
+    );
+
+    expect(find.byTooltip('Mostrar detalhes'), findsNothing);
+    expect(find.text('Ingredientes do Cardápio'), findsNothing);
+    expect(find.text('Arroz'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -73,19 +73,45 @@ class DadosImpressaoPreparo {
         : _observacaoNasOpcoes(opcoesFinais) ??
             _observacaoNasOpcoes(produto.opcoesPacotes) ??
             '';
-    dados['opcoesPacotes'] = opcoesFinais == null
-        ? _opcoesSemObservacao(produto.opcoesPacotes)?.map(_opcao).toList()
-        : null;
-    dados['opcoesPacotesListaFinal'] =
-        _opcoesSemObservacao(opcoesFinais)?.map(_opcao).toList();
+    dados['opcoesPacotes'] =
+        opcoesFinais == null ? _opcoesParaPreparo(produto.opcoesPacotes) : null;
+    dados['opcoesPacotesListaFinal'] = _opcoesParaPreparo(opcoesFinais);
     return dados;
   }
 
-  static List<ModeloOpcoesPacotes>? _opcoesSemObservacao(
+  static List<Map<String, dynamic>>? _opcoesParaPreparo(
     List<ModeloOpcoesPacotes>? opcoes,
   ) {
     if (opcoes == null) return null;
-    return opcoes.where((opcao) => !grupoObservacaoProduto(opcao)).toList();
+    final resultado = <Map<String, dynamic>>[];
+
+    for (final opcao in opcoes) {
+      if (grupoObservacaoProduto(opcao)) continue;
+
+      if (_grupoMontagemCardapio(opcao)) {
+        final alteracoes = (opcao.dados ?? const <ModeloDadosOpcoesPacotes>[])
+            .where((dado) => dado.montagemCardapio?.possuiAlteracao ?? true)
+            .toList();
+        if (alteracoes.isEmpty) continue;
+        resultado.add(_opcao(opcao, dadosFiltrados: alteracoes));
+        continue;
+      }
+
+      resultado.add(_opcao(opcao));
+    }
+
+    return resultado;
+  }
+
+  static bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
+      grupo.tipo == 8 ||
+      (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
+          dado.montagemCardapio != null ||
+          _idCardapioValido(dado.idCategoriaCardapio));
+
+  static bool _idCardapioValido(Object? valor) {
+    final texto = (valor ?? '').toString().trim().toLowerCase();
+    return texto.isNotEmpty && texto != '0' && texto != 'null';
   }
 
   static String? _observacaoNasOpcoes(List<ModeloOpcoesPacotes>? opcoes) {
@@ -99,12 +125,17 @@ class DadosImpressaoPreparo {
     return null;
   }
 
-  static Map<String, dynamic> _opcao(ModeloOpcoesPacotes opcao) {
+  static Map<String, dynamic> _opcao(
+    ModeloOpcoesPacotes opcao, {
+    List<ModeloDadosOpcoesPacotes>? dadosFiltrados,
+  }) {
     final dados = opcao.toMap();
+    final dadosOpcao = dadosFiltrados ?? opcao.dados;
     dados['produtos'] = opcao.produtos?.map(produto).toList();
-    dados['opcoesPacote'] = opcao.opcoesPacote?.map(_opcao).toList();
+    dados['opcoesPacote'] = _opcoesParaPreparo(opcao.opcoesPacote);
+    dados['dados'] = dadosOpcao?.map((item) => item.toMap()).toList();
     if (opcao.id == 10) {
-      dados['dados'] = opcao.dados?.map((sabor) {
+      dados['dados'] = dadosOpcao?.map((sabor) {
         return {
           ...sabor.toMap(),
           'nome': _nomeSabor(

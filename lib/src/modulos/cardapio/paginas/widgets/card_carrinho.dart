@@ -24,6 +24,21 @@ bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
         dado.montagemCardapio != null ||
         _idCardapioValido(dado.idCategoriaCardapio));
 
+List<ModeloDadosOpcoesPacotes> _dadosVisiveisGrupo(
+  ModeloOpcoesPacotes grupo,
+) {
+  final dados = grupo.dados ?? const <ModeloDadosOpcoesPacotes>[];
+  if (!_grupoMontagemCardapio(grupo)) return dados;
+
+  return dados
+      .where((dado) => dado.montagemCardapio?.possuiAlteracao ?? true)
+      .toList();
+}
+
+bool _grupoTemDetalhesVisiveis(ModeloOpcoesPacotes grupo) =>
+    _dadosVisiveisGrupo(grupo).isNotEmpty ||
+    (grupo.produtos?.isNotEmpty ?? false);
+
 class CardCarrinho extends StatefulWidget {
   final Modelowordprodutos item;
   final String idComanda;
@@ -323,6 +338,9 @@ class _CardCarrinhoState extends State<CardCarrinho>
   Widget build(BuildContext context) {
     var item = widget.item;
     final nomeExibicao = _nomeExibicaoItem(item);
+    final opcoesComDetalhes = (item.opcoesPacotesListaFinal ?? [])
+        .where(_grupoTemDetalhesVisiveis)
+        .toList();
 
     return CardConferenciaCarrinho(
       conferido: item.conferidoNoCarrinho,
@@ -365,7 +383,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                               child: Text(item.tamanho,
                                   textAlign: TextAlign.end,
                                   style: const TextStyle(fontSize: 13))),
-                        if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty)
+                        if (opcoesComDetalhes.isNotEmpty)
                           IconButton(
                             tooltip: _isExpanded
                                 ? 'Ocultar detalhes'
@@ -467,23 +485,24 @@ class _CardCarrinhoState extends State<CardCarrinho>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
+                if (opcoesComDetalhes.isNotEmpty) ...[
                   const Divider(height: 1),
                 ],
-                ...(item.opcoesPacotesListaFinal ?? []).map((e) {
+                ...opcoesComDetalhes.map((e) {
+                  final dadosVisiveis = _dadosVisiveisGrupo(e);
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (e.dados != null && e.dados!.isNotEmpty) ...[
+                      if (dadosVisiveis.isNotEmpty) ...[
                         TituloOpcoesCarrinho(item: item, grupo: e),
                         ListView.builder(
                           padding: const EdgeInsets.only(
                               left: 10, top: 5, right: 10, bottom: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: e.dados!.length,
+                          itemCount: dadosVisiveis.length,
                           itemBuilder: (context, index) {
-                            final dado = e.dados![index];
+                            final dado = dadosVisiveis[index];
                             final montagemCardapio = _grupoMontagemCardapio(e);
                             final detalhe = montagemCardapio
                                 ? dado.montagemCardapio?.detalheVisualizacao
@@ -497,7 +516,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                                     _descricaoOpcaoCarrinho(
                                       e.id,
                                       dado,
-                                      e.dados!.length,
+                                      dadosVisiveis.length,
                                       montagemCardapio: montagemCardapio,
                                     ),
                                     style: const TextStyle(fontSize: 15),
@@ -554,7 +573,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                     ],
                   );
                 }),
-                if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty)
+                if (opcoesComDetalhes.isNotEmpty)
                   TotalOpcoesCarrinho(item: item),
               ],
             ),

@@ -29,6 +29,9 @@ class MontagemIngredienteCardapio {
     this.separado = false,
   });
 
+  bool get possuiAlteracao =>
+      acao != AcaoIngredienteCardapio.normal || separado;
+
   MontagemIngredienteCardapio copyWith({
     String? nomeOriginal,
     AcaoIngredienteCardapio? acao,
