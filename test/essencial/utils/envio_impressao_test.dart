@@ -301,4 +301,30 @@ void main() {
     expect(server.filaImpressao.itens.first.estado,
         EstadoImpressao.aguardandoEnvio);
   });
+
+  test('servidor novo assume e envia comprovante ainda nao transmitido',
+      () async {
+    final server = Server()
+      ..hostname = 'cozinha-antiga'
+      ..port = 123;
+    addTearDown(server.dispose);
+    await server.enviarImpressoes([mensagem('trocar-servidor')]);
+
+    final recebidos = <String>[];
+    server
+      ..hostname = 'cozinha-nova'
+      ..port = 456
+      ..connected = true
+      ..channel = CanalTeste(SaidaTeste((data) {
+        recebidos.add(jsonDecode(data as String)['data']['customData']
+            ['idRequisicao'] as String);
+      }));
+
+    await server.processarImpressoesPendentes();
+
+    expect(recebidos, ['trocar-servidor']);
+    expect(server.filaImpressao.itens.single.servidor, 'cozinha-nova:456');
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.semConfirmacao);
+  });
 }

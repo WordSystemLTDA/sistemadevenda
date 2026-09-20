@@ -162,6 +162,7 @@ class Server extends ChangeNotifier {
         }
         return;
       }
+      await _adotarImpressoesNaoEnviadasNoServidorAtual();
       await _reenviarMensagensPendentes();
     } catch (erro, stack) {
       log('Falha na recuperacao automatica da impressao',
@@ -176,6 +177,19 @@ class Server extends ChangeNotifier {
     }
     final empresa = item.dados['idEmpresa']?.toString() ?? '';
     return empresa.isEmpty || empresa == usuarioProvedor.usuario?.empresa;
+  }
+
+  Future<Set<String>> _adotarImpressoesNaoEnviadasNoServidorAtual() async {
+    if (!connected || hostname.isEmpty || port <= 0) return const <String>{};
+    final transferidas = await filaImpressao.transferirNaoEnviadasParaServidor(
+      '$hostname:$port',
+      empresa: usuarioProvedor.usuario?.empresa ?? '',
+    );
+    for (final id in transferidas) {
+      _consultasImpressao.remove(id);
+      _quantidadeConsultas.remove(id);
+    }
+    return transferidas;
   }
 
   Future<void> _enviarImpressoesAguardando() async {
@@ -388,6 +402,13 @@ class Server extends ChangeNotifier {
       _consultasImpressao.clear();
       _tentativaReconexao = 0;
       notifyListeners();
+
+      try {
+        await _adotarImpressoesNaoEnviadasNoServidorAtual();
+      } catch (erro, stack) {
+        log('Falha ao transferir impressoes para o servidor conectado',
+            error: erro, stackTrace: stack);
+      }
 
       unawaited(_enviarHandshakeRede());
       unawaited(_reenviarMensagensPendentes());

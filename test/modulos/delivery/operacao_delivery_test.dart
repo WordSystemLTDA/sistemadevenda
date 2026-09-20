@@ -441,6 +441,11 @@ void main() {
     expect(find.text('Razão social, nome ou celular'), findsOneWidget);
     expect(find.text('Últimos 4 dígitos do celular'), findsOneWidget);
     expect(find.text('Novo Cliente'), findsOneWidget);
+    final camposBusca = find.byType(TextField);
+    expect(tester.getTopLeft(find.byType(FilledButton)).dy,
+        lessThan(tester.getTopLeft(camposBusca.first).dy));
+    expect(tester.getTopLeft(camposBusca.first).dy,
+        lessThan(tester.getTopLeft(camposBusca.last).dy));
     await tester.enterText(find.byType(TextField).last, '3336');
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();

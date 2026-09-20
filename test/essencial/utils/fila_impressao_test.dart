@@ -185,6 +185,42 @@ void main() {
     expect(restaurada.itens.map((e) => e.id), ['bebida']);
   });
 
+  test('troca servidor apenas para impressoes que nunca foram enviadas',
+      () async {
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([
+      mensagem('nao-enviada'),
+      mensagem('sem-confirmacao'),
+      mensagem('falha-no-socket'),
+      jsonEncode({
+        ...jsonDecode(mensagem('outra-empresa')),
+        'idEmpresa': '31',
+      }),
+    ], servidor: 'cozinha-antiga:9980');
+    await fila.iniciarEnvio('sem-confirmacao');
+    await fila.iniciarEnvio('falha-no-socket');
+    await fila.registrarErro('falha-no-socket',
+        'Conexao interrompida. Aguardando recuperacao automatica.');
+
+    final transferidas = await fila
+        .transferirNaoEnviadasParaServidor('cozinha-nova:9980', empresa: '32');
+
+    expect(transferidas, {'nao-enviada', 'falha-no-socket'});
+    expect(fila.itens.firstWhere((item) => item.id == 'nao-enviada').servidor,
+        'cozinha-nova:9980');
+    expect(
+        fila.itens.firstWhere((item) => item.id == 'sem-confirmacao').servidor,
+        'cozinha-antiga:9980');
+    final recuperada =
+        fila.itens.firstWhere((item) => item.id == 'falha-no-socket');
+    expect(recuperada.servidor, 'cozinha-nova:9980');
+    expect(recuperada.estado, EstadoImpressao.aguardandoEnvio);
+    expect(recuperada.tentativas, 0);
+    expect(fila.itens.firstWhere((item) => item.id == 'outra-empresa').servidor,
+        'cozinha-antiga:9980');
+  });
+
   test('migra fila antiga sem reenviar pedidos de resultado desconhecido',
       () async {
     SharedPreferences.setMockInitialValues({

@@ -122,6 +122,18 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (widget.novo != null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _novo,
+                        icon: const Icon(Icons.person_add_alt_1_outlined),
+                        label: Text(widget.rotuloNovo),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   TextField(
                     controller: _texto,
                     autofocus: true,
@@ -155,18 +167,6 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
                         _debounce?.cancel();
                         _listar();
                       },
-                    ),
-                  ],
-                  if (widget.novo != null) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: FilledButton.tonalIcon(
-                        onPressed: _novo,
-                        icon: const Icon(Icons.person_add_alt_1_outlined),
-                        label: Text(widget.rotuloNovo),
-                      ),
                     ),
                   ],
                 ],

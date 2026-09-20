@@ -71,7 +71,12 @@ void main() {
       final p = ProvedorDelivery(s);
       addTearDown(p.dispose);
       await abrir(tester, PaginaDelivery(provedor: p));
-      expect(find.byTooltip('Novo pedido'), findsOneWidget);
+      expect(find.byTooltip('Novo Delivery'), findsOneWidget);
+      expect(find.text('Novo Delivery'), findsOneWidget);
+      final tamanhoBotao =
+          tester.getSize(find.byKey(const ValueKey('novo-delivery')));
+      expect(tamanhoBotao.height, greaterThanOrEqualTo(64));
+      expect(tamanhoBotao.width, greaterThan(150));
       expect(find.text('Bruno Masson'), findsWidgets);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_$nome');

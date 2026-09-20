@@ -305,6 +305,46 @@ class FilaImpressao extends ChangeNotifier {
       _alterarEstado(id, EstadoImpressao.aguardandoEnvio, null,
           retomar: manual);
 
+  /// Move para a conexao atual apenas comprovantes que ainda nao chegaram a
+  /// ser escritos em nenhum socket ou cuja escrita falhou imediatamente.
+  /// Itens sem confirmacao permanecem no servidor de origem para evitar uma
+  /// segunda via acidental.
+  Future<Set<String>> transferirNaoEnviadasParaServidor(String servidor,
+          {String empresa = ''}) =>
+      _executar(() async {
+        await _carregar();
+        final destino = servidor.trim();
+        if (destino.isEmpty) return <String>{};
+
+        final transferidas = <String>{};
+        final proximos = <ImpressaoPendente>[];
+        for (final item in _itens) {
+          final empresaItem = item.dados['idEmpresa']?.toString().trim() ?? '';
+          final pertenceAEmpresa = empresaItem.isEmpty ||
+              (empresa.isNotEmpty && empresaItem == empresa);
+          final falhouAoEscrever = item.estado == EstadoImpressao.erro &&
+              (item.erro ?? '').toLowerCase().contains('conexao interrompida');
+          final podeTransferir =
+              item.estado == EstadoImpressao.aguardandoEnvio ||
+                  falhouAoEscrever;
+          final deveTransferir = podeTransferir &&
+              item.servidor.isNotEmpty &&
+              item.servidor != destino &&
+              pertenceAEmpresa;
+          if (!deveTransferir) {
+            proximos.add(item);
+            continue;
+          }
+          transferidas.add(item.id);
+          proximos.add(ImpressaoPendente(item.mensagem,
+              estado: EstadoImpressao.aguardandoEnvio,
+              servidor: destino,
+              tentativas: 0));
+        }
+        if (transferidas.isNotEmpty) await _salvar(proximos);
+        return transferidas;
+      });
+
   Future<void> _alterarEstado(String id, EstadoImpressao estado, String? erro,
           {bool retomar = false}) =>
       _executar(() async {

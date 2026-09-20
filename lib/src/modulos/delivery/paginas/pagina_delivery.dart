@@ -664,7 +664,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                               TextAlign.center),
                                                       style: FilledButton.styleFrom(
                                                           minimumSize:
-                                                              const Size(0, 52),
+                                                              const Size(0, 60),
                                                           shape: RoundedRectangleBorder(
                                                               borderRadius:
                                                                   BorderRadius
@@ -873,21 +873,24 @@ class _BotaoNovoPedido extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Tooltip(
-      message: 'Novo pedido',
+      message: 'Novo Delivery',
       child: Semantics(
-        label: 'Novo pedido',
+        label: 'Novo Delivery',
         button: true,
         enabled: habilitado,
+        excludeSemantics: true,
         child: Opacity(
           opacity: habilitado ? 1 : .55,
           child: Container(
+            key: const ValueKey('novo-delivery'),
+            constraints: const BoxConstraints(minHeight: 64),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
                   color: cs.primary.withValues(alpha: 0.35),
@@ -898,13 +901,27 @@ class _BotaoNovoPedido extends StatelessWidget {
             ),
             child: Material(
               color: Colors.transparent,
-              shape: const CircleBorder(),
+              borderRadius: BorderRadius.circular(18),
               child: InkWell(
-                customBorder: const CircleBorder(),
+                borderRadius: BorderRadius.circular(18),
                 onTap: habilitado ? onPressed : null,
                 child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Icon(Icons.add_rounded, color: Colors.white, size: 26),
+                  padding: EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                      SizedBox(width: 10),
+                      Text(
+                        'Novo Delivery',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
