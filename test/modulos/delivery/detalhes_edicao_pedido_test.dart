@@ -188,7 +188,7 @@ void main() {
     }
   });
 
-  test('reenvia preparo e comprovante do delivery com pizza completa',
+  test('reenvia preparo completo e comprovante resumido do entregador',
       () async {
     final servidor = imp.ServidorTeste();
     Modular.init(imp.ModuloImpressaoTeste(servidor));
@@ -202,18 +202,18 @@ void main() {
     });
     await ImpressaoDelivery.imprimir(s, servidor, pedido, ambos: true);
     expect(servidor.mensagens.map((m) => m['tipoImpressao']), ['1', '3']);
-    for (final mensagem in servidor.mensagens) {
-      final json = jsonEncode(mensagem['produtos']);
-      for (final texto in [
-        'Catupiry Especial',
-        'Dois Queijos',
-        'Cheddar',
-        'Goiabada',
-        'Milho',
-        'Sem cebola'
-      ]) {
-        expect(json, contains(texto));
-      }
+    final preparo = jsonEncode(servidor.mensagens.first['produtos']);
+    final entregador = jsonEncode(servidor.mensagens.last['produtos']);
+    for (final texto in [
+      'Catupiry Especial',
+      'Dois Queijos',
+      'Cheddar',
+      'Goiabada',
+      'Milho',
+      'Sem cebola'
+    ]) {
+      expect(preparo, contains(texto));
+      expect(entregador, isNot(contains(texto)));
     }
     expect(servidor.mensagens.last['total'], '89.00');
     expect(servidor.mensagens.last['somaValorHistorico'], '88.00');

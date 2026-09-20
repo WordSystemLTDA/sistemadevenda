@@ -226,6 +226,17 @@ class ImpressaoDelivery {
 
   static bool _vazio(Object? valor) => (valor?.toString().trim() ?? '').isEmpty;
 
+  static Map<String, dynamic> _produtoSomenteResumo(
+      Modelowordprodutos produto) {
+    final mapa = produto.toMap();
+    mapa['ingredientes'] = <dynamic>[];
+    mapa['tamanhosPizza'] = null;
+    mapa['opcoesPacotes'] = null;
+    mapa['opcoesPacotesListaFinal'] = null;
+    mapa['observacao'] = null;
+    return mapa;
+  }
+
   static List<String> comprovantes(ServicoDelivery servico,
       PedidoDelivery pedido, List<Modelowordprodutos> produtos,
       {TipoCardapio tipo = TipoCardapio.delivery, ConfigDelivery? config}) {
@@ -242,6 +253,7 @@ class ImpressaoDelivery {
     final comanda = tipo == TipoCardapio.balcao
         ? 'Balcão ${pedido.id}'
         : 'Delivery ${pedido.id}';
+    final somenteResumo = pedido.tipoEntrega == '1';
     return [
       for (final grupo in grupos.entries)
         jsonEncode({
@@ -252,7 +264,11 @@ class ImpressaoDelivery {
           'protocoloImpressao': 2,
           'nomedopc': grupo.key,
           'nomeConexao': usuario?.nome ?? '',
-          'produtos': grupo.value.map((p) => p.toMap()).toList(),
+          'produtos': grupo.value
+              .map((produto) => somenteResumo
+                  ? _produtoSomenteResumo(produto)
+                  : produto.toMap())
+              .toList(),
           'nomelancamento': pedido.pagamentos,
           'somaValorHistorico': pedido.pago.toStringAsFixed(2),
           'comanda': comanda,

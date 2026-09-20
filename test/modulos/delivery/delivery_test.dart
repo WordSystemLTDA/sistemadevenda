@@ -461,7 +461,7 @@ void main() {
     expect(json, contains('MEIA BORDA - (1/2) Cheddar'));
     expect(json, isNot(contains('Catupiry')));
   });
-  test('comprovante do entregador imprime detalhes da pizza', () async {
+  test('comprovante do entregador envia somente o produto normal', () async {
     final servidor = impressao.ServidorTeste();
     final s = ServicoDeliveryTeste();
     final produtoCardapio = impressao.produto(
@@ -488,18 +488,24 @@ void main() {
 
     final mensagem = servidor.mensagens.single;
     final produto = (mensagem['produtos'] as List).single as Map;
-    final opcoes = produto['opcoesPacotesListaFinal'] as List;
-
     expect(mensagem['tipoImpressao'], '3');
     expect(mensagem['nomedopc'], 'COZINHA');
     expect(mensagem['enderecoCliente'], 'Rua das Flores');
     expect(mensagem['numeroCliente'], '123');
-    expect(produto['observacao'], 'Sem cebola');
-    expect(opcoes.map((opcao) => opcao['id']), containsAll([10, 6, 7]));
-    expect(jsonEncode(produto), contains('Calabresa'));
-    expect(jsonEncode(produto), contains('Cheddar'));
-    expect(jsonEncode(produto), contains('Catupiry'));
-    expect(jsonEncode(produto), contains('Milho'));
+    expect(produto['nome'], 'Pizza');
+    expect(produto['observacao'], isNull);
+    expect(produto['ingredientes'], isEmpty);
+    expect(produto['opcoesPacotes'], isNull);
+    expect(produto['opcoesPacotesListaFinal'], isNull);
+    for (final detalhe in [
+      'Sem cebola',
+      'Calabresa',
+      'Cheddar',
+      'Catupiry',
+      'Milho'
+    ]) {
+      expect(jsonEncode(produto), isNot(contains(detalhe)));
+    }
   });
   test('atualizacao falha conserva os pedidos visiveis', () async {
     final s = ServicoDeliveryTeste();
