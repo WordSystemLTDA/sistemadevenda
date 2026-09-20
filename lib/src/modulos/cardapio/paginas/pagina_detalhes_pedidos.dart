@@ -56,6 +56,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
 
   Modeloworddadoscardapio? dados;
   bool carregando = false;
+  bool _reimprimindoPreparo = false;
   String? erroConsulta;
   bool _fechamentoDiretoExibido = false;
   String idComanda = '0';
@@ -92,7 +93,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   }
 
   void _aoReceberEventoSocket() {
-    if (!mounted || carregando) return;
+    if (!mounted || carregando || _reimprimindoPreparo) return;
     listarComandasPedidos();
   }
 
@@ -322,6 +323,80 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     );
   }
 
+  Future<void> _reimprimirComprovantePreparo() async {
+    if (_reimprimindoPreparo || carregando) return;
+
+    final nomeTipo = widget.tipo.nome.toLowerCase();
+    final ok = await _confirmar(
+      titulo: 'Reimprimir comprovante de preparo',
+      mensagem:
+          'Todos os itens atuais da $nomeTipo serão enviados novamente para preparo. Deseja continuar?',
+      corAcao: Theme.of(context).colorScheme.primary,
+      iconeAcao: Icons.print_outlined,
+      labelAcao: 'Reimprimir',
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _reimprimindoPreparo = true);
+    var mensagem = 'Não foi possível reimprimir o comprovante de preparo.';
+    var sucesso = false;
+    try {
+      final atendimento = await servicoCardapio.listarPorId(
+        idComandaPedido,
+        widget.tipo,
+        'Sim',
+        codigoQrcode: widget.codigoQrcode,
+      );
+      final produtos = atendimento.produtos ?? [];
+      if (atendimento.id == null || atendimento.id != idComandaPedido) {
+        mensagem = 'Não foi possível confirmar os dados deste atendimento.';
+      } else if (produtos.isEmpty) {
+        mensagem = 'Não há itens para reimprimir neste atendimento.';
+      } else {
+        final impressoes = Impressao.prepararComprovanteDePedido(
+          produtos: produtos,
+          tipoTela: widget.tipo,
+          tipodeentrega: atendimento.tipodeentrega ?? '',
+          comanda:
+              'REIMPRESSÃO - ${atendimento.nome ?? dados!.nome ?? widget.tipo.nome}',
+          numeroPedido: atendimento.numeroPedido ?? dados!.numeroPedido ?? '',
+          nomeCliente: nomeClienteAtendimento(
+            atendimento.nomeCliente,
+            atendimento.observacaoDoPedido,
+            vazio: '',
+          ),
+          nomeEmpresa: atendimento.nomeEmpresa ?? dados!.nomeEmpresa ?? '',
+          local: widget.tipo == TipoCardapio.mesa
+              ? ''
+              : atendimento.nomeMesa ?? dados!.nomeMesa ?? '',
+        );
+        if (impressoes.isEmpty) {
+          mensagem =
+              'Nenhum item possui uma impressora de preparo configurada.';
+        } else {
+          await _server.enviarImpressoes(impressoes);
+          mensagem = 'Reimpressão do comprovante de preparo solicitada.';
+          sucesso = true;
+        }
+      }
+    } catch (_) {
+      mensagem = 'Não foi possível reimprimir o comprovante de preparo.';
+    } finally {
+      if (mounted) setState(() => _reimprimindoPreparo = false);
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(mensagem),
+        backgroundColor:
+            sucesso ? _corAndamento : Theme.of(context).colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -495,6 +570,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
                         ),
                       ));
                 },
+                onReimprimirPreparo: _reimprimirComprovantePreparo,
                 onEditar: () {
                   if (emFechamento) {
                     _avisoFechamento();
@@ -527,7 +603,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
               ),
             ],
           ),
-          if (carregando)
+          if (carregando || _reimprimindoPreparo)
             Positioned.fill(
               child: ColoredBox(
                 color: cs.scrim.withValues(alpha: 0.4),
@@ -611,6 +687,7 @@ class _AcoesGrid extends StatelessWidget {
   final VoidCallback onAdicionar;
   final VoidCallback onItensRecorrentes;
   final VoidCallback onPedidos;
+  final VoidCallback onReimprimirPreparo;
   final VoidCallback onEditar;
 
   const _AcoesGrid(
@@ -618,6 +695,7 @@ class _AcoesGrid extends StatelessWidget {
       required this.onAdicionar,
       required this.onItensRecorrentes,
       required this.onPedidos,
+      required this.onReimprimirPreparo,
       required this.onEditar});
 
   @override
@@ -642,6 +720,11 @@ class _AcoesGrid extends StatelessWidget {
       for (final acao in [
         (Icons.history_rounded, 'Itens recorrentes', onItensRecorrentes),
         (Icons.receipt_long_outlined, 'Pedidos', onPedidos),
+        (
+          Icons.print_outlined,
+          'Reimprimir comprovante de preparo',
+          onReimprimirPreparo
+        ),
         (Icons.edit_outlined, 'Editar ${tipo.nome}', onEditar),
       ]) ...[
         ListTile(

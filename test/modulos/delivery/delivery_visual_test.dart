@@ -101,6 +101,19 @@ void main() {
         (tester) async {
       final s = ServicoDeliveryTeste();
       await abrir(tester, PaginaNovoDelivery(servico: s));
+      expect(find.text('Novo Cliente'), findsOneWidget);
+      expect(find.text('Novo endereço'), findsOneWidget);
+      expect(tester.getSize(find.byKey(const ValueKey('novo-cliente'))).height,
+          greaterThanOrEqualTo(48));
+      expect(
+          tester
+              .getTopLeft(find.byKey(const ValueKey('selecionar-cliente')))
+              .dy,
+          lessThan(tester
+              .getTopLeft(find.byKey(const ValueKey('novo-cliente')))
+              .dy));
+      expect(tester.getSize(find.byKey(const ValueKey('novo-endereco'))).height,
+          greaterThanOrEqualTo(48));
       await capturarTela(tester, 'delivery_novo_$nome');
       await tester.tap(find.text('Abrir cardápio'));
       await tester.pumpAndSettle();

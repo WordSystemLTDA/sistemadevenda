@@ -1,3 +1,4 @@
+import 'package:app/src/modulos/delivery/modelos/configuracao_endereco_cliente.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
 
@@ -61,12 +62,12 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
   }
 
   Future<void> _carregarPadraoEndereco() async {
-    Map<String, dynamic>? dados;
+    ConfiguracaoEnderecoCliente? configuracao;
     bool? temEnderecoPadrao;
     try {
       final resposta =
           await widget.servico.consultar('config_clientes/listar_cliente.php');
-      dados = _mapaDaResposta(resposta);
+      configuracao = ConfiguracaoEnderecoCliente.fromResposta(resposta);
     } catch (_) {
       // Se a configuracao padrao nao vier, o usuario segue preenchendo manualmente.
     }
@@ -78,25 +79,12 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     } finally {
       if (mounted) {
         setState(() {
-          final configuracao = dados;
           if (configuracao != null) {
-            _preencherSeVazio(
-                'cep', _texto(configuracao, ['padrao_cep', 'padraoCep']));
-            _preencherSeVazio(
-                'cidade',
-                _texto(
-                    configuracao, ['padrao_nome_cidade', 'padraoNomeCidade']));
-            _preencherSeVazio(
-                'uf', _texto(configuracao, ['padrao_estado', 'padraoEstado']));
-            _bloquearCidade = _texto(configuracao, [
-              'bloquear_edicao_cidade',
-              'bloquearEdicaoCidade'
-            ]).toLowerCase().trim().startsWith('sim');
-            final requeridoEndereco = _texto(configuracao,
-                ['requerido_endereco', 'requeridoEndereco', 'endereco']);
-            if (requeridoEndereco.isNotEmpty) {
-              _enderecoObrigatorio = _valorAtivo(requeridoEndereco);
-            }
+            _preencherSeVazio('cep', configuracao.cep);
+            _preencherSeVazio('cidade', configuracao.cidade);
+            _preencherSeVazio('uf', configuracao.uf);
+            _bloquearCidade = configuracao.bloquearCidade;
+            _enderecoObrigatorio = configuracao.enderecoObrigatorio;
           }
           if (temEnderecoPadrao == false) _padrao = true;
           _carregandoPadrao = false;
@@ -125,22 +113,6 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
   bool _valorAtivo(Object? valor) {
     final texto = valor?.toString().trim().toLowerCase() ?? '';
     return texto == 'sim' || texto == 's' || texto == '1' || texto == 'true';
-  }
-
-  Map<String, dynamic>? _mapaDaResposta(dynamic resposta) {
-    if (resposta is Map) return Map<String, dynamic>.from(resposta);
-    if (resposta is List && resposta.isNotEmpty && resposta.first is Map) {
-      return Map<String, dynamic>.from(resposta.first as Map);
-    }
-    return null;
-  }
-
-  String _texto(Map<String, dynamic> dados, List<String> chaves) {
-    for (final chave in chaves) {
-      final valor = dados[chave]?.toString().trim() ?? '';
-      if (valor.isNotEmpty) return valor;
-    }
-    return '';
   }
 
   String _valor(Map<String, dynamic> dados, List<String> chaves) {

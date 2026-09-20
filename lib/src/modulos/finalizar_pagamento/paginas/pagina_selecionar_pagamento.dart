@@ -1,5 +1,6 @@
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
@@ -25,11 +26,13 @@ class PaginaSelecionarPagamento extends StatefulWidget {
   });
 
   @override
-  State<PaginaSelecionarPagamento> createState() => _PaginaSelecionarPagamentoState();
+  State<PaginaSelecionarPagamento> createState() =>
+      _PaginaSelecionarPagamentoState();
 }
 
 class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   var provedor = Modular.get<ProvedorFinalizarPagamento>();
+  final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   String pagamentoSelecionado = '1';
 
   bool carregando = true;
@@ -49,22 +52,29 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   }
 
   void listarBancos() async {
-    await context.read<ServicoFinalizarPagamento>().listarBancos().then((dadosBancos) {
+    await context
+        .read<ServicoFinalizarPagamento>()
+        .listarBancos()
+        .then((dadosBancos) {
       if (mounted) {
         if (dadosBancos.ativoBancoPix == 'Sim') {
           bancos.add(BancoPixModelo(id: '5', nome: dadosBancos.nomeBancoPix));
         }
         if (dadosBancos.ativoBancoOpcao2 == 'Sim') {
-          bancos.add(BancoPixModelo(id: '6', nome: dadosBancos.nomeBancoOpcao2));
+          bancos
+              .add(BancoPixModelo(id: '6', nome: dadosBancos.nomeBancoOpcao2));
         }
         if (dadosBancos.ativoBancoOpcao3 == 'Sim') {
-          bancos.add(BancoPixModelo(id: '7', nome: dadosBancos.nomeBancoOpcao3));
+          bancos
+              .add(BancoPixModelo(id: '7', nome: dadosBancos.nomeBancoOpcao3));
         }
         if (dadosBancos.ativoBancoOpcao4 == 'Sim') {
-          bancos.add(BancoPixModelo(id: '8', nome: dadosBancos.nomeBancoOpcao4));
+          bancos
+              .add(BancoPixModelo(id: '8', nome: dadosBancos.nomeBancoOpcao4));
         }
         if (dadosBancos.ativoBancoOpcao5 == 'Sim') {
-          bancos.add(BancoPixModelo(id: '9', nome: dadosBancos.nomeBancoOpcao5));
+          bancos
+              .add(BancoPixModelo(id: '9', nome: dadosBancos.nomeBancoOpcao5));
         }
       }
     });
@@ -74,14 +84,25 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
     });
   }
 
+  void _pagarDepois() {
+    if (provedorCardapio.tipo != TipoCardapio.delivery) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    Navigator.popUntil(
+      context,
+      (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final ehDelivery = provedorCardapio.tipo == TipoCardapio.delivery;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
+      backgroundColor:
+          isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F7FB),
       appBar: AppBar(
         backgroundColor: cs.inversePrimary,
         elevation: 0,
@@ -93,72 +114,109 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 color: cs.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.payments_outlined, size: 18, color: cs.onPrimaryContainer),
+              child: Icon(Icons.payments_outlined,
+                  size: 18, color: cs.onPrimaryContainer),
             ),
             const SizedBox(width: 10),
-            const Text('Forma de Pagamento', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Forma de Pagamento',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Container(
-          width: double.infinity,
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: cs.primary.withValues(alpha: 0.35),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (ehDelivery) ...[
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('pagar-depois-delivery'),
+                  onPressed: _pagarDepois,
+                  icon: const Icon(Icons.schedule_rounded, size: 20),
+                  label: const Text(
+                    'Pagar depois',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor:
+                        isDark ? const Color(0xFF1F2937) : Colors.white,
+                    foregroundColor: cs.primary,
+                    side: BorderSide(color: cs.primary.withValues(alpha: 0.45)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
               ),
+              const SizedBox(height: 8),
             ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PaginaFinalizarFormaPagamento(
-                      totalReceber: widget.totalReceber,
-                      desconto: widget.desconto,
-                      acrescimo: widget.acrescimo,
-                      descontoPercentual: widget.descontoPercentual,
-                      totalPedido: widget.totalPedido,
-                      pagamentoselecionado: pagamentoSelecionado,
+            Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PaginaFinalizarFormaPagamento(
+                          totalReceber: widget.totalReceber,
+                          desconto: widget.desconto,
+                          acrescimo: widget.acrescimo,
+                          descontoPercentual: widget.descontoPercentual,
+                          totalPedido: widget.totalPedido,
+                          pagamentoselecionado: pagamentoSelecionado,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Avançar',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3)),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded,
+                            color: Colors.white, size: 20),
+                      ],
                     ),
                   ),
-                );
-              },
-              child: const Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Avançar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                  ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
       body: Visibility(
         visible: carregando == false,
         replacement: const Center(child: CircularProgressIndicator()),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 90),
+          padding: EdgeInsets.fromLTRB(12, 12, 12, ehDelivery ? 150 : 90),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -167,7 +225,10 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [cs.primaryContainer, cs.primaryContainer.withValues(alpha: 0.55)],
+                    colors: [
+                      cs.primaryContainer,
+                      cs.primaryContainer.withValues(alpha: 0.55)
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -183,15 +244,19 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 child: Row(
                   children: [
                     SearchAnchor(
-                      builder: (BuildContext context, SearchController controller) {
+                      builder:
+                          (BuildContext context, SearchController controller) {
                         return IconButton.filledTonal(
                           onPressed: () => controller.openView(),
                           icon: const Icon(Icons.history_rounded, size: 18),
                           tooltip: 'Histórico de pagamentos',
                         );
                       },
-                      suggestionsBuilder: (BuildContext context, SearchController controller) async {
-                        final res = await Modular.get<ServicoBalcao>().listarHistoricoPagamentos(provedor.idVenda, TipoCardapio.balcao);
+                      suggestionsBuilder: (BuildContext context,
+                          SearchController controller) async {
+                        final res = await Modular.get<ServicoBalcao>()
+                            .listarHistoricoPagamentos(
+                                provedor.idVenda, TipoCardapio.balcao);
                         return [
                           ...res.map(
                             (e) => Card(
@@ -199,15 +264,19 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                               margin: const EdgeInsets.all(5.0),
                               child: InkWell(
                                 onTap: () {},
-                                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(8)),
                                 child: ListTile(
                                   leading: const Icon(Icons.person_2_outlined),
                                   title: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(e.pagamento),
-                                      Text("Valor ${double.parse(e.valor).obterReal()}"),
-                                      Text("Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                      Text(
+                                          "Valor ${double.parse(e.valor).obterReal()}"),
+                                      Text(
+                                          "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
                                     ],
                                   ),
                                   subtitle: Text('ID: ${e.id}'),
@@ -230,7 +299,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.4,
-                              color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                              color:
+                                  cs.onPrimaryContainer.withValues(alpha: 0.7),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -254,7 +324,9 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 children: [
                   Icon(Icons.credit_card_rounded, size: 18, color: cs.primary),
                   const SizedBox(width: 8),
-                  const Text('Selecione o método', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  const Text('Selecione o método',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -274,7 +346,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                     return _BancoCard(
                       banco: item,
                       selecionado: selecionado,
-                      onTap: () => setState(() => pagamentoSelecionado = item.id),
+                      onTap: () =>
+                          setState(() => pagamentoSelecionado = item.id),
                     );
                   },
                 ),
@@ -331,10 +404,16 @@ class _BancoCard extends StatelessWidget {
                 end: Alignment.bottomRight,
               )
             : null,
-        color: selecionado ? null : (isDark ? const Color(0xFF1F2937) : Colors.white),
+        color: selecionado
+            ? null
+            : (isDark ? const Color(0xFF1F2937) : Colors.white),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: selecionado ? Colors.transparent : (isDark ? Colors.white.withValues(alpha: 0.06) : cs.outline.withValues(alpha: 0.15)),
+          color: selecionado
+              ? Colors.transparent
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : cs.outline.withValues(alpha: 0.15)),
         ),
         boxShadow: selecionado
             ? [
@@ -364,7 +443,9 @@ class _BancoCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: selecionado ? Colors.white.withValues(alpha: 0.18) : cs.primaryContainer.withValues(alpha: 0.4),
+                    color: selecionado
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : cs.primaryContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -385,7 +466,9 @@ class _BancoCard extends StatelessWidget {
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1,
-                          color: selecionado ? Colors.white.withValues(alpha: 0.8) : cs.onSurface.withValues(alpha: 0.55),
+                          color: selecionado
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : cs.onSurface.withValues(alpha: 0.55),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -402,7 +485,9 @@ class _BancoCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (selecionado) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+                if (selecionado)
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.white, size: 22),
               ],
             ),
           ),

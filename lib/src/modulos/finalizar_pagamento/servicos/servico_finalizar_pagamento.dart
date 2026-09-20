@@ -154,19 +154,39 @@ class ServicoFinalizarPagamento {
   }
 
   Future<ModeloDatasVendas?> listarDatasVendas() async {
-    final empresa = usuarioProvedor.usuario!.empresa;
+    final empresa = usuarioProvedor.usuario?.empresa?.trim() ?? '';
+    if (empresa.isEmpty) return ModeloDatasVendas.padrao();
 
-    final url = '/tela_nfe_saida/listar_datas_vendas.php?empresa=$empresa';
+    const url = '/tela_nfe_saida/listar_datas_vendas.php';
 
     try {
-      final response = await dio.cliente.get(url);
-
-      var jsonData = response.data;
-
-      return ModeloDatasVendas.fromMap(jsonData);
-    } on DioException catch (_) {
-      return null;
+      final response = await dio.cliente.get(
+        url,
+        queryParameters: {'empresa': empresa},
+        options: Options(extra: const {'semCache': true}),
+      );
+      return _datasVendasDaResposta(response.data);
+    } on DioException {
+      // Sem rede, a segunda chamada permite que o cache offline responda.
+      try {
+        final response = await dio.cliente.get(
+          url,
+          queryParameters: {'empresa': empresa},
+        );
+        return _datasVendasDaResposta(response.data);
+      } catch (_) {
+        return ModeloDatasVendas.padrao();
+      }
+    } catch (_) {
+      return ModeloDatasVendas.padrao();
     }
+  }
+
+  ModeloDatasVendas _datasVendasDaResposta(Object? dados) {
+    if (dados is Map) {
+      return ModeloDatasVendas.fromMap(Map<String, dynamic>.from(dados));
+    }
+    return ModeloDatasVendas.padrao();
   }
 
   Future<BancosAtivosPdvModelo> listarBancos() async {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 Future<Map<String, dynamic>?> buscarDelivery(
   BuildContext context, {
@@ -7,10 +8,19 @@ Future<Map<String, dynamic>?> buscarDelivery(
   required Future<List<Map<String, dynamic>>> Function(String) buscar,
   required String Function(Map<String, dynamic>) nome,
   String Function(Map<String, dynamic>)? detalhe,
+  Future<Map<String, dynamic>?> Function(BuildContext)? novo,
+  String rotuloNovo = 'Novo Cliente',
+  bool buscarCelular = false,
 }) =>
     Navigator.of(context).push<Map<String, dynamic>>(MaterialPageRoute(
       builder: (_) => _BuscaDelivery(
-          titulo: titulo, buscar: buscar, nome: nome, detalhe: detalhe),
+          titulo: titulo,
+          buscar: buscar,
+          nome: nome,
+          detalhe: detalhe,
+          novo: novo,
+          rotuloNovo: rotuloNovo,
+          buscarCelular: buscarCelular),
     ));
 
 class _BuscaDelivery extends StatefulWidget {
@@ -18,17 +28,24 @@ class _BuscaDelivery extends StatefulWidget {
   final Future<List<Map<String, dynamic>>> Function(String) buscar;
   final String Function(Map<String, dynamic>) nome;
   final String Function(Map<String, dynamic>)? detalhe;
+  final Future<Map<String, dynamic>?> Function(BuildContext)? novo;
+  final String rotuloNovo;
+  final bool buscarCelular;
   const _BuscaDelivery(
       {required this.titulo,
       required this.buscar,
       required this.nome,
-      this.detalhe});
+      this.detalhe,
+      this.novo,
+      required this.rotuloNovo,
+      required this.buscarCelular});
   @override
   State<_BuscaDelivery> createState() => _BuscaDeliveryState();
 }
 
 class _BuscaDeliveryState extends State<_BuscaDelivery> {
   final _texto = TextEditingController();
+  final _celular = TextEditingController();
   List<Map<String, dynamic>> _dados = [];
   Timer? _debounce;
   int _versao = 0;
@@ -46,7 +63,7 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
       _erro = false;
     });
     try {
-      final dados = await widget.buscar(_texto.text.trim());
+      final dados = await widget.buscar(_termoBusca);
       if (!mounted || versao != _versao) return;
       setState(() => _dados = dados);
     } catch (_) {
@@ -56,10 +73,41 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
     }
   }
 
+  String get _termoBusca {
+    final celular = _celular.text.trim();
+    if (celular.isNotEmpty) return celular;
+    return _texto.text.trim();
+  }
+
+  void _agendarBusca() {
+    ++_versao;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), _listar);
+  }
+
+  void _alterarTexto(String _) {
+    if (_celular.text.isNotEmpty) _celular.clear();
+    _agendarBusca();
+  }
+
+  void _alterarCelular(String _) {
+    if (_texto.text.isNotEmpty) _texto.clear();
+    _agendarBusca();
+  }
+
+  Future<void> _novo() async {
+    final novo = widget.novo;
+    if (novo == null) return;
+    final resultado = await novo(context);
+    if (!mounted || resultado == null) return;
+    Navigator.pop(context, resultado);
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
     _texto.dispose();
+    _celular.dispose();
     super.dispose();
   }
 
@@ -71,23 +119,57 @@ class _BuscaDeliveryState extends State<_BuscaDelivery> {
         body: Column(children: [
           Padding(
               padding: const EdgeInsets.all(16),
-              child: TextField(
-                controller: _texto,
-                autofocus: true,
-                textInputAction: TextInputAction.search,
-                decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Pesquisar',
-                    border: OutlineInputBorder()),
-                onChanged: (_) {
-                  ++_versao;
-                  _debounce?.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 300), _listar);
-                },
-                onSubmitted: (_) {
-                  _debounce?.cancel();
-                  _listar();
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _texto,
+                    autofocus: true,
+                    textInputAction: TextInputAction.search,
+                    decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Razão social, nome ou celular',
+                        border: OutlineInputBorder()),
+                    onChanged: _alterarTexto,
+                    onSubmitted: (_) {
+                      _debounce?.cancel();
+                      _listar();
+                    },
+                  ),
+                  if (widget.buscarCelular) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _celular,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.search,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
+                      decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.phone_iphone_outlined),
+                          hintText: 'Últimos 4 dígitos do celular',
+                          border: OutlineInputBorder()),
+                      onChanged: _alterarCelular,
+                      onSubmitted: (_) {
+                        _debounce?.cancel();
+                        _listar();
+                      },
+                    ),
+                  ],
+                  if (widget.novo != null) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _novo,
+                        icon: const Icon(Icons.person_add_alt_1_outlined),
+                        label: Text(widget.rotuloNovo),
+                      ),
+                    ),
+                  ],
+                ],
               )),
           if (_carregando) const LinearProgressIndicator(),
           if (_erro)

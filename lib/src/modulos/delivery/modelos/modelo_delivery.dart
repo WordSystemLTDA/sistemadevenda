@@ -85,14 +85,33 @@ class PedidoDelivery {
       !cancelado && origem.impressao != '3';
   double get taxaEntrega =>
       tipoEntrega == '1' ? valorDelivery(dados['valordaentrega']) : 0;
+
+  bool get _temEnderecoDoPedido {
+    final enderecoPedido = texto('enderecoCliente').trim();
+    return enderecoPedido.isNotEmpty &&
+        !enderecoPedido.toLowerCase().startsWith('sem ');
+  }
+
+  String _campoEndereco(String chave, Object? alternativa) =>
+      _temEnderecoDoPedido
+          ? texto(chave).trim()
+          : alternativa?.toString().trim() ?? '';
+
   PedidoDelivery comEndereco(Modeloworddadoscardapio cardapio) =>
       PedidoDelivery.fromMap({
         ...dados,
-        'enderecoCliente': cardapio.enderecoCliente,
-        'numeroCliente': cardapio.numeroCliente,
-        'complementoCliente': cardapio.complementoCliente,
-        'bairroCliente': cardapio.bairroCliente,
-        'cidadeCliente': cardapio.cidadeCliente,
+        // O pedido guarda o endereco escolhido para esta entrega. Os dados do
+        // cardapio sao apenas fallback para respostas antigas da API.
+        'enderecoCliente':
+            _campoEndereco('enderecoCliente', cardapio.enderecoCliente),
+        'numeroCliente':
+            _campoEndereco('numeroCliente', cardapio.numeroCliente),
+        'complementoCliente':
+            _campoEndereco('complementoCliente', cardapio.complementoCliente),
+        'bairroCliente':
+            _campoEndereco('bairroCliente', cardapio.bairroCliente),
+        'cidadeCliente':
+            _campoEndereco('cidadeCliente', cardapio.cidadeCliente),
       });
   PedidoDelivery comEtapa(String etapa) =>
       PedidoDelivery.fromMap({...dados, 'idopcoescarrossel': etapa});

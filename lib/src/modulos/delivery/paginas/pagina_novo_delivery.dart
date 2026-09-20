@@ -108,14 +108,19 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     ].join('\n');
   }
 
+  Future<Map<String, dynamic>?> _cadastrarCliente(BuildContext context) async {
+      final res = await Navigator.push<Map<String, dynamic>>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => InserirCliente(servicoEndereco: widget.servico)));
+    if (res == null) return null;
+    return {'id': res['idcliente'], 'nome': res['nomecliente']};
+  }
+
   Future<void> _selecionarCliente({bool novo = false}) async {
     Map<String, dynamic>? resultado;
     if (novo) {
-      final res = await Navigator.push<Map<String, dynamic>>(
-          context, MaterialPageRoute(builder: (_) => const InserirCliente()));
-      if (res != null) {
-        resultado = {'id': res['idcliente'], 'nome': res['nomecliente']};
-      }
+      resultado = await _cadastrarCliente(context);
     } else {
       resultado = await buscarDelivery(
         context,
@@ -126,6 +131,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                 .toList(),
         nome: _nomeClienteBusca,
         detalhe: _detalheClienteBusca,
+        novo: _cadastrarCliente,
+        buscarCelular: true,
       );
     }
     if (!mounted || resultado == null) return;
@@ -316,19 +323,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                               ]
                             ]),
                             const SizedBox(height: 20),
-                            Row(children: [
-                              Expanded(
-                                  child:
-                                      _titulo('Cliente', Icons.person_outline)),
-                              IconButton(
-                                  tooltip: 'Cadastrar cliente',
-                                  onPressed: _salvando
-                                      ? null
-                                      : () => _selecionarCliente(novo: true),
-                                  icon: const Icon(
-                                      Icons.person_add_alt_1_outlined))
-                            ]),
+                            _titulo('Cliente', Icons.person_outline),
                             ListTile(
+                                key: const ValueKey('selecionar-cliente'),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                     side: BorderSide(color: cs.outlineVariant)),
@@ -342,6 +339,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                     _telefone.isEmpty ? null : Text(_telefone),
                                 trailing: const Icon(Icons.chevron_right),
                                 onTap: _salvando ? null : _selecionarCliente),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: FilledButton.tonalIcon(
+                                    key: const ValueKey('novo-cliente'),
+                                    onPressed: _salvando
+                                        ? null
+                                        : () => _selecionarCliente(novo: true),
+                                    icon: const Icon(
+                                        Icons.person_add_alt_1_outlined),
+                                    label: const Text('Novo Cliente'))),
                             if (_tipo == '1') ...[
                               const SizedBox(height: 20),
                               Row(children: [
@@ -354,14 +363,19 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                         ? null
                                         : _carregarEnderecos,
                                     icon: const Icon(Icons.refresh)),
-                                IconButton(
-                                    tooltip: 'Cadastrar endereço',
-                                    onPressed: _cliente == '0' || _salvando
-                                        ? null
-                                        : () => _abrirEndereco(),
-                                    icon: const Icon(
-                                        Icons.add_location_alt_outlined)),
                               ]),
+                              SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: FilledButton.tonalIcon(
+                                      key: const ValueKey('novo-endereco'),
+                                      onPressed: _cliente == '0' || _salvando
+                                          ? null
+                                          : () => _abrirEndereco(),
+                                      icon: const Icon(
+                                          Icons.add_location_alt_outlined),
+                                      label: const Text('Novo endereço'))),
+                              const SizedBox(height: 8),
                               if (_carregando)
                                 const LinearProgressIndicator()
                               else if (_enderecos.isEmpty)

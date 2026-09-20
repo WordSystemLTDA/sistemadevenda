@@ -177,6 +177,29 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('delivery permite pagar depois sem registrar pagamento',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaSelecionarPagamento), findsOneWidget);
+    expect(find.text('Pagar depois'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('pagar-depois-delivery')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaSelecionarPagamento), findsNothing);
+    expect(m.delivery.envios, 1);
+    expect(m.delivery.pagamentos, 0);
+    expect(m.delivery.conclusoes, 0);
+    expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('pagamento integral do delivery nao espera consulta final lenta',
       (tester) async {
     final m = await abrir(tester);

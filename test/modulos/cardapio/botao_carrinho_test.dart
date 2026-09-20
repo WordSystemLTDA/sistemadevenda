@@ -4,6 +4,40 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('fica largo sem acao principal e compacto ao lado dela',
+      (tester) async {
+    final expandido = ValueNotifier(true);
+    addTearDown(expandido.dispose);
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: ValueListenableBuilder(
+            valueListenable: expandido,
+            builder: (context, value, _) => BotaoCarrinho(
+              quantidade: 0,
+              numeroAdicoes: 0,
+              expandido: value,
+              onPressed: () {},
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    final botao = find.byType(FloatingActionButton);
+    expect(tester.getSize(botao), const Size(144, 56));
+    expect(find.text('Carrinho'), findsOneWidget);
+
+    expandido.value = false;
+    await tester.pump();
+
+    expect(tester.getSize(botao), const Size(56, 56));
+    expect(find.text('Carrinho'), findsNothing);
+    expect(find.byIcon(Icons.shopping_cart_outlined), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final reduzirAnimacoes in [false, true]) {
     testWidgets(
         'confirma inclusao e respeita reduzir animacoes: $reduzirAnimacoes',

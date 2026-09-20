@@ -437,6 +437,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                         quantidade:
                             carrinhoProvedor.itensCarrinho.quantidadeTotal,
                         numeroAdicoes: carrinhoProvedor.numeroAdicoes,
+                        expandido: !temPizza,
                         onPressed: () {
                           if (_carregandoDados) return;
                           Navigator.of(context).push(MaterialPageRoute(

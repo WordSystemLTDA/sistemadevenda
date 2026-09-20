@@ -396,7 +396,10 @@ void main() {
     )));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Editar endereço'));
+    final editarEndereco = find.byTooltip('Editar endereço');
+    await tester.ensureVisible(editarEndereco);
+    await tester.pumpAndSettle();
+    await tester.tap(editarEndereco);
     await tester.pumpAndSettle();
 
     expect(find.text('Editar endereço'), findsOneWidget);
@@ -405,6 +408,7 @@ void main() {
   });
 
   testWidgets('busca de cliente mostra celular na lista', (tester) async {
+    String? termoBuscado;
     await tester.pumpWidget(MaterialApp(
         home: Builder(
             builder: (context) => Scaffold(
@@ -412,20 +416,35 @@ void main() {
                     onPressed: () => buscarDelivery(
                           context,
                           titulo: 'Selecionar cliente',
-                          buscar: (_) async => [
-                            {
-                              'id': '4',
-                              'nome_puro': 'Bruno Masson',
-                              'celular': '44999213336',
-                            }
-                          ],
+                          buscar: (termo) async {
+                            termoBuscado = termo;
+                            return [
+                              {
+                                'id': '4',
+                                'nome_puro': 'Bruno Masson',
+                                'celular': '44999213336',
+                              }
+                            ];
+                          },
                           nome: (e) => e['nome_puro'].toString(),
                           detalhe: (e) => 'Celular: ${e['celular']}',
+                          novo: (_) async => {
+                            'id': '9',
+                            'nome': 'Cliente Novo',
+                          },
+                          buscarCelular: true,
                         ),
                     child: const Text('Buscar cliente'))))));
 
     await tester.tap(find.text('Buscar cliente'));
     await tester.pumpAndSettle();
+    expect(find.text('Razão social, nome ou celular'), findsOneWidget);
+    expect(find.text('Últimos 4 dígitos do celular'), findsOneWidget);
+    expect(find.text('Novo Cliente'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, '3336');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(termoBuscado, '3336');
     expect(find.text('Bruno Masson'), findsOneWidget);
     expect(find.text('Celular: 44999213336'), findsOneWidget);
     expect(tester.takeException(), isNull);

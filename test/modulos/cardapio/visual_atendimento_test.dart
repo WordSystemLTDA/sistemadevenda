@@ -277,6 +277,33 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('seleciona mesa apos abertura do teclado da busca',
+      (tester) async {
+    await abrir(
+        tester,
+        const PaginaComandaDesocupada(
+            id: '4', nome: 'Comanda: 4', tipo: TipoCardapio.comanda));
+
+    await tester.tap(find.text('Selecionar mesa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mesa: 3'), findsOneWidget);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Mesa: 3'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mesa: 3'), findsOneWidget);
+    tester.view.resetViewInsets();
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Abrir comanda'));
+    await tester.pumpAndSettle();
+    expect(modulo.comandas.abertura, ['4', '3', '0', '']);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'editar mesa abre formulario correto e atualiza detalhes ao voltar',
       (tester) async {

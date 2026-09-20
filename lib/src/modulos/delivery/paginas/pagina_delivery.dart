@@ -664,7 +664,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                               TextAlign.center),
                                                       style: FilledButton.styleFrom(
                                                           minimumSize:
-                                                              const Size(0, 44),
+                                                              const Size(0, 52),
                                                           shape: RoundedRectangleBorder(
                                                               borderRadius:
                                                                   BorderRadius

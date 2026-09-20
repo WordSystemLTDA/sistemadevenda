@@ -7,12 +7,14 @@ import 'package:flutter/material.dart';
 class BotaoCarrinho extends StatefulWidget {
   final num quantidade;
   final int numeroAdicoes;
+  final bool expandido;
   final VoidCallback onPressed;
 
   const BotaoCarrinho({
     super.key,
     required this.quantidade,
     required this.numeroAdicoes,
+    this.expandido = false,
     required this.onPressed,
   });
 
@@ -83,29 +85,60 @@ class _BotaoCarrinhoState extends State<BotaoCarrinho>
             ),
             position: badges.BadgePosition.topEnd(end: -2, top: -2),
             child: SizedBox(
-              width: 56,
+              width: widget.expandido ? 144 : 56,
               height: 56,
-              child: FloatingActionButton(
-                heroTag: null,
-                tooltip: 'Carrinho',
-                backgroundColor:
-                    _adicionado ? Colors.green.shade700 : cs.primary,
-                foregroundColor: _adicionado ? Colors.white : cs.onPrimary,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                onPressed: widget.onPressed,
-                child: AnimatedSwitcher(
-                  duration: duracao,
-                  child: Icon(
-                    _adicionado
-                        ? Icons.check_rounded
-                        : Icons.shopping_cart_outlined,
-                    key: ValueKey(_adicionado),
-                    size: 24,
-                  ),
-                ),
-              ),
+              child: widget.expandido
+                  ? FloatingActionButton.extended(
+                      heroTag: null,
+                      tooltip: 'Abrir carrinho',
+                      backgroundColor:
+                          _adicionado ? Colors.green.shade700 : cs.primary,
+                      foregroundColor:
+                          _adicionado ? Colors.white : cs.onPrimary,
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      onPressed: widget.onPressed,
+                      icon: AnimatedSwitcher(
+                        duration: duracao,
+                        child: Icon(
+                          _adicionado
+                              ? Icons.check_rounded
+                              : Icons.shopping_cart_outlined,
+                          key: ValueKey(_adicionado),
+                          size: 24,
+                        ),
+                      ),
+                      label: Text(
+                        _adicionado ? 'Adicionado' : 'Carrinho',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )
+                  : FloatingActionButton(
+                      heroTag: null,
+                      tooltip: 'Abrir carrinho',
+                      backgroundColor:
+                          _adicionado ? Colors.green.shade700 : cs.primary,
+                      foregroundColor:
+                          _adicionado ? Colors.white : cs.onPrimary,
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      onPressed: widget.onPressed,
+                      child: AnimatedSwitcher(
+                        duration: duracao,
+                        child: Icon(
+                          _adicionado
+                              ? Icons.check_rounded
+                              : Icons.shopping_cart_outlined,
+                          key: ValueKey(_adicionado),
+                          size: 24,
+                        ),
+                      ),
+                    ),
             ),
           ),
         ),

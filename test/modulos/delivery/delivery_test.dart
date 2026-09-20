@@ -284,12 +284,18 @@ void main() {
         s.inserirProdutos('25', [impressao.produto()]), throwsStateError);
     expect(s.gravacoes, isEmpty);
   });
-  test('comprovante usa endereco de entrega e destino de cada computador', () {
+  test('comprovante preserva o endereco escolhido no pedido', () {
     final s = ServicoDeliveryTeste();
-    final pedido = pedidoTeste().comEndereco(Modeloworddadoscardapio(
-        enderecoCliente: 'Rua correta',
-        numeroCliente: '5',
-        bairroCliente: 'Bairro correto'));
+    final pedido = pedidoTeste(campos: {
+      'enderecoCliente': 'Rua selecionada',
+      'numeroCliente': '133',
+      'complementoCliente': '',
+      'bairroCliente': 'Lobato',
+    }).comEndereco(Modeloworddadoscardapio(
+        enderecoCliente: 'Rua padrao incorreta',
+        numeroCliente: '169',
+        complementoCliente: 'Complemento padrao incorreto',
+        bairroCliente: 'Jardim Italia'));
     final mensagens = ImpressaoDelivery.comprovantes(s, pedido, [
       impressao.produto(computador: 'CAIXA'),
       impressao.produto(computador: 'COZINHA')
@@ -298,11 +304,28 @@ void main() {
     final json = jsonDecode(mensagens.first) as Map;
     expect(json['tipo'], 'Delivery');
     expect(json['tipoImpressao'], '3');
-    expect(json['bairroCliente'], 'Bairro correto');
+    expect(json['enderecoCliente'], 'Rua selecionada');
+    expect(json['numeroCliente'], '133');
+    expect(json['complementoCliente'], isEmpty);
+    expect(json['bairroCliente'], 'Lobato');
     expect(json['nomedopc'], 'CAIXA');
     expect(json['numeroPedido'], '14');
     expect(json['comanda'], 'Delivery 25');
     expect(json['protocoloImpressao'], 2);
+  });
+  test('comprovante aceita endereco do cardapio como fallback', () {
+    final pedido = pedidoTeste(campos: {
+      'enderecoCliente': '',
+      'numeroCliente': '',
+      'bairroCliente': '',
+    }).comEndereco(Modeloworddadoscardapio(
+        enderecoCliente: 'Rua da API antiga',
+        numeroCliente: '5',
+        bairroCliente: 'Centro'));
+
+    expect(pedido.texto('enderecoCliente'), 'Rua da API antiga');
+    expect(pedido.texto('numeroCliente'), '5');
+    expect(pedido.texto('bairroCliente'), 'Centro');
   });
   test('comprovante envia configuracao do numero operacional ao servidor', () {
     final s = ServicoDeliveryTeste();
@@ -437,6 +460,8 @@ void main() {
 
     expect(mensagem['tipoImpressao'], '3');
     expect(mensagem['nomedopc'], 'COZINHA');
+    expect(mensagem['enderecoCliente'], 'Rua das Flores');
+    expect(mensagem['numeroCliente'], '123');
     expect(produto['observacao'], 'Sem cebola');
     expect(opcoes.map((opcao) => opcao['id']), containsAll([10, 6, 7]));
     expect(jsonEncode(produto), contains('Calabresa'));

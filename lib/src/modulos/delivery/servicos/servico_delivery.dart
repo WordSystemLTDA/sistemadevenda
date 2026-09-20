@@ -11,6 +11,7 @@ import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
@@ -263,7 +264,9 @@ class ServicoDelivery {
       {double? valorOriginal,
       double? valorAPagar,
       double? desconto,
-      double? acrescimo}) async {
+      double? acrescimo,
+      String? dataLancamento,
+      List<ParcelasModelo> parcelasLista = const []}) async {
     final totalOriginal = valorOriginal ?? pedido.total;
     final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||
@@ -274,11 +277,27 @@ class ServicoDelivery {
         !recebido.isFinite) {
       throw StateError('Confira o valor do pagamento.');
     }
-    final troco =
-        forma == 1 && recebido > totalAPagar ? recebido - totalAPagar : 0.0;
     if (forma != 1 && recebido > totalAPagar + 0.009) {
       throw StateError('Valor maior que o saldo do pedido.');
     }
+    if (forma == 2 && (int.tryParse(pedido.cliente) ?? 0) <= 0) {
+      throw StateError(
+          'Selecione um cliente para lançar o pagamento em conta.');
+    }
+    final vencimento =
+        dataLancamento ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final parcelasParaEnvio = forma == 2
+        ? [
+            for (final parcela in parcelasLista)
+              jsonEncode({
+                'parcela': parcela.parcela,
+                'valor': parcela.valorController?.text ?? parcela.valor,
+                'vencimento': parcela.vencimento,
+              }),
+          ]
+        : const <String>[];
+    final troco =
+        forma == 1 && recebido > totalAPagar ? recebido - totalAPagar : 0.0;
     await salvar('delivery/pagar_pedido.php', {
       'id': pedido.id,
       'id_comanda': '0',
@@ -291,9 +310,9 @@ class ServicoDelivery {
       'pagamentoSelecionado': forma,
       'quantidadePessoas': 1,
       'subTotal': totalOriginal.toStringAsFixed(2),
-      'dataLancamento': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      'parcelas': '1',
-      'parcelasLista': [],
+      'dataLancamento': vencimento,
+      'parcelas': forma == 2 ? parcelasParaEnvio.length.toString() : '1',
+      'parcelasLista': parcelasParaEnvio,
       'tipo': 'Delivery',
       'valortroco': troco.toStringAsFixed(2),
       'valor_da_entrega': pedido.texto('valordaentrega', '0'),

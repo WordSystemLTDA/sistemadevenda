@@ -40,7 +40,9 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   final ServicoCardapio servicoCardapio = Modular.get<ServicoCardapio>();
 
   final _mesaDestinoSearchController = TextEditingController();
+  final _mesaDestinoViewController = SearchController();
   final _clienteSearchController = TextEditingController();
+  final _clienteViewController = SearchController();
   final _obsconstroller = TextEditingController();
   final _observacaoFocusNode = FocusNode();
 
@@ -77,7 +79,9 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
   @override
   void dispose() {
     _mesaDestinoSearchController.dispose();
+    _mesaDestinoViewController.dispose();
     _clienteSearchController.dispose();
+    _clienteViewController.dispose();
     _obsconstroller.dispose();
     _observacaoFocusNode.dispose();
     super.dispose();
@@ -325,6 +329,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                               opcional: true),
                           const SizedBox(height: 8),
                           _SeletorGenerico(
+                            controller: _mesaDestinoViewController,
                             valor: mesaSelecionada,
                             hint: 'Selecionar mesa',
                             iconePreenchido: Icons.table_restaurant_rounded,
@@ -354,6 +359,7 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
                             opcional: true),
                         const SizedBox(height: 8),
                         _SeletorCliente(
+                          controller: _clienteViewController,
                           valor: clienteSelecionado,
                           listar: _state.listarClientes,
                           onSelecionar: (id, nome) {
@@ -469,6 +475,7 @@ class _LabelCampo extends StatelessWidget {
 }
 
 class _SeletorGenerico extends StatelessWidget {
+  final SearchController controller;
   final String valor;
   final String hint;
   final IconData iconePreenchido;
@@ -479,6 +486,7 @@ class _SeletorGenerico extends StatelessWidget {
   final VoidCallback onLimpar;
 
   const _SeletorGenerico({
+    required this.controller,
     required this.valor,
     required this.hint,
     required this.iconePreenchido,
@@ -493,7 +501,6 @@ class _SeletorGenerico extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final temSelecionado = valor.isNotEmpty;
-    final controller = SearchController();
 
     return SearchAnchor(
       searchController: controller,
@@ -566,8 +573,8 @@ class _SeletorGenerico extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    c.closeView('');
                     onSelecionar(e['id'].toString(), e['nome'].toString());
+                    c.closeView('');
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -615,6 +622,7 @@ class _SeletorGenerico extends StatelessWidget {
 }
 
 class _SeletorCliente extends StatelessWidget {
+  final SearchController controller;
   final String valor;
   final Future<List<dynamic>> Function(String) listar;
   final void Function(String id, String nome) onSelecionar;
@@ -622,6 +630,7 @@ class _SeletorCliente extends StatelessWidget {
   final VoidCallback onLimpar;
 
   const _SeletorCliente({
+    required this.controller,
     required this.valor,
     required this.listar,
     required this.onSelecionar,
@@ -633,7 +642,6 @@ class _SeletorCliente extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final temSelecionado = valor.isNotEmpty;
-    final controller = SearchController();
 
     return SearchAnchor(
       searchController: controller,
@@ -732,8 +740,8 @@ class _SeletorCliente extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    c.closeView('');
                     onSelecionar(e['id'].toString(), e['nome'].toString());
+                    c.closeView('');
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
