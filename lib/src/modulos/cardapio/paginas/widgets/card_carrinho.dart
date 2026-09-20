@@ -341,6 +341,12 @@ class _CardCarrinhoState extends State<CardCarrinho>
     final opcoesComDetalhes = (item.opcoesPacotesListaFinal ?? [])
         .where(_grupoTemDetalhesVisiveis)
         .toList();
+    final produtoCardapio = _idCardapioValido(item.idCategoriaCardapio) ||
+        (item.opcoesPacotesListaFinal ?? const <ModeloOpcoesPacotes>[])
+            .any(_grupoMontagemCardapio);
+    final observacao = item.observacao?.trim() ?? '';
+    final temDetalhes = opcoesComDetalhes.isNotEmpty ||
+        (produtoCardapio && observacao.isNotEmpty);
 
     return CardConferenciaCarrinho(
       conferido: item.conferidoNoCarrinho,
@@ -383,7 +389,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                               child: Text(item.tamanho,
                                   textAlign: TextAlign.end,
                                   style: const TextStyle(fontSize: 13))),
-                        if (opcoesComDetalhes.isNotEmpty)
+                        if (temDetalhes)
                           IconButton(
                             tooltip: _isExpanded
                                 ? 'Ocultar detalhes'
@@ -460,7 +466,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                         ),
                       ],
                     ),
-                    if (item.observacao?.trim().isNotEmpty == true) ...[
+                    if (!produtoCardapio &&
+                        item.observacao?.trim().isNotEmpty == true) ...[
                       const SizedBox(height: 6),
                       Text(item.observacao!,
                           style: TextStyle(
@@ -485,11 +492,14 @@ class _CardCarrinhoState extends State<CardCarrinho>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (opcoesComDetalhes.isNotEmpty) ...[
+                if (temDetalhes) ...[
                   const Divider(height: 1),
                 ],
                 ...opcoesComDetalhes.map((e) {
                   final dadosVisiveis = _dadosVisiveisGrupo(e);
+                  final montagemCardapio = _grupoMontagemCardapio(e);
+                  final adicionaisCardapio =
+                      produtoCardapio && (e.tipo == 3 || e.id == 7);
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -503,39 +513,50 @@ class _CardCarrinhoState extends State<CardCarrinho>
                           itemCount: dadosVisiveis.length,
                           itemBuilder: (context, index) {
                             final dado = dadosVisiveis[index];
-                            final montagemCardapio = _grupoMontagemCardapio(e);
                             final detalhe = montagemCardapio
                                 ? dado.alteracaoMontagemCardapio
                                     ?.detalheVisualizacao
                                 : null;
 
                             return LinhaValor(
-                              descricao: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _descricaoOpcaoCarrinho(
-                                      e.id,
-                                      dado,
-                                      dadosVisiveis.length,
-                                      montagemCardapio: montagemCardapio,
-                                    ),
-                                    style: const TextStyle(fontSize: 15),
-                                  ),
-                                  if (detalhe != null) ...[
-                                    const SizedBox(height: 2),
+                              descricao: Padding(
+                                padding: EdgeInsets.only(
+                                    left: montagemCardapio || adicionaisCardapio
+                                        ? 16
+                                        : 0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      detalhe,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
-                                        fontWeight: FontWeight.w600,
+                                      _descricaoOpcaoCarrinho(
+                                        e.id,
+                                        dado,
+                                        dadosVisiveis.length,
+                                        montagemCardapio: montagemCardapio,
+                                        quantidadeEntreParenteses:
+                                            adicionaisCardapio,
                                       ),
+                                      style: const TextStyle(fontSize: 15),
                                     ),
+                                    if (detalhe != null) ...[
+                                      const SizedBox(height: 2),
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 10),
+                                        child: Text(
+                                          detalhe,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                               valor: Text(
                                 (double.parse(dado.valor ?? '0') *
@@ -574,8 +595,22 @@ class _CardCarrinhoState extends State<CardCarrinho>
                     ],
                   );
                 }),
-                if (opcoesComDetalhes.isNotEmpty)
-                  TotalOpcoesCarrinho(item: item),
+                if (produtoCardapio && observacao.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
+                    child: Text(
+                      'Observação:',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(26, 2, 10, 6),
+                    child:
+                        Text(observacao, style: const TextStyle(fontSize: 15)),
+                  ),
+                ],
+                if (temDetalhes) TotalOpcoesCarrinho(item: item),
               ],
             ),
           ),
@@ -609,6 +644,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     ModeloDadosOpcoesPacotes dado,
     int totalDados, {
     bool montagemCardapio = false,
+    bool quantidadeEntreParenteses = false,
   }) {
     if (montagemCardapio) {
       return dado.alteracaoMontagemCardapio?.nomeOriginal ?? dado.nome;
@@ -624,7 +660,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
       return ValoresPizza.nomeBordaCarrinho(dado, totalDados);
     }
 
-    return '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}';
+    return '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? quantidadeEntreParenteses ? '(${dado.quantidade}x) ' : '${dado.quantidade}x ' : ''}${dado.nome}';
   }
 
   String _nomeSaborPizza(ModeloDadosOpcoesPacotes sabor, String? proporcao) {

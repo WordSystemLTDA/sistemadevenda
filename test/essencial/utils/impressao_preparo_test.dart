@@ -324,7 +324,7 @@ void main() {
     expect(opcoes, hasLength(1));
     expect(montagem['id'], 12);
     expect(montagem['tipo'], 8);
-    expect(montagem['titulo'], 'INGREDIENTES DO CARDAPIO');
+    expect(montagem['titulo'], 'Cardápio');
     final ingredientes = montagem['dados'] as List;
     expect(ingredientes, hasLength(1));
     expect(ingredientes.single['nome'], 'Feijao');

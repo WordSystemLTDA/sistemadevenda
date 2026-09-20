@@ -28,8 +28,17 @@ class TituloOpcoesCarrinho extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final montagemCardapio = _grupoMontagemCardapio(grupo);
+    final produtoCardapio = _idCardapioValido(item.idCategoriaCardapio) ||
+        (item.opcoesPacotesListaFinal ?? const <ModeloOpcoesPacotes>[])
+            .any(_grupoMontagemCardapio);
+    final adicionaisCardapio =
+        produtoCardapio && (grupo.tipo == 3 || grupo.id == 7);
     final titulo = _TituloGrupoCarrinho(
-      titulo: montagemCardapio ? 'Ingredientes do Cardápio' : grupo.titulo,
+      titulo: montagemCardapio
+          ? 'Cardápio:'
+          : adicionaisCardapio
+              ? 'Adicionais:'
+              : grupo.titulo,
       meiaBorda: grupo.id == 6 &&
           (grupo.dados ?? []).any((dado) => dado.somenteMetadeBorda),
     );

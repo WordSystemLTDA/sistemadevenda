@@ -135,7 +135,7 @@ class DadosImpressaoPreparo {
     final dadosOpcao = dadosFiltrados ?? opcao.dados;
     final montagemCardapio = _grupoMontagemCardapio(opcao);
     if (montagemCardapio) {
-      dados['titulo'] = 'INGREDIENTES DO CARDAPIO';
+      dados['titulo'] = 'Cardápio';
     }
     dados['produtos'] = opcao.produtos?.map(produto).toList();
     dados['opcoesPacote'] = _opcoesParaPreparo(opcao.opcoesPacote);

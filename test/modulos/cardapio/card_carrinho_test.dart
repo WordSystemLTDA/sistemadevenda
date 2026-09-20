@@ -271,6 +271,7 @@ void main() {
       ..codigo = '151'
       ..valorVenda = '45.00'
       ..idCategoriaCardapio = '9'
+      ..observacao = 'Tirar a Cebola'
       ..opcoesPacotesListaFinal = [
         ModeloOpcoesPacotes(
           id: 12,
@@ -311,6 +312,20 @@ void main() {
             ),
           ],
         ),
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          tipo: 3,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '4',
+              nome: 'Ovo',
+              valor: '1',
+              quantidade: 1,
+            ),
+          ],
+        ),
       ];
 
     await carregarCard(
@@ -325,12 +340,16 @@ void main() {
     await tester.tap(find.byTooltip('Mostrar detalhes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ingredientes do Cardápio'), findsOneWidget);
+    expect(find.text('Cardápio:'), findsOneWidget);
     expect(find.text('Arroz'), findsNothing);
     expect(find.text('Salada'), findsOneWidget);
     expect(find.text('Sem'), findsOneWidget);
     expect(find.text('Carne de Panela'), findsOneWidget);
     expect(find.text('Trocar por 1x Ovo'), findsOneWidget);
+    expect(find.text('Adicionais:'), findsOneWidget);
+    expect(find.text('(1x) Ovo'), findsOneWidget);
+    expect(find.text('Observação:'), findsOneWidget);
+    expect(find.text('Tirar a Cebola'), findsOneWidget);
     expect(find.textContaining('SEM Salada'), findsNothing);
     expect(tester.takeException(), isNull);
   });
