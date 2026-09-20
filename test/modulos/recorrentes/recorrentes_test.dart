@@ -70,8 +70,10 @@ class Api extends Fake implements ServicosRecorrentes {
 class _Delivery extends Fake implements ServicoDelivery {}
 
 void main() {
-  testWidgets('novo recorrente exige cliente tambem na retirada', (tester) async {
-    await tester.pumpWidget(MaterialApp(home: PaginaNovoDelivery(servico: _Delivery(), recorrente: true)));
+  testWidgets('novo recorrente exige cliente tambem na retirada',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(servico: _Delivery(), recorrente: true)));
     await tester.pumpAndSettle();
     expect(find.text('Novo Recorrente'), findsOneWidget);
     expect(find.text('No local'), findsNothing);
@@ -90,8 +92,10 @@ void main() {
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
         .load();
   });
-  test('menu desativado por padrao e habilitado somente por Sim', () {
-    expect(ModeloConfigBigchef.fromMap({}).recorrentesHabilitados, isFalse);
+  test('opcoes ficam desativadas por padrao e habilitadas somente por Sim', () {
+    final configPadrao = ModeloConfigBigchef.fromMap({});
+    expect(configPadrao.recorrentesHabilitados, isFalse);
+    expect(configPadrao.balcaoRapidoHabilitado, isFalse);
     expect(
         ModeloConfigBigchef.fromMap({'clientecompedidosdecorrentes': 'Sim'})
             .recorrentesHabilitados,
@@ -100,6 +104,10 @@ void main() {
         ModeloConfigBigchef.fromMap({'cliente_com_pedidos_decorrentes': 'Não'})
             .recorrentesHabilitados,
         isFalse);
+    expect(
+        ModeloConfigBigchef.fromMap({'balcao_rapido': 'Sim'})
+            .balcaoRapidoHabilitado,
+        isTrue);
   });
   test('valida dias e horario da empresa', () {
     expect(const ConfiguracaoRecorrencia(dias: []).erro, isNotNull);

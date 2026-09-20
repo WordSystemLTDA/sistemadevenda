@@ -11,7 +11,10 @@ bool _sim(String valor) => valor.trim().toLowerCase() == 'sim';
 
 class ModeloConfigBigchef {
   final String clientecompedidosdecorrentes;
-  bool get recorrentesHabilitados => clientecompedidosdecorrentes.trim().toLowerCase() == 'sim';
+  bool get recorrentesHabilitados =>
+      clientecompedidosdecorrentes.trim().toLowerCase() == 'sim';
+  final String balcaorapido;
+  bool get balcaoRapidoHabilitado => _sim(balcaorapido);
   final String abrircomandadireto;
   final String abrirmesadireto;
   final String agrupamentodeitenscomanda;
@@ -46,6 +49,7 @@ class ModeloConfigBigchef {
 
   ModeloConfigBigchef({
     this.clientecompedidosdecorrentes = 'Não',
+    this.balcaorapido = 'Não',
     required this.abrircomandadireto,
     required this.abrirmesadireto,
     required this.agrupamentodeitenscomanda,
@@ -112,6 +116,7 @@ class ModeloConfigBigchef {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'clientecompedidosdecorrentes': clientecompedidosdecorrentes,
+      'balcaorapido': balcaorapido,
       'abrircomandadireto': abrircomandadireto,
       'abrirmesadireto': abrirmesadireto,
       'agrupamentodeitenscomanda': agrupamentodeitenscomanda,
@@ -157,7 +162,12 @@ class ModeloConfigBigchef {
 
   factory ModeloConfigBigchef.fromMap(Map<String, dynamic> map) {
     return ModeloConfigBigchef(
-      clientecompedidosdecorrentes: (map['clientecompedidosdecorrentes'] ?? map['cliente_com_pedidos_decorrentes'] ?? 'Não').toString(),
+      clientecompedidosdecorrentes: (map['clientecompedidosdecorrentes'] ??
+              map['cliente_com_pedidos_decorrentes'] ??
+              'Não')
+          .toString(),
+      balcaorapido:
+          (map['balcaorapido'] ?? map['balcao_rapido'] ?? 'Não').toString(),
       abrircomandadireto: _texto(map, 'abrircomandadireto'),
       abrirmesadireto: _texto(map, 'abrirmesadireto'),
       agrupamentodeitenscomanda: _texto(map, 'agrupamentodeitenscomanda'),
