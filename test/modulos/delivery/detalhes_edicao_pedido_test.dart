@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/detalhes_pedido_venda.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_edicao_pedido.dart';
@@ -12,6 +13,7 @@ import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../essencial/utils/impressao_preparo_test.dart' as imp;
 import '../../suporte/captura_tela.dart';
@@ -59,8 +61,33 @@ Modelowordprodutos pizzaDetalhada({String item = '99'}) => imp.produto(
         ]),
   ];
 
+Modelowordprodutos almocoComAlteracoes() =>
+    imp.produto(id: '436', nome: 'Almoço Livre', computador: 'COZINHA')
+      ..idCategoriaCardapio = '3'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            for (final (id, nome) in [('20', 'Feijão'), ('21', 'Frango')])
+              ModeloDadosOpcoesPacotes(
+                id: id,
+                nome: nome,
+                idCategoriaCardapio: '3',
+                montagemCardapio: MontagemIngredienteCardapio(
+                  nomeOriginal: nome,
+                  acao: AcaoIngredienteCardapio.sem,
+                ),
+              ),
+          ],
+        ),
+      ];
+
 void main() {
   setUpAll(carregarFontesDeTeste);
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('prepara exibicao sem mudar o produto original nem duplicar valores',
       () {
@@ -89,6 +116,58 @@ void main() {
     ]);
     expect(resultado.map((p) => p.observacao), ['Primeira', 'Segunda']);
     expect(resultado.map((p) => p.versaoEdicao), ['versao-1', 'versao-2']);
+  });
+
+  test('recupera montagem local quando API antiga devolve opcoes vazias', () {
+    final produtoApi =
+        imp.produto(id: '436', nome: 'Almoço Livre', computador: 'COZINHA')
+          ..iditensvenda = '900'
+          ..valorVenda = '45.00'
+          ..opcoesPacotesListaFinal = [];
+    final local = almocoComAlteracoes()..valorVenda = '999.00';
+    final pedido = pedidoTeste(campos: {
+      'produtos': [produtoApi.toMap()]
+    });
+
+    final resultado = ImpressaoDelivery.produtosComDetalhesDoPedido(
+      pedido,
+      [produtoApi],
+      detalhesLocais: [local],
+    ).single;
+
+    expect(resultado.valorVenda, '45.00');
+    expect(resultado.destinoDeImpressao?.nomedopc, 'COZINHA');
+    final ingredientes = resultado.opcoesPacotesListaFinal!.single.dados!;
+    expect(ingredientes.map((item) => item.nome), ['Feijão', 'Frango']);
+    expect(
+      ingredientes.map((item) => item.montagemCardapio?.acao),
+      everyElement(AcaoIngredienteCardapio.sem),
+    );
+  });
+
+  test('preparo usa montagem local quando as duas consultas omitem detalhes',
+      () async {
+    final servidor = imp.ServidorTeste();
+    Modular.init(imp.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+    final produtoApi =
+        imp.produto(id: '436', nome: 'Almoço Livre', computador: 'COZINHA')
+          ..iditensvenda = '900'
+          ..opcoesPacotesListaFinal = [];
+    final s = ServicoDeliveryTeste()
+      ..produtosCardapio = [produtoApi]
+      ..produtosLocais = [almocoComAlteracoes()]
+      ..atual = pedidoTeste(campos: {
+        'produtos': [produtoApi.toMap()]
+      });
+
+    await ImpressaoDelivery.imprimir(s, servidor, s.atual, preparo: true);
+
+    final produto =
+        ((servidor.mensagens.single['produtos'] as List).single as Map);
+    expect(jsonEncode(produto), contains('Feijão'));
+    expect(jsonEncode(produto), contains('Frango'));
+    expect(jsonEncode(produto), contains('sem'));
   });
 
   test('edicao envia ID do item e versao, sem alterar pagamentos', () async {

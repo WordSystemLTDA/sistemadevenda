@@ -55,13 +55,17 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
     try {
       final resultados = await Future.wait([
         widget.servico.pedido(widget.id),
-        widget.servico.dadosCardapio(widget.id)
+        widget.servico.dadosCardapio(widget.id),
+        widget.servico.detalhesLocais(widget.id),
       ]);
       if (!mounted) return;
       final dados = resultados[1] as Modeloworddadoscardapio;
       final pedido = resultados[0] as PedidoDelivery;
       final produtos = ImpressaoDelivery.produtosComDetalhesDoPedido(
-          pedido, dados.produtos ?? []);
+        pedido,
+        dados.produtos ?? [],
+        detalhesLocais: resultados[2] as List<Modelowordprodutos>,
+      );
       dados.produtos = produtos;
       final atualizado = PedidoDelivery.fromMap({
         ...pedido.dados,

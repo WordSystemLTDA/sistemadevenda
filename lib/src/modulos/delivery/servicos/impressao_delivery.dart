@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -13,10 +14,19 @@ class ImpressaoDelivery {
       {bool preparo = false,
       bool ambos = false,
       ConfigDelivery? config}) async {
-    final dados = await servico.dadosCardapio(pedido.id);
+    final resultados = await Future.wait([
+      servico.dadosCardapio(pedido.id),
+      servico.detalhesLocais(pedido.id),
+    ]);
+    final dados = resultados[0] as Modeloworddadoscardapio;
+    final detalhesLocais = resultados[1] as List<Modelowordprodutos>;
     final configuracao = config ?? await _configuracao(servico);
     final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
-    final produtos = produtosComDetalhesDoPedido(pedido, produtosBase);
+    final produtos = produtosComDetalhesDoPedido(
+      pedido,
+      produtosBase,
+      detalhesLocais: detalhesLocais,
+    );
     if (produtos.isEmpty) {
       throw StateError('O pedido não tem produtos para impressão.');
     }
@@ -50,9 +60,33 @@ class ImpressaoDelivery {
 
   static List<Modelowordprodutos> produtosComDetalhesDoPedido(
     PedidoDelivery pedido,
-    List<Modelowordprodutos> produtosBase,
-  ) {
+    List<Modelowordprodutos> produtosBase, {
+    List<Modelowordprodutos> detalhesLocais = const [],
+  }) {
     final detalhados = pedido.produtos;
+    final produtosApi = _mesclarLista(produtosBase, detalhados);
+    if (detalhesLocais.isEmpty) return produtosApi;
+    if (produtosApi.isEmpty) return detalhesLocais;
+
+    final usados = <int>{};
+    return [
+      for (var indice = 0; indice < produtosApi.length; indice++)
+        _preencherDetalhesLocais(
+          produtosApi[indice],
+          _produtoDetalhadoCorrespondente(
+            produtosApi[indice],
+            detalhesLocais,
+            usados,
+            indice,
+          ),
+        ),
+    ];
+  }
+
+  static List<Modelowordprodutos> _mesclarLista(
+    List<Modelowordprodutos> produtosBase,
+    List<Modelowordprodutos> detalhados,
+  ) {
     if (detalhados.isEmpty) return produtosBase;
     if (produtosBase.isEmpty) return detalhados;
 
@@ -69,6 +103,32 @@ class ImpressaoDelivery {
           ),
         ),
     ];
+  }
+
+  static Modelowordprodutos _preencherDetalhesLocais(
+    Modelowordprodutos base,
+    Modelowordprodutos? local,
+  ) {
+    if (local == null) return base;
+    final mapa = base.toMap();
+    final mapaLocal = local.toMap();
+    for (final campo in [
+      'opcoesPacotesListaFinal',
+      'opcoesPacotes',
+      'ingredientes',
+    ]) {
+      if (!_listaTemItens(mapa[campo]) && _listaTemItens(mapaLocal[campo])) {
+        mapa[campo] = mapaLocal[campo];
+      }
+    }
+    if (_vazio(mapa['observacao']) && !_vazio(mapaLocal['observacao'])) {
+      mapa['observacao'] = mapaLocal['observacao'];
+    }
+    if (_vazio(mapa['idCategoriaCardapio']) &&
+        !_vazio(mapaLocal['idCategoriaCardapio'])) {
+      mapa['idCategoriaCardapio'] = mapaLocal['idCategoriaCardapio'];
+    }
+    return Modelowordprodutos.fromMap(mapa);
   }
 
   static Modelowordprodutos _mesclarProdutoDetalhado(
@@ -132,7 +192,6 @@ class ImpressaoDelivery {
           return detalhados[i];
         }
       }
-      return null;
     }
     final chavesBase = _chavesProduto(base);
     for (var i = 0; i < detalhados.length; i++) {

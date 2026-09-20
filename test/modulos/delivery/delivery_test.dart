@@ -78,6 +78,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
   ConfigDelivery config =
       const ConfigDelivery(receberNoFinal: true, imprimirPreparo: false);
   List<Modelowordprodutos> produtosCardapio = [];
+  List<Modelowordprodutos> produtosLocais = [];
   Future<List<EtapaDelivery>> Function()? respostaLista;
   @override
   Future<List<EtapaDelivery>> listar(
@@ -105,6 +106,9 @@ class ServicoDeliveryTeste extends ServicoDelivery {
           numeroCliente: '12',
           bairroCliente: 'Bairro de entrega',
           nomeEmpresa: 'Pizzaria Teste');
+  @override
+  Future<List<Modelowordprodutos>> detalhesLocais(String id) async =>
+      [...produtosLocais];
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
@@ -285,6 +289,32 @@ void main() {
     await expectLater(
         s.inserirProdutos('25', [impressao.produto()]), throwsStateError);
     expect(s.gravacoes, isEmpty);
+  });
+  test('preserva detalhes do delivery no armazenamento local', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({
+        'tipoConexao': 'local',
+        'servidor': '192.168.2.109',
+        'porta': '9980',
+      }),
+    });
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    final servico = ServicoDelivery(DioFalso(), usuario);
+    final produto = impressao.produto(id: '436', nome: 'Almoço Livre')
+      ..idCategoriaCardapio = '3'
+      ..opcoesPacotesListaFinal = [
+        impressao.bordas(['Feijão'])
+      ];
+
+    await servico.registrarDetalhesLocais('150', [produto]);
+    final recuperados = await servico.detalhesLocais('150');
+
+    expect(recuperados, hasLength(1));
+    expect(recuperados.single.idCategoriaCardapio, '3');
+    expect(
+        recuperados.single.opcoesPacotesListaFinal!.single.dados!.single.nome,
+        'Feijão');
   });
   test('comprovante preserva o endereco escolhido no pedido', () {
     final s = ServicoDeliveryTeste();

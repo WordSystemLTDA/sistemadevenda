@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/notificador_atualizacao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
@@ -13,9 +14,14 @@ import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ServicoDelivery {
+  static const _chaveDetalhesDelivery = 'detalhes_delivery_v1';
+  static const _retencaoDetalhesDelivery = Duration(days: 30);
+
   final DioCliente dio;
   final UsuarioProvedor usuario;
   ServicoDelivery(this.dio, this.usuario);
@@ -176,6 +182,137 @@ class ServicoDelivery {
       'produtos':
           produtos.map((p) => normalizarProdutoParaEnvio(p.toMap())).toList(),
     });
+    try {
+      await registrarDetalhesLocais(id, produtos);
+    } catch (erro, pilha) {
+      // O servidor ja confirmou a inclusao. Nao induza um segundo envio caso
+      // apenas a copia local usada como protecao da impressao tenha falhado.
+      debugPrint(
+          '[Delivery] Falha ao preservar detalhes locais do pedido $id: $erro\n$pilha');
+    }
+  }
+
+  Future<void> registrarDetalhesLocais(
+      String id, List<Modelowordprodutos> produtos) async {
+    if (produtos.isEmpty) return;
+    final registros = await _lerDetalhesLocais();
+    _removerDetalhesExpirados(registros);
+    final anterior = registros[id] is Map
+        ? Map<String, dynamic>.from(registros[id] as Map)
+        : <String, dynamic>{};
+    final produtosAnteriores = anterior['produtos'] is List
+        ? List<dynamic>.from(anterior['produtos'] as List)
+        : <dynamic>[];
+    registros[id] = {
+      'salvoEm': DateTime.now().millisecondsSinceEpoch,
+      'produtos': [
+        ...produtosAnteriores,
+        for (final produto in produtos)
+          normalizarProdutoParaEnvio(produto.toMap()),
+      ],
+    };
+    await _gravarDetalhesLocais(registros);
+  }
+
+  Future<List<Modelowordprodutos>> detalhesLocais(String id) async {
+    final registros = await _lerDetalhesLocais();
+    final alterou = _removerDetalhesExpirados(registros);
+    if (alterou) await _gravarDetalhesLocais(registros);
+    final registro = registros[id];
+    if (registro is! Map || registro['produtos'] is! List) return [];
+    return [
+      for (final produto in registro['produtos'] as List)
+        if (produto is Map)
+          Modelowordprodutos.fromMap(Map<String, dynamic>.from(produto)),
+    ];
+  }
+
+  Future<void> atualizarDetalheLocal(String id, Modelowordprodutos original,
+      Modelowordprodutos editado) async {
+    final produtos = await detalhesLocais(id);
+    final indice = _indiceProdutoLocal(produtos, original);
+    if (indice < 0) {
+      await registrarDetalhesLocais(id, [editado]);
+      return;
+    }
+    produtos[indice] =
+        Modelowordprodutos.fromMap(normalizarProdutoParaEnvio(editado.toMap()));
+    final registros = await _lerDetalhesLocais();
+    _removerDetalhesExpirados(registros);
+    registros[id] = {
+      'salvoEm': DateTime.now().millisecondsSinceEpoch,
+      'produtos': produtos
+          .map((produto) => normalizarProdutoParaEnvio(produto.toMap()))
+          .toList(),
+    };
+    await _gravarDetalhesLocais(registros);
+  }
+
+  int _indiceProdutoLocal(
+      List<Modelowordprodutos> produtos, Modelowordprodutos original) {
+    bool preenchido(Object? valor) =>
+        (valor?.toString().trim() ?? '').isNotEmpty;
+    if (preenchido(original.iditensvenda)) {
+      final indice = produtos.indexWhere(
+          (produto) => produto.iditensvenda == original.iditensvenda);
+      if (indice >= 0) return indice;
+    }
+    if (preenchido(original.hashprodutos)) {
+      final indice = produtos.indexWhere(
+          (produto) => produto.hashprodutos == original.hashprodutos);
+      if (indice >= 0) return indice;
+    }
+    return produtos.indexWhere((produto) => produto.id == original.id);
+  }
+
+  Future<String> _chaveArmazenamentoDetalhes() async {
+    final empresa = usuario.usuario?.empresa ?? '0';
+    final servidor = BancoLocal.instancia?.servidor.isNotEmpty == true
+        ? BancoLocal.instancia!.servidor
+        : (await Apis().getConexao()).servidor;
+    return '$_chaveDetalhesDelivery:$servidor:$empresa';
+  }
+
+  Future<Map<String, dynamic>> _lerDetalhesLocais() async {
+    final chave = await _chaveArmazenamentoDetalhes();
+    final banco = BancoLocal.instancia;
+    final valor = banco == null
+        ? (await SharedPreferences.getInstance()).getString(chave)
+        : await banco.ler(chave);
+    if (valor == null || valor.isEmpty) return {};
+    try {
+      return Map<String, dynamic>.from(jsonDecode(valor) as Map);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _gravarDetalhesLocais(Map<String, dynamic> registros) async {
+    final chave = await _chaveArmazenamentoDetalhes();
+    final valor = jsonEncode(registros);
+    final banco = BancoLocal.instancia;
+    if (banco != null) {
+      await banco.gravar(chave, valor);
+      return;
+    }
+    if (!await (await SharedPreferences.getInstance())
+        .setString(chave, valor)) {
+      throw StateError(
+          'Não foi possível preservar os detalhes deste Delivery.');
+    }
+  }
+
+  bool _removerDetalhesExpirados(Map<String, dynamic> registros) {
+    final limite = DateTime.now()
+        .subtract(_retencaoDetalhesDelivery)
+        .millisecondsSinceEpoch;
+    final quantidadeAntes = registros.length;
+    registros.removeWhere((_, registro) {
+      if (registro is! Map) return true;
+      final salvoEm = int.tryParse('${registro['salvoEm'] ?? ''}') ?? 0;
+      return salvoEm < limite;
+    });
+    return quantidadeAntes != registros.length;
   }
 
   Future<Map<String, dynamic>> avancar(

@@ -7,6 +7,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:flutter/foundation.dart';
 
 class ServicoEdicaoPedido {
   final ServicoDelivery servico;
@@ -21,6 +22,14 @@ class ServicoEdicaoPedido {
       'produto': normalizarProdutoParaEnvio(editado.toMap()),
       'original': normalizarProdutoParaEnvio(original.toMap()),
     });
+    if (tipo == TipoCardapio.delivery) {
+      try {
+        await servico.atualizarDetalheLocal(id, original, editado);
+      } catch (erro, pilha) {
+        debugPrint(
+            '[Delivery] Edicao salva, falha ao atualizar detalhes locais do pedido $id: $erro\n$pilha');
+      }
+    }
   }
 
   Future<void> salvarDados(TipoCardapio tipo, PedidoDelivery original,
