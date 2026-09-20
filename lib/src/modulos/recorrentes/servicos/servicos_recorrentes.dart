@@ -21,7 +21,8 @@ class ServicosRecorrentes {
     final dados = {
       ...campos,
       'empresa': sessao.empresa,
-      'id_usuario': sessao.id
+      'id_usuario': sessao.id,
+      if (leitura) '_atualizacao': DateTime.now().microsecondsSinceEpoch,
     };
     try {
       final opcoes = Options(extra: {'semCache': true});
