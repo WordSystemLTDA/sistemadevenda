@@ -13,6 +13,8 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +27,9 @@ class ServicoDelivery {
   final DioCliente dio;
   final UsuarioProvedor usuario;
   ServicoDelivery(this.dio, this.usuario);
+
+  Future<PagamentoRecorrente?> pagamentoRecorrente(String id) =>
+      ServicosRecorrentes(dio, usuario).pagamento(id);
 
   // O Delivery usa a mesma API de venda configurada no aplicativo.
   static Uri enderecoApi(String servidor) => Uri.parse(servidor);
@@ -397,11 +402,14 @@ class ServicoDelivery {
         },
       };
 
-  Future<void> pagar(PedidoDelivery pedido, int forma, double recebido,
+  Future<Map<String, dynamic>> pagar(
+      PedidoDelivery pedido, int forma, double recebido,
       {double? valorOriginal,
       double? valorAPagar,
       double? desconto,
       double? acrescimo,
+      String? chavePagamento,
+      bool confirmarRecorrente = false,
       String? dataLancamento,
       List<ParcelasModelo> parcelasLista = const []}) async {
     final totalOriginal = valorOriginal ?? pedido.total;
@@ -435,8 +443,10 @@ class ServicoDelivery {
         : const <String>[];
     final troco =
         forma == 1 && recebido > totalAPagar ? recebido - totalAPagar : 0.0;
-    await salvar('delivery/pagar_pedido.php', {
+    return salvar('delivery/pagar_pedido.php', {
       'id': pedido.id,
+      if (chavePagamento != null) 'chavePagamento': chavePagamento,
+      if (confirmarRecorrente) 'confirmarRecorrente': true,
       'id_comanda': '0',
       'id_mesa': '0',
       'cliente': pedido.cliente,

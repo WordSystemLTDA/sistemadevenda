@@ -12,6 +12,7 @@ import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,6 +67,8 @@ List<EtapaDelivery> etapasTeste() => [
 class DioFalso extends Fake implements DioCliente {}
 
 class ServicoDeliveryTeste extends ServicoDelivery {
+  @override
+  Future<PagamentoRecorrente?> pagamentoRecorrente(String id) async => null;
   ServicoDeliveryTeste()
       : super(
             DioFalso(),

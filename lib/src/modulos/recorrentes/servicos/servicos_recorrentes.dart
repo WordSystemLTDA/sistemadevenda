@@ -88,6 +88,13 @@ class ServicosRecorrentes {
     return _idDelivery(dados);
   }
 
+  Future<PagamentoRecorrente?> pagamento(String idDelivery) async {
+    final dados = await _requisicao('pagamento', {'id_delivery': idDelivery},
+        leitura: true);
+    if (dados is! Map || dados['recorrente'] != true) return null;
+    return PagamentoRecorrente.fromMap(Map<String, dynamic>.from(dados));
+  }
+
   String _idDelivery(dynamic dados) {
     final id = dados is Map ? '${dados['idDelivery'] ?? ''}' : '';
     if ((int.tryParse(id) ?? 0) <= 0) {

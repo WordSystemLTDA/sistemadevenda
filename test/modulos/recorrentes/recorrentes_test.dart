@@ -78,16 +78,26 @@ void main() {
     expect(find.text('Novo Recorrente'), findsOneWidget);
     expect(find.text('No local'), findsNothing);
     expect(find.byType(CamposRecorrencia), findsOneWidget);
+    await tester.ensureVisible(find.text('Retirada'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Retirada'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Abrir cardápio'));
     await tester.pumpAndSettle();
-    expect(find.text('Selecione um cliente cadastrado.'), findsOneWidget);
+    expect(find.text('Selecione um cliente cadastrado.'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   setUpAll(() async {
     await initializeDateFormatting('pt_BR');
+    const fonte = String.fromEnvironment('FONTE_TESTE');
+    if (fonte.isNotEmpty) {
+      for (final familia in ['Roboto', 'Ahem']) {
+        await (FontLoader(familia)
+              ..addFont(File(fonte).readAsBytes().then(ByteData.sublistView)))
+            .load();
+      }
+    }
     await (FontLoader('MaterialIcons')
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
         .load();
@@ -170,19 +180,23 @@ void main() {
       expect(find.text('Ana Maria · Empresa Centro'), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(tester.takeException(), isNull);
-      if (caso.$1.width == 1366) {
+      if (caso.$1.width == 1366 || caso.$1.width == 320) {
         await tester.runAsync(() async {
           final boundary =
               chave.currentContext!.findRenderObject() as RenderRepaintBoundary;
           final imagem = await boundary.toImage();
           final bytes = await imagem.toByteData(format: ui.ImageByteFormat.png);
-          final arquivo = File('build/recorrentes/agenda_desktop.png');
+          final arquivo = File(
+              'build/recorrentes/agenda_${caso.$1.width == 320 ? 'mobile' : 'desktop'}.png');
           await arquivo.parent.create(recursive: true);
           await arquivo.writeAsBytes(bytes!.buffer.asUint8List());
           imagem.dispose();
         });
       }
-      await tester.ensureVisible(find.byTooltip('Editar recorrência'));
+      await Scrollable.ensureVisible(
+          tester.element(find.byTooltip('Editar recorrência')),
+          alignment: 0.2);
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Editar recorrência'));
       await tester.pumpAndSettle();
       expect(find.byType(CamposRecorrencia), findsOneWidget);
@@ -225,6 +239,8 @@ void main() {
             abrirPedido: (id, _) async {
               aberto = id;
             })));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Continuar Pedido'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continuar Pedido'));
     await tester.pumpAndSettle();

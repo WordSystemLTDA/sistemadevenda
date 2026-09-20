@@ -30,7 +30,8 @@ class PaginaInicio extends StatefulWidget {
   State<PaginaInicio> createState() => _PaginaInicioState();
 }
 
-class _PaginaInicioState extends State<PaginaInicio> {
+class _PaginaInicioState extends State<PaginaInicio>
+    with WidgetsBindingObserver {
   ServicoConfigBigchef servicoConfigBigchef =
       Modular.get<ServicoConfigBigchef>();
   ServicoConfig servicoConfig = Modular.get<ServicoConfig>();
@@ -40,8 +41,24 @@ class _PaginaInicioState extends State<PaginaInicio> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     listarDados();
     listarDadosAtualizacoes();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      listarDadosConfigBigChef().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   Future<void> listarDados() async {
@@ -148,7 +165,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   }
 
   Future<void> listarDadosConfigBigChef() async {
-    configBigchef = await servicoConfigBigchef.listar();
+    configBigchef = await servicoConfigBigchef.listar(forcarAtualizacao: true);
   }
 
   @override
@@ -170,11 +187,25 @@ class _PaginaInicioState extends State<PaginaInicio> {
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             actions: [
               if (configBigchef?.recorrentesHabilitados == true)
-                TextButton.icon(
-                  icon: const Icon(Icons.event_repeat_outlined, size: 20),
-                  label: const Text('Recorrentes'),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaginaRecorrentes())),
-                ),
+                if (size.width < 400 || escala.scale(14) > 20)
+                  IconButton(
+                      tooltip: 'Recorrentes',
+                      icon: const Icon(Icons.event_repeat_outlined),
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              settings: const RouteSettings(
+                                  name: 'PaginaRecorrentes'),
+                              builder: (_) => const PaginaRecorrentes())))
+                else
+                  TextButton.icon(
+                    icon: const Icon(Icons.event_repeat_outlined, size: 20),
+                    label: const Text('Recorrentes'),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            settings:
+                                const RouteSettings(name: 'PaginaRecorrentes'),
+                            builder: (_) => const PaginaRecorrentes())),
+                  ),
             ],
           ),
           body: Visibility(
@@ -272,9 +303,12 @@ class _PaginaInicioState extends State<PaginaInicio> {
                           CardHome(
                             nome: 'Recorrentes',
                             cor: Theme.of(context).colorScheme.primary,
-                            icone: const Icon(Icons.event_repeat_outlined, size: 40),
-                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                              settings: const RouteSettings(name: 'PaginaRecorrentes'),
+                            icone: const Icon(Icons.event_repeat_outlined,
+                                size: 40),
+                            onPressed: () =>
+                                Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(
+                                  name: 'PaginaRecorrentes'),
                               builder: (_) => const PaginaRecorrentes(),
                             )),
                           ),

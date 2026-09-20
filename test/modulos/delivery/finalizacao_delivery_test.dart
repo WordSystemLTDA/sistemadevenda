@@ -7,6 +7,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
@@ -24,6 +25,9 @@ import '../../suporte/captura_tela.dart';
 
 class _DeliveryFinalizacao extends ServicoDelivery {
   _DeliveryFinalizacao(super.dio, super.usuario);
+
+  @override
+  Future<PagamentoRecorrente?> pagamentoRecorrente(String id) async => null;
 
   int envios = 0;
   int consultas = 0;

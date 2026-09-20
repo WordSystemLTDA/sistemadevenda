@@ -10,6 +10,8 @@ class AgendaRecorrentes extends StatefulWidget {
   final ProvedorRecorrentes provedor;
   final Future<void> Function() novo;
   final Future<void> Function(String id, ModeloRecorrente item) abrirPedido;
+  final Future<void> Function(String id, ModeloRecorrente item)?
+      confirmarPedido;
   final bool exibirAppBar;
   final Widget Function(BuildContext context, String titulo, Widget conteudo,
       VoidCallback? salvar)? formulario;
@@ -18,6 +20,7 @@ class AgendaRecorrentes extends StatefulWidget {
       required this.provedor,
       required this.novo,
       required this.abrirPedido,
+      this.confirmarPedido,
       this.exibirAppBar = false,
       this.formulario});
 
@@ -39,7 +42,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   }
 
   void _atualizar() {
-    if (p.ocupado || p.carregando || ModalRoute.of(context)?.isCurrent == false) {
+    if (p.ocupado ||
+        p.carregando ||
+        ModalRoute.of(context)?.isCurrent == false) {
       return;
     }
     final hoje = DateUtilsRecorrentes.hoje();
@@ -73,10 +78,13 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     }
   }
 
-  Future<void> _abrir(ModeloRecorrente item) => _acao(() async {
+  Future<void> _abrir(ModeloRecorrente item, {bool confirmar = false}) =>
+      _acao(() async {
         final id = await p.servico.abrir(item);
         if (!mounted) return;
-        await widget.abrirPedido(id, item);
+        await (confirmar && widget.confirmarPedido != null
+            ? widget.confirmarPedido!(id, item)
+            : widget.abrirPedido(id, item));
         if (mounted) await p.listar();
       });
 
@@ -293,15 +301,52 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                                     style: Theme.of(context)
                                                         .textTheme
                                                         .bodySmall)),
-                                            Wrap(
-                                                spacing: 12,
-                                                runSpacing: 12,
-                                                children: [
-                                                  for (final item in itens)
-                                                    SizedBox(
-                                                        width: largura,
-                                                        child: _card(item))
-                                                ]),
+                                            if (p.visao == 'cadastros')
+                                              Wrap(
+                                                  spacing: 12,
+                                                  runSpacing: 12,
+                                                  children: [
+                                                    for (final item in itens)
+                                                      SizedBox(
+                                                          width: largura,
+                                                          child: _card(item))
+                                                  ]),
+                                            if (p.visao != 'cadastros')
+                                              for (final dia in {
+                                                for (final item in itens)
+                                                  item.data,
+                                              }.toList()
+                                                ..sort()) ...[
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 12),
+                                                  child: Text(
+                                                    DateUtils.isSameDay(
+                                                            dia, DateTime.now())
+                                                        ? 'Hoje · ${DateFormat('dd/MM').format(dia)}'
+                                                        : DateFormat(
+                                                                'EEEE, dd/MM',
+                                                                'pt_BR')
+                                                            .format(dia),
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                            color: cs.primary),
+                                                  ),
+                                                ),
+                                                Wrap(
+                                                    spacing: 12,
+                                                    runSpacing: 12,
+                                                    children: [
+                                                      for (final item in itens
+                                                          .where((item) =>
+                                                              item.data == dia))
+                                                        SizedBox(
+                                                            width: largura,
+                                                            child: _card(item)),
+                                                    ]),
+                                              ],
                                           ]);
                                     }))),
               ])),
@@ -313,8 +358,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       IconButton(
           tooltip: 'Dia anterior',
           onPressed: () => p.listar(
-              dia:
-                  p.data.subtract(Duration(days: p.visao == 'semana' ? 7 : 1))),
+              dia: p.data.subtract(Duration(
+                  days: p.visao == 'mes'
+                      ? 30
+                      : p.visao == 'semana'
+                          ? 7
+                          : 1))),
           icon: const Icon(Icons.chevron_left)),
       OutlinedButton.icon(
           onPressed: _data,
@@ -323,7 +372,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       IconButton(
           tooltip: 'Próximo dia',
           onPressed: () => p.listar(
-              dia: p.data.add(Duration(days: p.visao == 'semana' ? 7 : 1))),
+              dia: p.data.add(Duration(
+                  days: p.visao == 'mes'
+                      ? 30
+                      : p.visao == 'semana'
+                          ? 7
+                          : 1))),
           icon: const Icon(Icons.chevron_right)),
       TextButton(
           onPressed: () =>
@@ -334,6 +388,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       for (final modo in const [
         ('dia', 'Dia'),
         ('semana', '7 dias'),
+        ('mes', '30 dias'),
         ('cadastros', 'Cadastros')
       ])
         ChoiceChip(
@@ -354,6 +409,49 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         tooltip: 'Atualizar',
         onPressed: p.carregando ? null : () => p.listar(),
         icon: const Icon(Icons.refresh));
+    if (largura < 600) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          IconButton(
+              tooltip: 'Dia anterior',
+              onPressed: () => p.listar(
+                  dia: p.data.subtract(Duration(
+                      days: p.visao == 'mes'
+                          ? 30
+                          : p.visao == 'semana'
+                              ? 7
+                              : 1))),
+              icon: const Icon(Icons.chevron_left)),
+          Expanded(
+              child: OutlinedButton.icon(
+                  onPressed: _data,
+                  icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                  label: Text(DateFormat('dd/MM/yyyy').format(p.data)))),
+          IconButton(
+              tooltip: 'Próximo dia',
+              onPressed: () => p.listar(
+                  dia: p.data.add(Duration(
+                      days: p.visao == 'mes'
+                          ? 30
+                          : p.visao == 'semana'
+                              ? 7
+                              : 1))),
+              icon: const Icon(Icons.chevron_right)),
+        ]),
+        const SizedBox(height: 4),
+        SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              TextButton(
+                  onPressed: () =>
+                      p.listar(dia: DateUtilsRecorrentes.hoje(), modo: 'dia'),
+                  child: const Text('Hoje')),
+              modos,
+            ])),
+        const SizedBox(height: 8),
+        Row(children: [Expanded(child: busca), atualizar]),
+      ]);
+    }
     if (largura >= 1080 && MediaQuery.textScalerOf(context).scale(14) <= 16) {
       return Row(children: [
         data,
@@ -388,7 +486,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
             : item.status == 'Previsto'
                 ? 'Previsto'
                 : item.pago
-                    ? 'Pago'
+                    ? (item.pagamento.mensal || item.pagamento.forma == 2
+                        ? 'Em conta'
+                        : 'Pago')
                     : item.status;
     return Card(
         margin: EdgeInsets.zero,
@@ -441,6 +541,16 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(item.configuracao.diasTexto,
                         style: Theme.of(context).textTheme.bodySmall)),
+              Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child:
+                      _detalhe(Icons.payments_outlined, item.pagamento.resumo)),
+              if (item.pagamento.mensal && item.pagamento.vencimento != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                        'Vence em ${DateFormat('dd/MM/yyyy').format(item.pagamento.vencimento!)}',
+                        style: Theme.of(context).textTheme.bodySmall)),
               if (item.endereco.isNotEmpty && item.tipoEntrega == '1')
                 Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -486,17 +596,35 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
               else
                 Wrap(spacing: 8, runSpacing: 4, children: [
                   FilledButton.icon(
-                      onPressed: podeAbrir ? () => _abrir(item) : null,
+                      onPressed: podeAbrir
+                          ? () => _abrir(item,
+                              confirmar:
+                                  !item.encerrado && item.itens.isNotEmpty)
+                          : null,
                       icon: Icon(
                           item.encerrado
                               ? Icons.receipt_long_outlined
                               : Icons.arrow_forward,
                           size: 18),
-                      label: Text(item.temPedido
-                          ? (item.encerrado ? 'Ver Pedido' : 'Continuar Pedido')
-                          : futuro
-                              ? 'Agendado'
-                              : 'Revisar e Finalizar')),
+                      label: Text(widget.confirmarPedido != null &&
+                              !item.encerrado &&
+                              item.itens.isNotEmpty &&
+                              !futuro
+                          ? 'Confirmar Pedido'
+                          : item.temPedido
+                              ? (item.encerrado
+                                  ? 'Ver Pedido'
+                                  : 'Continuar Pedido')
+                              : futuro
+                                  ? 'Agendado'
+                                  : 'Revisar e Finalizar')),
+                  if (widget.confirmarPedido != null &&
+                      !item.encerrado &&
+                      podeAbrir &&
+                      item.itens.isNotEmpty)
+                    TextButton(
+                        onPressed: () => _abrir(item),
+                        child: const Text('Alterar Pedido')),
                   if (!item.temPedido && item.status == 'Previsto' && !futuro)
                     TextButton(
                         onPressed: p.ocupado ? null : () => _pular(item),

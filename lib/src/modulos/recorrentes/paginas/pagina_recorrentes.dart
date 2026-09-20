@@ -6,6 +6,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import '../provedores/provedor_recorrentes.dart';
 import '../servicos/servicos_recorrentes.dart';
 import 'widgets/agenda_recorrentes.dart';
@@ -35,6 +36,16 @@ class _PaginaRecorrentesState extends State<PaginaRecorrentes> {
             MaterialPageRoute(
                 builder: (_) =>
                     PaginaNovoDelivery(servico: delivery, recorrente: true))),
+        confirmarPedido: (id, item) async {
+          final pago = await receberDelivery(context, delivery, id,
+              confirmarRecorrente: true);
+          if (pago != true) return;
+          final pedido = await delivery.pedido(id);
+          if (pedido.restante <= 0.009 && !pedido.encerrado) {
+            await delivery.concluir(pedido);
+          }
+          delivery.notificarPedidoAtualizado(await delivery.pedido(id));
+        },
         abrirPedido: (id, item) async {
           final atual = await delivery.pedido(id);
           if (!context.mounted) return;

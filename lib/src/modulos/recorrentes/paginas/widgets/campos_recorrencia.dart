@@ -138,6 +138,47 @@ class CamposRecorrencia extends StatelessWidget {
                       label: Text('Até ${valor.horarioFim}')),
               ]),
             ],
+            const SizedBox(height: 16),
+            Text('Pagamento', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            _gradeJustificada(context, larguraMinima: 140, botoes: [
+              for (final opcao in const [
+                ('diario', 'A cada pedido'),
+                ('mensal', 'Acerto mensal'),
+              ])
+                ChoiceChip(
+                    label: Text(opcao.$2, textAlign: TextAlign.center),
+                    selected: valor.pagamentoModo == opcao.$1,
+                    onSelected: (_) =>
+                        onChanged(valor.copyWith(pagamentoModo: opcao.$1))),
+            ]),
+            const SizedBox(height: 8),
+            if (valor.pagamentoModo == 'mensal') ...[
+              DropdownButtonFormField<int>(
+                initialValue: valor.diaVencimento,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                    labelText: 'Vencimento no próximo mês',
+                    border: OutlineInputBorder(),
+                    isDense: true),
+                items: [
+                  for (var dia = 1; dia <= 31; dia++)
+                    DropdownMenuItem(value: dia, child: Text('Dia $dia')),
+                ],
+                onChanged: (dia) {
+                  if (dia != null) {
+                    onChanged(valor.copyWith(diaVencimento: dia));
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                  'Cada pedido confirmado será lançado em conta. Se o mês não tiver esse dia, vence no último dia.',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ] else
+              Text(
+                  'A forma do primeiro pagamento será sugerida nos próximos pedidos.',
+                  style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             Text(
                 primeiroPedido

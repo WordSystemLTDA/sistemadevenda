@@ -22,8 +22,13 @@ class ServicoConfigBigchef {
     }
 
     try {
-      final response =
-          await dio.cliente.get('$caminhoAPI/listar.php?empresa=$idEmpresa');
+      final response = await dio.cliente.get('$caminhoAPI/listar.php',
+          queryParameters: {
+            'empresa': idEmpresa,
+            if (forcarAtualizacao)
+              '_atualizacao': DateTime.now().microsecondsSinceEpoch,
+          },
+          options: Options(extra: {'semCache': forcarAtualizacao}));
       final jsonData = response.data;
       if (jsonData is! Map) return _cachePorEmpresa[idEmpresa];
       final config =

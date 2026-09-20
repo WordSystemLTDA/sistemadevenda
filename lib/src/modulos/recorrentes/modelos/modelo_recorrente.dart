@@ -5,12 +5,16 @@ class ConfiguracaoRecorrencia {
   final String horarioTipo;
   final String horario;
   final String horarioFim;
+  final String pagamentoModo;
+  final int diaVencimento;
 
   const ConfiguracaoRecorrencia({
     this.dias = const [1, 2, 3, 4, 5],
     this.horarioTipo = 'livre',
     this.horario = '12:00',
     this.horarioFim = '14:00',
+    this.pagamentoModo = 'diario',
+    this.diaVencimento = 10,
   });
 
   static const nomesDias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -19,15 +23,24 @@ class ConfiguracaoRecorrencia {
           {List<int>? dias,
           String? horarioTipo,
           String? horario,
-          String? horarioFim}) =>
+          String? horarioFim,
+          String? pagamentoModo,
+          int? diaVencimento}) =>
       ConfiguracaoRecorrencia(
         dias: dias ?? this.dias,
         horarioTipo: horarioTipo ?? this.horarioTipo,
         horario: horario ?? this.horario,
         horarioFim: horarioFim ?? this.horarioFim,
+        pagamentoModo: pagamentoModo ?? this.pagamentoModo,
+        diaVencimento: diaVencimento ?? this.diaVencimento,
       );
 
   String? get erro {
+    if (!['diario', 'mensal'].contains(pagamentoModo) ||
+        diaVencimento < 1 ||
+        diaVencimento > 31) {
+      return 'Informe o dia de pagamento entre 1 e 31.';
+    }
     if (dias.isEmpty || dias.any((d) => d < 1 || d > 7)) {
       return 'Selecione os dias da semana.';
     }
@@ -56,11 +69,15 @@ class ConfiguracaoRecorrencia {
         'dias': [...dias]..sort(),
         'horarioTipo': horarioTipo,
         'horario': horario,
-        'horarioFim': horarioFim
+        'horarioFim': horarioFim,
+        'pagamentoModo': pagamentoModo,
+        'diaVencimento': diaVencimento,
       };
 
   factory ConfiguracaoRecorrencia.fromMap(Map<String, dynamic> json) =>
       ConfiguracaoRecorrencia(
+        pagamentoModo: '${json['pagamentoModo'] ?? 'diario'}',
+        diaVencimento: int.tryParse('${json['diaVencimento']}') ?? 10,
         dias: (json['dias'] as List).map((d) => int.parse('$d')).toList(),
         horarioTipo: '${json['horarioTipo'] ?? 'livre'}',
         horario: (json['horario']?.toString().isNotEmpty ?? false)
@@ -81,6 +98,7 @@ class ItemRecorrente {
 }
 
 class ModeloRecorrente {
+  final PagamentoRecorrente pagamento;
   final String endereco;
   final String id,
       cliente,
@@ -98,7 +116,8 @@ class ModeloRecorrente {
   final List<ItemRecorrente> itens;
 
   ModeloRecorrente.fromMap(Map<String, dynamic> json)
-      : endereco = '${json['endereco'] ?? ''}',
+      : pagamento = PagamentoRecorrente.fromMap(json),
+        endereco = '${json['endereco'] ?? ''}',
         id = '${json['id']}',
         cliente = '${json['cliente']}',
         idCliente = '${json['idCliente']}',
@@ -134,4 +153,30 @@ class ModeloRecorrente {
       ].contains(status);
   bool disponivelEm(DateTime hoje) =>
       !data.isAfter(DateTime(hoje.year, hoje.month, hoje.day));
+}
+
+class PagamentoRecorrente {
+  final bool recorrente, definida;
+  final String modo, nome;
+  final int forma, diaVencimento;
+  final DateTime? vencimento;
+
+  PagamentoRecorrente.fromMap(Map<String, dynamic> json)
+      : recorrente = json['recorrente'] != false,
+        modo = '${json['pagamentoModo'] ?? 'diario'}',
+        diaVencimento = int.tryParse('${json['diaVencimento']}') ?? 10,
+        definida = (json['pagamentoPadrao'] as Map?)?['definida'] == true,
+        forma = int.tryParse(
+                '${(json['pagamentoPadrao'] as Map?)?['formaPagamento']}') ??
+            0,
+        nome = '${(json['pagamentoPadrao'] as Map?)?['nome'] ?? ''}',
+        vencimento = DateTime.tryParse(
+            '${(json['pagamentoPadrao'] as Map?)?['vencimento'] ?? ''}');
+
+  bool get mensal => modo == 'mensal';
+  String get resumo => mensal
+      ? 'Em conta · dia $diaVencimento do próximo mês'
+      : definida
+          ? '$nome · a cada pedido'
+          : 'Pagamento definido no primeiro pedido';
 }

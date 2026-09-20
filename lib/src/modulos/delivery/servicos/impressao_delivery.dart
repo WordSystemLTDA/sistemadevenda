@@ -13,6 +13,7 @@ class ImpressaoDelivery {
       ServicoDelivery servico, Server server, PedidoDelivery pedido,
       {bool preparo = false,
       bool ambos = false,
+      String? chaveRecorrente,
       ConfigDelivery? config}) async {
     final resultados = await Future.wait([
       servico.dadosCardapio(pedido.id),
@@ -47,7 +48,23 @@ class ImpressaoDelivery {
         ...comprovantes(servico, pedido.comEndereco(dados), produtos,
             config: configuracao),
     ];
-    await server.enviarImpressoes(mensagens);
+    await server.enviarImpressoes(chaveRecorrente == null
+        ? mensagens
+        : identificarPreparoRecorrente(mensagens, chaveRecorrente));
+  }
+
+  static List<String> identificarPreparoRecorrente(
+          List<String> mensagens, String chave) =>
+      [
+        for (final mensagem in mensagens) _identificarPreparo(mensagem, chave),
+      ];
+
+  static String _identificarPreparo(String mensagem, String chave) {
+    final dados = jsonDecode(mensagem) as Map<String, dynamic>;
+    final destino = base64Url
+        .encode(utf8.encode('${dados['nomedopc'] ?? ''}'.trim().toLowerCase()))
+        .replaceAll('=', '');
+    return jsonEncode({...dados, 'idRequisicao': '$chave-$destino'});
   }
 
   static Future<ConfigDelivery?> _configuracao(ServicoDelivery servico) async {

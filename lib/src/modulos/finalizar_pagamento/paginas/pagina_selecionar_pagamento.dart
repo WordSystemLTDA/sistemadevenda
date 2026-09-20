@@ -8,6 +8,8 @@ import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_p
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 
 class PaginaSelecionarPagamento extends StatefulWidget {
   final double totalReceber;
@@ -34,6 +36,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   var provedor = Modular.get<ProvedorFinalizarPagamento>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
   String pagamentoSelecionado = '1';
+  PagamentoRecorrente? _recorrencia;
+  String? _erro;
 
   bool carregando = true;
 
@@ -52,33 +56,55 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   }
 
   void listarBancos() async {
-    await context
-        .read<ServicoFinalizarPagamento>()
-        .listarBancos()
-        .then((dadosBancos) {
-      if (mounted) {
-        if (dadosBancos.ativoBancoPix == 'Sim') {
-          bancos.add(BancoPixModelo(id: '5', nome: dadosBancos.nomeBancoPix));
+    setState(() {
+      carregando = true;
+      _erro = null;
+    });
+    try {
+      bancos = bancos.take(4).toList();
+      await context
+          .read<ServicoFinalizarPagamento>()
+          .listarBancos()
+          .then((dadosBancos) {
+        if (mounted) {
+          if (dadosBancos.ativoBancoPix == 'Sim') {
+            bancos.add(BancoPixModelo(id: '5', nome: dadosBancos.nomeBancoPix));
+          }
+          if (dadosBancos.ativoBancoOpcao2 == 'Sim') {
+            bancos.add(
+                BancoPixModelo(id: '6', nome: dadosBancos.nomeBancoOpcao2));
+          }
+          if (dadosBancos.ativoBancoOpcao3 == 'Sim') {
+            bancos.add(
+                BancoPixModelo(id: '7', nome: dadosBancos.nomeBancoOpcao3));
+          }
+          if (dadosBancos.ativoBancoOpcao4 == 'Sim') {
+            bancos.add(
+                BancoPixModelo(id: '8', nome: dadosBancos.nomeBancoOpcao4));
+          }
+          if (dadosBancos.ativoBancoOpcao5 == 'Sim') {
+            bancos.add(
+                BancoPixModelo(id: '9', nome: dadosBancos.nomeBancoOpcao5));
+          }
         }
-        if (dadosBancos.ativoBancoOpcao2 == 'Sim') {
-          bancos
-              .add(BancoPixModelo(id: '6', nome: dadosBancos.nomeBancoOpcao2));
-        }
-        if (dadosBancos.ativoBancoOpcao3 == 'Sim') {
-          bancos
-              .add(BancoPixModelo(id: '7', nome: dadosBancos.nomeBancoOpcao3));
-        }
-        if (dadosBancos.ativoBancoOpcao4 == 'Sim') {
-          bancos
-              .add(BancoPixModelo(id: '8', nome: dadosBancos.nomeBancoOpcao4));
-        }
-        if (dadosBancos.ativoBancoOpcao5 == 'Sim') {
-          bancos
-              .add(BancoPixModelo(id: '9', nome: dadosBancos.nomeBancoOpcao5));
+      });
+
+      if (provedorCardapio.tipo == TipoCardapio.delivery) {
+        _recorrencia = await Modular.get<ServicoDelivery>()
+            .pagamentoRecorrente(provedor.idVenda);
+        if (_recorrencia?.mensal == true) {
+          pagamentoSelecionado = '2';
+        } else if (_recorrencia?.definida == true &&
+            bancos.any((banco) => banco.id == '${_recorrencia!.forma}')) {
+          pagamentoSelecionado = '${_recorrencia!.forma}';
         }
       }
-    });
-
+    } catch (erro) {
+      _erro = erro is StateError
+          ? erro.message.toString()
+          : 'Não foi possível consultar o pagamento.';
+    }
+    if (!mounted) return;
     setState(() {
       carregando = false;
     });
@@ -89,7 +115,10 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
     FocusManager.instance.primaryFocus?.unfocus();
     Navigator.popUntil(
       context,
-      (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst,
+      (rota) =>
+          ['PaginaDelivery', 'PaginaRecorrentes']
+              .contains(rota.settings.name) ||
+          rota.isFirst,
     );
   }
 
@@ -176,6 +205,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
+                    if (carregando || _erro != null) return;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -186,6 +216,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                           descontoPercentual: widget.descontoPercentual,
                           totalPedido: widget.totalPedido,
                           pagamentoselecionado: pagamentoSelecionado,
+                          recorrencia: _recorrencia,
                         ),
                       ),
                     );
@@ -220,6 +251,16 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_erro != null) ...[
+                Text(_erro!, style: TextStyle(color: cs.error)),
+                TextButton(
+                    onPressed: listarBancos,
+                    child: const Text('Tentar Novamente')),
+              ],
+              if (_recorrencia != null) ...[
+                Text(_recorrencia!.resumo),
+                const SizedBox(height: 8),
+              ],
               // Hero A pagar
               Container(
                 padding: const EdgeInsets.all(16),
@@ -332,7 +373,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
               const SizedBox(height: 12),
               Expanded(
                 child: GridView.builder(
-                  itemCount: bancos.length,
+                  itemCount: _recorrencia?.mensal == true ? 1 : bancos.length,
                   padding: EdgeInsets.zero,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -341,7 +382,9 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                     childAspectRatio: 2.4,
                   ),
                   itemBuilder: (context, index) {
-                    final item = bancos[index];
+                    final item = _recorrencia?.mensal == true
+                        ? bancos.firstWhere((banco) => banco.id == '2')
+                        : bancos[index];
                     final selecionado = pagamentoSelecionado == item.id;
                     return _BancoCard(
                       banco: item,

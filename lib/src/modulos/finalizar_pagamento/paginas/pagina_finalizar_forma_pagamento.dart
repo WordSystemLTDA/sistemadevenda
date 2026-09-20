@@ -24,6 +24,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
+import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 
 class PaginaFinalizarFormaPagamento extends StatefulWidget {
   final double totalReceber;
@@ -32,6 +35,7 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
   final String descontoPercentual;
   final String totalPedido;
   final String pagamentoselecionado;
+  final PagamentoRecorrente? recorrencia;
 
   const PaginaFinalizarFormaPagamento({
     super.key,
@@ -41,6 +45,7 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
     required this.descontoPercentual,
     required this.totalPedido,
     required this.pagamentoselecionado,
+    this.recorrencia,
   });
 
   @override
@@ -63,6 +68,7 @@ class _PaginaFinalizarFormaPagamentoState
   final List<TextEditingController> listaBancosControllers = [];
 
   final _dinheiroController = TextEditingController();
+  final _chavePagamento = ServicosRecorrentes.novaChave();
 
   String dataOriginal = DateFormat('yyyy-MM-dd')
       .format(DateTime.now().add(const Duration(days: 30)));
@@ -148,6 +154,20 @@ class _PaginaFinalizarFormaPagamentoState
       valorAPagar: widget.totalReceber,
       desconto: desconto,
       acrescimo: acrescimo,
+      chavePagamento: _chavePagamento,
+      dataLancamento: widget.recorrencia?.vencimento == null
+          ? null
+          : DateFormat('yyyy-MM-dd').format(widget.recorrencia!.vencimento!),
+      parcelasLista: widget.recorrencia?.mensal == true &&
+              widget.recorrencia?.vencimento != null
+          ? [
+              ParcelasModelo(
+                  parcela: '1',
+                  valor: valorRecebido.toStringAsFixed(2),
+                  vencimento: DateFormat('yyyy-MM-dd')
+                      .format(widget.recorrencia!.vencimento!))
+            ]
+          : const [],
     );
 
     final pagamentoIntegral = valorRecebido + 0.009 >= widget.totalReceber;
@@ -161,8 +181,12 @@ class _PaginaFinalizarFormaPagamentoState
       await carrinhoProvedor.removerComandasPedidos();
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
-      Navigator.popUntil(context,
-          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      Navigator.popUntil(
+          context,
+          (rota) =>
+              ['PaginaDelivery', 'PaginaRecorrentes']
+                  .contains(rota.settings.name) ||
+              rota.isFirst);
       return;
     }
 
@@ -239,7 +263,8 @@ class _PaginaFinalizarFormaPagamentoState
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
                     onTap: () async {
-                      if (widget.pagamentoselecionado == '2') {
+                      if (widget.pagamentoselecionado == '2' &&
+                          widget.recorrencia?.mensal != true) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -261,6 +286,8 @@ class _PaginaFinalizarFormaPagamentoState
                               totalReceber:
                                   widget.totalReceber.toStringAsFixed(2),
                               pagamentoselecionado: widget.pagamentoselecionado,
+                              vencimentoRecorrente:
+                                  widget.recorrencia?.vencimento,
                             ),
                           ),
                         );

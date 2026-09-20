@@ -21,6 +21,7 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 
 class PaginaParcelamento extends StatefulWidget {
   // final SalvarListarVendasModelo modelo;
@@ -38,6 +39,7 @@ class PaginaParcelamento extends StatefulWidget {
   final String valorFalta;
   final String valorTroco;
   final String pagamentoselecionado;
+  final DateTime? vencimentoRecorrente;
 
   const PaginaParcelamento({
     super.key,
@@ -55,6 +57,7 @@ class PaginaParcelamento extends StatefulWidget {
     required this.valorFalta,
     required this.valorTroco,
     required this.pagamentoselecionado,
+    this.vencimentoRecorrente,
   });
 
   @override
@@ -80,6 +83,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   final ValueNotifier<bool> finalizando = ValueNotifier(false);
   final ValueNotifier<List<ParcelasModelo>> listaParcelas = ValueNotifier([]);
   int _parcelas = 0;
+  final _chavePagamento = ServicosRecorrentes.novaChave();
 
   String _vendaDia1 = '30';
   String _vendaDia2 = '45';
@@ -90,8 +94,9 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
   void initState() {
     super.initState();
 
-    final primeiroVencimento = DateUtils.dateOnly(DateTime.now())
-        .add(const Duration(days: _prazoPadraoDias));
+    final primeiroVencimento = widget.vencimentoRecorrente ??
+        DateUtils.dateOnly(DateTime.now())
+            .add(const Duration(days: _prazoPadraoDias));
     _dataController = TextEditingController(
       text: DateFormat('dd/MM/yyyy').format(primeiroVencimento),
     );
@@ -228,6 +233,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       acrescimo: acrescimo,
       dataLancamento: dataOriginal,
       parcelasLista: listaParcelas.value,
+      chavePagamento: _chavePagamento,
     );
 
     final pagamentoIntegral = widget.valor + 0.009 >= totalReceber;
@@ -241,8 +247,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       await carrinhoProvedor.removerComandasPedidos();
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
-      Navigator.popUntil(context,
-          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      Navigator.popUntil(
+          context,
+          (rota) =>
+              ['PaginaDelivery', 'PaginaRecorrentes']
+                  .contains(rota.settings.name) ||
+              rota.isFirst);
       return;
     }
 
