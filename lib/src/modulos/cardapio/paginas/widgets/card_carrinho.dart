@@ -3,6 +3,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
@@ -339,6 +340,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     var item = widget.item;
     final nomeExibicao = _nomeExibicaoItem(item);
     final opcoesComDetalhes = (item.opcoesPacotesListaFinal ?? [])
+        .where((grupo) => !grupoObservacaoProduto(grupo))
         .where(_grupoTemDetalhesVisiveis)
         .toList();
     final produtoCardapio = _idCardapioValido(item.idCategoriaCardapio) ||

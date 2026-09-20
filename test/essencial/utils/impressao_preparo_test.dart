@@ -313,18 +313,33 @@ void main() {
             ),
           ],
         ),
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          tipo: 3,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '3',
+              nome: 'Ovo',
+              valor: '1.00',
+              quantidade: 1,
+            ),
+          ],
+        ),
         montarGrupoObservacaoProduto('Talher descartavel'),
       ];
 
     final dados = DadosImpressaoPreparo.produto(almoco);
     final opcoes = dados['opcoesPacotesListaFinal'] as List;
-    final montagem = opcoes.single as Map;
+    final montagem = opcoes.first as Map;
 
     expect(dados['observacao'], 'Talher descartavel');
-    expect(opcoes, hasLength(1));
+    expect(opcoes, hasLength(2));
     expect(montagem['id'], 12);
     expect(montagem['tipo'], 8);
     expect(montagem['titulo'], 'Cardápio');
+    expect((opcoes.last as Map)['titulo'], 'Adicionais');
     final ingredientes = montagem['dados'] as List;
     expect(ingredientes, hasLength(1));
     expect(ingredientes.single['nome'], 'Feijao');
