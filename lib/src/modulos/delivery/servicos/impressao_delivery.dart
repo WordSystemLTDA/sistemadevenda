@@ -253,7 +253,8 @@ class ImpressaoDelivery {
     final comanda = tipo == TipoCardapio.balcao
         ? 'Balcão ${pedido.id}'
         : 'Delivery ${pedido.id}';
-    final somenteResumo = pedido.tipoEntrega == '1';
+    final somenteResumo = pedido.tipoEntrega == '1' &&
+        config?.imprimirPreparoNoComprovanteConsumacao != true;
     return [
       for (final grupo in grupos.entries)
         jsonEncode({

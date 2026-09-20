@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:app/src/modulos/recorrentes/paginas/pagina_recorrentes.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/constantes/funcoes_global.dart';
@@ -167,6 +168,14 @@ class _PaginaInicioState extends State<PaginaInicio> {
           appBar: AppBar(
             title: const Text('Início'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              if (configBigchef?.recorrentesHabilitados == true)
+                TextButton.icon(
+                  icon: const Icon(Icons.event_repeat_outlined, size: 20),
+                  label: const Text('Recorrentes'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaginaRecorrentes())),
+                ),
+            ],
           ),
           body: Visibility(
             visible: isLoading == false,
@@ -259,6 +268,16 @@ class _PaginaInicioState extends State<PaginaInicio> {
                             builder: (_) => const PaginaDelivery(),
                           )),
                         ),
+                        if (configBigchef?.recorrentesHabilitados == true)
+                          CardHome(
+                            nome: 'Recorrentes',
+                            cor: Theme.of(context).colorScheme.primary,
+                            icone: const Icon(Icons.event_repeat_outlined, size: 40),
+                            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                              settings: const RouteSettings(name: 'PaginaRecorrentes'),
+                              builder: (_) => const PaginaRecorrentes(),
+                            )),
+                          ),
                         if (podeVerIndicadores(
                             context.read<UsuarioProvedor>().usuario))
                           CardHome(

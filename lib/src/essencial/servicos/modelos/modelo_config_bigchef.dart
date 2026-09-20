@@ -10,6 +10,8 @@ String _textoConfig(Map<String, dynamic> map, String chave, String coluna) =>
 bool _sim(String valor) => valor.trim().toLowerCase() == 'sim';
 
 class ModeloConfigBigchef {
+  final String clientecompedidosdecorrentes;
+  bool get recorrentesHabilitados => clientecompedidosdecorrentes.trim().toLowerCase() == 'sim';
   final String abrircomandadireto;
   final String abrirmesadireto;
   final String agrupamentodeitenscomanda;
@@ -34,6 +36,7 @@ class ModeloConfigBigchef {
   final String imprimirnumerooperacionalentregador;
   final String imprimirnumerooperacionalconsumacao;
   final String imprimirnumerooperacionalpreparo;
+  final String imprimirpreparocomprovanteconsumacao;
   final String? modeloValorAdicionalPizza;
   final String permitireditarquantidadeappaposfinalizar;
   final String permitireditarobservacaoappaposfinalizar;
@@ -42,6 +45,7 @@ class ModeloConfigBigchef {
   final String permitireditaradicionalappaposfinalizar;
 
   ModeloConfigBigchef({
+    this.clientecompedidosdecorrentes = 'Não',
     required this.abrircomandadireto,
     required this.abrirmesadireto,
     required this.agrupamentodeitenscomanda,
@@ -66,6 +70,7 @@ class ModeloConfigBigchef {
     this.imprimirnumerooperacionalentregador = '',
     this.imprimirnumerooperacionalconsumacao = '',
     this.imprimirnumerooperacionalpreparo = '',
+    this.imprimirpreparocomprovanteconsumacao = 'Não',
     this.modeloValorAdicionalPizza,
     this.permitireditarquantidadeappaposfinalizar = 'Não',
     this.permitireditarobservacaoappaposfinalizar = 'Não',
@@ -101,9 +106,12 @@ class ModeloConfigBigchef {
       _permiteNumeroOperacional(imprimirnumerooperacionalconsumacao);
   bool get imprimeNumeroOperacionalPreparo =>
       _permiteNumeroOperacional(imprimirnumerooperacionalpreparo);
+  bool get imprimePreparoNoComprovanteConsumacao =>
+      _sim(imprimirpreparocomprovanteconsumacao);
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
+      'clientecompedidosdecorrentes': clientecompedidosdecorrentes,
       'abrircomandadireto': abrircomandadireto,
       'abrirmesadireto': abrirmesadireto,
       'agrupamentodeitenscomanda': agrupamentodeitenscomanda,
@@ -131,6 +139,8 @@ class ModeloConfigBigchef {
       'imprimirnumerooperacionalconsumacao':
           imprimirnumerooperacionalconsumacao,
       'imprimirnumerooperacionalpreparo': imprimirnumerooperacionalpreparo,
+      'imprimirpreparocomprovanteconsumacao':
+          imprimirpreparocomprovanteconsumacao,
       'modelo_valor_adicional_pizza': modeloValorAdicionalPizza,
       'permitireditarquantidadeappaposfinalizar':
           permitireditarquantidadeappaposfinalizar,
@@ -147,6 +157,7 @@ class ModeloConfigBigchef {
 
   factory ModeloConfigBigchef.fromMap(Map<String, dynamic> map) {
     return ModeloConfigBigchef(
+      clientecompedidosdecorrentes: (map['clientecompedidosdecorrentes'] ?? map['cliente_com_pedidos_decorrentes'] ?? 'Não').toString(),
       abrircomandadireto: _texto(map, 'abrircomandadireto'),
       abrirmesadireto: _texto(map, 'abrirmesadireto'),
       agrupamentodeitenscomanda: _texto(map, 'agrupamentodeitenscomanda'),
@@ -179,6 +190,10 @@ class ModeloConfigBigchef {
           _texto(map, 'imprimirnumerooperacionalconsumacao'),
       imprimirnumerooperacionalpreparo:
           _texto(map, 'imprimirnumerooperacionalpreparo'),
+      imprimirpreparocomprovanteconsumacao: _textoConfig(
+          map,
+          'imprimirpreparocomprovanteconsumacao',
+          'imprimir_preparo_comprovante_consumacao'),
       modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ??
               map['modelovaloradicionalpizza'])
           ?.toString(),

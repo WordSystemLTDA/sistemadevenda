@@ -139,7 +139,10 @@ class PedidoDelivery {
 }
 
 class ConfigDelivery {
-  final bool receberNoFinal, imprimirPreparo, motivoCancelamentoObrigatorio;
+  final bool receberNoFinal,
+      imprimirPreparo,
+      imprimirPreparoNoComprovanteConsumacao,
+      motivoCancelamentoObrigatorio;
   final String entregadorFixo, valorEntrega, cobrancaEntrega;
   final String numerodopedidodestaquecomprovante;
   final String numerodopedidodestaquepreparo;
@@ -151,6 +154,7 @@ class ConfigDelivery {
   const ConfigDelivery(
       {this.receberNoFinal = false,
       this.imprimirPreparo = true,
+      this.imprimirPreparoNoComprovanteConsumacao = false,
       this.motivoCancelamentoObrigatorio = false,
       this.entregadorFixo = '',
       this.valorEntrega = '0',
@@ -165,6 +169,9 @@ class ConfigDelivery {
   factory ConfigDelivery.fromMap(Map<String, dynamic> map) => ConfigDelivery(
         receberNoFinal: map['receberpedidonofinal'] == 'Sim',
         imprimirPreparo: map['imprimirpreparodelivery'] != 'Não',
+        imprimirPreparoNoComprovanteConsumacao:
+            map['imprimirpreparocomprovanteconsumacao'] == 'Sim' ||
+                map['imprimir_preparo_comprovante_consumacao'] == 'Sim',
         motivoCancelamentoObrigatorio: map['obrigarjustifcancelarpedido']
                 ?.toString()
                 .trim()
@@ -216,6 +223,8 @@ class ConfigDelivery {
 
   bool get imprimeNumeroOperacionalPreparo =>
       _permiteNumeroOperacional(imprimirnumerooperacionalpreparo);
+  bool get imprimirPreparoSeparado =>
+      imprimirPreparo && !imprimirPreparoNoComprovanteConsumacao;
   bool get imprimeNumeroOperacionalEntregador =>
       _permiteNumeroOperacional(imprimirnumerooperacionalentregador);
   bool get imprimeNumeroOperacionalConsumacao =>

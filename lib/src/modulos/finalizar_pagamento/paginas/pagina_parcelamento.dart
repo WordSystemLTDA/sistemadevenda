@@ -356,20 +356,23 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             'nomeConexao': usuarioProvedor.usuario!.nome,
           }));
 
-          await Impressao.comprovanteDePedido(
-            local: '',
-            tipoTela: provedorCardapio.tipo,
-            comanda: "Balcão $idvenda",
-            numeroPedido: vendaBalcao.numeropedido,
-            // nomeCliente: vendaBalcao.nomecliente,
-            nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' &&
-                    (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
-                ? (vendaBalcao.observacaoDoPedido ?? '')
-                : (vendaBalcao.nomecliente),
-            nomeEmpresa: vendaBalcao.nomeEmpresa,
-            produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
-            tipodeentrega: vendaBalcao.idtipodeentrega,
-          );
+          if (provedorCardapio
+                  .configBigchef?.imprimePreparoNoComprovanteConsumacao !=
+              true) {
+            await Impressao.comprovanteDePedido(
+              local: '',
+              tipoTela: provedorCardapio.tipo,
+              comanda: "Balcão $idvenda",
+              numeroPedido: vendaBalcao.numeropedido,
+              nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' &&
+                      (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
+                  ? (vendaBalcao.observacaoDoPedido ?? '')
+                  : (vendaBalcao.nomecliente),
+              nomeEmpresa: vendaBalcao.nomeEmpresa,
+              produtos: carrinhoProvedor.itensCarrinho.listaComandosPedidos,
+              tipodeentrega: vendaBalcao.idtipodeentrega,
+            );
+          }
 
           var informacoes = await servico.listarPorId(idvenda);
           var parcelas = await servico.listarFinanceiroVenda(idvenda);

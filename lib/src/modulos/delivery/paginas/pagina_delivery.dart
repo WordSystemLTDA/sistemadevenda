@@ -199,7 +199,8 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         }
       }
       final paraImprimir = await _provedor.servico.pedido(pedido.id);
-      if (['1', '4'].contains(alvo.impressao) && config.imprimirPreparo) {
+      if (['1', '4'].contains(alvo.impressao) &&
+          config.imprimirPreparoSeparado) {
         await ImpressaoDelivery.imprimir(
             _provedor.servico, Modular.get<Server>(), paraImprimir,
             preparo: true, config: config);

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
@@ -162,6 +163,15 @@ class AdaptadorDelivery extends Fake implements HttpClientAdapter {
 }
 
 void main() {
+  test('configuracao geral interpreta a unificacao do preparo', () {
+    final config = ModeloConfigBigchef.fromMap({
+      'imprimir_preparo_comprovante_consumacao': 'Sim',
+    });
+
+    expect(config.imprimePreparoNoComprovanteConsumacao, isTrue);
+    expect(config.toMap()['imprimirpreparocomprovanteconsumacao'], 'Sim');
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   test('le valores brasileiros e do PHP sem perder milhares', () {
     expect(valorDelivery('1.234,56'), 1234.56);
@@ -190,13 +200,16 @@ void main() {
       'formacobrancaentregadelivery': '2',
       'valordiferenca': '2.50',
       'entregadorfixo': '1',
-      'identregador': '0'
+      'identregador': '0',
+      'imprimirpreparocomprovanteconsumacao': 'Sim',
     });
     expect(config.exigePagamento(pedidoTeste(), etapasTeste()[1]), isFalse);
     expect(config.motivoCancelamentoObrigatorio, isTrue);
     expect(config.exigePagamento(pedidoTeste(), etapasTeste().last), isTrue);
     expect(config.taxaEntrega('6.00'), 8.5);
     expect(config.entregadorFixo, isEmpty);
+    expect(config.imprimirPreparoNoComprovanteConsumacao, isTrue);
+    expect(config.imprimirPreparoSeparado, isFalse);
     final configNumero = ConfigDelivery.fromMap({
       'ativarnumerooperacionalpedido': 'Sim',
       'imprimirnumerooperacionalentregador': 'Sim',
@@ -381,6 +394,45 @@ void main() {
     expect(json['imprimirnumerooperacionalpreparo'], 'Sim');
     expect(json['numerodopedidodestaquecomprovante'], 'Sim');
     expect(json['numerodopedidodestaquepreparo'], 'Não');
+  });
+  test('comprovante do entregador preserva detalhes quando unifica preparo',
+      () {
+    final s = ServicoDeliveryTeste();
+    final produto = Modelowordprodutos.fromMap({
+      ...impressao.produto(computador: 'CAIXA').toMap(),
+      'observacao': 'Sem cebola',
+      'opcoesPacotesListaFinal': [
+        {
+          'id': 7,
+          'titulo': 'Adicionais',
+          'dados': [
+            {'id': '8', 'nome': 'Ovo', 'valor': '2', 'quantidade': 1}
+          ],
+        }
+      ],
+    });
+
+    final resumo = jsonDecode(ImpressaoDelivery.comprovantes(
+      s,
+      pedidoTeste(),
+      [produto],
+    ).single) as Map<String, dynamic>;
+    final unificado = jsonDecode(ImpressaoDelivery.comprovantes(
+      s,
+      pedidoTeste(),
+      [produto],
+      config: const ConfigDelivery(
+        imprimirPreparoNoComprovanteConsumacao: true,
+      ),
+    ).single) as Map<String, dynamic>;
+
+    expect(
+        (resumo['produtos'] as List).single['opcoesPacotesListaFinal'], isNull);
+    expect(
+      (unificado['produtos'] as List).single['opcoesPacotesListaFinal'],
+      isNotEmpty,
+    );
+    expect((unificado['produtos'] as List).single['observacao'], 'Sem cebola');
   });
   test('preparo do delivery imprime detalhes da pizza e mantem destino',
       () async {

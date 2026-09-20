@@ -8,8 +8,14 @@ import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
+import 'package:app/src/modulos/recorrentes/paginas/widgets/campos_recorrencia.dart';
 
 class PaginaNovoDelivery extends StatefulWidget {
+  final bool recorrente;
   final ServicoDelivery servico;
   final PedidoDelivery? clonar;
   final bool semCliente;
@@ -18,6 +24,7 @@ class PaginaNovoDelivery extends StatefulWidget {
   final bool permitirEntrega;
   const PaginaNovoDelivery(
       {super.key,
+      this.recorrente = false,
       required this.servico,
       this.clonar,
       this.semCliente = false,
@@ -29,6 +36,8 @@ class PaginaNovoDelivery extends StatefulWidget {
 }
 
 class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
+  ConfiguracaoRecorrencia _recorrencia = const ConfiguracaoRecorrencia();
+  final _chaveRecorrencia = ServicosRecorrentes.novaChave();
   final _observacao = TextEditingController();
   String _tipo = '1', _cliente = '0', _nome = '', _telefone = '';
   Map<String, dynamic>? _endereco;
@@ -198,6 +207,11 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
 
   Future<void> _abrir() async {
     if (_salvando) return;
+    if (widget.recorrente && (_cliente == '0' || _recorrencia.erro != null)) {
+      setState(() => _erro = _recorrencia.erro ?? 'Selecione um cliente cadastrado.');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_erro!)));
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     if (_tipo == '1' &&
         (_cliente == '0' ||
@@ -222,6 +236,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
         });
         if (mounted) Navigator.pop(context, true);
         return;
+      }
+      if (widget.recorrente) {
+        _idCriado ??= await ServicosRecorrentes(Modular.get<DioCliente>(), Modular.get<UsuarioProvedor>()).inserir(
+          chave: _chaveRecorrencia, cliente: _cliente, endereco: '${_endereco?['id'] ?? '0'}', tipoEntrega: _tipo,
+          observacao: _observacao.text.trim(), configuracao: _recorrencia,
+        );
       }
       _idCriado ??= await widget.servico.criar(
           cliente: _cliente,
@@ -271,7 +291,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
           appBar: AppBar(
               title: Text(widget.editarPedido != null
                   ? 'Editar pedido'
-                  : 'Novo Delivery'),
+                  : widget.recorrente ? 'Novo Recorrente' : 'Novo Delivery'),
               backgroundColor: cs.inversePrimary),
           bottomNavigationBar: SafeArea(
               top: false,
@@ -305,13 +325,17 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                               ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.all(16),
                           children: [
+                            if (widget.recorrente) ...[
+                              CamposRecorrencia(valor: _recorrencia, primeiroPedido: true, onChanged: (valor) => setState(() => _recorrencia = valor)),
+                              const Divider(height: 32),
+                            ],
                             _titulo('Tipo de entrega', Icons.delivery_dining),
                             Row(children: [
                               for (final opcao in [
                                 if (widget.permitirEntrega)
                                   ('1', 'Entrega', Icons.delivery_dining),
                                 ('2', 'Retirada', Icons.shopping_bag_outlined),
-                                ('3', 'No local', Icons.restaurant_outlined)
+                                if (!widget.recorrente) ('3', 'No local', Icons.restaurant_outlined)
                               ]) ...[
                                 Expanded(
                                   child: _cardTipoEntrega(
