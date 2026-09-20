@@ -26,6 +26,45 @@ class CamposRecorrencia extends StatelessWidget {
         : valor.copyWith(horario: texto));
   }
 
+  Widget _gradeJustificada(
+    BuildContext context, {
+    required List<Widget> botoes,
+    required double larguraMinima,
+    double espacamento = 8,
+  }) {
+    final larguraTela = MediaQuery.sizeOf(context).width;
+    final larguraDisponivel = larguraTela - (larguraTela >= 600 ? 96 : 32);
+    final escalaTexto = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final larguraPorBotao = larguraMinima * escalaTexto.clamp(1, 1.5);
+    final porLinha =
+        ((larguraDisponivel + espacamento) / (larguraPorBotao + espacamento))
+            .floor()
+            .clamp(1, botoes.length);
+    final linhas = <Widget>[];
+
+    for (var inicio = 0; inicio < botoes.length; inicio += porLinha) {
+      final fim = (inicio + porLinha).clamp(0, botoes.length);
+      final linha = botoes.sublist(inicio, fim);
+      linhas.add(Row(children: [
+        for (var indice = 0; indice < linha.length; indice++) ...[
+          Expanded(
+              child: SizedBox(width: double.infinity, child: linha[indice])),
+          if (indice < linha.length - 1) SizedBox(width: espacamento),
+        ],
+      ]));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var indice = 0; indice < linhas.length; indice++) ...[
+          linhas[indice],
+          if (indice < linhas.length - 1) SizedBox(height: espacamento),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,32 +86,43 @@ class CamposRecorrencia extends StatelessWidget {
                   onSelected: (_) =>
                       onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5]))),
             ]),
-            Wrap(spacing: 4, runSpacing: 4, children: [
-              for (var dia = 1; dia <= 7; dia++)
-                FilterChip(
-                  label: Text(ConfiguracaoRecorrencia.nomesDias[dia - 1]),
-                  selected: valor.dias.contains(dia),
-                  onSelected: (sim) {
-                    final dias = [...valor.dias];
-                    sim ? dias.add(dia) : dias.remove(dia);
-                    onChanged(valor.copyWith(dias: dias..sort()));
-                  },
-                ),
-            ]),
+            const SizedBox(height: 4),
+            _gradeJustificada(
+              context,
+              larguraMinima: 68,
+              espacamento: 4,
+              botoes: [
+                for (var dia = 1; dia <= 7; dia++)
+                  FilterChip(
+                    label: Text(ConfiguracaoRecorrencia.nomesDias[dia - 1],
+                        textAlign: TextAlign.center),
+                    selected: valor.dias.contains(dia),
+                    onSelected: (sim) {
+                      final dias = [...valor.dias];
+                      sim ? dias.add(dia) : dias.remove(dia);
+                      onChanged(valor.copyWith(dias: dias..sort()));
+                    },
+                  ),
+              ],
+            ),
             const SizedBox(height: 12),
             Text('Horário', style: Theme.of(context).textTheme.titleSmall),
-            Wrap(spacing: 8, runSpacing: 4, children: [
-              for (final opcao in const [
-                ('livre', 'Qualquer horário'),
-                ('fixo', 'Horário fixo'),
-                ('intervalo', 'Horário da empresa')
-              ])
-                ChoiceChip(
-                    label: Text(opcao.$2),
-                    selected: valor.horarioTipo == opcao.$1,
-                    onSelected: (_) =>
-                        onChanged(valor.copyWith(horarioTipo: opcao.$1))),
-            ]),
+            _gradeJustificada(
+              context,
+              larguraMinima: 160,
+              botoes: [
+                for (final opcao in const [
+                  ('livre', 'Qualquer horário'),
+                  ('fixo', 'Horário fixo'),
+                  ('intervalo', 'Horário da empresa')
+                ])
+                  ChoiceChip(
+                      label: Text(opcao.$2, textAlign: TextAlign.center),
+                      selected: valor.horarioTipo == opcao.$1,
+                      onSelected: (_) =>
+                          onChanged(valor.copyWith(horarioTipo: opcao.$1))),
+              ],
+            ),
             if (valor.horarioTipo != 'livre') ...[
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: [
