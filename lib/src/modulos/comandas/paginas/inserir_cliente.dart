@@ -74,8 +74,7 @@ class _InserirClienteState extends State<InserirCliente> {
     try {
       final resposta = await widget.servicoEndereco!
           .consultar('config_clientes/listar_cliente.php');
-      final configuracao =
-          ConfiguracaoEnderecoCliente.fromResposta(resposta);
+      final configuracao = ConfiguracaoEnderecoCliente.fromResposta(resposta);
       if (!mounted) return;
       setState(() {
         _configuracaoEndereco = configuracao;
@@ -287,8 +286,7 @@ class _InserirClienteState extends State<InserirCliente> {
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 18),
-              const _LabelCampo(
-                  icone: Icons.phone_outlined, texto: 'Celular'),
+              const _LabelCampo(icone: Icons.phone_outlined, texto: 'Celular'),
               const SizedBox(height: 8),
               _CampoTexto(
                 campoKey: const ValueKey('cliente-celular'),
@@ -344,8 +342,7 @@ class _InserirClienteState extends State<InserirCliente> {
                       maxLength: campo.$1 == 'uf' ? 2 : null,
                       readOnly: _configuracaoEndereco.bloquearCidade &&
                           (campo.$1 == 'cidade' || campo.$1 == 'uf'),
-                      validator: (valor) =>
-                          _validarEndereco(campo.$1, valor),
+                      validator: (valor) => _validarEndereco(campo.$1, valor),
                     ),
                     const SizedBox(height: 18),
                   ],
@@ -440,8 +437,7 @@ class _CartaoCabecalho extends StatelessWidget {
                   incluirEndereco
                       ? 'O endereço será salvo como padrão.'
                       : 'Apenas o nome é obrigatório.',
-                  style:
-                      TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant),
+                  style: TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -521,9 +517,7 @@ class _LabelCampo extends StatelessWidget {
           const SizedBox(width: 4),
           Text('*',
               style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: cs.error)),
+                  fontSize: 14, fontWeight: FontWeight.w700, color: cs.error)),
         ],
       ],
     );
@@ -570,8 +564,8 @@ class _CampoTexto extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cs.outlineVariant),
       ),
-      padding: EdgeInsets.symmetric(
-          horizontal: 12, vertical: maxLines > 1 ? 4 : 2),
+      padding:
+          EdgeInsets.symmetric(horizontal: 12, vertical: maxLines > 1 ? 4 : 2),
       child: Row(
         crossAxisAlignment:
             maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,

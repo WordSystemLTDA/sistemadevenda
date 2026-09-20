@@ -20,15 +20,14 @@ class ConfiguracaoEnderecoCliente {
         Map<String, dynamic>.from(valor.first as Map),
       _ => <String, dynamic>{},
     };
-    final requerido = _texto(
-        dados, ['requerido_endereco', 'requeridoEndereco', 'endereco']);
+    final requerido =
+        _texto(dados, ['requerido_endereco', 'requeridoEndereco', 'endereco']);
     return ConfiguracaoEnderecoCliente(
       cep: _texto(dados, ['padrao_cep', 'padraoCep']),
-      cidade:
-          _texto(dados, ['padrao_nome_cidade', 'padraoNomeCidade']),
+      cidade: _texto(dados, ['padrao_nome_cidade', 'padraoNomeCidade']),
       uf: _texto(dados, ['padrao_estado', 'padraoEstado']).toUpperCase(),
-      bloquearCidade: _ativo(_texto(
-          dados, ['bloquear_edicao_cidade', 'bloquearEdicaoCidade'])),
+      bloquearCidade: _ativo(
+          _texto(dados, ['bloquear_edicao_cidade', 'bloquearEdicaoCidade'])),
       enderecoObrigatorio: requerido.isEmpty || _ativo(requerido),
     );
   }
@@ -43,9 +42,6 @@ class ConfiguracaoEnderecoCliente {
 
   static bool _ativo(Object? valor) {
     final texto = valor?.toString().trim().toLowerCase() ?? '';
-    return texto == 'sim' ||
-        texto == 's' ||
-        texto == '1' ||
-        texto == 'true';
+    return texto == 'sim' || texto == 's' || texto == '1' || texto == 'true';
   }
 }

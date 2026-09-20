@@ -109,10 +109,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   }
 
   Future<Map<String, dynamic>?> _cadastrarCliente(BuildContext context) async {
-      final res = await Navigator.push<Map<String, dynamic>>(
-          context,
-          MaterialPageRoute(
-              builder: (_) => InserirCliente(servicoEndereco: widget.servico)));
+    final res = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => InserirCliente(servicoEndereco: widget.servico)));
     if (res == null) return null;
     return {'id': res['idcliente'], 'nome': res['nomecliente']};
   }
