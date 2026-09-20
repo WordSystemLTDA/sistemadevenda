@@ -1,6 +1,7 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 
@@ -90,7 +91,7 @@ class DadosImpressaoPreparo {
 
       if (_grupoMontagemCardapio(opcao)) {
         final alteracoes = (opcao.dados ?? const <ModeloDadosOpcoesPacotes>[])
-            .where((dado) => dado.montagemCardapio?.possuiAlteracao ?? true)
+            .where((dado) => dado.alteracaoMontagemCardapio != null)
             .toList();
         if (alteracoes.isEmpty) continue;
         resultado.add(_opcao(opcao, dadosFiltrados: alteracoes));
@@ -105,6 +106,7 @@ class DadosImpressaoPreparo {
 
   static bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
       grupo.tipo == 8 ||
+      tituloIngredientesCardapio(grupo.titulo) ||
       (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
           dado.montagemCardapio != null ||
           _idCardapioValido(dado.idCategoriaCardapio));
@@ -131,9 +133,17 @@ class DadosImpressaoPreparo {
   }) {
     final dados = opcao.toMap();
     final dadosOpcao = dadosFiltrados ?? opcao.dados;
+    final montagemCardapio = _grupoMontagemCardapio(opcao);
     dados['produtos'] = opcao.produtos?.map(produto).toList();
     dados['opcoesPacote'] = _opcoesParaPreparo(opcao.opcoesPacote);
-    dados['dados'] = dadosOpcao?.map((item) => item.toMap()).toList();
+    dados['dados'] = dadosOpcao?.map((item) {
+      final mapa = item.toMap();
+      final montagem = item.alteracaoMontagemCardapio;
+      if (montagemCardapio && montagem != null) {
+        mapa['montagemCardapio'] = montagem.toMap();
+      }
+      return mapa;
+    }).toList();
     if (opcao.id == 10) {
       dados['dados'] = dadosOpcao?.map((sabor) {
         return {

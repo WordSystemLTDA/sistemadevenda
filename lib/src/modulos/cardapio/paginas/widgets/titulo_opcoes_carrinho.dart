@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ bool _idCardapioValido(Object? valor) {
 
 bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
     grupo.tipo == 8 ||
+    tituloIngredientesCardapio(grupo.titulo) ||
     (grupo.dados ?? const []).any((dado) =>
         dado.montagemCardapio != null ||
         _idCardapioValido(dado.idCategoriaCardapio));

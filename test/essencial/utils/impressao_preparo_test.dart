@@ -359,6 +359,35 @@ void main() {
     expect(jsonEncode(dados), isNot(contains('Ingredientes do Cardápio')));
   });
 
+  test('preparo preserva alteracao legada do cardapio apos recarregar API', () {
+    final almoco = produto(nome: 'Almoco Livre')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(id: '1', nome: 'Arroz', valor: '0'),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'SEM Feijão',
+              valor: '0',
+            ),
+          ],
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(almoco);
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    final ingredientes = (opcoes.single as Map)['dados'] as List;
+
+    expect(ingredientes, hasLength(1));
+    expect(ingredientes.single['nome'], 'SEM Feijão');
+    expect(ingredientes.single['montagemCardapio']['nomeOriginal'], 'Feijão');
+    expect(ingredientes.single['montagemCardapio']['acao'], 'sem');
+    expect(jsonEncode(dados), isNot(contains('Arroz')));
+  });
+
   test('comprovante usa lista final e nao envia catalogo marcado', () {
     final catalogo = adicionais(['Milho', 'Bacon']);
     catalogo.dados!.last.estaSelecionado = true;

@@ -80,6 +80,12 @@ class ModeloDadosOpcoesPacotes {
     this.somenteMetadeBorda = false,
   });
 
+  MontagemIngredienteCardapio? get alteracaoMontagemCardapio {
+    final montagem = montagemCardapio;
+    if (montagem != null) return montagem.possuiAlteracao ? montagem : null;
+    return MontagemIngredienteCardapio.inferirAlteracao(nome);
+  }
+
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,

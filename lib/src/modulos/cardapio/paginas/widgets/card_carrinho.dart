@@ -2,6 +2,7 @@ import 'package:app/src/essencial/widgets/linha_valor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao.dart';
@@ -20,6 +21,7 @@ bool _idCardapioValido(Object? valor) {
 
 bool _grupoMontagemCardapio(ModeloOpcoesPacotes grupo) =>
     grupo.tipo == 8 ||
+    tituloIngredientesCardapio(grupo.titulo) ||
     (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
         dado.montagemCardapio != null ||
         _idCardapioValido(dado.idCategoriaCardapio));
@@ -30,9 +32,7 @@ List<ModeloDadosOpcoesPacotes> _dadosVisiveisGrupo(
   final dados = grupo.dados ?? const <ModeloDadosOpcoesPacotes>[];
   if (!_grupoMontagemCardapio(grupo)) return dados;
 
-  return dados
-      .where((dado) => dado.montagemCardapio?.possuiAlteracao ?? true)
-      .toList();
+  return dados.where((dado) => dado.alteracaoMontagemCardapio != null).toList();
 }
 
 bool _grupoTemDetalhesVisiveis(ModeloOpcoesPacotes grupo) =>
@@ -505,7 +505,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                             final dado = dadosVisiveis[index];
                             final montagemCardapio = _grupoMontagemCardapio(e);
                             final detalhe = montagemCardapio
-                                ? dado.montagemCardapio?.detalheVisualizacao
+                                ? dado.alteracaoMontagemCardapio
+                                    ?.detalheVisualizacao
                                 : null;
 
                             return LinhaValor(
@@ -610,7 +611,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     bool montagemCardapio = false,
   }) {
     if (montagemCardapio) {
-      return dado.montagemCardapio?.nomeOriginal ?? dado.nome;
+      return dado.alteracaoMontagemCardapio?.nomeOriginal ?? dado.nome;
     }
 
     if (idOpcao == 10) {

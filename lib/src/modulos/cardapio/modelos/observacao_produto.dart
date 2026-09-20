@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'modelo_dados_opcoes_pacotes.dart';
 import 'modelo_opcoes_pacotes.dart';
+import 'montagem_ingrediente_cardapio.dart';
 
 const int idGrupoObservacaoProduto = 12;
 const int idGrupoObservacaoProdutoLegado = 11;
@@ -30,6 +31,7 @@ bool _idCardapioValido(Object? valor) {
 
 bool _grupoMontagemCardapio(ModeloOpcoesPacotes opcao) =>
     opcao.tipo == 8 ||
+    tituloIngredientesCardapio(opcao.titulo) ||
     (opcao.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
         dado.montagemCardapio != null ||
         _idCardapioValido(dado.idCategoriaCardapio));
@@ -43,7 +45,11 @@ bool grupoObservacaoProduto(ModeloOpcoesPacotes opcao) =>
 bool grupoObservacaoProdutoMap(Map<String, dynamic> opcao) {
   final id = int.tryParse('${opcao['id'] ?? ''}');
   final tipo = int.tryParse('${opcao['tipo'] ?? ''}');
-  if (tipo == 8 || _mapaContemMontagemCardapio(opcao)) return false;
+  if (tipo == 8 ||
+      tituloIngredientesCardapio(opcao['titulo']) ||
+      _mapaContemMontagemCardapio(opcao)) {
+    return false;
+  }
   return id == idGrupoObservacaoProduto ||
       tituloGrupoObservacao(opcao['titulo']) ||
       (id == idGrupoObservacaoProdutoLegado && tipo == 7);
