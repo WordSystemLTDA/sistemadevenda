@@ -321,8 +321,8 @@ class ImpressaoDelivery {
     ];
   }
 
-  /// Mantém cada parte do endereço separada para o servidor imprimir Número e
-  /// Bairro na primeira linha e Cidade/Complemento na linha seguinte.
+  /// Mantém cada parte do endereço separada para o servidor ampliar somente os
+  /// valores de Número/Bairro e imprimir Cidade/Complemento na linha seguinte.
   static Map<String, String> camposEnderecoComprovante(PedidoDelivery pedido) =>
       {
         'enderecoCliente': pedido.texto('enderecoCliente').trim(),

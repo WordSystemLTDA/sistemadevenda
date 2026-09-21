@@ -413,7 +413,7 @@ void main() {
     expect(json['comanda'], 'Delivery 25');
     expect(json['protocoloImpressao'], 2);
   });
-  test('endereco do comprovante mantem os campos separados e sem espacos', () {
+  test('mantem numero e bairro separados para o layout do comprovante', () {
     final pedido = pedidoTeste(campos: {
       'enderecoCliente': '  Rua Sem Saida  ',
       'numeroCliente': ' 133 ',
