@@ -3,11 +3,13 @@ import 'package:app/src/app_widget.dart';
 import 'package:app/src/managers/app_lifecycle_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR');
   await iniciarAplicativo();
 }
 

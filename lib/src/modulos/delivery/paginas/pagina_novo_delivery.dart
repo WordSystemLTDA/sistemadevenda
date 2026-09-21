@@ -157,7 +157,13 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     await _carregarEnderecos();
   }
 
-  Future<void> _carregarEnderecos() async {
+  String _idEndereco(Map<String, dynamic>? endereco) =>
+      endereco?['id']?.toString() ?? '';
+
+  Future<void> _carregarEnderecos({
+    bool selecionarNovo = false,
+    Set<String> idsAnteriores = const {},
+  }) async {
     final consulta = ++_consulta;
     final cliente = _cliente;
     setState(() {
@@ -177,10 +183,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
         _enderecos = [
           for (final e in dados as List) Map<String, dynamic>.from(e as Map)
         ];
-        _endereco =
-            _enderecos.where((e) => e['id'] == _endereco?['id']).firstOrNull ??
-                _enderecos.where((e) => e['padrao'] == 'Sim').firstOrNull ??
-                (_enderecos.length == 1 ? _enderecos.first : null);
+        final enderecoNovo = selecionarNovo
+            ? _enderecos
+                .where((e) => !idsAnteriores.contains(_idEndereco(e)))
+                .firstOrNull
+            : null;
+        final idSelecionado = _idEndereco(_endereco);
+        _endereco = enderecoNovo ??
+            _enderecos
+                .where((e) => _idEndereco(e) == idSelecionado)
+                .firstOrNull ??
+            _enderecos.where((e) => e['padrao'] == 'Sim').firstOrNull ??
+            (_enderecos.length == 1 ? _enderecos.first : null);
       });
     } catch (_) {
       if (mounted && consulta == _consulta) {
@@ -193,6 +207,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
 
   Future<void> _abrirEndereco({Map<String, dynamic>? endereco}) async {
     if (_cliente == '0' || _salvando) return;
+    final idsAnteriores = _enderecos.map(_idEndereco).toSet();
     final salvo = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -203,7 +218,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                 )));
     if (!mounted || salvo != true) return;
     if (endereco != null) _endereco = endereco;
-    await _carregarEnderecos();
+    await _carregarEnderecos(
+      selecionarNovo: endereco == null,
+      idsAnteriores: idsAnteriores,
+    );
   }
 
   Future<void> _notificarCliente(MensagemClienteDelivery mensagem) async {
