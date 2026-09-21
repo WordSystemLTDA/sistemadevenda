@@ -33,6 +33,9 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int consultas = 0;
   int pagamentos = 0;
   int conclusoes = 0;
+  int notificacoes = 0;
+  MensagemClienteDelivery? ultimaMensagem;
+  String? deliveryNotificado;
   String pago = '0';
   bool falharConsultaAposSalvar = false;
   bool falharEnvio = false;
@@ -87,6 +90,19 @@ class _DeliveryFinalizacao extends ServicoDelivery {
       return {'sucesso': true};
     }
     fail('Rota inesperada no delivery: $rota');
+  }
+
+  @override
+  Future<String> notificarCliente(
+    MensagemClienteDelivery mensagem, {
+    String cliente = '0',
+    String endereco = '0',
+    String idDelivery = '0',
+  }) async {
+    notificacoes++;
+    ultimaMensagem = mensagem;
+    deliveryNotificado = idDelivery;
+    return 'Enviado com sucesso!';
   }
 }
 
@@ -200,6 +216,31 @@ void main() {
     expect(m.delivery.pagamentos, 0);
     expect(m.delivery.conclusoes, 0);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('delivery pergunta forma de pagamento sem selecionar ou cobrar',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    final perguntar =
+        find.byKey(const ValueKey('perguntar-pagamento-delivery'));
+    expect(perguntar, findsOneWidget);
+    await tester.tap(perguntar);
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.notificacoes, 1);
+    expect(m.delivery.ultimaMensagem, MensagemClienteDelivery.formaPagamento);
+    expect(m.delivery.deliveryNotificado, '10118');
+    expect(m.delivery.pagamentos, 0);
+    expect(m.delivery.conclusoes, 0);
+    expect(find.byType(PaginaSelecionarPagamento), findsOneWidget);
+    expect(find.text('Enviado com sucesso!'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

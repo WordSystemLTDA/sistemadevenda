@@ -45,6 +45,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   bool _carregando = false, _salvando = false;
   String? _erro;
   String? _idCriado;
+  MensagemClienteDelivery? _mensagemEnviando;
   ConfigDelivery? _config;
   double get _taxa {
     if (_tipo != '1') return 0;
@@ -205,11 +206,51 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
     await _carregarEnderecos();
   }
 
+  Future<void> _notificarCliente(MensagemClienteDelivery mensagem) async {
+    if (_cliente == '0' || _mensagemEnviando != null || _salvando) return;
+    if (mensagem == MensagemClienteDelivery.confirmarEndereco &&
+        (_tipo != '1' || _endereco == null)) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _mensagemEnviando = mensagem);
+    try {
+      final retorno = await widget.servico.notificarCliente(
+        mensagem,
+        cliente: _cliente,
+        endereco: _tipo == '1' ? '${_endereco?['id'] ?? '0'}' : '0',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(retorno),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(erro is StateError
+              ? erro.message.toString()
+              : 'Não foi possível enviar a mensagem.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } finally {
+      if (mounted) setState(() => _mensagemEnviando = null);
+    }
+  }
+
   Future<void> _abrir() async {
     if (_salvando) return;
     if (widget.recorrente && (_cliente == '0' || _recorrencia.erro != null)) {
-      setState(() => _erro = _recorrencia.erro ?? 'Selecione um cliente cadastrado.');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_erro!)));
+      setState(() =>
+          _erro = _recorrencia.erro ?? 'Selecione um cliente cadastrado.');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_erro!)));
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -238,9 +279,15 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
         return;
       }
       if (widget.recorrente) {
-        _idCriado ??= await ServicosRecorrentes(Modular.get<DioCliente>(), Modular.get<UsuarioProvedor>()).inserir(
-          chave: _chaveRecorrencia, cliente: _cliente, endereco: '${_endereco?['id'] ?? '0'}', tipoEntrega: _tipo,
-          observacao: _observacao.text.trim(), configuracao: _recorrencia,
+        _idCriado ??= await ServicosRecorrentes(
+                Modular.get<DioCliente>(), Modular.get<UsuarioProvedor>())
+            .inserir(
+          chave: _chaveRecorrencia,
+          cliente: _cliente,
+          endereco: '${_endereco?['id'] ?? '0'}',
+          tipoEntrega: _tipo,
+          observacao: _observacao.text.trim(),
+          configuracao: _recorrencia,
         );
       }
       _idCriado ??= await widget.servico.criar(
@@ -291,7 +338,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
           appBar: AppBar(
               title: Text(widget.editarPedido != null
                   ? 'Editar pedido'
-                  : widget.recorrente ? 'Novo Recorrente' : 'Novo Delivery'),
+                  : widget.recorrente
+                      ? 'Novo Recorrente'
+                      : 'Novo Delivery'),
               backgroundColor: cs.inversePrimary),
           bottomNavigationBar: SafeArea(
               top: false,
@@ -326,7 +375,11 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                           padding: const EdgeInsets.all(16),
                           children: [
                             if (widget.recorrente) ...[
-                              CamposRecorrencia(valor: _recorrencia, primeiroPedido: true, onChanged: (valor) => setState(() => _recorrencia = valor)),
+                              CamposRecorrencia(
+                                  valor: _recorrencia,
+                                  primeiroPedido: true,
+                                  onChanged: (valor) =>
+                                      setState(() => _recorrencia = valor)),
                               const Divider(height: 32),
                             ],
                             _titulo('Tipo de entrega', Icons.delivery_dining),
@@ -335,7 +388,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                 if (widget.permitirEntrega)
                                   ('1', 'Entrega', Icons.delivery_dining),
                                 ('2', 'Retirada', Icons.shopping_bag_outlined),
-                                if (!widget.recorrente) ('3', 'No local', Icons.restaurant_outlined)
+                                if (!widget.recorrente)
+                                  ('3', 'No local', Icons.restaurant_outlined)
                               ]) ...[
                                 Expanded(
                                   child: _cardTipoEntrega(
@@ -475,10 +529,93 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                 decoration: const InputDecoration(
                                     hintText: 'Observação do pedido',
                                     border: OutlineInputBorder())),
+                            const SizedBox(height: 8),
+                            _mensagensCliente(),
                             if (_erro != null)
                               Text(_erro!, style: TextStyle(color: cs.error)),
                           ])))),
         ));
+  }
+
+  Widget _mensagensCliente() {
+    final confirmacaoEnderecoDisponivel =
+        _tipo == '1' && _endereco != null && !_carregando;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _titulo('Mensagens no WhatsApp', Icons.chat_outlined),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          mainAxisExtent: 72,
+          children: [
+            _botaoMensagem(
+              mensagem: MensagemClienteDelivery.confirmarEndereco,
+              texto: 'Confirmar endereço',
+              icone: Icons.add_location_alt_outlined,
+              habilitado: confirmacaoEnderecoDisponivel,
+            ),
+            _botaoMensagem(
+              mensagem: MensagemClienteDelivery.formaPagamento,
+              texto: 'Forma de pagamento',
+              icone: Icons.payments_outlined,
+            ),
+            _botaoMensagem(
+              mensagem: MensagemClienteDelivery.oferecerBebida,
+              texto: 'Oferecer bebida',
+              icone: Icons.local_drink_outlined,
+            ),
+            _botaoMensagem(
+              mensagem: MensagemClienteDelivery.algoMais,
+              texto: 'Mais alguma coisa?',
+              icone: Icons.add_comment_outlined,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _botaoMensagem({
+    required MensagemClienteDelivery mensagem,
+    required String texto,
+    required IconData icone,
+    bool habilitado = true,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final enviando = _mensagemEnviando == mensagem;
+    final podeEnviar = _cliente != '0' &&
+        habilitado &&
+        _mensagemEnviando == null &&
+        !_salvando;
+    return OutlinedButton.icon(
+      key: ValueKey('mensagem-delivery-${mensagem.codigo}'),
+      onPressed: podeEnviar ? () => _notificarCliente(mensagem) : null,
+      icon: enviando
+          ? const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icone, size: 21),
+      label: Text(
+        texto,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: cs.primary,
+        backgroundColor: cs.primaryContainer.withValues(alpha: .18),
+        side: BorderSide(color: cs.primary.withValues(alpha: .4)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Widget _titulo(String texto, IconData icone) => Padding(

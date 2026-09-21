@@ -8,6 +8,7 @@ import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -461,7 +462,11 @@ void main() {
 
     final editarEndereco = find.byTooltip('Editar endereço');
     final novoEndereco = find.byKey(const ValueKey('novo-endereco'));
-    await tester.scrollUntilVisible(novoEndereco, 200);
+    await tester.scrollUntilVisible(
+      editarEndereco,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(editarEndereco, findsOneWidget);
     expect(novoEndereco, findsOneWidget);
@@ -476,6 +481,65 @@ void main() {
 
     expect(find.text('Editar endereço'), findsOneWidget);
     expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo delivery mostra quatro mensagens em duas colunas e envia',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'estado': 'PR',
+        'padrao': 'Sim',
+      }
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      editarPedido: pedidoTeste(campos: {'idendereco': '10'}),
+      aoSalvarEdicao: (_) async {},
+    )));
+    await tester.pumpAndSettle();
+
+    final endereco = find.byKey(const ValueKey('mensagem-delivery-endereco'));
+    final forma = find.byKey(const ValueKey('mensagem-delivery-forma'));
+    final bebida = find.byKey(const ValueKey('mensagem-delivery-bebida'));
+    final mais = find.byKey(const ValueKey('mensagem-delivery-mais'));
+    await tester.scrollUntilVisible(
+      mais,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mensagens no WhatsApp'), findsOneWidget);
+    expect(endereco, findsOneWidget);
+    expect(forma, findsOneWidget);
+    expect(bebida, findsOneWidget);
+    expect(mais, findsOneWidget);
+    final larguraTela = tester.getSize(find.byType(Scaffold)).width;
+    expect(tester.getRect(endereco).left, lessThanOrEqualTo(17));
+    expect(tester.getRect(forma).right, greaterThanOrEqualTo(larguraTela - 17));
+    expect(tester.getSize(endereco).width, tester.getSize(forma).width);
+    expect(tester.getTopLeft(endereco).dy, tester.getTopLeft(forma).dy);
+    expect(tester.getTopLeft(bebida).dy, tester.getTopLeft(mais).dy);
+    expect(tester.getTopLeft(bebida).dy,
+        greaterThan(tester.getTopLeft(endereco).dy));
+
+    await tester.tap(forma);
+    await tester.pumpAndSettle();
+
+    expect(s.notificacoes, hasLength(1));
+    expect(
+        s.notificacoes.single.mensagem, MensagemClienteDelivery.formaPagamento);
+    expect(s.notificacoes.single.cliente, '4');
+    expect(s.notificacoes.single.endereco, '10');
+    expect(find.text('Enviado com sucesso!'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

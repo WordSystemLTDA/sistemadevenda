@@ -19,6 +19,61 @@ class ProvedorComanda extends ChangeNotifier {
   static const _mensagemFalha =
       'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.';
 
+  /// Reflete imediatamente uma finalização já confirmada pela API. A consulta
+  /// seguinte continua sendo a fonte definitiva e corrige qualquer diferença.
+  void marcarAtendimentoFinalizado(String idAtendimento) {
+    ModeloComanda? finalizada;
+    for (final grupo in comandas) {
+      final itens = grupo.comandas;
+      if (itens == null) continue;
+      final indice = itens.indexWhere(
+          (item) => item.idComandaPedido?.toString() == idAtendimento);
+      if (indice >= 0) {
+        finalizada = itens.removeAt(indice);
+        break;
+      }
+    }
+    if (finalizada == null) return;
+
+    final agora = DateTime.now().toIso8601String();
+    finalizada
+      ..comandaOcupada = false
+      ..fechamento = false
+      ..idCliente = null
+      ..nomeCliente = null
+      ..obs = null
+      ..nomeMesa = null
+      ..idmesa = null
+      ..dataAbertura = null
+      ..horaAbertura = null
+      ..dataultimopedido = null
+      ..idComandaPedido = null
+      ..valor = null
+      ..ultimaVezAbertoDataHora = agora;
+
+    ModeloComandas? grupoLivres;
+    for (final grupo in comandas) {
+      if (grupo.titulo.toLowerCase() == 'livres') {
+        grupoLivres = grupo;
+        break;
+      }
+    }
+    grupoLivres ??= ModeloComandas(titulo: 'Livres', comandas: []);
+    if (!comandas.contains(grupoLivres)) comandas.add(grupoLivres);
+    grupoLivres.comandas ??= [];
+    grupoLivres.comandas!
+      ..removeWhere((item) => item.id == finalizada!.id)
+      ..add(finalizada);
+    grupoLivres.comandas!.sort((a, b) {
+      final primeiro = int.tryParse(a.id);
+      final segundo = int.tryParse(b.id);
+      return primeiro != null && segundo != null
+          ? primeiro.compareTo(segundo)
+          : a.nome.compareTo(b.nome);
+    });
+    notifyListeners();
+  }
+
   Future<List<ModeloComandas>> listarComandas(String pesquisa) async {
     final consulta = ++_consulta;
     listando = true;

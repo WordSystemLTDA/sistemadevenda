@@ -199,160 +199,197 @@ class _PaginaMetodoPagamentoAtendimentoState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final dinheiro = _idForma == 1;
-    return Scaffold(
-      backgroundColor: VisualAtendimento.superficie(context),
-      appBar: AppBar(
-        backgroundColor: cs.inversePrimary,
-        title: const Row(children: [
-          Icon(Icons.point_of_sale_rounded),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text('Método de Pagamento',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          ),
-        ]),
-      ),
-      body: Stack(children: [
-        ListView(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 130),
-          children: [
-            _ValorDestaque(valor: _valorPagamentoCentavos),
-            const SizedBox(height: 22),
-            Row(children: [
-              Icon(dinheiro
-                  ? Icons.attach_money_rounded
-                  : Icons.payments_outlined),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(widget.forma.nome,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800)),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            if (dinheiro) ...[
-              TextField(
-                key: const ValueKey('valor_recebido_atendimento'),
-                controller: _valorRecebido,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Valor recebido',
-                  prefixText: 'R\$ ',
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      _valorRecebido.clear();
-                      setState(() {});
-                    },
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _trocoCentavos > 0
-                      ? VisualAtendimento.verde(context).withValues(alpha: 0.1)
-                      : cs.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _trocoCentavos > 0
-                        ? VisualAtendimento.verde(context)
-                        : cs.outlineVariant,
-                  ),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.savings_outlined),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                      child: Text('Troco',
-                          style: TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w800))),
-                  Text(valorDosCentavos(_trocoCentavos).obterReal(),
-                      style: TextStyle(
-                          color: VisualAtendimento.verde(context),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900)),
-                ]),
-              ),
-            ] else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                    color: cs.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: cs.outlineVariant)),
-                child: Row(children: [
-                  const Icon(Icons.receipt_long_outlined),
-                  const SizedBox(width: 10),
-                  const Expanded(child: Text('Valor deste pagamento')),
-                  Text(valorDosCentavos(_valorPagamentoCentavos).obterReal(),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w800)),
-                ]),
-              ),
-            if (_idForma == 2) ...[
-              const SizedBox(height: 12),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: BorderSide(color: cs.outlineVariant)),
-                leading: const Icon(Icons.event_outlined),
-                title: const Text('Vencimento da conta'),
-                subtitle: Text(
-                    '${_vencimento.day.toString().padLeft(2, '0')}/${_vencimento.month.toString().padLeft(2, '0')}/${_vencimento.year}'),
-                trailing: const Icon(Icons.edit_calendar_outlined),
-                onTap: _escolherVencimento,
-              ),
-            ],
-          ],
-        ),
-        if (_processando)
-          Positioned.fill(
-            child: ColoredBox(
-              color: cs.scrim.withValues(alpha: 0.25),
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-          ),
-      ]),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            border: Border(top: BorderSide(color: cs.outlineVariant)),
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              const Expanded(
-                  child: Text('Total Registrado',
-                      style: TextStyle(fontWeight: FontWeight.w700))),
-              Text(valorDosCentavos(_valorRecebidoCentavos).obterReal(),
-                  style: TextStyle(
-                      color: cs.primary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900)),
-            ]),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              key: const ValueKey('finalizar_pagamento_atendimento'),
-              onPressed: _processando ? null : _finalizar,
-              icon: const Icon(Icons.check_circle_rounded),
-              label: const Text('Finalizar',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(58),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
+    return PopScope(
+      canPop: !_processando,
+      child: Scaffold(
+        backgroundColor: VisualAtendimento.superficie(context),
+        appBar: AppBar(
+          backgroundColor: cs.inversePrimary,
+          title: const Row(children: [
+            Icon(Icons.point_of_sale_rounded),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text('Método de Pagamento',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             ),
           ]),
+        ),
+        body: Stack(children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 130),
+            children: [
+              _ValorDestaque(valor: _valorPagamentoCentavos),
+              const SizedBox(height: 22),
+              Row(children: [
+                Icon(dinheiro
+                    ? Icons.attach_money_rounded
+                    : Icons.payments_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(widget.forma.nome,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w800)),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              if (dinheiro) ...[
+                TextField(
+                  key: const ValueKey('valor_recebido_atendimento'),
+                  controller: _valorRecebido,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Valor recebido',
+                    prefixText: 'R\$ ',
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        _valorRecebido.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _trocoCentavos > 0
+                        ? VisualAtendimento.verde(context)
+                            .withValues(alpha: 0.1)
+                        : cs.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _trocoCentavos > 0
+                          ? VisualAtendimento.verde(context)
+                          : cs.outlineVariant,
+                    ),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.savings_outlined),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                        child: Text('Troco',
+                            style: TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.w800))),
+                    Text(valorDosCentavos(_trocoCentavos).obterReal(),
+                        style: TextStyle(
+                            color: VisualAtendimento.verde(context),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900)),
+                  ]),
+                ),
+              ] else
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: cs.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: cs.outlineVariant)),
+                  child: Row(children: [
+                    const Icon(Icons.receipt_long_outlined),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('Valor deste pagamento')),
+                    Text(valorDosCentavos(_valorPagamentoCentavos).obterReal(),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+              if (_idForma == 2) ...[
+                const SizedBox(height: 12),
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: cs.outlineVariant)),
+                  leading: const Icon(Icons.event_outlined),
+                  title: const Text('Vencimento da conta'),
+                  subtitle: Text(
+                      '${_vencimento.day.toString().padLeft(2, '0')}/${_vencimento.month.toString().padLeft(2, '0')}/${_vencimento.year}'),
+                  trailing: const Icon(Icons.edit_calendar_outlined),
+                  onTap: _escolherVencimento,
+                ),
+              ],
+            ],
+          ),
+          if (_processando)
+            Positioned.fill(
+              child: ColoredBox(
+                color: cs.scrim.withValues(alpha: 0.38),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(28),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 24),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [
+                        BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 18,
+                            offset: Offset(0, 8)),
+                      ],
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 18),
+                        Text('Confirmando pagamento...',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w800)),
+                        SizedBox(height: 6),
+                        Text(
+                          'Aguarde a confirmação do servidor. Não feche o aplicativo.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              border: Border(top: BorderSide(color: cs.outlineVariant)),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [
+                const Expanded(
+                    child: Text('Total Registrado',
+                        style: TextStyle(fontWeight: FontWeight.w700))),
+                Text(valorDosCentavos(_valorRecebidoCentavos).obterReal(),
+                    style: TextStyle(
+                        color: cs.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900)),
+              ]),
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                key: const ValueKey('finalizar_pagamento_atendimento'),
+                onPressed: _processando ? null : _finalizar,
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text('Finalizar',
+                    style:
+                        TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(58),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ]),
+          ),
         ),
       ),
     );

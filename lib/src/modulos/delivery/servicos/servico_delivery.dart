@@ -20,6 +20,16 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum MensagemClienteDelivery {
+  confirmarEndereco('endereco'),
+  formaPagamento('forma'),
+  oferecerBebida('bebida'),
+  algoMais('mais');
+
+  final String codigo;
+  const MensagemClienteDelivery(this.codigo);
+}
+
 class ServicoDelivery {
   static const _chaveDetalhesDelivery = 'detalhes_delivery_v1';
   static const _retencaoDetalhesDelivery = Duration(days: 30);
@@ -345,6 +355,41 @@ class ServicoDelivery {
         'id': pedido.id,
         'statusOrigem': pedido.etapa,
       });
+
+  Future<String> notificarCliente(
+    MensagemClienteDelivery mensagem, {
+    String cliente = '0',
+    String endereco = '0',
+    String idDelivery = '0',
+  }) async {
+    if ((int.tryParse(cliente) ?? 0) <= 0 &&
+        (int.tryParse(idDelivery) ?? 0) <= 0) {
+      throw StateError('Selecione um cliente para enviar a mensagem.');
+    }
+    if (mensagem == MensagemClienteDelivery.confirmarEndereco &&
+        (int.tryParse(endereco) ?? 0) <= 0 &&
+        (int.tryParse(idDelivery) ?? 0) <= 0) {
+      throw StateError('Selecione um endereço para confirmar com o cliente.');
+    }
+
+    final resposta = await _requisicao(
+      'delivery/notificar_cliente.php',
+      {
+        'acao': mensagem.codigo,
+        'cliente': cliente,
+        'endereco': endereco,
+        'id_delivery': idDelivery,
+      },
+      true,
+    );
+    if (resposta is! Map || resposta['sucesso'] != true) {
+      throw StateError(resposta is Map
+          ? (resposta['mensagem'] ?? 'Não foi possível enviar a mensagem.')
+              .toString()
+          : 'Resposta inválida do servidor.');
+    }
+    return (resposta['mensagem'] ?? 'Mensagem enviada com sucesso.').toString();
+  }
 
   Future<Uri> documentoFiscal(PedidoDelivery pedido, {bool xml = false}) async {
     final chave = pedido.texto('cp15');

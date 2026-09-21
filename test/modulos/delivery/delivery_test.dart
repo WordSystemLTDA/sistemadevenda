@@ -76,6 +76,12 @@ class ServicoDeliveryTeste extends ServicoDelivery {
               ..setUsuario(
                   UsuarioModelo(id: '2', empresa: '3', nome: 'Operador')));
   final gravacoes = <(String, Map<String, dynamic>)>[];
+  final notificacoes = <({
+    MensagemClienteDelivery mensagem,
+    String cliente,
+    String endereco,
+    String idDelivery,
+  })>[];
   PedidoDelivery atual = pedidoTeste();
   bool falhar = false;
   int consultas = 0;
@@ -146,6 +152,22 @@ class ServicoDeliveryTeste extends ServicoDelivery {
       'sucesso': true,
       'dados': {'idDelivery': '25'}
     };
+  }
+
+  @override
+  Future<String> notificarCliente(
+    MensagemClienteDelivery mensagem, {
+    String cliente = '0',
+    String endereco = '0',
+    String idDelivery = '0',
+  }) async {
+    notificacoes.add((
+      mensagem: mensagem,
+      cliente: cliente,
+      endereco: endereco,
+      idDelivery: idDelivery,
+    ));
+    return 'Enviado com sucesso!';
   }
 }
 
@@ -238,6 +260,34 @@ void main() {
               .toString(),
           'https://exemplo/sistema/apis_restaurantes/api_restaurantes_venda/$versao/');
     }
+  });
+  test('mensagem de cliente usa a rota do Delivery sem alterar pagamento',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'})
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    final servico = ServicoDelivery(dio, usuario);
+
+    await servico.notificarCliente(
+      MensagemClienteDelivery.formaPagamento,
+      idDelivery: '25',
+    );
+
+    final requisicao = adapter.chamadas.single;
+    expect(requisicao.uri.path,
+        '/sistema/apis_restaurantes/api_restaurantes_venda/api1/delivery/notificar_cliente.php');
+    final dados = jsonDecode(requisicao.data as String) as Map;
+    expect(dados['acao'], 'forma');
+    expect(dados['id_delivery'], '25');
+    expect(dados['empresa'], '3');
+    expect(dados['id_usuario'], '2');
   });
   test('consulta envia empresa e usuario e nunca usa cache de outro modulo',
       () async {

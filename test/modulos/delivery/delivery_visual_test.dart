@@ -111,7 +111,6 @@ void main() {
       final s = ServicoDeliveryTeste();
       await abrir(tester, PaginaNovoDelivery(servico: s));
       expect(find.text('Novo Cliente'), findsOneWidget);
-      expect(find.text('Novo endereço'), findsOneWidget);
       expect(tester.getSize(find.byKey(const ValueKey('novo-cliente'))).height,
           greaterThanOrEqualTo(48));
       expect(
@@ -121,12 +120,25 @@ void main() {
           lessThan(tester
               .getTopLeft(find.byKey(const ValueKey('novo-cliente')))
               .dy));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('novo-endereco')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Novo endereço'), findsOneWidget);
       expect(tester.getSize(find.byKey(const ValueKey('novo-endereco'))).height,
           greaterThanOrEqualTo(48));
       await capturarTela(tester, 'delivery_novo_$nome');
       await tester.tap(find.text('Abrir cardápio'));
       await tester.pumpAndSettle();
       expect(s.gravacoes, isEmpty);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('tipo-entrega-2')),
+        -200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('tipo-entrega-2')));
       await tester.pumpAndSettle();
       expect(find.text('Endereço de entrega'), findsNothing);

@@ -17,6 +17,60 @@ class ProvedorMesas extends ChangeNotifier {
   static const _mensagemFalha =
       'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.';
 
+  /// Reflete imediatamente uma finalização já confirmada pela API. A consulta
+  /// seguinte continua sendo a fonte definitiva e corrige qualquer diferença.
+  void marcarAtendimentoFinalizado(String idAtendimento) {
+    MesaModelo? finalizada;
+    for (final grupo in mesas) {
+      final itens = grupo.mesas;
+      if (itens == null) continue;
+      final indice = itens.indexWhere(
+          (item) => item.idComandaPedido?.toString() == idAtendimento);
+      if (indice >= 0) {
+        final item = itens.removeAt(indice);
+        final mapa = item.toMap()
+          ..addAll({
+            'mesaOcupada': false,
+            'idCliente': null,
+            'nomeCliente': null,
+            'obs': null,
+            'dataAbertura': null,
+            'horaAbertura': null,
+            'idComandaPedido': null,
+            'valor': null,
+            'ultimaVezAbertoDataHora': DateTime.now().toIso8601String(),
+            'dataultimopedido': null,
+            'fechamento': false,
+          });
+        finalizada = MesaModelo.fromMap(mapa);
+        break;
+      }
+    }
+    if (finalizada == null) return;
+
+    MesasModel? grupoLivres;
+    for (final grupo in mesas) {
+      if (grupo.titulo.toLowerCase() == 'livres') {
+        grupoLivres = grupo;
+        break;
+      }
+    }
+    grupoLivres ??= MesasModel(titulo: 'Livres', mesas: []);
+    if (!mesas.contains(grupoLivres)) mesas.add(grupoLivres);
+    grupoLivres.mesas ??= [];
+    grupoLivres.mesas!
+      ..removeWhere((item) => item.id == finalizada!.id)
+      ..add(finalizada);
+    grupoLivres.mesas!.sort((a, b) {
+      final primeiro = int.tryParse(a.id);
+      final segundo = int.tryParse(b.id);
+      return primeiro != null && segundo != null
+          ? primeiro.compareTo(segundo)
+          : a.nome.compareTo(b.nome);
+    });
+    notifyListeners();
+  }
+
   Future<List<MesasModel>> listarMesas(String pesquisa) async {
     final consulta = ++_consulta;
     listando = true;

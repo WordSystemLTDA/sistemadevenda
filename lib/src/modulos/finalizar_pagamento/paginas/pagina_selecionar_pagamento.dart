@@ -38,6 +38,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   String pagamentoSelecionado = '1';
   PagamentoRecorrente? _recorrencia;
   String? _erro;
+  bool _perguntandoPagamento = false;
 
   bool carregando = true;
 
@@ -111,7 +112,10 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   }
 
   void _pagarDepois() {
-    if (provedorCardapio.tipo != TipoCardapio.delivery) return;
+    if (provedorCardapio.tipo != TipoCardapio.delivery ||
+        _perguntandoPagamento) {
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     Navigator.popUntil(
       context,
@@ -120,6 +124,48 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
               .contains(rota.settings.name) ||
           rota.isFirst,
     );
+  }
+
+  Future<void> _perguntarFormaPagamento() async {
+    if (_perguntandoPagamento ||
+        provedorCardapio.tipo != TipoCardapio.delivery) {
+      return;
+    }
+    if ((int.tryParse(provedor.idVenda) ?? 0) <= 0) {
+      _mostrarRetornoMensagem(
+          'Não foi possível identificar o Delivery.', false);
+      return;
+    }
+    setState(() => _perguntandoPagamento = true);
+    try {
+      final retorno = await Modular.get<ServicoDelivery>().notificarCliente(
+        MensagemClienteDelivery.formaPagamento,
+        idDelivery: provedor.idVenda,
+      );
+      if (mounted) _mostrarRetornoMensagem(retorno, true);
+    } catch (erro) {
+      if (mounted) {
+        _mostrarRetornoMensagem(
+          erro is StateError
+              ? erro.message.toString()
+              : 'Não foi possível enviar a mensagem.',
+          false,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _perguntandoPagamento = false);
+    }
+  }
+
+  void _mostrarRetornoMensagem(String texto, bool sucesso) {
+    final cs = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(texto),
+        backgroundColor: sucesso ? cs.primary : cs.error,
+        behavior: SnackBarBehavior.floating,
+      ));
   }
 
   @override
@@ -163,8 +209,36 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
               SizedBox(
                 height: 48,
                 child: OutlinedButton.icon(
+                  key: const ValueKey('perguntar-pagamento-delivery'),
+                  onPressed:
+                      carregando || _erro != null || _perguntandoPagamento
+                          ? null
+                          : _perguntarFormaPagamento,
+                  icon: _perguntandoPagamento
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chat_outlined, size: 20),
+                  label: const Text(
+                    'Perguntar forma de pagamento',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: cs.primaryContainer.withValues(alpha: .3),
+                    foregroundColor: cs.primary,
+                    side: BorderSide(color: cs.primary.withValues(alpha: .55)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
                   key: const ValueKey('pagar-depois-delivery'),
-                  onPressed: _pagarDepois,
+                  onPressed: _perguntandoPagamento ? null : _pagarDepois,
                   icon: const Icon(Icons.schedule_rounded, size: 20),
                   label: const Text(
                     'Pagar depois',
@@ -205,7 +279,9 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
-                    if (carregando || _erro != null) return;
+                    if (carregando || _erro != null || _perguntandoPagamento) {
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -247,7 +323,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
         visible: carregando == false,
         replacement: const Center(child: CircularProgressIndicator()),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(12, 12, 12, ehDelivery ? 150 : 90),
+          padding: EdgeInsets.fromLTRB(12, 12, 12, ehDelivery ? 210 : 90),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

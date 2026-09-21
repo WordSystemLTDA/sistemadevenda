@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:app/src/modulos/transferencias/servico_transferencias.dart';
 import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
@@ -193,11 +194,14 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     if (!mounted || finalizou != true) return;
     _server.write(jsonEncode({'tipo': widget.tipo.nome}));
     if (widget.tipo == TipoCardapio.mesa) {
-      await provedorMesas.listarMesas('');
+      provedorMesas.marcarAtendimentoFinalizado(idServidor);
+      Navigator.pop(context, true);
+      unawaited(provedorMesas.listarMesas(''));
     } else {
-      await provedorComanda.listarComandas('');
+      provedorComanda.marcarAtendimentoFinalizado(idServidor);
+      Navigator.pop(context, true);
+      unawaited(provedorComanda.listarComandas(''));
     }
-    if (mounted) Navigator.pop(context, true);
   }
 
   void _mostrarErroFinalizacao(String mensagem) {

@@ -481,6 +481,93 @@ void main() {
     expect(modulo.provedorBalcao.erro, isNull);
   });
 
+  test('comanda finalizada fica livre imediatamente', () {
+    final ocupada = ModeloComanda(
+      id: '2',
+      nome: 'Comanda: 2',
+      codigo: '2',
+      ativo: 'Sim',
+      comandaOcupada: true,
+      idCliente: '10',
+      nomeCliente: 'Cliente',
+      idComandaPedido: '10851',
+      valor: '112.50',
+      fechamento: true,
+    );
+    modulo.provedorComandas.comandas = [
+      ModeloComandas(titulo: 'Ocupadas', comandas: [ocupada]),
+      ModeloComandas(
+        titulo: 'Livres',
+        comandas: [
+          ModeloComanda(
+            id: '1',
+            nome: 'Comanda: 1',
+            codigo: '1',
+            ativo: 'Sim',
+            comandaOcupada: false,
+          ),
+        ],
+      ),
+    ];
+
+    modulo.provedorComandas.marcarAtendimentoFinalizado('10851');
+
+    expect(modulo.provedorComandas.comandas.first.comandas, isEmpty);
+    final livres = modulo.provedorComandas.comandas.last.comandas!;
+    expect(livres.map((item) => item.id), ['1', '2']);
+    expect(livres.last.comandaOcupada, isFalse);
+    expect(livres.last.idComandaPedido, isNull);
+    expect(livres.last.nomeCliente, isNull);
+    expect(livres.last.valor, isNull);
+    expect(livres.last.fechamento, isFalse);
+  });
+
+  test('mesa finalizada fica livre imediatamente', () {
+    final ocupada = MesaModelo(
+      id: '2',
+      nome: 'Mesa 2',
+      codigo: '2',
+      ativo: 'Sim',
+      mesaOcupada: true,
+      idCliente: '10',
+      nomeCliente: 'Cliente',
+      dataAbertura: '2026-09-21',
+      horaAbertura: '12:00:00',
+      idComandaPedido: '10852',
+      valor: '80.00',
+      fechamento: true,
+    );
+    modulo.provedorMesas.mesas = [
+      MesasModel(titulo: 'Ocupadas', mesas: [ocupada]),
+      MesasModel(
+        titulo: 'Livres',
+        mesas: [
+          MesaModelo(
+            id: '1',
+            nome: 'Mesa 1',
+            codigo: '1',
+            ativo: 'Sim',
+            mesaOcupada: false,
+            nomeCliente: null,
+            dataAbertura: null,
+            horaAbertura: null,
+          ),
+        ],
+      ),
+    ];
+
+    modulo.provedorMesas.marcarAtendimentoFinalizado('10852');
+
+    expect(modulo.provedorMesas.mesas.first.mesas, isEmpty);
+    final livres = modulo.provedorMesas.mesas.last.mesas!;
+    expect(livres.map((item) => item.id), ['1', '2']);
+    expect(livres.last.mesaOcupada, isFalse);
+    expect(livres.last.idComandaPedido, isNull);
+    expect(livres.last.nomeCliente, isNull);
+    expect(livres.last.valor, isNull);
+    expect(livres.last.fechamento, isFalse);
+  });
+
   test('comandas libera carregamento apos timeout e preserva lista antiga',
       () async {
     await modulo.provedorComandas.listarComandas('');
