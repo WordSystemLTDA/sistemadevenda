@@ -1,12 +1,16 @@
 import 'dart:math' as math;
 
+import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/dialogo_senha_cancelamento.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
-import 'package:app/src/modulos/cardapio/uteis/nome_exibicao_produto.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/fluxo_finalizacao_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_acrescimos_descontos_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/uteis/calculo_finalizacao_atendimento.dart';
@@ -44,7 +48,11 @@ class _PaginaFinalizarContaAtendimentoState
   int _quantidadePessoas = 2;
   bool _carregando = true;
   bool _avancando = false;
+  bool _cancelandoItem = false;
   String? _erro;
+
+  Server get _server => Modular.get<Server>();
+  UsuarioProvedor get _usuario => Modular.get<UsuarioProvedor>();
 
   @override
   void initState() {
@@ -144,7 +152,7 @@ class _PaginaFinalizarContaAtendimentoState
   }
 
   void _alterarModo(ModoRecebimentoAtendimento modo) {
-    if (_avancando || modo == _modo) return;
+    if (_avancando || _cancelandoItem || modo == _modo) return;
     setState(() {
       _modo = modo;
       if (modo != ModoRecebimentoAtendimento.porProduto) {
@@ -154,7 +162,7 @@ class _PaginaFinalizarContaAtendimentoState
   }
 
   void _alterarPessoas(int diferenca) {
-    if (_avancando) return;
+    if (_avancando || _cancelandoItem) return;
     setState(() {
       _quantidadePessoas =
           (_quantidadePessoas + diferenca).clamp(2, 99).toInt();
@@ -163,6 +171,7 @@ class _PaginaFinalizarContaAtendimentoState
 
   void _alternarProduto(Modelowordprodutos produto, int indice) {
     if (_avancando ||
+        _cancelandoItem ||
         _modo != ModoRecebimentoAtendimento.porProduto ||
         saldoProdutoEmCentavos(produto) <= 0) {
       return;
@@ -174,6 +183,7 @@ class _PaginaFinalizarContaAtendimentoState
   }
 
   void _alternarConferencia(Modelowordprodutos produto, int indice) {
+    if (_avancando || _cancelandoItem) return;
     final chave = _chaveProduto(produto, indice);
     setState(() {
       if (!_conferidos.add(chave)) _conferidos.remove(chave);
@@ -193,7 +203,7 @@ class _PaginaFinalizarContaAtendimentoState
   }
 
   Future<void> _adicionarProdutos() async {
-    if (_avancando || _dados == null) return;
+    if (_avancando || _cancelandoItem || _dados == null) return;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PaginaCardapio(
         tipo: widget.tipo,
@@ -209,7 +219,7 @@ class _PaginaFinalizarContaAtendimentoState
   }
 
   Future<void> _avancar() async {
-    if (_avancando || _dados == null) return;
+    if (_avancando || _cancelandoItem || _dados == null) return;
     if (_modo == ModoRecebimentoAtendimento.porProduto &&
         _selecionados.isEmpty) {
       _mostrarMensagem('Selecione pelo menos um produto para receber.',
@@ -268,6 +278,99 @@ class _PaginaFinalizarContaAtendimentoState
     }
   }
 
+  bool _podeExcluirProduto(Modelowordprodutos produto) {
+    return !_cancelandoItem &&
+        widget.tipo != TipoCardapio.delivery &&
+        _dados?.status == 'Andamento' &&
+        (produto.iditensvenda ?? '').trim().isNotEmpty &&
+        centavosMonetarios(produto.valorPago) <= 0;
+  }
+
+  bool _temDestinoConfigurado(Modelowordprodutos produto) {
+    final destino = produto.destinoDeImpressao;
+    if (destino == null) return false;
+    return destino.nomedopc?.trim().isNotEmpty == true ||
+        destino.nomeDaImpressora.trim().isNotEmpty ||
+        destino.nome.trim().isNotEmpty;
+  }
+
+  String _nomeDestinoCancelamento(Modelowordprodutos produto) {
+    final destino = produto.destinoDeImpressao;
+    if (_temDestinoConfigurado(produto) && destino != null) {
+      final nome = destino.nomeDaImpressora.trim().isNotEmpty
+          ? destino.nomeDaImpressora.trim()
+          : destino.nome.trim();
+      return nome.isEmpty ? 'destino do produto' : nome;
+    }
+    return 'Impressora do Caixa';
+  }
+
+  Future<void> _cancelarItem(Modelowordprodutos produto) async {
+    final dados = _dados;
+    if (_cancelandoItem || dados == null) return;
+    if (!_podeExcluirProduto(produto)) {
+      _mostrarMensagem('Este item não pode ser excluído agora.', erro: true);
+      return;
+    }
+
+    final senha = await pedirSenhaCancelamentoItem(
+      context: context,
+      nomeItem: produto.nome,
+      nomeDestino: _nomeDestinoCancelamento(produto),
+    );
+    if (!mounted || senha == null) return;
+
+    setState(() => _cancelandoItem = true);
+    try {
+      final resposta = await _servicoCardapio.cancelarItemFinalizado(
+        tipo: widget.tipo,
+        atendimento: dados,
+        produto: produto,
+        idMesa: dados.idMesa ?? widget.idMesa,
+        idComanda: dados.idComanda ?? widget.idComanda,
+        senhaAdmin: senha,
+      );
+      if (!mounted) return;
+      if (!resposta.sucesso) {
+        _mostrarMensagem(resposta.mensagem, erro: true);
+        return;
+      }
+
+      final mensagens = Impressao.prepararCancelamentoDeItem(
+        produto: produto,
+        destinoCaixa: resposta.destinoCaixa,
+        comanda: '${widget.tipo.nome}: ${dados.nome ?? ''}',
+        numeroPedido: dados.numeroPedido ?? '0',
+        nomeCliente: dados.nomeCliente ?? '',
+        nomeEmpresa: dados.nomeEmpresa ?? _usuario.usuario?.nomeEmpresa ?? '',
+        tipodeentrega: dados.tipodeentrega ?? '',
+        local: widget.tipo == TipoCardapio.mesa
+            ? (dados.nomeMesa ?? dados.nome ?? '')
+            : (dados.nome ?? ''),
+        tipoTela: widget.tipo,
+      );
+      var impressaoEnviada = true;
+      if (mensagens.isNotEmpty) {
+        try {
+          await _server.enviarImpressoes(mensagens);
+        } catch (_) {
+          impressaoEnviada = false;
+        }
+      }
+
+      await _carregar();
+      if (!mounted) return;
+      final mensagem = impressaoEnviada
+          ? (resposta.mensagem.isEmpty ? 'Item cancelado.' : resposta.mensagem)
+          : 'Item cancelado, mas não foi possível salvar a impressão.';
+      _mostrarMensagem(mensagem);
+    } catch (_) {
+      _mostrarMensagem('Não foi possível cancelar este item.', erro: true);
+    } finally {
+      if (mounted) setState(() => _cancelandoItem = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -289,7 +392,7 @@ class _PaginaFinalizarContaAtendimentoState
       bottomNavigationBar: _dados == null || _erro != null
           ? null
           : _BarraAvancar(
-              processando: _avancando,
+              processando: _avancando || _cancelandoItem,
               valor: valorDosCentavos(_valorSugeridoCentavos),
               onPressed: _avancar,
             ),
@@ -386,7 +489,7 @@ class _PaginaFinalizarContaAtendimentoState
           ],
         ],
       ),
-      if (_carregando || _avancando)
+      if (_carregando || _avancando || _cancelandoItem)
         Positioned.fill(
           child: ColoredBox(
             color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.25),
@@ -408,15 +511,32 @@ class _PaginaFinalizarContaAtendimentoState
     }
     return [
       for (var indice = 0; indice < produtos.length; indice++) ...[
-        _CardProdutoPagamento(
-          produto: produtos[indice],
-          modoSelecao: _modo == ModoRecebimentoAtendimento.porProduto,
-          selecionado:
+        CardProdutoAcompanhar(
+          key: ValueKey(
+              'produto_finalizacao_${_chaveProduto(produtos[indice], indice)}'),
+          item: produtos[indice],
+          dados: _dados,
+          idComanda: _dados?.idComanda ?? widget.idComanda,
+          idComandaPedido: widget.idAtendimento,
+          idMesa: _dados?.idMesa ?? widget.idMesa,
+          value: '',
+          tipo: widget.tipo,
+          setarQuantidade: (_) {},
+          cabecalhoAdaptavel: true,
+          podeExcluir: _podeExcluirProduto(produtos[indice]),
+          onExcluir: () => _cancelarItem(produtos[indice]),
+          destacado:
               _selecionados.contains(_chaveProduto(produtos[indice], indice)),
-          conferido:
-              _conferidos.contains(_chaveProduto(produtos[indice], indice)),
-          onTap: () => _alternarProduto(produtos[indice], indice),
-          onConferir: () => _alternarConferencia(produtos[indice], indice),
+          rodape: _ControlesProdutoFinalizacao(
+            produto: produtos[indice],
+            modoSelecao: _modo == ModoRecebimentoAtendimento.porProduto,
+            selecionado:
+                _selecionados.contains(_chaveProduto(produtos[indice], indice)),
+            conferido:
+                _conferidos.contains(_chaveProduto(produtos[indice], indice)),
+            onTap: () => _alternarProduto(produtos[indice], indice),
+            onConferir: () => _alternarConferencia(produtos[indice], indice),
+          ),
         ),
         const SizedBox(height: 8),
       ],
@@ -676,7 +796,7 @@ class _ControlePessoas extends StatelessWidget {
   }
 }
 
-class _CardProdutoPagamento extends StatelessWidget {
+class _ControlesProdutoFinalizacao extends StatelessWidget {
   final Modelowordprodutos produto;
   final bool modoSelecao;
   final bool selecionado;
@@ -684,7 +804,7 @@ class _CardProdutoPagamento extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onConferir;
 
-  const _CardProdutoPagamento({
+  const _ControlesProdutoFinalizacao({
     required this.produto,
     required this.modoSelecao,
     required this.selecionado,
@@ -696,84 +816,57 @@ class _CardProdutoPagamento extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final saldo = saldoProdutoEmCentavos(produto);
-    final pago = saldo <= 0;
-    return Material(
-      color: selecionado ? cs.primaryContainer : cs.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-            color: selecionado ? cs.primary : cs.outlineVariant,
-            width: selecionado ? 1.5 : 1),
-      ),
-      child: InkWell(
-        onTap: modoSelecao && !pago ? onTap : null,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(children: [
-            Row(children: [
-              Icon(
-                pago
-                    ? Icons.check_circle_rounded
-                    : modoSelecao
-                        ? selecionado
-                            ? Icons.check_box_rounded
-                            : Icons.check_box_outline_blank_rounded
-                        : Icons.inventory_2_outlined,
-                color: pago
-                    ? VisualAtendimento.verde(context)
-                    : selecionado
-                        ? cs.primary
-                        : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(nomeExibicaoProduto(produto),
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${produto.quantidade ?? 1} un. • Código ${produto.codigo}',
-                        style:
-                            TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
-                      ),
-                    ]),
-              ),
-              const SizedBox(width: 8),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(valorDosCentavos(saldo).obterReal(),
-                    style: TextStyle(
-                        color: pago ? cs.onSurfaceVariant : cs.primary,
-                        fontWeight: FontWeight.w800)),
-                if (pago)
-                  Text('Pago',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: VisualAtendimento.verde(context))),
-              ]),
-            ]),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: ValueKey('conferir_${produto.iditensvenda ?? produto.id}'),
-                onPressed: onConferir,
-                icon: Icon(conferido
-                    ? Icons.check_circle_rounded
-                    : Icons.check_circle_outline_rounded),
-                label: Text(conferido ? 'Conferido' : 'Conferir'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor:
-                      conferido ? VisualAtendimento.verde(context) : cs.primary,
-                ),
-              ),
+    final pago = saldoProdutoEmCentavos(produto) <= 0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final botoes = <Widget>[
+          if (modoSelecao)
+            FilledButton.tonalIcon(
+              key: ValueKey('selecionar_${produto.iditensvenda ?? produto.id}'),
+              onPressed: pago ? null : onTap,
+              icon: Icon(pago
+                  ? Icons.check_circle_rounded
+                  : selecionado
+                      ? Icons.check_box_rounded
+                      : Icons.check_box_outline_blank_rounded),
+              label: Text(pago
+                  ? 'Pago'
+                  : selecionado
+                      ? 'Selecionado'
+                      : 'Selecionar'),
+              style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
             ),
-          ]),
-        ),
-      ),
+          OutlinedButton.icon(
+            key: ValueKey('conferir_${produto.iditensvenda ?? produto.id}'),
+            onPressed: onConferir,
+            icon: Icon(conferido
+                ? Icons.check_circle_rounded
+                : Icons.check_circle_outline_rounded),
+            label: Text(conferido ? 'Conferido' : 'Conferir'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 42),
+              foregroundColor:
+                  conferido ? VisualAtendimento.verde(context) : cs.primary,
+            ),
+          ),
+        ];
+
+        if (botoes.length == 1) {
+          return SizedBox(width: double.infinity, child: botoes.first);
+        }
+        if (constraints.maxWidth < 340) {
+          return Column(children: [
+            SizedBox(width: double.infinity, child: botoes.first),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: botoes.last),
+          ]);
+        }
+        return Row(children: [
+          Expanded(child: botoes.first),
+          const SizedBox(width: 8),
+          Expanded(child: botoes.last),
+        ]);
+      },
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
@@ -11,6 +14,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
+  String? senhaCancelamento;
+
   @override
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
@@ -49,7 +54,68 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
           ingredientes: const [],
           quantidade: 3,
         ),
+        Modelowordprodutos(
+          id: '1',
+          iditensvenda: '78',
+          nome: 'Pizza de Queijos',
+          codigo: '1',
+          estoque: '0',
+          tamanho: 'Grande',
+          foto: '',
+          ativo: 'Sim',
+          descricao: '',
+          valorVenda: '47.00',
+          valorTotalVendas: '47.00',
+          categoria: '2',
+          nomeCategoria: 'Pizzas',
+          habilTipo: '',
+          ingredientes: const [],
+          quantidade: 1,
+          opcoesPacotesListaFinal: [
+            ModeloOpcoesPacotes(
+              id: 10,
+              titulo: 'Sabores',
+              obrigatorio: true,
+              dados: [
+                ModeloDadosOpcoesPacotes(
+                  id: '1',
+                  nome: 'Mussarela',
+                  quantimaximaselecao: '1/2',
+                  valor: '0',
+                ),
+                ModeloDadosOpcoesPacotes(
+                  id: '2',
+                  nome: 'Catupiry Especial',
+                  quantimaximaselecao: '1/2',
+                  valor: '0',
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
+    );
+  }
+
+  @override
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        ModeloDestinoImpressao? destinoCaixa,
+      })> cancelarItemFinalizado({
+    required TipoCardapio tipo,
+    required Modeloworddadoscardapio atendimento,
+    required Modelowordprodutos produto,
+    required String idMesa,
+    required String idComanda,
+    required String senhaAdmin,
+  }) async {
+    senhaCancelamento = senhaAdmin;
+    return (
+      sucesso: false,
+      mensagem: 'Cancelamento simulado.',
+      destinoCaixa: null,
     );
   }
 }
@@ -122,20 +188,23 @@ class _PagamentoFinalizacaoFake extends Fake
 
 class _ModuloFinalizacao extends Module {
   final _PagamentoFinalizacaoFake pagamento;
-  _ModuloFinalizacao(this.pagamento);
+  final _CardapioFinalizacaoFake cardapio;
+  _ModuloFinalizacao(this.pagamento, this.cardapio);
 
   @override
   void binds(Injector i) {
-    i.addInstance<ServicoCardapio>(_CardapioFinalizacaoFake());
+    i.addInstance<ServicoCardapio>(cardapio);
     i.addInstance<ServicoFinalizarPagamento>(pagamento);
   }
 }
 
 void main() {
   late _PagamentoFinalizacaoFake pagamento;
+  late _CardapioFinalizacaoFake cardapio;
   setUp(() {
     pagamento = _PagamentoFinalizacaoFake();
-    Modular.init(_ModuloFinalizacao(pagamento));
+    cardapio = _CardapioFinalizacaoFake();
+    Modular.init(_ModuloFinalizacao(pagamento, cardapio));
   });
   tearDown(Modular.destroy);
 
@@ -183,10 +252,12 @@ void main() {
         of: find.byType(ListView), matching: find.byType(Scrollable));
     await tester.scrollUntilVisible(find.text('Água Tônica'), 160,
         scrollable: lista.first);
-    await tester.tap(find.text('Água Tônica'));
+    await tester.drag(lista.first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('selecionar_77')));
     await tester.pumpAndSettle();
     expect(find.textContaining('12,00'), findsWidgets);
-    await tester.tap(find.text('Conferir'));
+    await tester.tap(find.byKey(const ValueKey('conferir_77')));
     await tester.pumpAndSettle();
     expect(find.text('Conferido'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Movimentos realizados'), 180,
@@ -225,6 +296,41 @@ void main() {
       (tester) async {
     await abrir(tester, tamanho: const Size(320, 568), escala: 2);
     expect(find.text('Finalizar Conta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('abre detalhes de pizza e exige senha Admin para excluir',
+      (tester) async {
+    await abrir(tester);
+
+    final lista = find.descendant(
+        of: find.byType(ListView), matching: find.byType(Scrollable));
+    await tester.scrollUntilVisible(find.byTooltip('Ver detalhes'), 180,
+        scrollable: lista.first);
+    await tester.drag(lista.first, const Offset(0, -120));
+    await tester.pumpAndSettle();
+    expect(find.text('Sabores').hitTestable(), findsNothing);
+
+    await tester.tap(find.byTooltip('Ver detalhes'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sabores').hitTestable(), findsOneWidget);
+    expect(find.text('(1/2) Mussarela').hitTestable(), findsOneWidget);
+    expect(find.text('(1/2) Catupiry Especial').hitTestable(), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Excluir Item'));
+    await tester.pumpAndSettle();
+    expect(find.text('Digite a senha Admin para confirmar o cancelamento.'),
+        findsOneWidget);
+
+    await tester.tap(find.text('Confirmar exclusão'));
+    await tester.pump();
+    expect(find.text('Informe a senha Admin.'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'senha-admin');
+    await tester.tap(find.text('Confirmar exclusão'));
+    await tester.pumpAndSettle();
+    expect(cardapio.senhaCancelamento, 'senha-admin');
+    expect(find.text('Cancelamento simulado.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -36,6 +36,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final bool podeExcluir;
   final VoidCallback? onExcluir;
   final bool cabecalhoAdaptavel;
+  final Widget? rodape;
+  final bool destacado;
 
   const CardProdutoAcompanhar({
     super.key,
@@ -52,6 +54,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
     this.podeExcluir = false,
     this.onExcluir,
     this.cabecalhoAdaptavel = false,
+    this.rodape,
+    this.destacado = false,
   });
 
   @override
@@ -179,8 +183,14 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     // );
 
     return Card(
+      color: widget.destacado
+          ? Theme.of(context).colorScheme.primaryContainer
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(5),
+        side: widget.destacado
+            ? BorderSide(color: Theme.of(context).colorScheme.primary)
+            : BorderSide.none,
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -510,6 +520,11 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
               ),
             ),
           ],
+          if (widget.rodape != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: widget.rodape!,
+            ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(
