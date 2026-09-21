@@ -307,7 +307,7 @@ class ImpressaoDelivery {
           'valorentrega': pedido.texto('valordaentrega', '0'),
           'numeroPedido': pedido.numero,
           'tipodeentrega': pedido.tipoEntrega,
-          'nomeCliente': pedido.nome,
+          'nomeCliente': pedido.nome.trim(),
           'valortroco': pedido.texto('valortroco', '0'),
           'observacaoDoPedido': pedido.observacao,
           'valordesconto': pedido.texto('valorDesconto', '0'),
