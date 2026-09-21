@@ -523,10 +523,19 @@ class _PaginaFinalizarContaAtendimentoState
           tipo: widget.tipo,
           setarQuantidade: (_) {},
           cabecalhoAdaptavel: true,
-          podeExcluir: _podeExcluirProduto(produtos[indice]),
-          onExcluir: () => _cancelarItem(produtos[indice]),
           destacado:
               _selecionados.contains(_chaveProduto(produtos[indice], indice)),
+          corDestaque:
+              _conferidos.contains(_chaveProduto(produtos[indice], indice))
+                  ? Color.alphaBlend(
+                      VisualAtendimento.verde(context).withValues(alpha: 0.14),
+                      Theme.of(context).colorScheme.surface,
+                    )
+                  : null,
+          corBordaDestaque:
+              _conferidos.contains(_chaveProduto(produtos[indice], indice))
+                  ? VisualAtendimento.verde(context)
+                  : null,
           rodape: _ControlesProdutoFinalizacao(
             produto: produtos[indice],
             modoSelecao: _modo == ModoRecebimentoAtendimento.porProduto,
@@ -534,8 +543,10 @@ class _PaginaFinalizarContaAtendimentoState
                 _selecionados.contains(_chaveProduto(produtos[indice], indice)),
             conferido:
                 _conferidos.contains(_chaveProduto(produtos[indice], indice)),
+            podeExcluir: _podeExcluirProduto(produtos[indice]),
             onTap: () => _alternarProduto(produtos[indice], indice),
             onConferir: () => _alternarConferencia(produtos[indice], indice),
+            onExcluir: () => _cancelarItem(produtos[indice]),
           ),
         ),
         const SizedBox(height: 8),
@@ -801,40 +812,46 @@ class _ControlesProdutoFinalizacao extends StatelessWidget {
   final bool modoSelecao;
   final bool selecionado;
   final bool conferido;
+  final bool podeExcluir;
   final VoidCallback onTap;
   final VoidCallback onConferir;
+  final VoidCallback onExcluir;
 
   const _ControlesProdutoFinalizacao({
     required this.produto,
     required this.modoSelecao,
     required this.selecionado,
     required this.conferido,
+    required this.podeExcluir,
     required this.onTap,
     required this.onConferir,
+    required this.onExcluir,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final verde = VisualAtendimento.verde(context);
     final pago = saldoProdutoEmCentavos(produto) <= 0;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final botoes = <Widget>[
-          if (modoSelecao)
-            FilledButton.tonalIcon(
-              key: ValueKey('selecionar_${produto.iditensvenda ?? produto.id}'),
-              onPressed: pago ? null : onTap,
-              icon: Icon(pago
-                  ? Icons.check_circle_rounded
-                  : selecionado
-                      ? Icons.check_box_rounded
-                      : Icons.check_box_outline_blank_rounded),
-              label: Text(pago
-                  ? 'Pago'
-                  : selecionado
-                      ? 'Selecionado'
-                      : 'Selecionar'),
-              style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
+        final formato = RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        );
+        final acoes = <Widget>[
+          if (podeExcluir)
+            OutlinedButton.icon(
+              key: ValueKey('excluir_${produto.iditensvenda ?? produto.id}'),
+              onPressed: onExcluir,
+              icon: const Icon(Icons.delete_outline_rounded, size: 20),
+              label: const Text('Excluir Item'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 46),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                foregroundColor: cs.error,
+                side: BorderSide(color: cs.error),
+                shape: formato,
+              ),
             ),
           OutlinedButton.icon(
             key: ValueKey('conferir_${produto.iditensvenda ?? produto.id}'),
@@ -844,27 +861,49 @@ class _ControlesProdutoFinalizacao extends StatelessWidget {
                 : Icons.check_circle_outline_rounded),
             label: Text(conferido ? 'Conferido' : 'Conferir'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 42),
-              foregroundColor:
-                  conferido ? VisualAtendimento.verde(context) : cs.primary,
+              minimumSize: const Size(0, 46),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              foregroundColor: conferido ? verde : cs.primary,
+              side: BorderSide(color: conferido ? verde : cs.outlineVariant),
+              shape: formato,
             ),
           ),
         ];
 
-        if (botoes.length == 1) {
-          return SizedBox(width: double.infinity, child: botoes.first);
-        }
-        if (constraints.maxWidth < 340) {
-          return Column(children: [
-            SizedBox(width: double.infinity, child: botoes.first),
+        return Column(children: [
+          if (modoSelecao) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                key: ValueKey(
+                    'selecionar_${produto.iditensvenda ?? produto.id}'),
+                onPressed: pago ? null : onTap,
+                icon: Icon(pago
+                    ? Icons.check_circle_rounded
+                    : selecionado
+                        ? Icons.check_box_rounded
+                        : Icons.check_box_outline_blank_rounded),
+                label: Text(pago
+                    ? 'Pago'
+                    : selecionado
+                        ? 'Selecionado'
+                        : 'Selecionar para pagar'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 46),
+                  shape: formato,
+                ),
+              ),
+            ),
             const SizedBox(height: 8),
-            SizedBox(width: double.infinity, child: botoes.last),
-          ]);
-        }
-        return Row(children: [
-          Expanded(child: botoes.first),
-          const SizedBox(width: 8),
-          Expanded(child: botoes.last),
+          ],
+          if (acoes.length == 1)
+            SizedBox(width: double.infinity, child: acoes.first)
+          else
+            Row(children: [
+              Expanded(child: acoes.first),
+              const SizedBox(width: 8),
+              Expanded(child: acoes.last),
+            ]),
         ]);
       },
     );

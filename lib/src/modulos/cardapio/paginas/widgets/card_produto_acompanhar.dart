@@ -38,6 +38,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
   final bool cabecalhoAdaptavel;
   final Widget? rodape;
   final bool destacado;
+  final Color? corDestaque;
+  final Color? corBordaDestaque;
 
   const CardProdutoAcompanhar({
     super.key,
@@ -56,6 +58,8 @@ class CardProdutoAcompanhar extends StatefulWidget {
     this.cabecalhoAdaptavel = false,
     this.rodape,
     this.destacado = false,
+    this.corDestaque,
+    this.corBordaDestaque,
   });
 
   @override
@@ -182,15 +186,20 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     //   },
     // );
 
+    final corDestaque = widget.corDestaque ??
+        (widget.destacado
+            ? Theme.of(context).colorScheme.primaryContainer
+            : null);
+    final corBordaDestaque = widget.corBordaDestaque ??
+        (widget.destacado ? Theme.of(context).colorScheme.primary : null);
+
     return Card(
-      color: widget.destacado
-          ? Theme.of(context).colorScheme.primaryContainer
-          : null,
+      color: corDestaque,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(5),
-        side: widget.destacado
-            ? BorderSide(color: Theme.of(context).colorScheme.primary)
-            : BorderSide.none,
+        side: corBordaDestaque == null
+            ? BorderSide.none
+            : BorderSide(color: corBordaDestaque),
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(

@@ -6,6 +6,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/bancos_ativos_pdv_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
@@ -317,7 +318,27 @@ void main() {
     expect(find.text('(1/2) Mussarela').hitTestable(), findsOneWidget);
     expect(find.text('(1/2) Catupiry Especial').hitTestable(), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Excluir Item'));
+    final excluir = find.byKey(const ValueKey('excluir_78'));
+    final conferir = find.byKey(const ValueKey('conferir_78'));
+    expect((tester.getCenter(excluir).dy - tester.getCenter(conferir).dy).abs(),
+        lessThan(1));
+
+    final cardProduto = find.byKey(const ValueKey('produto_finalizacao_78'));
+    final cardVisual =
+        find.descendant(of: cardProduto, matching: find.byType(Card)).first;
+    final corAntes = tester.widget<Card>(cardVisual).color;
+    await tester.tap(conferir);
+    await tester.pumpAndSettle();
+    final contextoCard = tester.element(cardProduto);
+    final corVerdeEsperada = Color.alphaBlend(
+      VisualAtendimento.verde(contextoCard).withValues(alpha: 0.14),
+      Theme.of(contextoCard).colorScheme.surface,
+    );
+    expect(tester.widget<Card>(cardVisual).color, corVerdeEsperada);
+    expect(tester.widget<Card>(cardVisual).color, isNot(corAntes));
+    expect(find.text('Conferido'), findsOneWidget);
+
+    await tester.tap(excluir);
     await tester.pumpAndSettle();
     expect(find.text('Digite a senha Admin para confirmar o cancelamento.'),
         findsOneWidget);
