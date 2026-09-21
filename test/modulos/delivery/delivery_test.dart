@@ -426,8 +426,8 @@ void main() {
       'enderecoCliente': 'Rua Sem Saida',
       'numeroCliente': '133',
       'bairroCliente': 'Centro',
-      'complementoCliente': 'Fundos',
       'cidadeCliente': 'Lobato',
+      'complementoCliente': 'Fundos',
     });
   });
   test('comprovante aceita endereco do cardapio como fallback', () {
