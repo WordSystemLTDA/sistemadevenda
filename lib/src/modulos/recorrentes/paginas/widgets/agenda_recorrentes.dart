@@ -57,11 +57,13 @@ class AgendaRecorrentes extends StatefulWidget {
 }
 
 class _AgendaRecorrentesState extends State<AgendaRecorrentes>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   ProvedorRecorrentes get p => widget.provedor;
   Timer? _relogio;
   late DateTime _agora;
+  late final TabController _abasHorarios;
   bool _recarregando = false;
+  bool _faixaInicialSincronizada = false;
   final Set<String> _itensExpandidos = {};
   late final TextEditingController _busca =
       TextEditingController(text: p.pesquisa);
@@ -71,6 +73,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _agora = widget.agora?.call() ?? DateTime.now();
+    _abasHorarios =
+        TabController(length: _opcoesHorarioAgenda.length, vsync: this);
     widget.atualizacoesAutomaticas?.addListener(_aoAtualizacaoAutomatica);
     unawaited(p.listar());
     _relogio =
@@ -136,6 +140,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   @override
   void dispose() {
     _relogio?.cancel();
+    _abasHorarios.dispose();
     _busca.dispose();
     widget.atualizacoesAutomaticas?.removeListener(_aoAtualizacaoAutomatica);
     WidgetsBinding.instance.removeObserver(this);
@@ -392,6 +397,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         final cs = tema.colorScheme;
         final itens = p.filtrados;
         final celular = MediaQuery.sizeOf(context).width < 600;
+        if (celular && p.visao != 'cadastros' && !p.carregando) {
+          _sincronizarFaixaInicial(itens);
+        }
         return Scaffold(
           appBar: widget.exibirAppBar
               ? AppBar(
@@ -421,6 +429,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
           body: SafeArea(
               top: false,
               child: Column(children: [
+                if (celular && p.visao != 'cadastros')
+                  _abasHorariosCelular(itens),
                 if (celular)
                   _cabecalhoCelular(itens)
                 else
@@ -475,67 +485,147 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                                   'Use + para cadastrar um pedido recorrente.',
                                                   textAlign: TextAlign.center)
                                             ])))
-                                : RefreshIndicator(
-                                    onRefresh: () =>
-                                        _recarregar(processarAutomaticos: true),
-                                    child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                      final escala =
-                                          MediaQuery.textScalerOf(context)
-                                                  .scale(14) /
-                                              14;
-                                      final colunas = math.max(
-                                          1,
-                                          ((constraints.maxWidth - 24) /
-                                                  (360 * escala))
-                                              .floor());
-                                      final largura = (constraints.maxWidth -
-                                              24 -
-                                              (colunas - 1) * 12) /
-                                          colunas;
-                                      return ListView(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 100),
-                                          physics:
-                                              const AlwaysScrollableScrollPhysics(),
-                                          children: [
-                                            if (!celular)
-                                              Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          bottom: 8),
-                                                  child: Text(
-                                                      '${itens.length} ${p.visao == 'cadastros' ? 'recorrente(s)' : 'pedido(s) previsto(s)'}',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall)),
-                                            if (p.visao == 'cadastros')
-                                              if (celular)
-                                                for (var indice = 0;
-                                                    indice < itens.length;
-                                                    indice++) ...[
-                                                  _card(itens[indice]),
-                                                  if (indice < itens.length - 1)
-                                                    const SizedBox(height: 12),
-                                                ]
-                                              else
-                                                Wrap(
-                                                    spacing: 12,
-                                                    runSpacing: 12,
-                                                    children: [
-                                                      for (final item in itens)
-                                                        SizedBox(
-                                                            width: largura,
-                                                            child: _card(item))
-                                                    ]),
-                                            if (p.visao != 'cadastros')
-                                              ..._diasDaAgenda(itens,
-                                                  celular: celular),
-                                          ]);
-                                    }))),
+                                : celular && p.visao != 'cadastros'
+                                    ? _carrosselAgendaCelular(itens)
+                                    : RefreshIndicator(
+                                        onRefresh: () => _recarregar(
+                                            processarAutomaticos: true),
+                                        child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                          final escala =
+                                              MediaQuery.textScalerOf(context)
+                                                      .scale(14) /
+                                                  14;
+                                          final colunas = math.max(
+                                              1,
+                                              ((constraints.maxWidth - 24) /
+                                                      (360 * escala))
+                                                  .floor());
+                                          final largura =
+                                              (constraints.maxWidth -
+                                                      24 -
+                                                      (colunas - 1) * 12) /
+                                                  colunas;
+                                          return ListView(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                      12, 4, 12, 100),
+                                              physics:
+                                                  const AlwaysScrollableScrollPhysics(),
+                                              children: [
+                                                if (!celular)
+                                                  Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              bottom: 8),
+                                                      child: Text(
+                                                          '${itens.length} ${p.visao == 'cadastros' ? 'recorrente(s)' : 'pedido(s) previsto(s)'}',
+                                                          style:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodySmall)),
+                                                if (p.visao == 'cadastros')
+                                                  if (celular)
+                                                    for (var indice = 0;
+                                                        indice < itens.length;
+                                                        indice++) ...[
+                                                      _card(itens[indice]),
+                                                      if (indice <
+                                                          itens.length - 1)
+                                                        const SizedBox(
+                                                            height: 12),
+                                                    ]
+                                                  else
+                                                    Wrap(
+                                                        spacing: 12,
+                                                        runSpacing: 12,
+                                                        children: [
+                                                          for (final item
+                                                              in itens)
+                                                            SizedBox(
+                                                                width: largura,
+                                                                child:
+                                                                    _card(item))
+                                                        ]),
+                                                if (p.visao != 'cadastros')
+                                                  ..._diasDaAgenda(itens,
+                                                      celular: celular),
+                                              ]);
+                                        }))),
               ])),
         );
       });
+
+  String _tipoHorario(ModeloRecorrente item) => _opcoesHorarioAgenda
+          .any((opcao) => opcao.tipo == item.configuracao.horarioTipo)
+      ? item.configuracao.horarioTipo
+      : 'livre';
+
+  void _sincronizarFaixaInicial(List<ModeloRecorrente> itens) {
+    if (_faixaInicialSincronizada || itens.isEmpty) return;
+    final indice = _opcoesHorarioAgenda.indexWhere(
+        (opcao) => itens.any((item) => _tipoHorario(item) == opcao.tipo));
+    if (indice < 0) return;
+    _faixaInicialSincronizada = true;
+    if (indice == _abasHorarios.index) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _abasHorarios.animateTo(indice);
+    });
+  }
+
+  Widget _abasHorariosCelular(List<ModeloRecorrente> itens) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+        color: cs.inversePrimary,
+        child: TabBar(
+            key: const ValueKey('abas-horarios-recorrentes'),
+            controller: _abasHorarios,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              for (final opcao in _opcoesHorarioAgenda)
+                Tab(
+                    text:
+                        '${opcao.titulo} (${itens.where((item) => _tipoHorario(item) == opcao.tipo).length})')
+            ]));
+  }
+
+  Widget _carrosselAgendaCelular(List<ModeloRecorrente> itens) => TabBarView(
+          key: const ValueKey('carrossel-horarios-recorrentes'),
+          controller: _abasHorarios,
+          children: [
+            for (final opcao in _opcoesHorarioAgenda)
+              _paginaHorarioCelular(
+                  opcao,
+                  itens
+                      .where((item) => _tipoHorario(item) == opcao.tipo)
+                      .toList(growable: false)),
+          ]);
+
+  Widget _paginaHorarioCelular(
+      _OpcaoHorarioAgenda opcao, List<ModeloRecorrente> itens) {
+    final cs = Theme.of(context).colorScheme;
+    return RefreshIndicator(
+        onRefresh: () => _recarregar(processarAutomaticos: true),
+        child: ListView(
+            key: PageStorageKey('recorrentes-horario-${opcao.tipo}'),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+            children: itens.isEmpty
+                ? [
+                    Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 64),
+                        child: Column(children: [
+                          Icon(opcao.icone, size: 42, color: cs.outline),
+                          const SizedBox(height: 12),
+                          Text('Nenhum pedido em ${opcao.titulo.toLowerCase()}',
+                              textAlign: TextAlign.center),
+                        ]))
+                  ]
+                : _diasDaAgenda(itens,
+                    celular: true, somenteComPedidos: true)));
+  }
 
   Widget _cabecalhoCelular(List<ModeloRecorrente> itens) {
     final cs = Theme.of(context).colorScheme;
@@ -697,13 +787,13 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   }
 
   List<Widget> _diasDaAgenda(List<ModeloRecorrente> itens,
-      {bool celular = false}) {
+      {bool celular = false, bool somenteComPedidos = false}) {
     final porDia = <DateTime, List<ModeloRecorrente>>{};
     for (final item in itens) {
       final dia = DateUtils.dateOnly(item.data);
       (porDia[dia] ??= []).add(item);
     }
-    final dias = p.pesquisa.trim().isNotEmpty
+    final dias = somenteComPedidos || p.pesquisa.trim().isNotEmpty
         ? porDia.keys.toList()
         : {
             for (var indice = 0; indice < p.diasPeriodo; indice++)

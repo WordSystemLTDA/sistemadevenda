@@ -290,7 +290,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final api = Api();
+    final api = Api()
+      ..dados = [
+        pedido(cliente: 'Cliente sem horário', horarioTipo: 'livre'),
+        pedido(cliente: 'Cliente com hora marcada', horarioTipo: 'fixo'),
+        pedido(
+            cliente: 'Cliente no horário da empresa', horarioTipo: 'intervalo')
+      ];
     final p = ProvedorRecorrentes(api);
     await tester.pumpWidget(MaterialApp(
         home: AgendaRecorrentes(
@@ -299,6 +305,19 @@ void main() {
     expect(find.byKey(const ValueKey('novo-recorrente')), findsOneWidget);
     expect(find.text('Deslize para ver os horários'), findsNothing);
     expect(find.text('Cliente ou produto'), findsOneWidget);
+    expect(find.text('Qualquer horário (1)'), findsOneWidget);
+    expect(find.text('Horário fixo (1)'), findsOneWidget);
+    expect(find.text('Horário da empresa (1)'), findsOneWidget);
+    expect(find.text('Cliente sem horário'), findsOneWidget);
+
+    final carrossel =
+        find.byKey(const ValueKey('carrossel-horarios-recorrentes'));
+    await tester.drag(carrossel, const Offset(-360, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Cliente com hora marcada'), findsOneWidget);
+    await tester.drag(carrossel, const Offset(-360, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Cliente no horário da empresa'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Filtrar período'));
     await tester.pumpAndSettle();
