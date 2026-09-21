@@ -321,15 +321,15 @@ class ImpressaoDelivery {
     ];
   }
 
-  /// Mantém cada parte do endereço separada para o servidor imprimir Número e
-  /// Bairro em colunas, sem precisar interpretar um endereço concatenado.
+  /// Mantém cada parte do endereço separada para o servidor ampliar somente os
+  /// valores de Número/Bairro e imprimir Cidade/Complemento na linha seguinte.
   static Map<String, String> camposEnderecoComprovante(PedidoDelivery pedido) =>
       {
         'enderecoCliente': pedido.texto('enderecoCliente').trim(),
         'numeroCliente': pedido.texto('numeroCliente').trim(),
         'bairroCliente': pedido.texto('bairroCliente').trim(),
-        'complementoCliente': pedido.texto('complementoCliente').trim(),
         'cidadeCliente': pedido.texto('cidadeCliente').trim(),
+        'complementoCliente': pedido.texto('complementoCliente').trim(),
       };
 
   static Map<String, dynamic> _camposNumeroOperacional(ConfigDelivery? config) {
