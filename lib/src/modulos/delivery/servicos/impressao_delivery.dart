@@ -298,14 +298,10 @@ class ImpressaoDelivery {
             'cnpjEmpresa',
             'enderecoEmpresa',
             'nomeEmpresa',
-            'celularCliente',
-            'enderecoCliente',
-            'numeroCliente',
-            'bairroCliente',
-            'complementoCliente',
-            'cidadeCliente'
+            'celularCliente'
           ])
             campo: pedido.texto(campo),
+          ...camposEnderecoComprovante(pedido),
           'total': pedido.total.toStringAsFixed(2),
           'permanencia': '',
           'valorentrega': pedido.texto('valordaentrega', '0'),
@@ -324,6 +320,17 @@ class ImpressaoDelivery {
         })
     ];
   }
+
+  /// Mantém cada parte do endereço separada para o servidor imprimir Número e
+  /// Bairro em colunas, sem precisar interpretar um endereço concatenado.
+  static Map<String, String> camposEnderecoComprovante(PedidoDelivery pedido) =>
+      {
+        'enderecoCliente': pedido.texto('enderecoCliente').trim(),
+        'numeroCliente': pedido.texto('numeroCliente').trim(),
+        'bairroCliente': pedido.texto('bairroCliente').trim(),
+        'complementoCliente': pedido.texto('complementoCliente').trim(),
+        'cidadeCliente': pedido.texto('cidadeCliente').trim(),
+      };
 
   static Map<String, dynamic> _camposNumeroOperacional(ConfigDelivery? config) {
     if (config == null) return const {};
