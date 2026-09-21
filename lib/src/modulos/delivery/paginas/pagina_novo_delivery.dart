@@ -160,6 +160,11 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   String _idEndereco(Map<String, dynamic>? endereco) =>
       endereco?['id']?.toString() ?? '';
 
+  bool _ehEnderecoPadrao(Map<String, dynamic> endereco) {
+    final valor = endereco['padrao']?.toString().trim().toLowerCase() ?? '';
+    return valor == 'sim' || valor == 's' || valor == '1' || valor == 'true';
+  }
+
   Future<void> _carregarEnderecos({
     bool selecionarNovo = false,
     Set<String> idsAnteriores = const {},
@@ -193,7 +198,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
             _enderecos
                 .where((e) => _idEndereco(e) == idSelecionado)
                 .firstOrNull ??
-            _enderecos.where((e) => e['padrao'] == 'Sim').firstOrNull ??
+            _enderecos.where(_ehEnderecoPadrao).firstOrNull ??
             (_enderecos.length == 1 ? _enderecos.first : null);
       });
     } catch (_) {
@@ -476,10 +481,13 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                         style: TextStyle(
                                             color: cs.onSurfaceVariant)))
                               else
-                                ..._enderecos.map((e) => Padding(
+                                ..._enderecos.map((e) {
+                                  final padrao = _ehEnderecoPadrao(e);
+                                  return Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
                                     child: ListTile(
                                       selected: e['id'] == _endereco?['id'],
+                                      isThreeLine: padrao,
                                       selectedTileColor: cs.primaryContainer
                                           .withValues(alpha: .4),
                                       shape: RoundedRectangleBorder(
@@ -502,19 +510,67 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                                               .edit_location_alt_outlined)),
                                       title: Text(
                                           '${e['endereco']}, ${e['numero']}'),
-                                      subtitle: Text([
-                                        e['bairro'],
-                                        e['cidade'],
-                                        e['complemento']
-                                      ]
-                                          .where((s) =>
-                                              s != null &&
-                                              s.toString().isNotEmpty)
-                                          .join(' · ')),
+                                      subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text([
+                                              e['bairro'],
+                                              e['cidade'],
+                                              e['complemento']
+                                            ]
+                                                .where((s) =>
+                                                    s != null &&
+                                                    s.toString().isNotEmpty)
+                                                .join(' · ')),
+                                            if (padrao)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                    top: 4),
+                                                child: Container(
+                                                  key: ValueKey(
+                                                      'endereco-padrao-${_idEndereco(e)}'),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        cs.secondaryContainer,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.home_outlined,
+                                                          size: 15,
+                                                          color: cs
+                                                              .onSecondaryContainer),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        'Padrão',
+                                                        style: TextStyle(
+                                                          color: cs
+                                                              .onSecondaryContainer,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                          ]),
                                       onTap: _salvando
                                           ? null
                                           : () => setState(() => _endereco = e),
-                                    ))),
+                                    ),
+                                  );
+                                }),
                               const SizedBox(height: 8),
                               SizedBox(
                                   width: double.infinity,

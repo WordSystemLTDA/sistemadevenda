@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../modelos/modelo_recorrente.dart';
@@ -62,6 +63,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   late DateTime _agora;
   bool _recarregando = false;
   final Set<String> _itensExpandidos = {};
+  late final TextEditingController _busca =
+      TextEditingController(text: p.pesquisa);
 
   @override
   void initState() {
@@ -133,6 +136,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   @override
   void dispose() {
     _relogio?.cancel();
+    _busca.dispose();
     widget.atualizacoesAutomaticas?.removeListener(_aoAtualizacaoAutomatica);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -332,6 +336,22 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     if (dia != null && mounted) await p.listar(dia: dia);
   }
 
+  Future<void> _abrirFiltros() async {
+    final filtro = await showDialog<_FiltroRecorrentes>(
+        context: context,
+        builder: (_) => _DialogoFiltrosRecorrentes(
+              data: p.data,
+              visao: p.visao,
+            ));
+    if (!mounted || filtro == null) return;
+    await p.listar(dia: filtro.data, modo: filtro.visao);
+  }
+
+  Future<void> _novo() => _acao(() async {
+        await widget.novo();
+        if (mounted) await p.listar();
+      });
+
   bool _pendenteAutomatico(ModeloRecorrente item) =>
       item.ativo &&
       !item.temPedido &&
@@ -371,27 +391,44 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         final tema = Theme.of(context);
         final cs = tema.colorScheme;
         final itens = p.filtrados;
+        final celular = MediaQuery.sizeOf(context).width < 600;
         return Scaffold(
           appBar: widget.exibirAppBar
-              ? AppBar(title: const Text('Recorrentes'))
+              ? AppBar(
+                  title: const Text('Recorrentes'),
+                  backgroundColor: celular ? cs.inversePrimary : null,
+                  actions: celular
+                      ? [
+                          IconButton(
+                              tooltip: 'Atualizar recorrentes',
+                              onPressed: p.carregando || p.ocupado
+                                  ? null
+                                  : () =>
+                                      _recarregar(processarAutomaticos: true),
+                              icon: const Icon(Icons.refresh))
+                        ]
+                      : null)
               : null,
-          floatingActionButton: FloatingActionButton(
-              tooltip: 'Novo Recorrente',
-              onPressed: p.ocupado
-                  ? null
-                  : () => _acao(() async {
-                        await widget.novo();
-                        if (mounted) await p.listar();
-                      }),
-              child: const Icon(Icons.add)),
+          floatingActionButton: celular
+              ? _BotaoNovoRecorrente(
+                  habilitado: !p.ocupado, onPressed: () => unawaited(_novo()))
+              : FloatingActionButton(
+                  tooltip: 'Novo Recorrente',
+                  onPressed: p.ocupado ? null : () => unawaited(_novo()),
+                  child: const Icon(Icons.add)),
+          floatingActionButtonLocation:
+              celular ? FloatingActionButtonLocation.centerFloat : null,
           body: SafeArea(
               top: false,
               child: Column(children: [
-                Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: LayoutBuilder(
-                        builder: (context, constraints) =>
-                            _cabecalho(constraints.maxWidth))),
+                if (celular)
+                  _cabecalhoCelular(itens)
+                else
+                  Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: LayoutBuilder(
+                          builder: (context, constraints) =>
+                              _cabecalho(constraints.maxWidth))),
                 if (p.carregando || p.ocupado)
                   const LinearProgressIndicator(minHeight: 2),
                 Expanded(
@@ -458,35 +495,103 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                           colunas;
                                       return ListView(
                                           padding: const EdgeInsets.fromLTRB(
-                                              12, 4, 12, 88),
+                                              12, 4, 12, 100),
                                           physics:
                                               const AlwaysScrollableScrollPhysics(),
                                           children: [
-                                            Padding(
-                                                padding: const EdgeInsets.only(
-                                                    bottom: 8),
-                                                child: Text(
-                                                    '${itens.length} ${p.visao == 'cadastros' ? 'recorrente(s)' : 'pedido(s) previsto(s)'}',
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .bodySmall)),
+                                            if (!celular)
+                                              Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 8),
+                                                  child: Text(
+                                                      '${itens.length} ${p.visao == 'cadastros' ? 'recorrente(s)' : 'pedido(s) previsto(s)'}',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall)),
                                             if (p.visao == 'cadastros')
-                                              Wrap(
-                                                  spacing: 12,
-                                                  runSpacing: 12,
-                                                  children: [
-                                                    for (final item in itens)
-                                                      SizedBox(
-                                                          width: largura,
-                                                          child: _card(item))
-                                                  ]),
+                                              if (celular)
+                                                for (var indice = 0;
+                                                    indice < itens.length;
+                                                    indice++) ...[
+                                                  _card(itens[indice]),
+                                                  if (indice < itens.length - 1)
+                                                    const SizedBox(height: 12),
+                                                ]
+                                              else
+                                                Wrap(
+                                                    spacing: 12,
+                                                    runSpacing: 12,
+                                                    children: [
+                                                      for (final item in itens)
+                                                        SizedBox(
+                                                            width: largura,
+                                                            child: _card(item))
+                                                    ]),
                                             if (p.visao != 'cadastros')
-                                              ..._diasDaAgenda(itens),
+                                              ..._diasDaAgenda(itens,
+                                                  celular: celular),
                                           ]);
                                     }))),
               ])),
         );
       });
+
+  Widget _cabecalhoCelular(List<ModeloRecorrente> itens) {
+    final cs = Theme.of(context).colorScheme;
+    final periodo = p.visao == 'cadastros'
+        ? 'Cadastros recorrentes'
+        : p.diasPeriodo == 1
+            ? DateFormat('dd/MM/yyyy').format(p.data)
+            : '${DateFormat('dd/MM').format(p.data)} - ${DateFormat('dd/MM').format(p.dataFinal)}';
+    final quantidade =
+        '${itens.length} ${p.visao == 'cadastros' ? 'recorrente${itens.length == 1 ? '' : 's'}' : 'pedido${itens.length == 1 ? '' : 's'}'}';
+    return Column(children: [
+      Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: Row(children: [
+            Expanded(
+                child: TextField(
+              controller: _busca,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                  hintText: 'Cliente ou produto',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _busca.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Limpar busca',
+                          onPressed: () {
+                            _busca.clear();
+                            p.pesquisar('');
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.close)),
+                  isDense: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8))),
+              onChanged: (valor) {
+                p.pesquisar(valor);
+                setState(() {});
+              },
+            )),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+                tooltip: 'Filtrar período',
+                onPressed: p.ocupado ? null : _abrirFiltros,
+                icon: const Icon(Icons.tune)),
+          ])),
+      Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(children: [
+            Expanded(
+                child: Text(periodo,
+                    style:
+                        TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
+            Text(quantidade, style: const TextStyle(fontSize: 12)),
+          ])),
+    ]);
+  }
 
   Widget _cabecalho(double largura) {
     final data = Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -591,7 +696,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
             children: [data, modos, busca, atualizar]));
   }
 
-  List<Widget> _diasDaAgenda(List<ModeloRecorrente> itens) {
+  List<Widget> _diasDaAgenda(List<ModeloRecorrente> itens,
+      {bool celular = false}) {
     final porDia = <DateTime, List<ModeloRecorrente>>{};
     for (final item in itens) {
       final dia = DateUtils.dateOnly(item.data);
@@ -618,9 +724,45 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 ?.copyWith(color: Theme.of(context).colorScheme.primary),
           ),
         ),
-        _carrosselHorarios(porDia[dia] ?? const []),
+        if (celular)
+          _listaHorariosCelular(porDia[dia] ?? const [])
+        else
+          _carrosselHorarios(porDia[dia] ?? const []),
       ],
     ];
+  }
+
+  Widget _listaHorariosCelular(List<ModeloRecorrente> itens) {
+    final cs = Theme.of(context).colorScheme;
+    if (itens.isEmpty) {
+      return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+          decoration: BoxDecoration(
+              color: cs.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: cs.outlineVariant)),
+          child: Text('Nenhum pedido previsto neste dia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cs.onSurfaceVariant)));
+    }
+    final ordenados = [...itens]..sort((a, b) {
+        const ordem = {'livre': 0, 'fixo': 1, 'intervalo': 2};
+        final tipo = (ordem[a.configuracao.horarioTipo] ?? 3)
+            .compareTo(ordem[b.configuracao.horarioTipo] ?? 3);
+        if (tipo != 0) return tipo;
+        final horario =
+            a.configuracao.horario.compareTo(b.configuracao.horario);
+        if (horario != 0) return horario;
+        return a.cliente.toLowerCase().compareTo(b.cliente.toLowerCase());
+      });
+    return Column(children: [
+      for (var indice = 0; indice < ordenados.length; indice++) ...[
+        _card(ordenados[indice]),
+        if (indice < ordenados.length - 1) const SizedBox(height: 12),
+      ]
+    ]);
   }
 
   Widget _carrosselHorarios(List<ModeloRecorrente> itens) {
@@ -654,7 +796,11 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
 
   Widget _card(ModeloRecorrente item) {
     final cadastros = p.visao == 'cadastros';
-    if (cadastros) return _cardCadastro(item);
+    final celular = MediaQuery.sizeOf(context).width < 600;
+    if (cadastros) {
+      return celular ? _cardCadastroCelular(item) : _cardCadastro(item);
+    }
+    if (celular) return _cardCelular(item);
 
     final tema = Theme.of(context);
     final cs = tema.colorScheme;
@@ -874,7 +1020,258 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     );
   }
 
+  Widget _cardCelular(ModeloRecorrente item) {
+    final tema = Theme.of(context);
+    final cs = tema.colorScheme;
+    final futuro = !item.disponivelEm(_agora);
+    final pulado = item.status == 'Pulado';
+    final indisponivel = item.status == 'Indisponivel';
+    final automatico = _estadoAutomatico(item, _agora);
+    final preparandoAutomatico = automatico?.emContagem ?? false;
+    final automaticoAtrasado = automatico?.atrasado ?? false;
+    final podeProcessar = !p.ocupado &&
+        item.ativo &&
+        !futuro &&
+        !pulado &&
+        !indisponivel &&
+        !item.processoFeito &&
+        item.itens.isNotEmpty;
+    final situacao = automaticoAtrasado
+        ? 'Envio atrasado'
+        : pulado
+            ? 'Não entregar'
+            : item.statusProcesso == 'Previsto'
+                ? 'Aguardando processo'
+                : item.statusProcesso;
+    final corSucesso = tema.brightness == Brightness.dark
+        ? const Color(0xFF34D399)
+        : const Color(0xFF059669);
+    final corAlerta = tema.brightness == Brightness.dark
+        ? const Color(0xFFFBBF24)
+        : const Color(0xFFB45309);
+    final corStatus = item.processoCancelado || automaticoAtrasado
+        ? cs.error
+        : item.processoFeito
+            ? corSucesso
+            : pulado
+                ? corAlerta
+                : cs.primary;
+    final textoProcesso = futuro
+        ? 'Agendado'
+        : !item.ativo
+            ? 'Recorrência pausada'
+            : pulado
+                ? 'Não entregar'
+                : indisponivel
+                    ? 'Processo indisponível'
+                    : item.itens.isEmpty
+                        ? 'Sem itens'
+                        : item.processoCancelado
+                            ? 'Refazer processo'
+                            : item.processoFeito
+                                ? 'Processo feito'
+                                : 'Realizar processo';
+    final corFundo = automaticoAtrasado
+        ? cs.error
+            .withValues(alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
+        : preparandoAutomatico
+            ? corSucesso.withValues(
+                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
+            : cs.surfaceContainerLowest;
+    final corBorda = automaticoAtrasado
+        ? cs.error.withValues(alpha: 0.45)
+        : preparandoAutomatico
+            ? corSucesso.withValues(alpha: 0.45)
+            : cs.outlineVariant;
+
+    return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: corFundo,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: corBorda)),
+        child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: !p.ocupado && item.temPedido
+                ? () => unawaited(_verPedido(item))
+                : null,
+            child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                            child: Text(situacao,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: corStatus,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700))),
+                        Icon(
+                            item.tipoEntrega == '2'
+                                ? Icons.shopping_bag_outlined
+                                : Icons.delivery_dining,
+                            size: 18,
+                            color: cs.onSurfaceVariant),
+                        const SizedBox(width: 5),
+                        Text(item.entregaTexto,
+                            style: TextStyle(
+                                fontSize: 12, color: cs.onSurfaceVariant)),
+                        _menuCard(item, futuro),
+                      ]),
+                      if (item.numeroPedido.isNotEmpty)
+                        Text('#${item.numeroPedido}',
+                            style: TextStyle(
+                                color: cs.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 10),
+                      Text(item.cliente,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      if (item.tipoEntrega == '1' && item.endereco.isNotEmpty)
+                        Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(item.endereco,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13, color: cs.onSurfaceVariant))),
+                      const SizedBox(height: 12),
+                      Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                                child: Text(
+                                    '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: cs.onSurfaceVariant))),
+                            const SizedBox(width: 8),
+                            Text(item.total.obterReal(),
+                                style: const TextStyle(
+                                    fontSize: 17, fontWeight: FontWeight.bold)),
+                          ]),
+                      Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(item.pagamento.resumo,
+                              style: TextStyle(
+                                  fontSize: 12, color: cs.onSurfaceVariant))),
+                      if (item.pagamento.mensal &&
+                          item.pagamento.vencimento != null)
+                        Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                                'Vence em ${DateFormat('dd/MM/yyyy').format(item.pagamento.vencimento!)}',
+                                style: TextStyle(
+                                    fontSize: 12, color: cs.onSurfaceVariant))),
+                      if (preparandoAutomatico || automaticoAtrasado) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                                color:
+                                    (automaticoAtrasado ? cs.error : corSucesso)
+                                        .withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(8)),
+                            child: Row(children: [
+                              Icon(
+                                  automaticoAtrasado
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.timer_outlined,
+                                  size: 18,
+                                  color: automaticoAtrasado
+                                      ? cs.error
+                                      : corSucesso),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: Text(
+                                      automaticoAtrasado
+                                          ? 'Envio automático não realizado'
+                                          : 'Envio automático em ${automatico == null ? '00:00:00' : _duracao(automatico.restante)}',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: automaticoAtrasado
+                                              ? cs.error
+                                              : corSucesso,
+                                          fontWeight: FontWeight.w700))),
+                            ])),
+                      ],
+                      const SizedBox(height: 10),
+                      _secaoItens(item, corSucesso),
+                      if (item.observacao.isNotEmpty)
+                        Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text('Obs: ${item.observacao}',
+                                style: TextStyle(
+                                    fontSize: 12, color: cs.onSurfaceVariant))),
+                      if (item.temPedido) ...[
+                        const SizedBox(height: 10),
+                        Row(children: [
+                          if (widget.imprimirPedido != null) ...[
+                            Expanded(
+                                child: OutlinedButton.icon(
+                                    onPressed: p.ocupado
+                                        ? null
+                                        : () => _imprimirPedido(item),
+                                    icon: const Icon(Icons.print_rounded,
+                                        size: 18),
+                                    label: const Text('Imprimir'),
+                                    style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size(0, 46),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8))))),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                              child: OutlinedButton.icon(
+                                  onPressed:
+                                      p.ocupado ? null : () => _verPedido(item),
+                                  icon: const Icon(Icons.visibility_outlined,
+                                      size: 18),
+                                  label: const Text('Ver pedido'),
+                                  style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(0, 46),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8))))),
+                        ]),
+                      ],
+                      const SizedBox(height: 12),
+                      SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                              onPressed:
+                                  podeProcessar ? () => _processar(item) : null,
+                              icon: Icon(
+                                  item.processoCancelado
+                                      ? Icons.replay_rounded
+                                      : item.processoFeito
+                                          ? Icons.check_circle_outline_rounded
+                                          : Icons.arrow_forward_rounded,
+                                  size: 18),
+                              label: Text(textoProcesso,
+                                  textAlign: TextAlign.center),
+                              style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 60),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(8))))),
+                    ]))));
+  }
+
   Widget _secaoItens(ModeloRecorrente item, Color corSucesso) {
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return _secaoItensCelular(item);
+    }
     final tema = Theme.of(context);
     final cs = tema.colorScheme;
     final expandido = _itensExpandidos.contains(item.chave);
@@ -965,6 +1362,77 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         ]);
   }
 
+  Widget _secaoItensCelular(ModeloRecorrente item) {
+    final cs = Theme.of(context).colorScheme;
+    final expandido = _itensExpandidos.contains(item.chave);
+    final possuiItens = item.itens.isNotEmpty;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Material(
+          color: cs.surfaceContainerHighest.withValues(alpha: .45),
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: possuiItens
+                  ? () => setState(() {
+                        if (expandido) {
+                          _itensExpandidos.remove(item.chave);
+                        } else {
+                          _itensExpandidos.add(item.chave);
+                        }
+                      })
+                  : null,
+              child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  child: Row(children: [
+                    Icon(Icons.receipt_long_outlined,
+                        size: 18, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text(
+                            possuiItens
+                                ? expandido
+                                    ? 'Ocultar itens'
+                                    : 'Ver itens (${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'})'
+                                : 'Nenhum item no pedido base',
+                            style: TextStyle(
+                                color: possuiItens ? cs.primary : cs.error,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600))),
+                    if (possuiItens)
+                      Icon(
+                          expandido
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          color: cs.primary),
+                  ])))),
+      if (expandido)
+        Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+                color: cs.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border(left: BorderSide(color: cs.primary, width: 3))),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (var indice = 0; indice < item.itens.length; indice++) ...[
+                if (indice > 0) Divider(height: 12, color: cs.outlineVariant),
+                Text(item.itens[indice].texto,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                for (final detalhe in item.itens[indice].detalhes)
+                  Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 3),
+                      child: Text('• $detalhe',
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant))),
+              ]
+            ])),
+    ]);
+  }
+
   Widget _cardCadastro(ModeloRecorrente item) {
     final tema = Theme.of(context);
     final cs = tema.colorScheme;
@@ -1028,72 +1496,145 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 ])));
   }
 
+  Widget _cardCadastroCelular(ModeloRecorrente item) {
+    final tema = Theme.of(context);
+    final cs = tema.colorScheme;
+    return Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: cs.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: cs.outlineVariant)),
+        child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    Expanded(
+                        child: Text(
+                            item.ativo ? 'Recorrência ativa' : 'Pausada',
+                            style: TextStyle(
+                                color: item.ativo ? cs.primary : cs.error,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700))),
+                    _menuCard(item, false),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(item.cliente,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  _detalhe(
+                      Icons.event_repeat_rounded, item.configuracao.diasTexto),
+                  const SizedBox(height: 7),
+                  _detalhe(
+                      Icons.schedule_outlined, item.configuracao.horarioTexto),
+                  const SizedBox(height: 7),
+                  _detalhe(Icons.account_balance_wallet_outlined,
+                      item.configuracao.pagamentoTexto),
+                  const SizedBox(height: 12),
+                  _secaoItens(item, cs.primary),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                        child: OutlinedButton.icon(
+                            onPressed: p.ocupado ? null : () => _editar(item),
+                            icon: const Icon(Icons.edit_calendar_outlined,
+                                size: 18),
+                            label: const Text('Editar'),
+                            style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(0, 48),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8))))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: cs.error,
+                                minimumSize: const Size(0, 48),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8))),
+                            onPressed: p.ocupado ? null : () => _excluir(item),
+                            icon: const Icon(Icons.delete_outline_rounded,
+                                size: 18),
+                            label: const Text('Excluir'))),
+                  ])
+                ])));
+  }
+
   ButtonStyle _estiloBotaoCard() => OutlinedButton.styleFrom(
       padding: EdgeInsets.zero,
       minimumSize: const Size(0, 34),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)));
 
-  Widget _menuCard(ModeloRecorrente item, bool futuro) => SizedBox.square(
-      dimension: 30,
-      child: PopupMenuButton<String>(
-          tooltip: 'Opções do recorrente',
-          padding: EdgeInsets.zero,
-          iconSize: 18,
-          icon: const Icon(Icons.more_horiz_rounded),
-          onSelected: (opcao) {
-            if (opcao == 'editar') unawaited(_editar(item));
-            if (opcao == 'editar_itens' && widget.editarItens != null) {
-              unawaited(_editarItens(item));
-            }
-            if (opcao == 'excluir') unawaited(_excluir(item));
-            if (opcao == 'pular') unawaited(_pular(item));
-            if (opcao == 'retomar') {
-              unawaited(_acao(() async {
-                await p.servico.restaurar(item);
-                if (mounted) await p.listar();
-              }));
-            }
-          },
-          itemBuilder: (context) => [
-                if (widget.editarItens != null)
+  Widget _menuCard(ModeloRecorrente item, bool futuro) {
+    final celular = MediaQuery.sizeOf(context).width < 600;
+    return SizedBox.square(
+        dimension: celular ? 48 : 30,
+        child: PopupMenuButton<String>(
+            tooltip: 'Opções do recorrente',
+            padding: EdgeInsets.zero,
+            iconSize: celular ? 20 : 18,
+            icon: Icon(celular ? Icons.more_vert : Icons.more_horiz_rounded),
+            onSelected: (opcao) {
+              if (opcao == 'editar') unawaited(_editar(item));
+              if (opcao == 'editar_itens' && widget.editarItens != null) {
+                unawaited(_editarItens(item));
+              }
+              if (opcao == 'excluir') unawaited(_excluir(item));
+              if (opcao == 'pular') unawaited(_pular(item));
+              if (opcao == 'retomar') {
+                unawaited(_acao(() async {
+                  await p.servico.restaurar(item);
+                  if (mounted) await p.listar();
+                }));
+              }
+            },
+            itemBuilder: (context) => [
+                  if (widget.editarItens != null)
+                    const PopupMenuItem(
+                        value: 'editar_itens',
+                        child: ListTile(
+                            leading: Icon(Icons.edit_note_outlined),
+                            title: Text('Editar Itens e Ingredientes'),
+                            contentPadding: EdgeInsets.zero)),
                   const PopupMenuItem(
-                      value: 'editar_itens',
+                      value: 'editar',
                       child: ListTile(
-                          leading: Icon(Icons.edit_note_outlined),
-                          title: Text('Editar Itens e Ingredientes'),
+                          leading: Icon(Icons.edit_calendar_outlined),
+                          title: Text('Editar Recorrência'),
                           contentPadding: EdgeInsets.zero)),
-                const PopupMenuItem(
-                    value: 'editar',
-                    child: ListTile(
-                        leading: Icon(Icons.edit_calendar_outlined),
-                        title: Text('Editar Recorrência'),
-                        contentPadding: EdgeInsets.zero)),
-                if (!item.temPedido && item.status == 'Previsto' && !futuro)
-                  const PopupMenuItem(
-                      value: 'pular',
+                  if (!item.temPedido && item.status == 'Previsto' && !futuro)
+                    const PopupMenuItem(
+                        value: 'pular',
+                        child: ListTile(
+                            leading: Icon(Icons.event_busy_outlined),
+                            title: Text('Pular Dia'),
+                            contentPadding: EdgeInsets.zero)),
+                  if (item.status == 'Pulado')
+                    const PopupMenuItem(
+                        value: 'retomar',
+                        child: ListTile(
+                            leading: Icon(Icons.restore_rounded),
+                            title: Text('Retomar Dia'),
+                            contentPadding: EdgeInsets.zero)),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                      value: 'excluir',
                       child: ListTile(
-                          leading: Icon(Icons.event_busy_outlined),
-                          title: Text('Pular Dia'),
+                          leading: Icon(Icons.delete_outline_rounded,
+                              color: Theme.of(context).colorScheme.error),
+                          title: Text('Excluir Recorrência',
+                              style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error)),
                           contentPadding: EdgeInsets.zero)),
-                if (item.status == 'Pulado')
-                  const PopupMenuItem(
-                      value: 'retomar',
-                      child: ListTile(
-                          leading: Icon(Icons.restore_rounded),
-                          title: Text('Retomar Dia'),
-                          contentPadding: EdgeInsets.zero)),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                    value: 'excluir',
-                    child: ListTile(
-                        leading: Icon(Icons.delete_outline_rounded,
-                            color: Theme.of(context).colorScheme.error),
-                        title: Text('Excluir Recorrência',
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error)),
-                        contentPadding: EdgeInsets.zero)),
-              ]));
+                ]));
+  }
 
   Widget _detalhe(IconData icone, String texto) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1102,6 +1643,165 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         const SizedBox(width: 4),
         Flexible(child: Text(texto))
       ]);
+}
+
+class _FiltroRecorrentes {
+  final DateTime data;
+  final String visao;
+  const _FiltroRecorrentes(this.data, this.visao);
+}
+
+class _DialogoFiltrosRecorrentes extends StatefulWidget {
+  final DateTime data;
+  final String visao;
+  const _DialogoFiltrosRecorrentes({required this.data, required this.visao});
+
+  @override
+  State<_DialogoFiltrosRecorrentes> createState() =>
+      _DialogoFiltrosRecorrentesState();
+}
+
+class _DialogoFiltrosRecorrentesState
+    extends State<_DialogoFiltrosRecorrentes> {
+  late DateTime _data = widget.data;
+  late String _visao = widget.visao;
+
+  Future<void> _selecionarData() async {
+    final data = await showDatePicker(
+        context: context,
+        initialDate: _data,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(DateTime.now().year + 10));
+    if (mounted && data != null) setState(() => _data = data);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        scrollable: true,
+        title: const Text('Filtrar recorrentes'),
+        content: SizedBox(
+            width: 440,
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                      onPressed: _selecionarData,
+                      icon: const Icon(Icons.date_range_outlined),
+                      label: Text(DateFormat('dd/MM/yyyy').format(_data))),
+                  Wrap(spacing: 8, children: [
+                    TextButton(
+                        onPressed: () => setState(() {
+                              _data = DateUtilsRecorrentes.hoje();
+                              _visao = 'dia';
+                            }),
+                        child: const Text('Hoje')),
+                    TextButton(
+                        onPressed: () => setState(() => _data =
+                            DateTime(_data.year, _data.month, _data.day - 1)),
+                        child: const Text('Dia anterior')),
+                    TextButton(
+                        onPressed: () => setState(() => _data =
+                            DateTime(_data.year, _data.month, _data.day + 1)),
+                        child: const Text('Próximo dia')),
+                  ]),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                      initialValue: _visao,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                          labelText: 'Visualização',
+                          border: OutlineInputBorder()),
+                      items: const [
+                        DropdownMenuItem(value: 'dia', child: Text('Um dia')),
+                        DropdownMenuItem(
+                            value: 'semana', child: Text('7 dias')),
+                        DropdownMenuItem(value: 'mes', child: Text('30 dias')),
+                        DropdownMenuItem(
+                            value: 'cadastros', child: Text('Cadastros')),
+                      ],
+                      onChanged: (valor) {
+                        if (valor != null) setState(() => _visao = valor);
+                      }),
+                ])),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(context, _FiltroRecorrentes(_data, _visao)),
+              child: const Text('Aplicar')),
+        ],
+      );
+}
+
+class _BotaoNovoRecorrente extends StatelessWidget {
+  final bool habilitado;
+  final VoidCallback onPressed;
+  const _BotaoNovoRecorrente(
+      {required this.habilitado, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final largura =
+        (MediaQuery.sizeOf(context).width - 32).clamp(0.0, 560.0).toDouble();
+    return Tooltip(
+        message: 'Novo Recorrente',
+        child: Semantics(
+            label: 'Novo Recorrente',
+            button: true,
+            enabled: habilitado,
+            excludeSemantics: true,
+            child: Opacity(
+                opacity: habilitado ? 1 : .55,
+                child: Container(
+                    key: const ValueKey('novo-recorrente'),
+                    width: largura,
+                    constraints: const BoxConstraints(minHeight: 64),
+                    decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                            colors: [
+                              cs.primary,
+                              cs.primary.withValues(alpha: 0.85)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                              color: cs.primary.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6))
+                        ]),
+                    child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(18),
+                        child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: habilitado ? onPressed : null,
+                            child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 18, vertical: 18),
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.add_rounded,
+                                          color: Colors.white, size: 28),
+                                      SizedBox(width: 10),
+                                      Flexible(
+                                          child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text('Novo Recorrente',
+                                                  maxLines: 1,
+                                                  style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700))))
+                                    ]))))))));
+  }
 }
 
 class _OpcaoHorarioAgenda {
