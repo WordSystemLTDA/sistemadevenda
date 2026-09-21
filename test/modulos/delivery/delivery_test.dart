@@ -469,6 +469,9 @@ void main() {
       s,
       pedidoTeste(),
       [produto],
+      config: const ConfigDelivery(
+        imprimirPreparoNoComprovanteConsumacao: false,
+      ),
     ).single) as Map<String, dynamic>;
     final unificado = jsonDecode(ImpressaoDelivery.comprovantes(
       s,
@@ -486,6 +489,34 @@ void main() {
       isNotEmpty,
     );
     expect((unificado['produtos'] as List).single['observacao'], 'Sem cebola');
+  });
+  test('preserva detalhes se a configuracao local nao estiver disponivel', () {
+    final s = ServicoDeliveryTeste();
+    final produto = Modelowordprodutos.fromMap({
+      ...impressao.produto(computador: 'CAIXA').toMap(),
+      'observacao': 'Sem cebola',
+      'opcoesPacotesListaFinal': [
+        {
+          'id': 7,
+          'titulo': 'Adicionais',
+          'dados': [
+            {'id': '8', 'nome': 'Ovo', 'valor': '2', 'quantidade': 1}
+          ],
+        }
+      ],
+    });
+
+    final mensagem = jsonDecode(ImpressaoDelivery.comprovantes(
+      s,
+      pedidoTeste(),
+      [produto],
+    ).single) as Map<String, dynamic>;
+
+    expect(
+      (mensagem['produtos'] as List).single['opcoesPacotesListaFinal'],
+      isNotEmpty,
+    );
+    expect((mensagem['produtos'] as List).single['observacao'], 'Sem cebola');
   });
   test('preparo do delivery imprime detalhes da pizza e mantem destino',
       () async {

@@ -270,8 +270,11 @@ class ImpressaoDelivery {
     final comanda = tipo == TipoCardapio.balcao
         ? 'Balcão ${pedido.id}'
         : 'Delivery ${pedido.id}';
+    // Sem a configuração local, preserva os detalhes para o servidor de
+    // impressão aplicar a opção vigente da config_bigchef.
     final somenteResumo = pedido.tipoEntrega == '1' &&
-        config?.imprimirPreparoNoComprovanteConsumacao != true;
+        config != null &&
+        !config.imprimirPreparoNoComprovanteConsumacao;
     return [
       for (final grupo in grupos.entries)
         jsonEncode({
