@@ -49,6 +49,30 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
   }
 }
 
+class ServicoNovoEnderecoTeste extends ServicoEnderecoPadraoTeste {
+  ServicoNovoEnderecoTeste(super.enderecos);
+
+  @override
+  Future<Map<String, dynamic>> salvar(
+      String rota, Map<String, dynamic> campos) async {
+    final resposta = await super.salvar(rota, campos);
+    if (rota == 'clientes/inserir_endereco.php' && campos['id'] == '') {
+      enderecos.add({
+        'id': '11',
+        'cep': campos['cep'],
+        'endereco': campos['endereco'],
+        'numero': campos['numero'],
+        'bairro': campos['bairro'],
+        'cidade': campos['cidade'],
+        'estado': campos['uf'],
+        'complemento': campos['complemento'],
+        'padrao': campos['padrao'],
+      });
+    }
+    return resposta;
+  }
+}
+
 void main() {
   setUpAll(carregarFontesDeTeste);
   test('pagamento nao encerra preparo nem remove taxa da entrega', () {
@@ -487,6 +511,56 @@ void main() {
 
     expect(find.text('Editar endereço'), findsOneWidget);
     expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'novo delivery seleciona endereco recem-criado sem alterar o padrao',
+      (tester) async {
+    final s = ServicoNovoEnderecoTeste([
+      {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'estado': 'PR',
+        'padrao': 'Sim',
+      }
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      editarPedido: pedidoTeste(campos: {'idendereco': '10'}),
+      aoSalvarEdicao: (_) async {},
+    )));
+    await tester.pumpAndSettle();
+
+    final novoEndereco = find.byKey(const ValueKey('novo-endereco'));
+    await tester.scrollUntilVisible(
+      novoEndereco,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(novoEndereco);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(1), 'Rua Teste');
+    await tester.enterText(find.byType(TextFormField).at(2), '555');
+    await tester.enterText(find.byType(TextFormField).at(4), 'Lobato');
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+
+    final enderecoCriado = find.widgetWithText(ListTile, 'Rua Teste, 555');
+    await tester.scrollUntilVisible(
+      enderecoCriado,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(tester.widget<ListTile>(enderecoCriado).selected, isTrue);
+    expect(s.enderecos.first['padrao'], 'Sim');
+    expect(s.enderecos.last['padrao'], 'Não');
     expect(tester.takeException(), isNull);
   });
 
