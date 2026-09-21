@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:app/src/essencial/api/dio_cliente.dart';
-import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
-import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
-import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import '../provedores/provedor_recorrentes.dart';
+import '../servicos/servico_automaticos_recorrentes.dart';
 import '../servicos/servicos_recorrentes.dart';
 import 'widgets/agenda_recorrentes.dart';
 
@@ -18,8 +17,8 @@ class PaginaRecorrentes extends StatefulWidget {
 }
 
 class _PaginaRecorrentesState extends State<PaginaRecorrentes> {
-  late final provedor = ProvedorRecorrentes(ServicosRecorrentes(
-      Modular.get<DioCliente>(), Modular.get<UsuarioProvedor>()));
+  late final automaticos = Modular.get<ServicoAutomaticosRecorrentes>();
+  late final provedor = ProvedorRecorrentes(Modular.get<ServicosRecorrentes>());
   ServicoDelivery get delivery => Modular.get<ServicoDelivery>();
   @override
   void dispose() {
@@ -31,35 +30,38 @@ class _PaginaRecorrentesState extends State<PaginaRecorrentes> {
   Widget build(BuildContext context) => AgendaRecorrentes(
         provedor: provedor,
         exibirAppBar: true,
+        atualizacoesAutomaticas: automaticos,
+        sincronizarAutomaticos: () async {
+          await automaticos.processarAgora(forcar: true);
+        },
         novo: () => Navigator.push<void>(
             context,
             MaterialPageRoute(
                 builder: (_) =>
                     PaginaNovoDelivery(servico: delivery, recorrente: true))),
-        confirmarPedido: (id, item) async {
-          final pago = await receberDelivery(context, delivery, id,
-              confirmarRecorrente: true);
-          if (pago != true) return;
-          final pedido = await delivery.pedido(id);
-          if (pedido.restante <= 0.009 && !pedido.encerrado) {
-            await delivery.concluir(pedido);
+        editarItens: (item) async {
+          if (item.idDeliveryBase.isEmpty || item.idDeliveryBase == '0') {
+            throw StateError('O modelo desta recorrência não está disponível.');
           }
-          delivery.notificarPedidoAtualizado(await delivery.pedido(id));
-        },
-        abrirPedido: (id, item) async {
-          final atual = await delivery.pedido(id);
-          if (!context.mounted) return;
           await Navigator.push<void>(
               context,
               MaterialPageRoute(
-                  builder: (_) => item.encerrado || atual.encerrado
-                      ? PaginaDetalhesDelivery(servico: delivery, id: id)
-                      : PaginaCardapio(
-                          tipo: TipoCardapio.delivery,
-                          id: id,
-                          idCliente: atual.cliente,
-                          tipodeentrega: atual.tipoEntrega,
-                          nomeAtendimento: 'Recorrente · ${item.cliente}')));
+                  builder: (_) => PaginaDetalhesDelivery(
+                      servico: delivery,
+                      id: item.idDeliveryBase,
+                      modeloRecorrente: true)));
+        },
+        abrirPedido: (id, item) async {
+          await Navigator.push<void>(
+              context,
+              MaterialPageRoute(
+                  builder: (_) =>
+                      PaginaDetalhesDelivery(servico: delivery, id: id)));
+        },
+        imprimirPedido: (id, item) async {
+          final pedido = await delivery.pedido(id);
+          await ImpressaoDelivery.imprimir(
+              delivery, Modular.get<Server>(), pedido);
         },
       );
 }

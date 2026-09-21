@@ -33,13 +33,15 @@ class PaginaCarrinho extends StatefulWidget {
   final ContextoCarrinho? contextoVoz;
   final String? assinaturaVoz, servidorVoz, usuarioVoz;
   final bool retornarParaFinalizacao;
+  final bool modeloRecorrente;
   const PaginaCarrinho(
       {super.key,
       this.contextoVoz,
       this.assinaturaVoz,
       this.servidorVoz,
       this.usuarioVoz,
-      this.retornarParaFinalizacao = false});
+      this.retornarParaFinalizacao = false,
+      this.modeloRecorrente = false});
 
   @override
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
@@ -422,6 +424,18 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       if (!sucesso) {
         throw StateError('Não foi possível salvar o pedido.');
       }
+      if (widget.modeloRecorrente) {
+        FeedbackUsuario.pedidoFinalizado();
+        if (!mounted) return;
+        setState(() => isLoading = false);
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        Navigator.popUntil(
+            context,
+            (route) =>
+                route.settings.name == 'PaginaRecorrentes' || route.isFirst);
+        return;
+      }
       if (!mounted) return;
       final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
       if (!mounted) return;
@@ -552,7 +566,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                       child: BotaoAcaoPedido(
                         carregando: isLoading,
-                        rotulo: 'Finalizar',
+                        rotulo: widget.modeloRecorrente
+                            ? 'Salvar modelo'
+                            : 'Finalizar',
                         iconeRotulo: Icons.check_circle_outline_rounded,
                         total: (_tipo == TipoCardapio.delivery
                                 ? _saldoDelivery ?? resumo.precoTotal

@@ -10,7 +10,11 @@ import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servico_automaticos_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/provedores/provedor_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/paginas/widgets/agenda_recorrentes.dart';
@@ -20,10 +24,15 @@ ModeloRecorrente pedido(
         {DateTime? data,
         String idDelivery = '',
         String status = 'Previsto',
-        bool retirada = false}) =>
+        bool retirada = false,
+        String cliente = 'Ana Maria · Empresa Centro',
+        String horarioTipo = 'intervalo',
+        String horario = '11:30',
+        String horarioFim = '13:00',
+        List<Map<String, dynamic>>? itens}) =>
     ModeloRecorrente.fromMap({
       'id': '1',
-      'cliente': 'Ana Maria · Empresa Centro',
+      'cliente': cliente,
       'idCliente': '10',
       'idDeliveryBase': '80',
       'idDelivery': idDelivery,
@@ -33,14 +42,15 @@ ModeloRecorrente pedido(
       'total': 37,
       'data': DateFormat('yyyy-MM-dd').format(data ?? DateTime.now()),
       'dias': [1, 2, 3, 4, 5],
-      'horarioTipo': 'intervalo',
-      'horario': '11:30',
-      'horarioFim': '13:00',
+      'horarioTipo': horarioTipo,
+      'horario': horario,
+      'horarioFim': horarioFim,
       'observacao': 'Entregar na recepção. Sem sal.',
-      'itens': [
-        {'nome': 'Almoço com arroz, feijão e salada', 'quantidade': 2},
-        {'nome': 'Suco de laranja', 'quantidade': 1}
-      ],
+      'itens': itens ??
+          [
+            {'nome': 'Almoço com arroz, feijão e salada', 'quantidade': 2},
+            {'nome': 'Suco de laranja', 'quantidade': 1}
+          ],
     });
 
 class Api extends Fake implements ServicosRecorrentes {
@@ -48,9 +58,14 @@ class Api extends Fake implements ServicosRecorrentes {
   Completer<List<ModeloRecorrente>>? espera;
   bool falhar = false;
   int aberturas = 0;
+  int exclusoes = 0;
+  int processamentosAutomaticos = 0;
+  DateTime? inicioConsultado, fimConsultado;
   @override
   Future<List<ModeloRecorrente>> listar(DateTime inicio, DateTime fim,
       {bool cadastros = false}) async {
+    inicioConsultado = inicio;
+    fimConsultado = fim;
     if (falhar) throw StateError('Conexão indisponível');
     if (espera != null) return espera!.future;
     return dados;
@@ -65,9 +80,26 @@ class Api extends Fake implements ServicosRecorrentes {
   @override
   Future<void> editar(ModeloRecorrente item,
       ConfiguracaoRecorrencia configuracao, bool ativo) async {}
+
+  @override
+  Future<void> excluir(ModeloRecorrente item) async {
+    exclusoes++;
+    dados = dados.where((registro) => registro.id != item.id).toList();
+  }
+
+  @override
+  Future<void> processarAutomaticos() async {
+    processamentosAutomaticos++;
+  }
 }
 
 class _Delivery extends Fake implements ServicoDelivery {}
+
+class _ConfigAutomaticos extends Fake implements ServicoConfigBigchef {
+  @override
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
+      ModeloConfigBigchef.fromMap({'clientecompedidosdecorrentes': 'Sim'});
+}
 
 void main() {
   testWidgets('novo recorrente exige cliente tambem na retirada',
@@ -132,6 +164,43 @@ void main() {
         isNotNull);
     expect(const ConfiguracaoRecorrencia().erro, isNull);
   });
+  test('agenda abre no dia atual e amplia o período sob demanda', () async {
+    final api = Api();
+    final p = ProvedorRecorrentes(api);
+    expect(p.visao, 'dia');
+    await p.listar(dia: DateTime(2026, 9, 20));
+    expect(api.fimConsultado, api.inicioConsultado);
+    await p.listar(modo: 'semana');
+    expect(api.fimConsultado, DateTime(2026, 9, 26));
+    await p.listar(modo: 'mes');
+    expect(api.fimConsultado, DateTime(2026, 10, 19));
+    p.dispose();
+  });
+  test('traduz o status do delivery para o status do processo', () {
+    expect(pedido(idDelivery: '80', status: 'Pendente').statusProcesso,
+        'Processo Feito');
+    expect(pedido(idDelivery: '80', status: 'Cancelado').statusProcesso,
+        'Processo Cancelado');
+    expect(pedido(status: 'Previsto').statusProcesso, 'Previsto');
+  });
+  testWidgets('processamento automático acompanha a sessão sem sobrepor minuto',
+      (tester) async {
+    final api = Api();
+    final usuario = UsuarioProvedor();
+    final automaticos =
+        ServicoAutomaticosRecorrentes(api, usuario, _ConfigAutomaticos())
+          ..iniciar();
+    usuario.setUsuario(UsuarioModelo(id: '7', empresa: '32'));
+    await tester.pump();
+    await tester.pump();
+    expect(api.processamentosAutomaticos, 1);
+    await automaticos.processarAgora();
+    expect(api.processamentosAutomaticos, 1);
+    await automaticos.processarAgora(forcar: true);
+    expect(api.processamentosAutomaticos, 2);
+    automaticos.dispose();
+    usuario.dispose();
+  });
   test('resposta antiga nao substitui a data escolhida', () async {
     final api = Api();
     final p = ProvedorRecorrentes(api);
@@ -193,11 +262,12 @@ void main() {
           imagem.dispose();
         });
       }
-      await Scrollable.ensureVisible(
-          tester.element(find.byTooltip('Editar recorrência')),
-          alignment: 0.2);
+      final opcoes = find.byTooltip('Opções do recorrente');
+      await Scrollable.ensureVisible(tester.element(opcoes), alignment: 0.2);
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Editar recorrência'));
+      await tester.tap(opcoes);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Editar Recorrência'));
       await tester.pumpAndSettle();
       expect(find.byType(CamposRecorrencia), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -216,8 +286,12 @@ void main() {
         home: AgendaRecorrentes(
             provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
     await tester.pumpAndSettle();
-    final botao = tester
-        .widget<FilledButton>(find.widgetWithText(FilledButton, 'Agendado'));
+    final agendado = find.widgetWithText(FilledButton, 'Agendado');
+    final listaVertical = find.byWidgetPredicate((widget) =>
+        widget is Scrollable && widget.axisDirection == AxisDirection.down);
+    await tester.scrollUntilVisible(agendado, 300,
+        scrollable: listaVertical.first);
+    final botao = tester.widget<FilledButton>(agendado);
     expect(botao.onPressed, isNull);
     expect(api.aberturas, 0);
     api.falhar = true;
@@ -228,7 +302,8 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
   });
-  testWidgets('pesquisa e continuar pedido existente', (tester) async {
+  testWidgets('pesquisa e abre pedido existente sem refazer processo',
+      (tester) async {
     final api = Api()..dados = [pedido(idDelivery: '80', status: 'Pendente')];
     final p = ProvedorRecorrentes(api);
     String? aberto;
@@ -240,14 +315,128 @@ void main() {
               aberto = id;
             })));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Continuar Pedido'));
+    final ver = find.byTooltip('Ver o Pedido');
+    await tester.ensureVisible(ver);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Continuar Pedido'));
+    await tester.tap(ver);
     await tester.pumpAndSettle();
-    expect(aberto, '90');
+    expect(aberto, '80');
+    expect(api.aberturas, 0);
     await tester.enterText(find.byType(TextField), 'inexistente');
     await tester.pumpAndSettle();
     expect(find.text('Nenhum resultado encontrado.'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
+  testWidgets('processo manual envia ao delivery e exibe confirmação',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()..dados = [pedido(horarioTipo: 'livre')];
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Aguardando Processo'), findsOneWidget);
+    await tester.tap(find.text('Realizar Processo'));
+    await tester.pumpAndSettle();
+    expect(api.aberturas, 1);
+    expect(find.text('Pedido enviado para o Delivery.'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
+  testWidgets('cancelado permite imprimir, visualizar e refazer',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()
+      ..dados = [
+        pedido(idDelivery: '80', status: 'Cancelado', horarioTipo: 'livre')
+      ];
+    final p = ProvedorRecorrentes(api);
+    var impresso = '';
+    var aberto = '';
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p,
+            novo: () async {},
+            abrirPedido: (id, item) async => aberto = id,
+            imprimirPedido: (id, item) async => impresso = id)));
+    await tester.pumpAndSettle();
+    expect(find.text('Processo Cancelado'), findsOneWidget);
+    expect(find.text('Refazer Processo'), findsOneWidget);
+    await tester.tap(find.byTooltip('Imprimir Pedido'));
+    await tester.pumpAndSettle();
+    expect(impresso, '80');
+    await tester.tap(find.byTooltip('Ver o Pedido'));
+    await tester.pumpAndSettle();
+    expect(aberto, '80');
+    await tester.tap(find.text('Refazer Processo'));
+    await tester.pumpAndSettle();
+    expect(api.aberturas, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
+  testWidgets('itens detalhados ficam recolhidos e expandem sob demanda',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()
+      ..dados = [
+        pedido(horarioTipo: 'livre', itens: [
+          {
+            'nome': 'Pizza especial',
+            'quantidade': 1,
+            'detalhes': ['Sabores: Calabresa / Frango', 'Borda: Catupiry']
+          }
+        ])
+      ];
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Pizza especial'), findsNothing);
+    await tester.tap(find.text('Ver itens'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Pizza especial'), findsOneWidget);
+    expect(find.text('• Sabores: Calabresa / Frango'), findsOneWidget);
+    expect(find.text('• Borda: Catupiry'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
+  testWidgets('menu exclui recorrência somente após confirmação',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()..dados = [pedido(horarioTipo: 'livre')];
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Opções do recorrente'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Excluir Recorrência'));
+    await tester.pumpAndSettle();
+    expect(find.text('Excluir recorrência?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Excluir'));
+    await tester.pumpAndSettle();
+    expect(api.exclusoes, 1);
+    expect(find.text('Recorrência excluída.'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
   });

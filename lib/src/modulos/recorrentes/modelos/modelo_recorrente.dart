@@ -36,13 +36,11 @@ class ConfiguracaoRecorrencia {
       );
 
   String? get erro {
-    if (!['diario', 'mensal'].contains(pagamentoModo) ||
-        diaVencimento < 1 ||
-        diaVencimento > 31) {
-      return 'Informe o dia de pagamento entre 1 e 31.';
-    }
     if (dias.isEmpty || dias.any((d) => d < 1 || d > 7)) {
       return 'Selecione os dias da semana.';
+    }
+    if (!['livre', 'fixo', 'intervalo'].contains(horarioTipo)) {
+      return 'Selecione uma opção de horário.';
     }
     final horaValida = RegExp(r'^([01]\d|2[0-3]):[0-5]\d$');
     if (horarioTipo != 'livre' && !horaValida.hasMatch(horario)) {
@@ -52,6 +50,13 @@ class ConfiguracaoRecorrencia {
         (!horaValida.hasMatch(horarioFim) ||
             horarioFim.compareTo(horario) <= 0)) {
       return 'O horário final deve ser depois do inicial.';
+    }
+    if (!['diario', 'mensal'].contains(pagamentoModo)) {
+      return 'Selecione como o cliente paga.';
+    }
+    if (pagamentoModo == 'mensal' &&
+        (diaVencimento < 1 || diaVencimento > 31)) {
+      return 'Escolha um dia de 1 a 31 para o acerto.';
     }
     return null;
   }
@@ -64,6 +69,20 @@ class ConfiguracaoRecorrencia {
       : horarioTipo == 'intervalo'
           ? '$horario–$horarioFim'
           : 'Às $horario';
+
+  bool get pagamentoMensal => pagamentoModo == 'mensal';
+  String get pagamentoTexto => pagamentoMensal
+      ? 'Em conta · dia $diaVencimento do mês seguinte'
+      : 'Pagamento a cada pedido';
+
+  DateTime vencimentoEm(DateTime dataPedido) {
+    if (!pagamentoMensal) {
+      return DateTime(dataPedido.year, dataPedido.month, dataPedido.day);
+    }
+    final ultimoDia = DateTime(dataPedido.year, dataPedido.month + 2, 0).day;
+    return DateTime(dataPedido.year, dataPedido.month + 1,
+        diaVencimento.clamp(1, ultimoDia));
+  }
 
   Map<String, dynamic> toMap() => {
         'dias': [...dias]..sort(),
@@ -92,9 +111,21 @@ class ConfiguracaoRecorrencia {
 class ItemRecorrente {
   final String nome;
   final num quantidade;
-  const ItemRecorrente(this.nome, this.quantidade);
+  final List<String> detalhes;
+  const ItemRecorrente(this.nome, this.quantidade, {this.detalhes = const []});
   String get texto =>
       '${NumberFormat('0.###', 'pt_BR').format(quantidade)} × $nome';
+
+  factory ItemRecorrente.fromMap(Map<String, dynamic> json) => ItemRecorrente(
+        '${json['nome'] ?? ''}',
+        num.tryParse('${json['quantidade']}') ?? 0,
+        detalhes: json['detalhes'] is List
+            ? (json['detalhes'] as List)
+                .map((detalhe) => '$detalhe'.trim())
+                .where((detalhe) => detalhe.isNotEmpty)
+                .toList(growable: false)
+            : const [],
+      );
 }
 
 class ModeloRecorrente {
@@ -107,6 +138,7 @@ class ModeloRecorrente {
       idDeliveryBase,
       tipoEntrega,
       status,
+      statusDelivery,
       numeroPedido,
       observacao;
   final DateTime data;
@@ -125,6 +157,7 @@ class ModeloRecorrente {
         idDeliveryBase = '${json['idDeliveryBase']}',
         tipoEntrega = '${json['tipoEntrega']}',
         status = '${json['status']}',
+        statusDelivery = '${json['statusDelivery'] ?? json['status'] ?? ''}',
         numeroPedido = '${json['numeroPedido'] ?? ''}',
         observacao = '${json['observacao'] ?? ''}',
         data = DateTime.parse('${json['data']}'),
@@ -134,12 +167,22 @@ class ModeloRecorrente {
         total = double.tryParse('${json['total']}') ?? 0,
         itens = (json['itens'] as List)
             .map((i) =>
-                ItemRecorrente('${i['nome']}', num.parse('${i['quantidade']}')))
+                ItemRecorrente.fromMap(Map<String, dynamic>.from(i as Map)))
             .toList();
 
   String get chave => '$id:${DateFormat('yyyy-MM-dd').format(data)}';
   String get entregaTexto => tipoEntrega == '2' ? 'Retirada' : 'Entrega';
   bool get temPedido => idDelivery.isNotEmpty && idDelivery != '0';
+  bool get processoCancelado =>
+      ['cancelado', 'cancelada', 'processo cancelado']
+          .contains(status.toLowerCase()) ||
+      ['cancelado', 'cancelada'].contains(statusDelivery.toLowerCase());
+  bool get processoFeito => temPedido && !processoCancelado;
+  String get statusProcesso => processoCancelado
+      ? 'Processo Cancelado'
+      : processoFeito
+          ? 'Processo Feito'
+          : status;
   bool get encerrado =>
       pago ||
       [
@@ -150,7 +193,7 @@ class ModeloRecorrente {
         'Entregue',
         'Concluído',
         'Concluido'
-      ].contains(status);
+      ].contains(statusDelivery);
   bool disponivelEm(DateTime hoje) =>
       !data.isAfter(DateTime(hoje.year, hoje.month, hoje.day));
 }

@@ -294,6 +294,7 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                       AlteracaoDelivery.cancelar) ...[
                                     TextField(
                                         controller: _senha,
+                                        autofocus: true,
                                         obscureText: !_mostrarSenha,
                                         autocorrect: false,
                                         enableSuggestions: false,

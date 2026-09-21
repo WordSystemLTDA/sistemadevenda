@@ -22,11 +22,13 @@ class PaginaDetalhesDelivery extends StatefulWidget {
   final ServicoDelivery servico;
   final String id;
   final bool editar;
+  final bool modeloRecorrente;
   const PaginaDetalhesDelivery(
       {super.key,
       required this.servico,
       required this.id,
-      this.editar = false});
+      this.editar = false,
+      this.modeloRecorrente = false});
   @override
   State<PaginaDetalhesDelivery> createState() => _PaginaDetalhesDeliveryState();
 }
@@ -108,6 +110,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
 
   Future<void> _aposEditar() async {
     if (mounted) await _listar();
+    if (widget.modeloRecorrente) return;
     try {
       final atual = await widget.servico.pedido(widget.id);
       await ImpressaoDelivery.imprimir(
@@ -175,24 +178,27 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
     final pedido = _pedido;
     return Scaffold(
       appBar: AppBar(
-          title: const Text('Detalhes do Delivery'),
+          title: Text(widget.modeloRecorrente
+              ? 'Itens da Recorrência'
+              : 'Detalhes do Delivery'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
             IconButton(
                 tooltip: 'Atualizar pedido',
                 onPressed: _ocupado || _carregando ? null : _listar,
                 icon: const Icon(Icons.refresh)),
-            PopupMenuButton<bool>(
-                enabled: pedido != null && !_ocupado,
-                tooltip: 'Imprimir',
-                icon: const Icon(Icons.print_outlined),
-                onSelected: _imprimir,
-                itemBuilder: (_) => const [
-                      PopupMenuItem(
-                          value: true, child: Text('Imprimir preparo')),
-                      PopupMenuItem(
-                          value: false, child: Text('Imprimir comprovante'))
-                    ]),
+            if (!widget.modeloRecorrente)
+              PopupMenuButton<bool>(
+                  enabled: pedido != null && !_ocupado,
+                  tooltip: 'Imprimir',
+                  icon: const Icon(Icons.print_outlined),
+                  onSelected: _imprimir,
+                  itemBuilder: (_) => const [
+                        PopupMenuItem(
+                            value: true, child: Text('Imprimir preparo')),
+                        PopupMenuItem(
+                            value: false, child: Text('Imprimir comprovante'))
+                      ]),
           ]),
       bottomNavigationBar: pedido == null
           ? null
@@ -217,13 +223,17 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                                                 idCliente: pedido.cliente,
                                                 tipodeentrega:
                                                     pedido.tipoEntrega,
-                                                nomeAtendimento:
-                                                    'Delivery #${pedido.numero}')));
+                                                nomeAtendimento: widget
+                                                        .modeloRecorrente
+                                                    ? 'Modelo recorrente'
+                                                    : 'Delivery #${pedido.numero}',
+                                                modeloRecorrente:
+                                                    widget.modeloRecorrente)));
                                     if (mounted) await _listar();
                                   },
                             icon: const Icon(Icons.add_shopping_cart),
                             label: const Text('Adicionar produtos')),
-                        if (pedido.restante > .009)
+                        if (!widget.modeloRecorrente && pedido.restante > .009)
                           FilledButton.icon(
                               onPressed: _ocupado
                                   ? null
@@ -265,7 +275,9 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                     entrega: pedido.taxaEntrega,
                     desconto: valorDelivery(pedido.dados['valorDesconto']),
                     acrescimo: valorDelivery(pedido.dados['valorAcrescimo']),
-                    editarPedido: _podeEditar ? _editarPedido : null,
+                    editarPedido: _podeEditar && !widget.modeloRecorrente
+                        ? _editarPedido
+                        : null,
                     editarProduto: _podeEditar ? _editarProduto : null,
                     pagamentos: Column(children: [
                       for (final p in pedido.pagamentos)
