@@ -385,6 +385,7 @@ void main() {
   test('comprovante preserva o endereco escolhido no pedido', () {
     final s = ServicoDeliveryTeste();
     final pedido = pedidoTeste(campos: {
+      'nomeCliente': '  Bruno Masson  ',
       'enderecoCliente': 'Rua selecionada',
       'numeroCliente': '133',
       'complementoCliente': 'Fundos',
@@ -403,6 +404,7 @@ void main() {
     final json = jsonDecode(mensagens.first) as Map;
     expect(json['tipo'], 'Delivery');
     expect(json['tipoImpressao'], '3');
+    expect(json['nomeCliente'], 'Bruno Masson');
     expect(json['enderecoCliente'], 'Rua selecionada');
     expect(json['numeroCliente'], '133');
     expect(json['complementoCliente'], 'Fundos');
