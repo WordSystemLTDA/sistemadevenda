@@ -5,11 +5,13 @@ class CamposRecorrencia extends StatelessWidget {
   final ConfiguracaoRecorrencia valor;
   final ValueChanged<ConfiguracaoRecorrencia> onChanged;
   final bool primeiroPedido;
+  final bool exibirErro;
   const CamposRecorrencia(
       {super.key,
       required this.valor,
       required this.onChanged,
-      this.primeiroPedido = false});
+      this.primeiroPedido = false,
+      this.exibirErro = true});
 
   Future<void> _hora(BuildContext context, bool fim) async {
     final partes = (fim ? valor.horarioFim : valor.horario).split(':');
@@ -65,65 +67,186 @@ class CamposRecorrencia extends StatelessWidget {
     );
   }
 
+  Widget _titulo(BuildContext context, String texto, IconData icone) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          Icon(icone, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texto,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          ),
+        ]),
+      );
+
+  Widget _cartaoOpcao(
+    BuildContext context, {
+    required String chave,
+    required String texto,
+    required IconData icone,
+    required bool selecionado,
+    required VoidCallback onTap,
+    double altura = 86,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: selecionado,
+      label: texto,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: AnimatedContainer(
+            key: ValueKey(chave),
+            duration: const Duration(milliseconds: 150),
+            height: altura,
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 7),
+            decoration: BoxDecoration(
+              color: selecionado
+                  ? cs.primaryContainer.withValues(alpha: .55)
+                  : cs.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selecionado ? cs.primary : cs.outlineVariant,
+                width: selecionado ? 1.5 : 1,
+              ),
+            ),
+            child: Stack(children: [
+              Align(
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selecionado
+                            ? cs.primary
+                            : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        icone,
+                        size: 20,
+                        color: selecionado ? cs.onPrimary : cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          texto,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: selecionado ? cs.primary : cs.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selecionado)
+                Align(
+                  alignment: Alignment.topRight,
+                  child: Icon(Icons.check_circle, size: 18, color: cs.primary),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Repetir o pedido',
-                style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 4, children: [
-              ChoiceChip(
-                  label: const Text('Todos os dias'),
-                  selected: valor.dias.length == 7,
-                  onSelected: (_) =>
-                      onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5, 6, 7]))),
-              ChoiceChip(
-                  label: const Text('Seg a Sex'),
-                  selected:
-                      valor.dias.length == 5 && valor.dias.every((d) => d <= 5),
-                  onSelected: (_) =>
-                      onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5]))),
-            ]),
-            const SizedBox(height: 4),
+            _titulo(context, 'Repetir o pedido', Icons.event_repeat_outlined),
             _gradeJustificada(
               context,
-              larguraMinima: 68,
-              espacamento: 4,
+              larguraMinima: 140,
+              botoes: [
+                _cartaoOpcao(
+                  context,
+                  chave: 'recorrencia-todos-os-dias',
+                  texto: 'Todos os dias',
+                  icone: Icons.calendar_month_outlined,
+                  selecionado: valor.dias.length == 7,
+                  onTap: () =>
+                      onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5, 6, 7])),
+                ),
+                _cartaoOpcao(
+                  context,
+                  chave: 'recorrencia-seg-sex',
+                  texto: 'Seg a Sex',
+                  icone: Icons.date_range_outlined,
+                  selecionado:
+                      valor.dias.length == 5 && valor.dias.every((d) => d <= 5),
+                  onTap: () => onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5])),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _gradeJustificada(
+              context,
+              larguraMinima: 70,
+              espacamento: 6,
               botoes: [
                 for (var dia = 1; dia <= 7; dia++)
-                  FilterChip(
-                    label: Text(ConfiguracaoRecorrencia.nomesDias[dia - 1],
-                        textAlign: TextAlign.center),
-                    selected: valor.dias.contains(dia),
-                    onSelected: (sim) {
+                  _cartaoOpcao(
+                    context,
+                    chave: 'recorrencia-dia-$dia',
+                    texto: ConfiguracaoRecorrencia.nomesDias[dia - 1],
+                    icone: Icons.calendar_today_outlined,
+                    selecionado: valor.dias.contains(dia),
+                    altura: 76,
+                    onTap: () {
                       final dias = [...valor.dias];
-                      sim ? dias.add(dia) : dias.remove(dia);
+                      dias.contains(dia) ? dias.remove(dia) : dias.add(dia);
                       onChanged(valor.copyWith(dias: dias..sort()));
                     },
                   ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text('Horário', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 20),
+            _titulo(context, 'Horário', Icons.schedule_outlined),
             _gradeJustificada(
               context,
-              larguraMinima: 160,
+              larguraMinima: 120,
               botoes: [
                 for (final opcao in const [
-                  ('livre', 'Qualquer horário'),
-                  ('fixo', 'Horário fixo'),
-                  ('intervalo', 'Horário da empresa')
+                  ('livre', 'Qualquer horário', Icons.all_inclusive),
+                  ('fixo', 'Horário fixo', Icons.alarm_outlined),
+                  ('intervalo', 'Horário da empresa', Icons.store_outlined)
                 ])
-                  ChoiceChip(
-                      label: Text(opcao.$2, textAlign: TextAlign.center),
-                      selected: valor.horarioTipo == opcao.$1,
-                      onSelected: (_) =>
-                          onChanged(valor.copyWith(horarioTipo: opcao.$1))),
+                  _cartaoOpcao(
+                    context,
+                    chave: 'recorrencia-horario-${opcao.$1}',
+                    texto: opcao.$2,
+                    icone: opcao.$3,
+                    selecionado: valor.horarioTipo == opcao.$1,
+                    onTap: () =>
+                        onChanged(valor.copyWith(horarioTipo: opcao.$1)),
+                  ),
               ],
             ),
-            if (valor.horarioTipo != 'livre') ...[
+            if (valor.horarioTipo.isEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Escolha quando os pedidos devem ser preparados.',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+            if (['fixo', 'intervalo'].contains(valor.horarioTipo)) ...[
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 OutlinedButton.icon(
@@ -138,19 +261,22 @@ class CamposRecorrencia extends StatelessWidget {
                       label: Text('Até ${valor.horarioFim}')),
               ]),
             ],
-            const SizedBox(height: 16),
-            Text('Pagamento', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
+            const SizedBox(height: 20),
+            _titulo(context, 'Pagamento', Icons.payments_outlined),
             _gradeJustificada(context, larguraMinima: 140, botoes: [
               for (final opcao in const [
-                ('diario', 'A cada pedido'),
-                ('mensal', 'Acerto mensal'),
+                ('diario', 'A cada pedido', Icons.receipt_long_outlined),
+                ('mensal', 'Acerto mensal', Icons.event_available_outlined),
               ])
-                ChoiceChip(
-                    label: Text(opcao.$2, textAlign: TextAlign.center),
-                    selected: valor.pagamentoModo == opcao.$1,
-                    onSelected: (_) =>
-                        onChanged(valor.copyWith(pagamentoModo: opcao.$1))),
+                _cartaoOpcao(
+                  context,
+                  chave: 'recorrencia-pagamento-${opcao.$1}',
+                  texto: opcao.$2,
+                  icone: opcao.$3,
+                  selecionado: valor.pagamentoModo == opcao.$1,
+                  onTap: () =>
+                      onChanged(valor.copyWith(pagamentoModo: opcao.$1)),
+                ),
             ]),
             const SizedBox(height: 8),
             if (valor.pagamentoModo == 'mensal') ...[
@@ -175,9 +301,12 @@ class CamposRecorrencia extends StatelessWidget {
               Text(
                   'Cada pedido confirmado será lançado em conta. Se o mês não tiver esse dia, vence no último dia.',
                   style: Theme.of(context).textTheme.bodySmall),
-            ] else
+            ] else if (valor.pagamentoModo == 'diario')
               Text(
                   'A forma do primeiro pagamento será sugerida nos próximos pedidos.',
+                  style: Theme.of(context).textTheme.bodySmall)
+            else
+              Text('Escolha como o cliente fará o pagamento.',
                   style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             Text(
@@ -185,7 +314,7 @@ class CamposRecorrencia extends StatelessWidget {
                     ? 'O primeiro pedido é de hoje. Os próximos seguem os dias escolhidos.'
                     : 'A alteração vale para os próximos pedidos.',
                 style: Theme.of(context).textTheme.bodySmall),
-            if (valor.erro != null)
+            if (exibirErro && valor.erro != null)
               Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(valor.erro!,

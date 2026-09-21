@@ -97,8 +97,12 @@ class _PaginaDetalhesDaVendaBalcaoState
     try {
       await _listar();
       if (_erro != null) throw StateError(_erro!);
+      final configuracao = await Modular.get<ServicoConfigBigchef>()
+          .listar(forcarAtualizacao: true);
       await _edicao.reimprimirBalcao(Modular.get<Server>(), _pedido,
-          preparo: opcao != 'comprovante', comprovante: opcao != 'preparo');
+          preparo: opcao != 'comprovante',
+          comprovante: opcao != 'preparo',
+          configuracao: configuracao);
     } catch (_) {
       _avisar('Não foi possível preparar a impressão.');
     } finally {
@@ -111,7 +115,10 @@ class _PaginaDetalhesDaVendaBalcaoState
     Modular.get<ProvedorBalcao>().listar();
     try {
       if (_erro != null) throw StateError(_erro!);
-      await _edicao.reimprimirBalcao(Modular.get<Server>(), _pedido);
+      final configuracao = await Modular.get<ServicoConfigBigchef>()
+          .listar(forcarAtualizacao: true);
+      await _edicao.reimprimirBalcao(Modular.get<Server>(), _pedido,
+          configuracao: configuracao);
     } catch (_) {
       _avisar(
           'Alteração salva. Não foi possível reenviar a impressão. Use o botão de imprimir.');

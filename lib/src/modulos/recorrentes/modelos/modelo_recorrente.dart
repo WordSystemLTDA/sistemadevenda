@@ -10,10 +10,10 @@ class ConfiguracaoRecorrencia {
 
   const ConfiguracaoRecorrencia({
     this.dias = const [1, 2, 3, 4, 5],
-    this.horarioTipo = 'livre',
+    this.horarioTipo = '',
     this.horario = '12:00',
     this.horarioFim = '14:00',
-    this.pagamentoModo = 'diario',
+    this.pagamentoModo = '',
     this.diaVencimento = 10,
   });
 
@@ -64,16 +64,20 @@ class ConfiguracaoRecorrencia {
   String get diasTexto => dias.length == 7
       ? 'Todos os dias'
       : ([...dias]..sort()).map((d) => nomesDias[d - 1]).join(' · ');
-  String get horarioTexto => horarioTipo == 'livre'
-      ? 'Qualquer horário'
-      : horarioTipo == 'intervalo'
-          ? '$horario–$horarioFim'
-          : 'Às $horario';
+  String get horarioTexto => horarioTipo.isEmpty
+      ? 'Horário não selecionado'
+      : horarioTipo == 'livre'
+          ? 'Qualquer horário'
+          : horarioTipo == 'intervalo'
+              ? '$horario–$horarioFim'
+              : 'Às $horario';
 
   bool get pagamentoMensal => pagamentoModo == 'mensal';
-  String get pagamentoTexto => pagamentoMensal
-      ? 'Em conta · dia $diaVencimento do mês seguinte'
-      : 'Pagamento a cada pedido';
+  String get pagamentoTexto => pagamentoModo.isEmpty
+      ? 'Pagamento não selecionado'
+      : pagamentoMensal
+          ? 'Em conta · dia $diaVencimento do mês seguinte'
+          : 'Pagamento a cada pedido';
 
   DateTime vencimentoEm(DateTime dataPedido) {
     if (!pagamentoMensal) {

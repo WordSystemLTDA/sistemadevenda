@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -233,8 +234,12 @@ void main() {
       ],
       'valorVenda': '135'
     });
-    await ServicoEdicaoPedido(ServicoDeliveryTeste())
-        .reimprimirBalcao(servidor, pedido);
+    await ServicoEdicaoPedido(ServicoDeliveryTeste()).reimprimirBalcao(
+      servidor,
+      pedido,
+      configuracao: ModeloConfigBigchef.fromMap(
+          {'imprimirpreparocomprovanteconsumacao': 'Não'}),
+    );
     expect(servidor.mensagens.where((m) => m['tipoImpressao'] == '1'),
         hasLength(2));
     final comprovante =
@@ -242,6 +247,52 @@ void main() {
     expect(comprovante['tipo'], 'Balcão');
     expect(comprovante['produtos'], hasLength(2));
     expect(comprovante['total'], '135.00');
+  });
+
+  test('balcao incorpora preparo no comprovante quando configurado', () async {
+    final servidor = imp.ServidorTeste();
+    Modular.init(imp.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+    final pedido = pedidoTeste(campos: {
+      'tipodeentrega': '3',
+      'produtos': [pizzaDetalhada().toMap()],
+      'valorVenda': '85'
+    });
+
+    await ServicoEdicaoPedido(ServicoDeliveryTeste()).reimprimirBalcao(
+      servidor,
+      pedido,
+      configuracao: ModeloConfigBigchef.fromMap(
+          {'imprimirpreparocomprovanteconsumacao': 'Sim'}),
+    );
+
+    expect(servidor.mensagens, hasLength(1));
+    expect(servidor.mensagens.single['tipoImpressao'], '2');
+    expect(jsonEncode(servidor.mensagens.single['produtos']),
+        contains('Catupiry Especial'));
+  });
+
+  test('balcao mantem preparo avulso quando essa foi a unica opcao escolhida',
+      () async {
+    final servidor = imp.ServidorTeste();
+    Modular.init(imp.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+    final pedido = pedidoTeste(campos: {
+      'tipodeentrega': '3',
+      'produtos': [pizzaDetalhada().toMap()],
+    });
+
+    await ServicoEdicaoPedido(ServicoDeliveryTeste()).reimprimirBalcao(
+      servidor,
+      pedido,
+      preparo: true,
+      comprovante: false,
+      configuracao: ModeloConfigBigchef.fromMap(
+          {'imprimirpreparocomprovanteconsumacao': 'Sim'}),
+    );
+
+    expect(servidor.mensagens, hasLength(1));
+    expect(servidor.mensagens.single['tipoImpressao'], '1');
   });
 
   testWidgets('detalhes normais do delivery oferecem edicao e opcoes da pizza',

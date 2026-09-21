@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
@@ -366,9 +367,19 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             'nomeConexao': usuarioProvedor.usuario!.nome,
           }));
 
-          if (provedorCardapio
-                  .configBigchef?.imprimePreparoNoComprovanteConsumacao !=
-              true) {
+          final configuracaoImpressao =
+              await Modular.get<ServicoConfigBigchef>()
+                  .listar(forcarAtualizacao: true);
+          final imprimirPreparoNoComprovante =
+              configuracaoImpressao?.imprimePreparoNoComprovanteConsumacao ??
+                  provedorCardapio
+                      .configBigchef?.imprimePreparoNoComprovanteConsumacao ??
+                  false;
+          if (configuracaoImpressao != null) {
+            provedorCardapio.configBigchef = configuracaoImpressao;
+          }
+
+          if (!imprimirPreparoNoComprovante) {
             await Impressao.comprovanteDePedido(
               local: '',
               tipoTela: provedorCardapio.tipo,

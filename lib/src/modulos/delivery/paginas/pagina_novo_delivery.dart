@@ -43,6 +43,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   Map<String, dynamic>? _endereco;
   List<Map<String, dynamic>> _enderecos = [];
   bool _carregando = false, _salvando = false;
+  bool _exibirErroRecorrencia = false;
   String? _erro;
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
@@ -269,11 +270,22 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
 
   Future<void> _abrir() async {
     if (_salvando) return;
-    if (widget.recorrente && (_cliente == '0' || _recorrencia.erro != null)) {
-      setState(() =>
-          _erro = _recorrencia.erro ?? 'Selecione um cliente cadastrado.');
+    if (widget.recorrente && _recorrencia.erro != null) {
+      final erroRecorrencia = _recorrencia.erro!;
+      setState(() {
+        _exibirErroRecorrencia = true;
+        _erro = null;
+      });
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(_erro!)));
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(erroRecorrencia)));
+      return;
+    }
+    if (widget.recorrente && _cliente == '0') {
+      setState(() => _erro = 'Selecione um cliente cadastrado.');
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(_erro!)));
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -404,8 +416,11 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                               CamposRecorrencia(
                                   valor: _recorrencia,
                                   primeiroPedido: true,
-                                  onChanged: (valor) =>
-                                      setState(() => _recorrencia = valor)),
+                                  exibirErro: _exibirErroRecorrencia,
+                                  onChanged: (valor) => setState(() {
+                                        _recorrencia = valor;
+                                        _erro = null;
+                                      })),
                               const Divider(height: 32),
                             ],
                             _titulo('Tipo de entrega', Icons.delivery_dining),

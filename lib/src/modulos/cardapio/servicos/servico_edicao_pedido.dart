@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/balcao/modelos/retorno_listar_por_id_balcao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -77,9 +78,14 @@ class ServicoEdicaoPedido {
   }
 
   Future<void> reimprimirBalcao(Server server, PedidoDelivery pedido,
-      {bool preparo = true, bool comprovante = true}) async {
+      {bool preparo = true,
+      bool comprovante = true,
+      ModeloConfigBigchef? configuracao}) async {
+    final unificarPreparoNoComprovante = preparo &&
+        comprovante &&
+        configuracao?.imprimePreparoNoComprovanteConsumacao == true;
     final mensagens = [
-      if (preparo)
+      if (preparo && !unificarPreparoNoComprovante)
         ...Impressao.prepararComprovanteDePedido(
             produtos: pedido.produtos,
             tipoTela: TipoCardapio.balcao,

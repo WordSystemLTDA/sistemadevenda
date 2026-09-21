@@ -102,7 +102,7 @@ class _ConfigAutomaticos extends Fake implements ServicoConfigBigchef {
 }
 
 void main() {
-  testWidgets('novo recorrente exige cliente tambem na retirada',
+  testWidgets('novo recorrente exige horario, pagamento e cliente na retirada',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
         home: PaginaNovoDelivery(servico: _Delivery(), recorrente: true)));
@@ -110,7 +110,27 @@ void main() {
     expect(find.text('Novo Recorrente'), findsOneWidget);
     expect(find.text('No local'), findsNothing);
     expect(find.byType(CamposRecorrencia), findsOneWidget);
-    await tester.ensureVisible(find.text('Retirada'));
+    expect(find.text('Às 12:00'), findsNothing);
+    await tester.tap(find.text('Abrir cardápio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecione uma opção de horário.'), findsWidgets);
+
+    await tester.ensureVisible(find.text('Qualquer horário'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Qualquer horário'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Abrir cardápio'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecione como o cliente paga.'), findsWidgets);
+
+    await tester.ensureVisible(find.text('A cada pedido'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A cada pedido'));
+    await tester.pumpAndSettle();
+
+    final formulario = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(find.text('Retirada'), 300,
+        scrollable: formulario);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Retirada'));
     await tester.pumpAndSettle();
@@ -162,7 +182,13 @@ void main() {
         const ConfiguracaoRecorrencia(horarioTipo: 'fixo', horario: '25:00')
             .erro,
         isNotNull);
-    expect(const ConfiguracaoRecorrencia().erro, isNull);
+    const semEscolhas = ConfiguracaoRecorrencia();
+    expect(semEscolhas.horarioTipo, isEmpty);
+    expect(semEscolhas.pagamentoModo, isEmpty);
+    expect(semEscolhas.erro, 'Selecione uma opção de horário.');
+    final comHorario = semEscolhas.copyWith(horarioTipo: 'livre');
+    expect(comHorario.erro, 'Selecione como o cliente paga.');
+    expect(comHorario.copyWith(pagamentoModo: 'diario').erro, isNull);
   });
   test('agenda abre no dia atual e amplia o período sob demanda', () async {
     final api = Api();
