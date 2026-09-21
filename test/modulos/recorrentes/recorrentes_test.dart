@@ -247,7 +247,14 @@ void main() {
                   abrirPedido: (id, item) async {}))));
       await tester.pumpAndSettle();
       expect(find.text('Ana Maria · Empresa Centro'), findsOneWidget);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      if (caso.$1.width < 600) {
+        expect(find.byKey(const ValueKey('novo-recorrente')), findsOneWidget);
+        expect(find.byType(FloatingActionButton), findsNothing);
+        expect(find.text('Deslize para ver os horários'), findsNothing);
+        expect(find.byTooltip('Filtrar período'), findsOneWidget);
+      } else {
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
       if (caso.$1.width == 1366 || caso.$1.width == 320) {
         await tester.runAsync(() async {
@@ -277,6 +284,38 @@ void main() {
       p.dispose();
     });
   }
+  testWidgets('celular usa lista vertical e filtro no padrão do Delivery',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api();
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('novo-recorrente')), findsOneWidget);
+    expect(find.text('Deslize para ver os horários'), findsNothing);
+    expect(find.text('Cliente ou produto'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Filtrar período'));
+    await tester.pumpAndSettle();
+    expect(find.text('Filtrar recorrentes'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('7 dias').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+    await tester.pumpAndSettle();
+    expect(p.visao, 'semana');
+    expect(
+        api.fimConsultado, DateTime(p.data.year, p.data.month, p.data.day + 6));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
   testWidgets('previsao futura nao gera pedido, falha permite tentar novamente',
       (tester) async {
     final api = Api()

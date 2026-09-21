@@ -517,6 +517,10 @@ void main() {
   testWidgets(
       'novo delivery seleciona endereco recem-criado sem alterar o padrao',
       (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final s = ServicoNovoEnderecoTeste([
       {
         'id': '10',
@@ -543,6 +547,9 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    expect(find.byKey(const ValueKey('endereco-padrao-10')), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -120));
+    await tester.pumpAndSettle();
     await tester.tap(novoEndereco);
     await tester.pumpAndSettle();
 
@@ -559,6 +566,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(tester.widget<ListTile>(enderecoCriado).selected, isTrue);
+    expect(find.byKey(const ValueKey('endereco-padrao-11')), findsNothing);
     expect(s.enderecos.first['padrao'], 'Sim');
     expect(s.enderecos.last['padrao'], 'Não');
     expect(tester.takeException(), isNull);
