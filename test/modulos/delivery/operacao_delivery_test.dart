@@ -50,13 +50,18 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
 }
 
 class ServicoNovoEnderecoTeste extends ServicoEnderecoPadraoTeste {
-  ServicoNovoEnderecoTeste(super.enderecos);
+  ServicoNovoEnderecoTeste(super.enderecos, {super.requeridoEndereco});
 
   @override
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     final resposta = await super.salvar(rota, campos);
     if (rota == 'clientes/inserir_endereco.php' && campos['id'] == '') {
+      if (campos['padrao'] == 'Sim' && campos['substituirPadrao'] == true) {
+        for (final endereco in enderecos) {
+          endereco['padrao'] = 'Não';
+        }
+      }
       enderecos.add({
         'id': '11',
         'cep': campos['cep'],
@@ -397,6 +402,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
         isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recusar troca salva novo endereco sem alterar o endereco padrao',
+      (tester) async {
+    final s = ServicoNovoEnderecoTeste([
+      {'id': '10', 'padrao': 'Sim'}
+    ], requeridoEndereco: 'Não');
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alterar endereço padrão?'), findsOneWidget);
+    expect(
+        find.text(
+            'Este cliente já possui um endereço padrão. Deseja mudar o endereço padrão para este endereço atual?'),
+        findsOneWidget);
+    await tester.tap(find.text('Não'));
+    await tester.pumpAndSettle();
+
+    expect(s.gravacoes.single.$2['padrao'], 'Não');
+    expect(s.gravacoes.single.$2['substituirPadrao'], isFalse);
+    expect(s.enderecos.first['padrao'], 'Sim');
+    expect(s.enderecos.last['padrao'], 'Não');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('confirmar troca transfere o endereco padrao para o novo',
+      (tester) async {
+    final s = ServicoNovoEnderecoTeste([
+      {'id': '10', 'padrao': 'Sim'}
+    ], requeridoEndereco: 'Não');
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+    )));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sim, alterar'));
+    await tester.pumpAndSettle();
+
+    expect(s.gravacoes.single.$2['padrao'], 'Sim');
+    expect(s.gravacoes.single.$2['substituirPadrao'], isTrue);
+    expect(s.enderecos.first['padrao'], 'Não');
+    expect(s.enderecos.last['padrao'], 'Sim');
+    expect(s.enderecos.where((endereco) => endereco['padrao'] == 'Sim'),
+        hasLength(1));
     expect(tester.takeException(), isNull);
   });
 

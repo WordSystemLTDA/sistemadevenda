@@ -27,6 +27,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       k: TextEditingController()
   };
   bool _salvando = false, _padrao = false, _carregandoPadrao = true;
+  bool _temOutroEnderecoPadrao = false;
   bool _bloquearCidade = false, _enderecoObrigatorio = true;
   String? _erro;
 
@@ -63,7 +64,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
 
   Future<void> _carregarPadraoEndereco() async {
     ConfiguracaoEnderecoCliente? configuracao;
-    bool? temEnderecoPadrao;
+    bool? temOutroEnderecoPadrao;
     try {
       final resposta =
           await widget.servico.consultar('config_clientes/listar_cliente.php');
@@ -73,7 +74,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     }
 
     try {
-      temEnderecoPadrao = await _clienteTemEnderecoPadrao();
+      temOutroEnderecoPadrao = await _clienteTemOutroEnderecoPadrao();
     } catch (_) {
       // Se a consulta falhar, mantem a escolha manual do usuario.
     } finally {
@@ -86,24 +87,52 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             _bloquearCidade = configuracao.bloquearCidade;
             _enderecoObrigatorio = configuracao.enderecoObrigatorio;
           }
-          if (temEnderecoPadrao == false) _padrao = true;
+          if (temOutroEnderecoPadrao != null) {
+            _temOutroEnderecoPadrao = temOutroEnderecoPadrao;
+          }
+          if (temOutroEnderecoPadrao == false) _padrao = true;
           _carregandoPadrao = false;
         });
       }
     }
   }
 
-  Future<bool> _clienteTemEnderecoPadrao() async {
+  Future<bool> _clienteTemOutroEnderecoPadrao() async {
     final resposta = await widget.servico
         .consultar('enderecos_clientes/listar_por_cliente.php', {
       'cliente': widget.cliente,
       'pesquisa': '',
     });
     final enderecos = resposta is List ? resposta : const [];
+    final idAtual = widget.endereco?['id']?.toString().trim() ?? '';
     return enderecos.any((endereco) {
       if (endereco is! Map) return false;
-      return _ehPadrao(endereco['padrao']);
+      final idEndereco = endereco['id']?.toString().trim() ?? '';
+      return idEndereco != idAtual && _ehPadrao(endereco['padrao']);
     });
+  }
+
+  Future<bool> _confirmarTrocaEnderecoPadrao() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Alterar endereço padrão?'),
+        content: const Text(
+            'Este cliente já possui um endereço padrão. Deseja mudar o endereço padrão para este endereço atual?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Não'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sim, alterar'),
+          ),
+        ],
+      ),
+    );
+    return confirmar == true;
   }
 
   bool _ehPadrao(Object? valor) {
@@ -137,9 +166,17 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     if (_salvando || _carregandoPadrao || !_form.currentState!.validate()) {
       return;
     }
+    var salvarComoPadrao = _padrao;
+    var substituirPadrao = false;
+    if (_padrao && _temOutroEnderecoPadrao) {
+      substituirPadrao = await _confirmarTrocaEnderecoPadrao();
+      if (!mounted) return;
+      salvarComoPadrao = substituirPadrao;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _salvando = true;
+      _padrao = salvarComoPadrao;
       _erro = null;
     });
     try {
@@ -148,7 +185,8 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
         'uf': _campos['uf']!.text.trim().toUpperCase(),
         'id': widget.endereco?['id']?.toString() ?? '',
         'idCliente': widget.cliente,
-        'padrao': _padrao ? 'Sim' : 'Não',
+        'padrao': salvarComoPadrao ? 'Sim' : 'Não',
+        'substituirPadrao': substituirPadrao,
         'podeInserirNovaCidade': false,
       });
       if (mounted) Navigator.pop(context, true);
