@@ -10,6 +10,7 @@ import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../essencial/utils/impressao_preparo_test.dart' as impressao;
@@ -173,6 +174,112 @@ void main() {
     expect(s.gravacoes.single.$2['statusOrigem'], '1');
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final caso in [
+    (tipoEntrega: '1', tipoImpressao: '3', comprovante: 'entregador'),
+    (tipoEntrega: '2', tipoImpressao: '2', comprovante: 'consumo'),
+  ]) {
+    testWidgets(
+        'PREPARAR imprime comprovante de ${caso.comprovante} com preparo quando configurado',
+        (tester) async {
+      final servidor = impressao.ServidorTeste();
+      Modular.init(impressao.ModuloImpressaoTeste(servidor));
+      addTearDown(Modular.destroy);
+      final s = ServicoDeliveryTeste()
+        ..config = const ConfigDelivery(
+          receberNoFinal: true,
+          imprimirPreparo: true,
+          imprimirPreparoNoComprovanteConsumacao: true,
+        )
+        ..produtosCardapio = [
+          impressao.produto(computador: 'COZINHA')..observacao = 'Sem cebola'
+        ];
+      s.atual = pedidoTeste(campos: {
+        'id': '1',
+        'idopcoescarrossel': '1',
+        'tipodeentrega': caso.tipoEntrega,
+        'quantidadeprodutos': '1',
+      });
+      s.respostaLista = () async => [
+            EtapaDelivery.fromMap({
+              'id': '1',
+              'nomeOpcao': 'AGUARDANDO',
+              'nomeBotao': 'PREPARAR',
+              'tipodeimpressao': '0',
+              'vendas': [s.atual.dados],
+            }),
+            EtapaDelivery.fromMap({
+              'id': '2',
+              'nomeOpcao': 'PREPARANDO',
+              'nomeBotao': 'PRONTO',
+              'tipodeimpressao': '1',
+              'vendas': [],
+            }),
+          ];
+      final p = ProvedorDelivery(s);
+      addTearDown(p.dispose);
+      await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('PREPARAR'));
+      await tester.pumpAndSettle();
+
+      expect(servidor.mensagens, hasLength(1));
+      expect(servidor.mensagens.single['tipoImpressao'], caso.tipoImpressao);
+      final produto =
+          (servidor.mensagens.single['produtos'] as List).single as Map;
+      expect(produto['observacao'], 'Sem cebola');
+      expect(s.gravacoes.single.$1, 'delivery/mudar_status_delivery.php');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'PREPARAR mantem comprovante de preparo separado quando opcao e Não',
+      (tester) async {
+    final servidor = impressao.ServidorTeste();
+    Modular.init(impressao.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+    final s = ServicoDeliveryTeste()
+      ..config = const ConfigDelivery(
+        receberNoFinal: true,
+        imprimirPreparo: true,
+        imprimirPreparoNoComprovanteConsumacao: false,
+      )
+      ..produtosCardapio = [impressao.produto(computador: 'COZINHA')];
+    s.atual = pedidoTeste(campos: {
+      'id': '1',
+      'idopcoescarrossel': '1',
+      'quantidadeprodutos': '1',
+    });
+    s.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [s.atual.dados],
+          }),
+          EtapaDelivery.fromMap({
+            'id': '2',
+            'nomeOpcao': 'PREPARANDO',
+            'nomeBotao': 'PRONTO',
+            'tipodeimpressao': '1',
+            'vendas': [],
+          }),
+        ];
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('PREPARAR'));
+    await tester.pumpAndSettle();
+
+    expect(servidor.mensagens, hasLength(1));
+    expect(servidor.mensagens.single['tipoImpressao'], '1');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('card do delivery mostra previa de itens somente ao expandir',

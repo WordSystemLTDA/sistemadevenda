@@ -199,13 +199,16 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         }
       }
       final paraImprimir = await _provedor.servico.pedido(pedido.id);
-      if (['1', '4'].contains(alvo.impressao) &&
-          config.imprimirPreparoSeparado) {
+      final etapaImprimePreparo = ['1', '4'].contains(alvo.impressao);
+      final etapaImprimeComprovante = ['2', '4'].contains(alvo.impressao);
+      if (etapaImprimePreparo && config.imprimirPreparoSeparado) {
         await ImpressaoDelivery.imprimir(
             _provedor.servico, Modular.get<Server>(), paraImprimir,
             preparo: true, config: config);
       }
-      if (['2', '4'].contains(alvo.impressao)) {
+      if (etapaImprimeComprovante ||
+          (etapaImprimePreparo &&
+              config.imprimirPreparoNoComprovanteConsumacao)) {
         await ImpressaoDelivery.imprimir(
             _provedor.servico, Modular.get<Server>(), paraImprimir,
             config: config);
