@@ -46,6 +46,8 @@ class ModeloConfigBigchef {
   final String permitireditarsaborpizzaappaposfinalizar;
   final String permitireditarbordaappaposfinalizar;
   final String permitireditaradicionalappaposfinalizar;
+  final String permitirfinalizarmesa;
+  final String permitirfinalizarcomanda;
 
   ModeloConfigBigchef({
     this.clientecompedidosdecorrentes = 'Não',
@@ -81,6 +83,8 @@ class ModeloConfigBigchef {
     this.permitireditarsaborpizzaappaposfinalizar = 'Não',
     this.permitireditarbordaappaposfinalizar = 'Não',
     this.permitireditaradicionalappaposfinalizar = 'Não',
+    this.permitirfinalizarmesa = 'Não',
+    this.permitirfinalizarcomanda = 'Não',
   });
 
   bool get permiteEditarQuantidadeAposFinalizar =>
@@ -93,6 +97,8 @@ class ModeloConfigBigchef {
       _sim(permitireditarbordaappaposfinalizar);
   bool get permiteEditarAdicionalAposFinalizar =>
       _sim(permitireditaradicionalappaposfinalizar);
+  bool get permiteFinalizarMesa => _sim(permitirfinalizarmesa);
+  bool get permiteFinalizarComanda => _sim(permitirfinalizarcomanda);
   bool get controlaNumeroOperacionalPedido =>
       ativarnumerooperacionalpedido.trim().isNotEmpty ||
       imprimirnumerooperacionalentregador.trim().isNotEmpty ||
@@ -157,6 +163,8 @@ class ModeloConfigBigchef {
           permitireditarbordaappaposfinalizar,
       'permitireditaradicionalappaposfinalizar':
           permitireditaradicionalappaposfinalizar,
+      'permitirfinalizarmesa': permitirfinalizarmesa,
+      'permitirfinalizarcomanda': permitirfinalizarcomanda,
     };
   }
 
@@ -227,6 +235,10 @@ class ModeloConfigBigchef {
           map,
           'permitireditaradicionalappaposfinalizar',
           'permitir_editar_adicional_app_apos_finalizar'),
+      permitirfinalizarmesa:
+          _textoConfig(map, 'permitirfinalizarmesa', 'permitir_finalizar_mesa'),
+      permitirfinalizarcomanda: _textoConfig(
+          map, 'permitirfinalizarcomanda', 'permitir_finalizar_comanda'),
     );
   }
 

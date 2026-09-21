@@ -121,6 +121,7 @@ class Modelowordprodutos {
   TextEditingController? quantidadeController;
   Widget? acoes;
   String? valorRestoDivisao;
+  String valorPago;
   List<ModeloOpcoesPacotes>? opcoesPacotes;
   List<ModeloOpcoesPacotes>? opcoesPacotesListaFinal;
   ModeloDescontoProduto? descontoProduto;
@@ -169,6 +170,7 @@ class Modelowordprodutos {
     this.quantidadeController,
     this.acoes,
     this.valorRestoDivisao,
+    this.valorPago = '0',
     this.opcoesPacotes,
     this.opcoesPacotesListaFinal,
     this.descontoProduto,
@@ -219,6 +221,8 @@ class Modelowordprodutos {
       'acoes': acoes,
       'habilItensRetirada': habilItensRetirada,
       'valorRestoDivisao': valorRestoDivisao,
+      'valorpago': valorPago,
+      'valor_pago': valorPago,
       'opcoesPacotes': opcoesPacotes?.map((x) => x.toMap()).toList(),
       'opcoesPacotesListaFinal':
           opcoesPacotesListaFinal?.map((x) => x.toMap()).toList(),
@@ -302,6 +306,7 @@ class Modelowordprodutos {
       ingredientes: _ingredientes(map['ingredientes']),
       quantidade: _decimalOpcional(map['quantidade']),
       quantidadePessoa: _inteiroOpcional(map['quantidadePessoa']),
+      valorPago: _texto(map['valorpago'] ?? map['valor_pago'], '0'),
       tamanhoLista: _inteiroOpcional(map['tamanhoLista']),
       valorTotalVendas: map['valorTotalVendas']?.toString(),
       observacao: map['observacao']?.toString(),
@@ -357,7 +362,8 @@ class Modelowordprodutos {
         other.observacao == observacao &&
         other.quantidadeController == quantidadeController &&
         other.acoes == acoes &&
-        other.valorRestoDivisao == valorRestoDivisao;
+        other.valorRestoDivisao == valorRestoDivisao &&
+        other.valorPago == valorPago;
   }
 
   @override
@@ -391,6 +397,7 @@ class Modelowordprodutos {
         observacao.hashCode ^
         quantidadeController.hashCode ^
         valorRestoDivisao.hashCode ^
+        valorPago.hashCode ^
         acoes.hashCode;
   }
 }

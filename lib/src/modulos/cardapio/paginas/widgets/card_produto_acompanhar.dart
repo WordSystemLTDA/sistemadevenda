@@ -7,6 +7,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
+import 'package:app/src/modulos/cardapio/uteis/nome_exibicao_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
@@ -130,6 +131,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     final quantidade = item.quantidade ?? 1;
     final valorUnitario = double.tryParse(item.valorVenda) ?? 0;
     final valorTotal = valorUnitario * quantidade;
+    final nomeExibicao = nomeExibicaoProduto(item);
+    final linhasNome = '\n'.allMatches(nomeExibicao).length + 1;
+    final acrescimoAlturaNome = (linhasNome - 1) * 18.0;
 
     // var soma = item.adicionais.fold(
     //   Modelowordadicionaisproduto(id: 'id', nome: 'nome', valor: '0', foto: 'foto', quantidade: 1, estaSelecionado: false, excluir: false),
@@ -185,8 +189,10 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
           if (widget.cabecalhoAdaptavel)
             _cabecalhoDetalhado(context, valorTotal)
           else
-            SizedBox(
-              height: temObservacao ? 126 : 105,
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (temObservacao ? 126 : 105) + acrescimoAlturaNome,
+              ),
               child: InkWell(
                 onTap: () {
                   _expandOnChanged();
@@ -206,10 +212,10 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                             children: [
                               Flexible(
                                 child: Text(
-                                  '${widget.item.nome} ',
+                                  nomeExibicao,
                                   // '${widget.item.quantidade!.toStringAsFixed(0)}x ${widget.item.nome} ',
                                   // item.nome,
-                                  maxLines: 1,
+                                  maxLines: linhasNome,
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
@@ -411,7 +417,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                       ),
                       if ((item.opcoesPacotesListaFinal ?? []).isNotEmpty) ...[
                         Positioned(
-                          top: 64,
+                          top: 64 + acrescimoAlturaNome,
                           right: 5,
                           // bottom: 0,
                           child: SizedBox(
@@ -831,6 +837,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
 
   Widget _cabecalhoDetalhado(BuildContext context, double total) {
     final item = widget.item;
+    final nomeExibicao = nomeExibicaoProduto(item);
     final temOpcoes = (item.opcoesPacotesListaFinal ?? []).isNotEmpty;
     final quantidade = item.quantidade ?? 1;
     final textoQuantidade = quantidade == quantidade.roundToDouble()
@@ -843,7 +850,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
-                child: Text(item.nome,
+                child: Text(nomeExibicao,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w600))),
             const SizedBox(width: 12),

@@ -1,6 +1,8 @@
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
@@ -88,9 +90,22 @@ class ServidorDetalhesTeste extends Server {
   }
 }
 
+class ConfigDetalhesTeste extends Fake implements ServicoConfigBigchef {
+  String permitirMesa = 'Não';
+  String permitirComanda = 'Não';
+
+  @override
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
+      ModeloConfigBigchef.fromMap({
+        'permitir_finalizar_mesa': permitirMesa,
+        'permitir_finalizar_comanda': permitirComanda,
+      });
+}
+
 class ModuloDetalhesTeste extends Module {
   final servico = CardapioDetalhesTeste();
   final servidor = ServidorDetalhesTeste();
+  final config = ConfigDetalhesTeste();
   @override
   void binds(Injector i) {
     i.addInstance<ServicoCardapio>(servico);
@@ -98,6 +113,7 @@ class ModuloDetalhesTeste extends Module {
     i.addInstance<ProvedorComanda>(ComandasDetalhesTeste());
     i.addInstance<ProvedorMesas>(MesasDetalhesTeste());
     i.addInstance<UsuarioProvedor>(UsuarioProvedor());
+    i.addInstance<ServicoConfigBigchef>(config);
   }
 }
 
@@ -216,4 +232,22 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('mostra Finalizar Conta somente para o tipo autorizado',
+      (tester) async {
+    modulo.config.permitirMesa = 'Sim';
+    modulo.config.permitirComanda = 'Não';
+
+    await abrir(tester, tipo: TipoCardapio.comanda);
+    await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+    expect(find.text('Finalizar Conta'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+
+    await abrir(tester, tipo: TipoCardapio.mesa);
+    await tester.scrollUntilVisible(find.text('Finalizar Conta'), 120);
+    expect(find.text('Finalizar Conta'), findsOneWidget);
+    expect(find.text('Receba por pessoa, por produto ou em várias formas.'),
+        findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

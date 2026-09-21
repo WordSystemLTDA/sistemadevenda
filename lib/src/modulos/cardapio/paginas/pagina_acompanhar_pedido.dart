@@ -12,6 +12,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
+import 'package:app/src/modulos/cardapio/uteis/agrupamento_itens_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -50,7 +51,11 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
   bool _carregando = false;
   bool _abrindoEdicao = false;
   bool _cancelandoItem = false;
+  bool _agruparItensIguais = false;
+  bool _preferenciaAgrupamentoAlterada = false;
   final Map<String, Modelowordprodutos> _edicoesLocais = {};
+  final PreferenciaAgrupamentoItensPedido _preferenciaAgrupamento =
+      PreferenciaAgrupamentoItensPedido();
 
   @override
   void initState() {
@@ -59,6 +64,7 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     _server.addListener(_aoReceberEventoSocket);
     listarComandasPedidos();
     _carregarConfiguracao();
+    _carregarPreferenciaAgrupamento();
   }
 
   @override
@@ -104,6 +110,37 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     final config = await servicoConfigBigchef.listar();
     if (!mounted) return;
     setState(() => _configBigchef = config);
+  }
+
+  Future<void> _carregarPreferenciaAgrupamento() async {
+    try {
+      final agrupar = await _preferenciaAgrupamento.carregar();
+      if (!mounted || _preferenciaAgrupamentoAlterada) return;
+      setState(() => _agruparItensIguais = agrupar);
+    } catch (_) {
+      // Mantém o padrão desagrupado quando a preferência local não está
+      // disponível.
+    }
+  }
+
+  Future<void> _alternarAgrupamento() async {
+    final valorAnterior = _agruparItensIguais;
+    final novoValor = !valorAnterior;
+    _preferenciaAgrupamentoAlterada = true;
+    setState(() => _agruparItensIguais = novoValor);
+
+    var salvou = false;
+    try {
+      salvou = await _preferenciaAgrupamento.salvar(novoValor);
+    } catch (_) {
+      salvou = false;
+    }
+    if (salvou || !mounted) return;
+
+    setState(() => _agruparItensIguais = valorAnterior);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text('Não foi possível salvar a preferência neste aparelho.')));
   }
 
   String get _nomeTipo => widget.tipo.nome;
@@ -379,6 +416,12 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
     }
 
     final produtos = dados!.produtos ?? <Modelowordprodutos>[];
+    final gruposProdutos = organizarItensPedido(
+      produtos,
+      agrupar: _agruparItensIguais,
+    );
+    final possuiItensAgrupados =
+        gruposProdutos.any((grupo) => grupo.possuiMaisDeUmLancamento);
     final totalItens = _totalItens(produtos);
     final valorTotal = _valorTotal(produtos);
 
@@ -418,20 +461,72 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
                         Icon(Icons.list_alt_rounded,
                             size: 18, color: cs.onSurfaceVariant),
                         const SizedBox(width: 6),
-                        Text(
-                          'ITENS DO PEDIDO',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                            color: cs.onSurfaceVariant,
+                        Expanded(
+                          child: Text(
+                            'ITENS DO PEDIDO',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Tooltip(
+                          message: _agruparItensIguais
+                              ? 'Mostrar itens separadamente'
+                              : 'Agrupar produtos iguais',
+                          child: FilterChip(
+                            key: const ValueKey('agrupar_itens_iguais'),
+                            selected: _agruparItensIguais,
+                            showCheckmark: false,
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            avatar: Icon(
+                              _agruparItensIguais
+                                  ? Icons.layers_rounded
+                                  : Icons.layers_outlined,
+                              size: 17,
+                            ),
+                            label: const Text('Agrupar iguais',
+                                style: TextStyle(fontSize: 11.5)),
+                            onSelected: (_) => _alternarAgrupamento(),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  ...produtos.map((item) {
+                  if (_agruparItensIguais && possuiItensAgrupados)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline_rounded,
+                              size: 15, color: cs.onSurfaceVariant),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Para editar ou excluir um item agrupado, '
+                              'desative “Agrupar iguais”.',
+                              style: TextStyle(
+                                  fontSize: 11.5, color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ...gruposProdutos.map((grupo) {
+                    final item = grupo.produto;
+                    final itemAgrupado = grupo.possuiMaisDeUmLancamento;
+                    final primeiroItem = grupo.itensOriginais.first;
+                    final idVisual = primeiroItem.iditensvenda ??
+                        primeiroItem.hashprodutos ??
+                        primeiroItem.id;
                     return CardProdutoAcompanhar(
+                      key: ValueKey(
+                          'item-pedido-$idVisual-${itemAgrupado ? 'agrupado' : 'individual'}'),
                       item: item,
                       dados: dados,
                       idComanda: widget.idComanda ?? '0',
@@ -440,10 +535,13 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
                       setarQuantidade: (increase) {},
                       value: '',
                       tipo: widget.tipo,
-                      podeEditar: _podeEditarProduto(item),
-                      onEditar: () => _abrirEdicaoProduto(item),
-                      podeExcluir: _podeExcluirProduto(item),
-                      onExcluir: () => _cancelarItemFinalizado(item),
+                      podeEditar: !itemAgrupado && _podeEditarProduto(item),
+                      onEditar:
+                          itemAgrupado ? null : () => _abrirEdicaoProduto(item),
+                      podeExcluir: !itemAgrupado && _podeExcluirProduto(item),
+                      onExcluir: itemAgrupado
+                          ? null
+                          : () => _cancelarItemFinalizado(item),
                     );
                   }),
                 ],
@@ -471,25 +569,31 @@ class _PaginaAcompanharPedidoState extends State<PaginaAcompanharPedido>
             child: Icon(_iconeTipo, color: cs.onPrimaryContainer, size: 18),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Detalhes da $_nomeTipo',
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1),
-              ),
-              Text(
-                'Acompanhamento do pedido',
-                style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    color: cs.onSurfaceVariant),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Detalhes da $_nomeTipo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1),
+                ),
+                Text(
+                  'Acompanhamento do pedido',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ],
       ),

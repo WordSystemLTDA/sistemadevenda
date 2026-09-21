@@ -21,6 +21,150 @@ class ServicoFinalizarPagamento {
 
   ServicoFinalizarPagamento(this.dio, this.usuarioProvedor);
 
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        bool finalizou,
+        String idVenda,
+        double totalPago,
+      })> pagarContaAtendimento({
+    required String id,
+    required String idComanda,
+    required String idMesa,
+    required String cliente,
+    required TipoCardapio tipo,
+    required double valorLancamento,
+    required double valorOriginal,
+    required double valorAPagar,
+    required double troco,
+    required int pagamentoSelecionado,
+    required int quantidadePessoas,
+    required DateTime vencimento,
+    required List<Modelowordprodutos> produtosParaFinalizar,
+    required bool modoProdutoParcial,
+    String valorTaxaServico = '0',
+    String valorDesconto = '0',
+    String valorAcrescimo = '0',
+  }) async {
+    if (tipo != TipoCardapio.comanda && tipo != TipoCardapio.mesa) {
+      return (
+        sucesso: false,
+        mensagem: 'Este recebimento é exclusivo para Comanda ou Mesa.',
+        finalizou: false,
+        idVenda: '0',
+        totalPago: 0.0,
+      );
+    }
+
+    final idEmpresa = usuarioProvedor.usuario?.empresa ?? '';
+    final idUsuario = usuarioProvedor.usuario?.id ?? '';
+    if (idEmpresa.isEmpty || idUsuario.isEmpty) {
+      return (
+        sucesso: false,
+        mensagem: 'Entre novamente para finalizar a conta.',
+        finalizou: false,
+        idVenda: '0',
+        totalPago: 0.0,
+      );
+    }
+
+    final produtosParciais = produtosParaFinalizar.map((produto) {
+      final mapa = produto.toMap();
+      mapa['iditensvenda'] = produto.iditensvenda;
+      mapa['valorpago'] = produto.valorPago;
+      mapa['quantidadePessoa'] = modoProdutoParcial ? 1 : 0;
+      return mapa;
+    }).toList();
+    final dataVencimento = '${vencimento.year.toString().padLeft(4, '0')}-'
+        '${vencimento.month.toString().padLeft(2, '0')}-'
+        '${vencimento.day.toString().padLeft(2, '0')}';
+    String moeda(double valor) => valor.toStringAsFixed(2);
+
+    final campos = <String, dynamic>{
+      'id': id,
+      'empresa': idEmpresa,
+      'id_usuario': idUsuario,
+      'cliente': cliente.isEmpty ? '0' : cliente,
+      'valor_lancamento': moeda(valorLancamento),
+      'valor_original': moeda(valorOriginal),
+      'pagamentoSelecionado': pagamentoSelecionado,
+      'quantidadePessoas': quantidadePessoas < 1 ? 1 : quantidadePessoas,
+      'subTotal': moeda(valorAPagar),
+      'dataLancamento': dataVencimento,
+      'parcelas': '1',
+      'parcelasLista': const <dynamic>[],
+      'id_comanda': idComanda.isEmpty ? '0' : idComanda,
+      'id_mesa': idMesa.isEmpty ? '0' : idMesa,
+      'tipo': tipo.nome,
+      'valortroco': moeda(troco),
+      'valor_da_entrega': '0.00',
+      'valordataxadeservico': valorTaxaServico,
+      'valoresProduto': moeda(valorAPagar),
+      'novo': false,
+      'tipodeentrega': '0',
+      'produtos': const <dynamic>[],
+      'produtosParaFinalizar': produtosParciais,
+      'valorAPagarOriginal': moeda(valorAPagar),
+      'valorAPagar': moeda(valorAPagar),
+      'editar_movimentacao': '0',
+      'modoProdutoParcial': modoProdutoParcial,
+      'obs': '',
+      'valordesconto': valorDesconto,
+      'valoracrescimo': valorAcrescimo,
+    };
+
+    try {
+      final response = await dio.cliente.post(
+        '${tipo.nomeSimplificado}/pagar_pedido.php',
+        data: jsonEncode(campos),
+      );
+      if (response.data is! Map) {
+        return (
+          sucesso: false,
+          mensagem: 'O servidor retornou uma resposta inválida.',
+          finalizou: false,
+          idVenda: '0',
+          totalPago: 0.0,
+        );
+      }
+      final jsonData = Map<String, dynamic>.from(response.data as Map);
+      final sucesso = jsonData['sucesso'] == true;
+      final finalizou = jsonData['finalizouPedido']?.toString() == '1';
+      if (sucesso) NotificadorAtualizacao.atendimento(tipo.nome);
+      return (
+        sucesso: sucesso,
+        mensagem: jsonData['mensagem']?.toString() ??
+            (sucesso ? 'Pagamento registrado.' : 'Pagamento não registrado.'),
+        finalizou: finalizou,
+        idVenda: jsonData['idVenda']?.toString() ?? '0',
+        totalPago: double.tryParse(
+                jsonData['somaValorHistorico']?.toString() ?? '0') ??
+            0,
+      );
+    } on DioException catch (erro) {
+      final dados = erro.response?.data;
+      final mensagem = dados is Map ? dados['mensagem']?.toString() : null;
+      return (
+        sucesso: false,
+        mensagem: mensagem?.isNotEmpty == true
+            ? mensagem!
+            : 'Não foi possível confirmar o pagamento. Verifique a conexão e atualize a conta antes de tentar novamente.',
+        finalizou: false,
+        idVenda: '0',
+        totalPago: 0.0,
+      );
+    } catch (_) {
+      return (
+        sucesso: false,
+        mensagem: 'Não foi possível confirmar o pagamento.',
+        finalizou: false,
+        idVenda: '0',
+        totalPago: 0.0,
+      );
+    }
+  }
+
   Future<(bool, String, String)> pagarPedido(
     String id,
     String idComanda,

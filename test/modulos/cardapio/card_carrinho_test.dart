@@ -7,6 +7,8 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:flutter/material.dart';
@@ -196,6 +198,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(nomePizza), findsNWidgets(2));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('detalhes da comanda exibem o mesmo nome da pizza do carrinho',
+      (tester) async {
+    final item = produtoCarrinho()
+      ..nome = 'Pizza de Queijos'
+      ..codigo = '2'
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 10,
+          titulo: 'Sabores Pizza (2)',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Mussarela',
+              codigo: '1',
+              imprimirCodigoProdutoPreparo: 'Sim',
+              valor: '33.50',
+              quantimaximaselecao: '1/2',
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '6',
+              nome: 'Mineira',
+              codigo: '6',
+              imprimirCodigoProdutoPreparo: 'Sim',
+              valor: '33.50',
+              quantimaximaselecao: '1/2',
+            ),
+          ],
+        ),
+      ];
+    const nomePizza = '1 - (1/2) Mussarela\n6 - (1/2) Mineira';
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProdutoAcompanhar(
+          item: item,
+          dados: null,
+          idComanda: '3',
+          idComandaPedido: '138',
+          idMesa: '0',
+          value: '',
+          setarQuantidade: (_) {},
+          tipo: TipoCardapio.comanda,
+        ),
+      ),
+    ));
+
+    expect(find.text(nomePizza), findsOneWidget);
+    expect(find.text('Pizza de Queijos'), findsNothing);
+    expect(tester.widget<Text>(find.text(nomePizza)).maxLines, 2);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('carrinho indica meia borda nos detalhes da pizza',

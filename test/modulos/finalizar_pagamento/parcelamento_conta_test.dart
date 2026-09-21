@@ -48,7 +48,7 @@ class _DeliveryContaTeste extends ServicoDelivery {
   Future<PedidoDelivery> pedido(String id) async => pedidoTeste;
 
   @override
-  Future<void> pagar(
+  Future<Map<String, dynamic>> pagar(
     PedidoDelivery pedido,
     int forma,
     double recebido, {
@@ -56,6 +56,8 @@ class _DeliveryContaTeste extends ServicoDelivery {
     double? valorAPagar,
     double? desconto,
     double? acrescimo,
+    String? chavePagamento,
+    bool confirmarRecorrente = false,
     String? dataLancamento,
     List<ParcelasModelo> parcelasLista = const [],
   }) async {
@@ -64,6 +66,7 @@ class _DeliveryContaTeste extends ServicoDelivery {
     vencimento = dataLancamento;
     parcelas = parcelasLista;
     pagamentos++;
+    return {'sucesso': true, 'finalizouPedido': '1'};
   }
 
   @override

@@ -10,6 +10,8 @@ import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/widgets/badge_valor_oculto.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -18,6 +20,7 @@ import 'package:app/src/modulos/comandas/paginas/pagina_comanda_desocupada.dart'
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/pagina_itens_recorrentes.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -59,6 +62,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   bool _reimprimindoPreparo = false;
   String? erroConsulta;
   bool _fechamentoDiretoExibido = false;
+  bool _permiteFinalizarConta = false;
   String idComanda = '0';
   String idComandaPedido = '0';
   String idMesa = '0';
@@ -73,7 +77,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     idComandaPedido = widget.idComandaPedido ?? '0';
     idMesa = widget.idMesa ?? '0';
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) listarComandasPedidos();
+      if (!mounted) return;
+      listarComandasPedidos();
+      _carregarPermissaoFinalizacao();
     });
   }
 
@@ -95,6 +101,50 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   void _aoReceberEventoSocket() {
     if (!mounted || carregando || _reimprimindoPreparo) return;
     listarComandasPedidos();
+  }
+
+  Future<void> _carregarPermissaoFinalizacao() async {
+    try {
+      final config = await Modular.get<ServicoConfigBigchef>().listar();
+      final permite = widget.tipo == TipoCardapio.mesa
+          ? config?.permiteFinalizarMesa == true
+          : config?.permiteFinalizarComanda == true;
+      if (mounted && permite != _permiteFinalizarConta) {
+        setState(() => _permiteFinalizarConta = permite);
+      }
+    } catch (_) {
+      // Na ausência da configuração, a opção permanece segura e desabilitada.
+    }
+  }
+
+  Future<void> _abrirFinalizacaoConta() async {
+    if (!_permiteFinalizarConta || carregando || dados == null) return;
+    if (AtendimentosLocais.local(idComandaPedido)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text(
+            'Aguarde a sincronização deste atendimento antes de receber a conta.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    final finalizou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PaginaFinalizarContaAtendimento(
+          idAtendimento: idComandaPedido,
+          idComanda: idComanda,
+          idMesa: idMesa,
+          tipo: widget.tipo,
+        ),
+      ),
+    );
+    if (!mounted || finalizou != true) return;
+    _server.write(jsonEncode({'tipo': widget.tipo.nome}));
+    if (widget.tipo == TipoCardapio.mesa) {
+      await provedorMesas.listarMesas('');
+    } else {
+      await provedorComanda.listarComandas('');
+    }
+    if (mounted) Navigator.pop(context, true);
   }
 
   Future<void> listarComandasPedidos() async {
@@ -603,6 +653,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
                 total: dados!.valorTotal ?? '0',
                 onFechar: fechar,
                 onAbrir: abrir,
+                permitirFinalizar: _permiteFinalizarConta,
+                onFinalizar: _abrirFinalizacaoConta,
               ),
             ],
           ),
@@ -753,12 +805,16 @@ class _PainelConta extends StatelessWidget {
   final String total;
   final VoidCallback onFechar;
   final VoidCallback onAbrir;
+  final bool permitirFinalizar;
+  final VoidCallback onFinalizar;
 
   const _PainelConta(
       {required this.emFechamento,
       required this.total,
       required this.onFechar,
-      required this.onAbrir});
+      required this.onAbrir,
+      required this.permitirFinalizar,
+      required this.onFinalizar});
 
   @override
   Widget build(BuildContext context) {
@@ -795,6 +851,29 @@ class _PainelConta extends StatelessWidget {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
+        if (permitirFinalizar) ...[
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            key: const ValueKey('finalizar_conta'),
+            onPressed: onFinalizar,
+            icon: const Icon(Icons.point_of_sale_rounded),
+            label: const Text('Finalizar Conta'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 54),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              textStyle:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Receba por pessoa, por produto ou em várias formas.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+          ),
+        ],
       ]),
     );
   }

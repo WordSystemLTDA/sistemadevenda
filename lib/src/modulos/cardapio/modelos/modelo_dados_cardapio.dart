@@ -70,6 +70,10 @@ class Modeloworddadoscardapio {
   String? nomeMesa;
   String? tipodeentrega;
   String? valorentrega;
+  String? valorTaxaServico;
+  String? valorDesconto;
+  String? valorAcrescimo;
+  int? quantidadePessoas;
 
   Modeloworddadoscardapio({
     this.id,
@@ -106,6 +110,10 @@ class Modeloworddadoscardapio {
     this.nomeMesa,
     this.tipodeentrega,
     this.valorentrega,
+    this.valorTaxaServico,
+    this.valorDesconto,
+    this.valorAcrescimo,
+    this.quantidadePessoas,
   });
 
   Map<String, dynamic> toMap() {
@@ -144,6 +152,10 @@ class Modeloworddadoscardapio {
       'nomeMesa': nomeMesa,
       'tipodeentrega': tipodeentrega,
       'valorentrega': valorentrega,
+      'valortaxadeservico': valorTaxaServico,
+      'valordesconto': valorDesconto,
+      'valoracrescimo': valorAcrescimo,
+      'quantidadepessoas': quantidadePessoas,
     };
   }
 
@@ -185,6 +197,15 @@ class Modeloworddadoscardapio {
       nomeMesa: _textoOpcional(map['nomeMesa']),
       tipodeentrega: _textoOpcional(map['tipodeentrega']),
       valorentrega: _textoOpcional(map['valorentrega']),
+      valorTaxaServico:
+          _textoOpcional(map['valortaxadeservico'] ?? map['valor_da_taxa']),
+      valorDesconto:
+          _textoOpcional(map['valordesconto'] ?? map['valor_desconto']),
+      valorAcrescimo:
+          _textoOpcional(map['valoracrescimo'] ?? map['valor_acrescimo']),
+      quantidadePessoas: int.tryParse(
+          (map['quantidadepessoas'] ?? map['quantidade_pessoa'] ?? '')
+              .toString()),
     );
   }
 

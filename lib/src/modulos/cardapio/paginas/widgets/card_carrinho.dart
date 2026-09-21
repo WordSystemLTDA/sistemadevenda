@@ -10,6 +10,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/modal_editar_observacao
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/titulo_opcoes_carrinho.dart';
+import 'package:app/src/modulos/cardapio/uteis/nome_exibicao_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
@@ -249,7 +250,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                _nomeExibicaoItem(widget.item),
+                                nomeExibicaoProduto(widget.item),
                                 style: const TextStyle(
                                     fontSize: 14.5,
                                     fontWeight: FontWeight.w600),
@@ -338,7 +339,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
-    final nomeExibicao = _nomeExibicaoItem(item);
+    final nomeExibicao = nomeExibicaoProduto(item);
     final opcoesComDetalhes = (item.opcoesPacotesListaFinal ?? [])
         .where((grupo) => !grupoObservacaoProduto(grupo))
         .where(_grupoTemDetalhesVisiveis)
@@ -621,26 +622,6 @@ class _CardCarrinhoState extends State<CardCarrinho>
     );
   }
 
-  String _nomeExibicaoItem(Modelowordprodutos item) {
-    final saboresPizza = (item.opcoesPacotesListaFinal ?? [])
-        .where((opcao) => opcao.id == 10)
-        .firstOrNull
-        ?.dados;
-
-    if (saboresPizza == null || saboresPizza.isEmpty) {
-      return item.nome;
-    }
-
-    final totalSabores = saboresPizza.length;
-    return saboresPizza.map((sabor) {
-      final proporcao = sabor.quantimaximaselecao?.trim();
-      final prefixo = proporcao == null || proporcao.isEmpty
-          ? '1/$totalSabores'
-          : proporcao;
-      return _nomeSaborPizza(sabor, prefixo);
-    }).join('\n');
-  }
-
   String _descricaoOpcaoCarrinho(
     int idOpcao,
     ModeloDadosOpcoesPacotes dado,
@@ -655,7 +636,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     if (idOpcao == 10) {
       final proporcao = dado.quantimaximaselecao?.trim();
       final prefixo = proporcao == null || proporcao.isEmpty ? null : proporcao;
-      return _nomeSaborPizza(dado, prefixo);
+      return nomeSaborPizza(dado, prefixo);
     }
 
     if (idOpcao == 6) {
@@ -663,20 +644,6 @@ class _CardCarrinhoState extends State<CardCarrinho>
     }
 
     return '${dado.quantimaximaselecao != null ? '(${dado.quantimaximaselecao}) ' : dado.quantidade != null ? quantidadeEntreParenteses ? '(${dado.quantidade}x) ' : '${dado.quantidade}x ' : ''}${dado.nome}';
-  }
-
-  String _nomeSaborPizza(ModeloDadosOpcoesPacotes sabor, String? proporcao) {
-    final nome = proporcao == null || proporcao.isEmpty
-        ? sabor.nome
-        : '($proporcao) ${sabor.nome}';
-    final codigo = sabor.codigo?.trim() ?? '';
-
-    if (sabor.imprimirCodigoProdutoPreparo != 'Sim' || codigo.isEmpty) {
-      return nome;
-    }
-
-    final prefixo = '$codigo - ';
-    return nome.startsWith(prefixo) ? nome : '$prefixo$nome';
   }
 }
 
