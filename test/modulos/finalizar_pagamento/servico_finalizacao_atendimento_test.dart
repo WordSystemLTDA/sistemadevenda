@@ -12,11 +12,20 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _AdaptadorPagamento implements HttpClientAdapter {
   final chamadas = <RequestOptions>[];
+  final bool perderPrimeiraResposta;
+
+  _AdaptadorPagamento({this.perderPrimeiraResposta = false});
 
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
+    if (perderPrimeiraResposta && chamadas.length == 1) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+    }
     return ResponseBody.fromString(
       '{"sucesso":true,"mensagem":"ok","finalizouPedido":"0",'
       '"idVenda":"0","somaValorHistorico":"6.00"}',
@@ -89,10 +98,47 @@ void main() {
     final corpo = jsonDecode(chamada.data as String) as Map<String, dynamic>;
     expect(corpo['empresa'], '9');
     expect(corpo['tipo'], 'Comanda');
+    expect(corpo['id_operacao'], matches(RegExp(r'^[a-f0-9]{48}$')));
     expect(corpo['modoProdutoParcial'], isTrue);
     expect(corpo['valor_lancamento'], '6.00');
     expect(corpo['produtosParaFinalizar'], hasLength(1));
     expect(corpo['produtosParaFinalizar'][0]['iditensvenda'], '77');
     expect(corpo['produtosParaFinalizar'][0]['valorpago'], '0');
+  });
+
+  test('resposta perdida repete o mesmo recibo sem duplicar o pagamento',
+      () async {
+    final api = DioCliente(servidor: 'https://servidor.test/api1/');
+    addTearDown(() => api.cliente.close());
+    final adaptador = _AdaptadorPagamento(perderPrimeiraResposta: true);
+    api.cliente.httpClientAdapter = adaptador;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '7', empresa: '9', nome: 'Operador'));
+    addTearDown(usuario.dispose);
+    final servico = ServicoFinalizarPagamento(api, usuario);
+
+    final resultado = await servico.pagarContaAtendimento(
+      id: '139',
+      idComanda: '3',
+      idMesa: '0',
+      cliente: '2',
+      tipo: TipoCardapio.comanda,
+      valorLancamento: 6,
+      valorOriginal: 18,
+      valorAPagar: 6,
+      troco: 0,
+      pagamentoSelecionado: 1,
+      quantidadePessoas: 1,
+      vencimento: DateTime(2026, 9, 21),
+      produtosParaFinalizar: const [],
+      modoProdutoParcial: false,
+    );
+
+    expect(resultado.sucesso, isTrue);
+    expect(adaptador.chamadas, hasLength(2));
+    final primeiro = jsonDecode(adaptador.chamadas.first.data as String) as Map;
+    final segundo = jsonDecode(adaptador.chamadas.last.data as String) as Map;
+    expect(segundo['id_operacao'], primeiro['id_operacao']);
+    expect(segundo, primeiro);
   });
 }

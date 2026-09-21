@@ -12,6 +12,7 @@ import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.
 import 'package:dio/dio.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 
@@ -82,6 +83,7 @@ class ServicoFinalizarPagamento {
     String moeda(double valor) => valor.toStringAsFixed(2);
 
     final campos = <String, dynamic>{
+      'id_operacao': BancoLocal.novoId(),
       'id': id,
       'empresa': idEmpresa,
       'id_usuario': idUsuario,
@@ -114,12 +116,14 @@ class ServicoFinalizarPagamento {
       'valoracrescimo': valorAcrescimo,
     };
 
-    try {
-      final response = await dio.cliente.post(
-        '${tipo.nomeSimplificado}/pagar_pedido.php',
-        data: jsonEncode(campos),
-      );
-      if (response.data is! Map) {
+    ({
+      bool sucesso,
+      String mensagem,
+      bool finalizou,
+      String idVenda,
+      double totalPago,
+    }) interpretarResposta(Object? resposta) {
+      if (resposta is! Map) {
         return (
           sucesso: false,
           mensagem: 'O servidor retornou uma resposta inválida.',
@@ -128,7 +132,7 @@ class ServicoFinalizarPagamento {
           totalPago: 0.0,
         );
       }
-      final jsonData = Map<String, dynamic>.from(response.data as Map);
+      final jsonData = Map<String, dynamic>.from(resposta);
       final sucesso = jsonData['sucesso'] == true;
       final finalizou = jsonData['finalizouPedido']?.toString() == '1';
       if (sucesso) NotificadorAtualizacao.atendimento(tipo.nome);
@@ -142,7 +146,45 @@ class ServicoFinalizarPagamento {
                 jsonData['somaValorHistorico']?.toString() ?? '0') ??
             0,
       );
-    } on DioException catch (erro) {
+    }
+
+    Future<
+        ({
+          bool sucesso,
+          String mensagem,
+          bool finalizou,
+          String idVenda,
+          double totalPago,
+        })> enviar() async {
+      final response = await dio.cliente.post(
+        '${tipo.nomeSimplificado}/pagar_pedido.php',
+        data: jsonEncode(campos),
+      );
+      return interpretarResposta(response.data);
+    }
+
+    try {
+      return await enviar();
+    } on DioException catch (primeiroErro) {
+      var erro = primeiroErro;
+      if (primeiroErro.response == null) {
+        // Repete exatamente a mesma operação. O recibo idempotente no servidor
+        // devolve a resposta original caso o primeiro commit já tenha ocorrido.
+        try {
+          return await enviar();
+        } on DioException catch (segundoErro) {
+          erro = segundoErro;
+        } catch (_) {
+          return (
+            sucesso: false,
+            mensagem:
+                'Não foi possível confirmar o pagamento. Atualize a conta antes de tentar novamente.',
+            finalizou: false,
+            idVenda: '0',
+            totalPago: 0.0,
+          );
+        }
+      }
       final dados = erro.response?.data;
       final mensagem = dados is Map ? dados['mensagem']?.toString() : null;
       return (

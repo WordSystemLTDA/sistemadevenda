@@ -12,6 +12,7 @@ import 'package:app/src/essencial/widgets/badge_valor_oculto.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_acompanhar_pedido.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -60,6 +61,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   Modeloworddadoscardapio? dados;
   bool carregando = false;
   bool _reimprimindoPreparo = false;
+  bool _preparandoFinalizacao = false;
   String? erroConsulta;
   bool _fechamentoDiretoExibido = false;
   bool _permiteFinalizarConta = false;
@@ -118,21 +120,71 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   }
 
   Future<void> _abrirFinalizacaoConta() async {
-    if (!_permiteFinalizarConta || carregando || dados == null) return;
-    if (AtendimentosLocais.local(idComandaPedido)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Aguarde a sincronização deste atendimento antes de receber a conta.'),
-        behavior: SnackBarBehavior.floating,
-      ));
+    if (!_permiteFinalizarConta ||
+        carregando ||
+        _preparandoFinalizacao ||
+        dados == null) {
       return;
     }
+
+    setState(() => _preparandoFinalizacao = true);
+    String idServidor = idComandaPedido;
+    String comandaServidor = idComanda;
+    String mesaServidor = idMesa;
+    try {
+      final sincronizador = Sincronizador.instancia;
+      if (sincronizador != null) {
+        // Tenta enviar alguma alteração real antes da conferência financeira.
+        // Uma abertura já confirmada não fica bloqueada só por usar ID local.
+        await sincronizador.enviarPendentes();
+        idServidor = await AtendimentosLocais(
+          sincronizador.banco,
+          sincronizador.escopo,
+        ).idServidorParaRecebimento(idComandaPedido);
+      } else if (AtendimentosLocais.local(idComandaPedido)) {
+        throw StateError(
+          'Não foi possível identificar este atendimento no servidor. '
+          'Atualize a lista e tente novamente.',
+        );
+      }
+
+      // A tela financeira sempre parte de uma leitura nova do servidor. Isso
+      // evita receber usando total, produtos ou status que ficaram antigos.
+      final atendimentoServidor = await servicoCardapio.listarPorId(
+        idServidor,
+        widget.tipo,
+        'Não',
+      );
+      if (atendimentoServidor.id != idServidor ||
+          !['Andamento', 'Fechamento'].contains(atendimentoServidor.status)) {
+        throw StateError(
+          'Esta conta não está mais aberta para recebimento. Atualize a tela.',
+        );
+      }
+      comandaServidor = atendimentoServidor.idComanda ?? comandaServidor;
+      mesaServidor = atendimentoServidor.idMesa ?? mesaServidor;
+    } on StateError catch (erro) {
+      if (mounted) _mostrarErroFinalizacao(erro.message.toString());
+      return;
+    } catch (_) {
+      if (mounted) {
+        _mostrarErroFinalizacao(
+          'Não foi possível conferir a conta no servidor. '
+          'Nenhum pagamento foi realizado. Verifique a conexão e tente novamente.',
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _preparandoFinalizacao = false);
+    }
+
+    if (!mounted) return;
     final finalizou = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PaginaFinalizarContaAtendimento(
-          idAtendimento: idComandaPedido,
-          idComanda: idComanda,
-          idMesa: idMesa,
+          idAtendimento: idServidor,
+          idComanda: comandaServidor,
+          idMesa: mesaServidor,
           tipo: widget.tipo,
         ),
       ),
@@ -145,6 +197,17 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
       await provedorComanda.listarComandas('');
     }
     if (mounted) Navigator.pop(context, true);
+  }
+
+  void _mostrarErroFinalizacao(String mensagem) {
+    final cs = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(mensagem),
+        backgroundColor: cs.error,
+        behavior: SnackBarBehavior.floating,
+      ));
   }
 
   Future<void> listarComandasPedidos() async {
@@ -654,11 +717,12 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
                 onFechar: fechar,
                 onAbrir: abrir,
                 permitirFinalizar: _permiteFinalizarConta,
+                preparandoFinalizacao: _preparandoFinalizacao,
                 onFinalizar: _abrirFinalizacaoConta,
               ),
             ],
           ),
-          if (carregando || _reimprimindoPreparo)
+          if (carregando || _reimprimindoPreparo || _preparandoFinalizacao)
             Positioned.fill(
               child: ColoredBox(
                 color: cs.scrim.withValues(alpha: 0.4),
@@ -806,6 +870,7 @@ class _PainelConta extends StatelessWidget {
   final VoidCallback onFechar;
   final VoidCallback onAbrir;
   final bool permitirFinalizar;
+  final bool preparandoFinalizacao;
   final VoidCallback onFinalizar;
 
   const _PainelConta(
@@ -814,6 +879,7 @@ class _PainelConta extends StatelessWidget {
       required this.onFechar,
       required this.onAbrir,
       required this.permitirFinalizar,
+      required this.preparandoFinalizacao,
       required this.onFinalizar});
 
   @override
@@ -855,9 +921,16 @@ class _PainelConta extends StatelessWidget {
           const SizedBox(height: 10),
           FilledButton.icon(
             key: const ValueKey('finalizar_conta'),
-            onPressed: onFinalizar,
-            icon: const Icon(Icons.point_of_sale_rounded),
-            label: const Text('Finalizar Conta'),
+            onPressed: preparandoFinalizacao ? null : onFinalizar,
+            icon: preparandoFinalizacao
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.point_of_sale_rounded),
+            label: Text(preparandoFinalizacao
+                ? 'Conferindo conta...'
+                : 'Finalizar Conta'),
             style: FilledButton.styleFrom(
               minimumSize: const Size(0, 54),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

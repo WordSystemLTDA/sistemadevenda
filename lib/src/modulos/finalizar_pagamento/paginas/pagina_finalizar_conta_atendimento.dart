@@ -343,6 +343,9 @@ class _PaginaFinalizarContaAtendimentoState
     setState(() => _pagando = false);
     if (!resultado.sucesso) {
       _mostrarMensagem(resultado.mensagem, erro: true);
+      // Se a conexão caiu depois do commit, a releitura mostra o lançamento
+      // confirmado e impede que o usuário repita um valor já recebido.
+      await _carregar();
       return;
     }
     if (resultado.finalizou) {

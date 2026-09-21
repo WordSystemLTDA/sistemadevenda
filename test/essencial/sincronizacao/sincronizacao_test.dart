@@ -420,6 +420,54 @@ void main() {
   });
 
   test(
+      'recebimento usa id confirmado e bloqueia somente alteracao realmente pendente',
+      () async {
+    final idOperacao = BancoLocal.novoId();
+    final idLocal = 'local:$idOperacao';
+    await banco.db.insert('operacoes', {
+      'id': idOperacao,
+      'escopo': sync.escopo,
+      'atendimento': idLocal,
+      'acao': 'abertura',
+      'estado': 'concluido',
+      'dados': jsonEncode({'tipo': 'comanda', 'id_comanda': '5'}),
+      'impressoes': '[]',
+      'destino': 'cozinha',
+      'criado': 1,
+      'resposta': jsonEncode({'id_comanda_pedido': '139'}),
+    });
+    final locais = AtendimentosLocais(banco, sync.escopo);
+
+    expect(await locais.idServidorParaRecebimento(idLocal), '139');
+
+    final idProduto = BancoLocal.novoId();
+    await banco.db.insert('operacoes', {
+      'id': idProduto,
+      'escopo': sync.escopo,
+      'atendimento': idLocal,
+      'acao': 'produtos',
+      'estado': 'pendente',
+      'dados': '{}',
+      'impressoes': '[]',
+      'destino': 'cozinha',
+      'criado': 2,
+    });
+    await expectLater(
+      locais.idServidorParaRecebimento(idLocal),
+      throwsA(isA<StateError>().having(
+        (erro) => erro.message,
+        'mensagem',
+        contains('ainda não confirmado'),
+      )),
+    );
+
+    // O servidor já confirmou; faltar apenas a impressão local não pode
+    // impedir o recebimento no caixa.
+    await banco.atualizarOperacao(idProduto, {'estado': 'registrado'});
+    expect(await locais.idServidorParaRecebimento(idLocal), '139');
+  });
+
+  test(
       'abertura conflitante preserva itens, nao imprime e arquivar nao libera dependentes',
       () async {
     final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');

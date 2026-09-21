@@ -52,6 +52,37 @@ class AtendimentosLocais {
     return real.toString();
   }
 
+  /// Resolve a identidade confirmada no servidor e impede o recebimento
+  /// somente quando ainda existe uma alteração que pode mudar a conta.
+  ///
+  /// Operações em `registrado` já foram confirmadas pelo servidor e podem
+  /// estar aguardando apenas a impressão local, portanto não bloqueiam o caixa.
+  Future<String> idServidorParaRecebimento(String id) async {
+    final real = await idServidor(id);
+    final atendimentos = <String>{id, real}.toList(growable: false);
+    final marcadores = List.filled(atendimentos.length, '?').join(', ');
+    final operacoes = await banco.db.query(
+      'operacoes',
+      where: 'escopo = ? AND atendimento IN ($marcadores) '
+          "AND estado NOT IN ('concluido', 'arquivado', 'registrado')",
+      whereArgs: [escopo, ...atendimentos],
+      orderBy: 'criado, rowid',
+    );
+    if (operacoes.any((operacao) => operacao['estado'] == 'conflito')) {
+      throw StateError(
+        'Existe uma alteração com conflito neste atendimento. '
+        'Confira as pendências antes de receber a conta.',
+      );
+    }
+    if (operacoes.isNotEmpty) {
+      throw StateError(
+        'Existe um pedido deste atendimento ainda não confirmado pelo servidor. '
+        'Conecte-se e tente novamente antes de receber a conta.',
+      );
+    }
+    return real;
+  }
+
   Future<String> abrir(Map<String, dynamic> dados, String destino) async {
     final operacao = BancoLocal.novoId();
     final id = 'local:$operacao';
