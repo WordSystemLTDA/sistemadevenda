@@ -56,6 +56,8 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
 
 class _PagamentoFinalizacaoFake extends Fake
     implements ServicoFinalizarPagamento {
+  int pagamentos = 0;
+
   @override
   Future<BancosAtivosPdvModelo> listarBancos() async => BancosAtivosPdvModelo(
         idBancoPix: '0',
@@ -79,18 +81,62 @@ class _PagamentoFinalizacaoFake extends Fake
         pixdinamicoopcao4: 'Não',
         pixdinamicoopcao5: 'Não',
       );
+
+  @override
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        bool finalizou,
+        String idVenda,
+        double totalPago,
+      })> pagarContaAtendimento({
+    required String id,
+    required String idComanda,
+    required String idMesa,
+    required String cliente,
+    required TipoCardapio tipo,
+    required double valorLancamento,
+    required double valorOriginal,
+    required double valorAPagar,
+    required double troco,
+    required int pagamentoSelecionado,
+    required int quantidadePessoas,
+    required DateTime vencimento,
+    required List<Modelowordprodutos> produtosParaFinalizar,
+    required bool modoProdutoParcial,
+    String valorTaxaServico = '0',
+    String valorDesconto = '0',
+    String valorAcrescimo = '0',
+  }) async {
+    pagamentos++;
+    return (
+      sucesso: true,
+      mensagem: 'Pagamento registrado.',
+      finalizou: true,
+      idVenda: '900',
+      totalPago: valorAPagar,
+    );
+  }
 }
 
 class _ModuloFinalizacao extends Module {
+  final _PagamentoFinalizacaoFake pagamento;
+  _ModuloFinalizacao(this.pagamento);
+
   @override
   void binds(Injector i) {
     i.addInstance<ServicoCardapio>(_CardapioFinalizacaoFake());
-    i.addInstance<ServicoFinalizarPagamento>(_PagamentoFinalizacaoFake());
+    i.addInstance<ServicoFinalizarPagamento>(pagamento);
   }
 }
 
 void main() {
-  setUp(() => Modular.init(_ModuloFinalizacao()));
+  late _PagamentoFinalizacaoFake pagamento;
+  setUp(() {
+    pagamento = _PagamentoFinalizacaoFake();
+    Modular.init(_ModuloFinalizacao(pagamento));
+  });
   tearDown(Modular.destroy);
 
   Future<void> abrir(WidgetTester tester,
@@ -122,11 +168,13 @@ void main() {
 
     expect(find.text('Finalizar Conta'), findsOneWidget);
     expect(find.textContaining('65,00'), findsWidgets);
+    expect(find.text('Forma de pagamento'), findsNothing);
+    expect(find.text('Adicionar mais produtos'), findsOneWidget);
 
     await tester.tap(find.text('Por pessoa'));
     await tester.pumpAndSettle();
     expect(find.text('Quantidade de pessoas'), findsOneWidget);
-    expect(find.textContaining('Cota atual:'), findsOneWidget);
+    expect(find.textContaining('Valor por pessoa:'), findsOneWidget);
     expect(find.textContaining('22,50'), findsWidgets);
 
     await tester.tap(find.text('Por produtos'));
@@ -138,9 +186,38 @@ void main() {
     await tester.tap(find.text('Água Tônica'));
     await tester.pumpAndSettle();
     expect(find.textContaining('12,00'), findsWidgets);
+    await tester.tap(find.text('Conferir'));
+    await tester.pumpAndSettle();
+    expect(find.text('Conferido'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Movimentos realizados'), 180,
         scrollable: lista.first);
     expect(find.text('Movimentos realizados'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('segue conferencia, ajustes, forma e metodo de pagamento',
+      (tester) async {
+    await abrir(tester, tamanho: const Size(320, 700), escala: 1.5);
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_finalizacao_atendimento')));
+    await tester.pumpAndSettle();
+    expect(find.text('Acréscimo e Descontos'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'tela de ajustes');
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_acrescimos_atendimento')));
+    await tester.pumpAndSettle();
+    expect(find.text('Forma de Pagamento'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'tela de formas');
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_forma_pagamento_atendimento')));
+    await tester.pumpAndSettle();
+    expect(find.text('Método de Pagamento'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: 'tela do método');
+    expect(find.text('Valor recebido'), findsOneWidget);
+    expect(find.text('Finalizar'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -148,6 +225,37 @@ void main() {
       (tester) async {
     await abrir(tester, tamanho: const Size(320, 568), escala: 2);
     expect(find.text('Finalizar Conta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('confirma o movimento somente na ultima tela', (tester) async {
+    await abrir(tester);
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_finalizacao_atendimento')));
+    await tester.pumpAndSettle();
+    expect(pagamento.pagamentos, 0);
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_acrescimos_atendimento')));
+    await tester.pumpAndSettle();
+    expect(pagamento.pagamentos, 0);
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar_forma_pagamento_atendimento')));
+    await tester.pumpAndSettle();
+    expect(pagamento.pagamentos, 0);
+
+    await tester
+        .tap(find.byKey(const ValueKey('finalizar_pagamento_atendimento')));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirmar recebimento'), findsOneWidget);
+    expect(pagamento.pagamentos, 0);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Confirmar'));
+    await tester.pumpAndSettle();
+    expect(pagamento.pagamentos, 1);
+    expect(find.text('Conta finalizada'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

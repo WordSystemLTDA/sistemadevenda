@@ -1,5 +1,7 @@
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
+import 'package:app/src/modulos/finalizar_pagamento/modelos/fluxo_finalizacao_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/uteis/calculo_finalizacao_atendimento.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -57,6 +59,29 @@ void main() {
     expect(numeroMonetario('R\$ 1.234,56'), 1234.56);
     expect(numeroMonetario('1234.56'), 1234.56);
     expect(saldoEmCentavos(total: '85.00', pago: '18,50'), 6650);
+  });
+
+  test('recalcula saldo e parcela depois de acrescimos e descontos', () {
+    final fluxo = FluxoFinalizacaoAtendimento(
+      idAtendimento: '10',
+      idComanda: '2',
+      idMesa: '0',
+      idCliente: '1',
+      titulo: 'Comanda: 2',
+      tipo: TipoCardapio.comanda,
+      modo: ModoRecebimentoAtendimento.porPessoa,
+      quantidadePessoas: 3,
+      produtosSelecionados: const [],
+      valorBaseCentavos: 10000,
+      valorPagoCentavos: 3000,
+      valorDescontoCentavos: 0,
+      valorAcrescimoCentavos: 0,
+      valorTaxaServico: '0',
+    ).comAjustes(descontoCentavos: 1000, acrescimoCentavos: 500);
+
+    expect(fluxo.valorTotalCentavos, 9500);
+    expect(fluxo.saldoCentavos, 6500);
+    expect(fluxo.valorPagamentoCentavos, 166);
   });
 
   test('permissoes de mesa e comanda sao independentes e seguras por padrao',

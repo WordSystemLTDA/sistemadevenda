@@ -64,6 +64,7 @@ class PaginaCardapio extends StatefulWidget {
   final String? idCliente;
   final String? tipodeentrega;
   final String? nomeAtendimento;
+  final bool retornarParaFinalizacao;
 
   const PaginaCardapio({
     super.key,
@@ -74,6 +75,7 @@ class PaginaCardapio extends StatefulWidget {
     this.idCliente,
     this.tipodeentrega,
     this.nomeAtendimento,
+    this.retornarParaFinalizacao = false,
   });
 
   @override
@@ -293,7 +295,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
             contextoVoz: esperado,
             assinaturaVoz: jsonEncode([item.toMap()]),
             servidorVoz: servidor,
-            usuarioVoz: usuario?.id),
+            usuarioVoz: usuario?.id,
+            retornarParaFinalizacao: widget.retornarParaFinalizacao),
       ));
     } catch (erro) {
       if (mounted) {
@@ -441,7 +444,10 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                         onPressed: () {
                           if (_carregandoDados) return;
                           Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const PaginaCarrinho(),
+                            builder: (context) => PaginaCarrinho(
+                              retornarParaFinalizacao:
+                                  widget.retornarParaFinalizacao,
+                            ),
                           ));
                         },
                       ),

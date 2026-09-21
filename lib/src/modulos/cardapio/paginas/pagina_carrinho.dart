@@ -32,12 +32,14 @@ import 'package:flutter_modular/flutter_modular.dart';
 class PaginaCarrinho extends StatefulWidget {
   final ContextoCarrinho? contextoVoz;
   final String? assinaturaVoz, servidorVoz, usuarioVoz;
+  final bool retornarParaFinalizacao;
   const PaginaCarrinho(
       {super.key,
       this.contextoVoz,
       this.assinaturaVoz,
       this.servidorVoz,
-      this.usuarioVoz});
+      this.usuarioVoz,
+      this.retornarParaFinalizacao = false});
 
   @override
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
@@ -348,10 +350,20 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         setState(() => isLoading = false);
         await WidgetsBinding.instance.endOfFrame;
         if (!mounted) return;
-        Navigator.popUntil(
+        if (widget.retornarParaFinalizacao) {
+          Navigator.popUntil(
             context,
-            ModalRoute.withName(
-                tipo == TipoCardapio.mesa ? 'PaginaMesas' : 'PaginaComandas'));
+            (route) =>
+                route.settings.name == 'PaginaFinalizarContaAtendimento' ||
+                route.isFirst,
+          );
+        } else {
+          Navigator.popUntil(
+              context,
+              ModalRoute.withName(tipo == TipoCardapio.mesa
+                  ? 'PaginaMesas'
+                  : 'PaginaComandas'));
+        }
       }
     } catch (erro) {
       if (mounted) {

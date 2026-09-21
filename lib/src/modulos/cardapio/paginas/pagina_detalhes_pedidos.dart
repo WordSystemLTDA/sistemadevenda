@@ -181,6 +181,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     if (!mounted) return;
     final finalizou = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'PaginaFinalizarContaAtendimento'),
         builder: (_) => PaginaFinalizarContaAtendimento(
           idAtendimento: idServidor,
           idComanda: comandaServidor,
