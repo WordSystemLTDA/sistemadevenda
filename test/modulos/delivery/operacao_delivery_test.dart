@@ -250,6 +250,12 @@ void main() {
                     child: const Text('Cancelar venda'))))));
     await tester.tap(find.text('Cancelar venda'));
     await tester.pumpAndSettle();
+    expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .focusNode
+            .hasFocus,
+        isTrue);
     expect(tester.widget<TextField>(find.byType(TextField).first).obscureText,
         isTrue);
     await tester.tap(find.byTooltip('Mostrar senha'));

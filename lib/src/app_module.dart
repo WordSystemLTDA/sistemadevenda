@@ -23,6 +23,8 @@ import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finaliza
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/servicos/servicos_itens_recorrentes.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servico_automaticos_recorrentes.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
@@ -76,6 +78,10 @@ class AppModule extends Module {
     // Itens Recorrentes
     i.addSingleton(ProvedorItensRecorrentes.new);
     i.add(ServicosItensRecorrentes.new);
+
+    // Pedidos recorrentes
+    i.addSingleton(ServicosRecorrentes.new);
+    i.addSingleton(ServicoAutomaticosRecorrentes.new);
 
     // Cardapio
     i.add<ServicoCardapio>(ServicoCardapio.new);

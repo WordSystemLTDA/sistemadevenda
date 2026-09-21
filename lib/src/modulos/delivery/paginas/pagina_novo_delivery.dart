@@ -315,7 +315,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
                     id: id,
                     idCliente: _cliente,
                     tipodeentrega: _tipo,
-                    nomeAtendimento: 'Delivery #$id',
+                    nomeAtendimento: widget.recorrente
+                        ? 'Modelo recorrente'
+                        : 'Delivery #$id',
+                    modeloRecorrente: widget.recorrente,
                   )));
     } catch (e) {
       if (mounted) {

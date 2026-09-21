@@ -7,7 +7,14 @@ class ProvedorRecorrentes extends ChangeNotifier {
   ProvedorRecorrentes(this.servico);
   List<ModeloRecorrente> itens = [];
   DateTime data = DateUtilsRecorrentes.hoje();
-  String visao = 'semana';
+  String visao = 'dia';
+  int get diasPeriodo => visao == 'mes'
+      ? 30
+      : visao == 'semana'
+          ? 7
+          : 1;
+  DateTime get dataFinal =>
+      DateTime(data.year, data.month, data.day + diasPeriodo - 1);
   String pesquisa = '';
   String? erro;
   bool carregando = false;
@@ -34,14 +41,7 @@ class ProvedorRecorrentes extends ChangeNotifier {
     erro = null;
     notifyListeners();
     try {
-      final lista = await servico.listar(
-          data,
-          data.add(Duration(
-              days: visao == 'mes'
-                  ? 29
-                  : visao == 'semana'
-                      ? 6
-                      : 0)),
+      final lista = await servico.listar(data, dataFinal,
           cadastros: visao == 'cadastros');
       if (_descartado || consulta != _consulta) return;
       itens = lista;

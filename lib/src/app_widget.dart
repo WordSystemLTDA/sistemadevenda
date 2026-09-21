@@ -1,6 +1,7 @@
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
+import 'package:app/src/modulos/recorrentes/servicos/servico_automaticos_recorrentes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
@@ -8,8 +9,34 @@ import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 UsuarioProvedor usuarioProvedor = Modular.get<UsuarioProvedor>();
 GlobalKey<NavigatorState>? navigatorKey = GlobalKey<NavigatorState>();
 
-class AppWidget extends StatelessWidget {
+class AppWidget extends StatefulWidget {
   const AppWidget({super.key});
+
+  @override
+  State<AppWidget> createState() => _AppWidgetState();
+}
+
+class _AppWidgetState extends State<AppWidget> {
+  ServicoAutomaticosRecorrentes? _automaticosRecorrentes;
+
+  @override
+  void initState() {
+    super.initState();
+    // Alguns testes montam o widget com um módulo mínimo. No aplicativo real
+    // o serviço está registrado e permanece ativo durante toda a sessão.
+    try {
+      _automaticosRecorrentes = Modular.get<ServicoAutomaticosRecorrentes>()
+        ..iniciar();
+    } catch (_) {
+      _automaticosRecorrentes = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _automaticosRecorrentes?.encerrar();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
