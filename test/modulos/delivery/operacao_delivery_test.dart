@@ -56,7 +56,11 @@ class ServicoNovoEnderecoTeste extends ServicoEnderecoPadraoTeste {
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     final resposta = await super.salvar(rota, campos);
-    if (rota == 'clientes/inserir_endereco.php' && campos['id'] == '') {
+    if (rota == 'clientes/inserir_endereco.php' && campos['id'] != '') {
+      final endereco =
+          enderecos.where((e) => '${e['id']}' == '${campos['id']}').firstOrNull;
+      if (endereco != null) endereco['padrao'] = campos['padrao'];
+    } else if (rota == 'clientes/inserir_endereco.php' && campos['id'] == '') {
       if (campos['padrao'] == 'Sim' && campos['substituirPadrao'] == true) {
         for (final endereco in enderecos) {
           endereco['padrao'] = 'Não';
@@ -458,8 +462,11 @@ void main() {
     await tester.tap(find.text('Sim, alterar'));
     await tester.pumpAndSettle();
 
-    expect(s.gravacoes.single.$2['padrao'], 'Sim');
-    expect(s.gravacoes.single.$2['substituirPadrao'], isTrue);
+    expect(s.gravacoes, hasLength(2));
+    expect(s.gravacoes.first.$2['id'], '10');
+    expect(s.gravacoes.first.$2['padrao'], 'Não');
+    expect(s.gravacoes.last.$2['padrao'], 'Sim');
+    expect(s.gravacoes.last.$2['substituirPadrao'], isTrue);
     expect(s.enderecos.first['padrao'], 'Não');
     expect(s.enderecos.last['padrao'], 'Sim');
     expect(s.enderecos.where((endereco) => endereco['padrao'] == 'Sim'),

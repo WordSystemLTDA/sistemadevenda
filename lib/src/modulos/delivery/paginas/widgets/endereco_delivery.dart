@@ -28,6 +28,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
   };
   bool _salvando = false, _padrao = false, _carregandoPadrao = true;
   bool _temOutroEnderecoPadrao = false;
+  List<Map<String, dynamic>> _outrosEnderecosPadrao = [];
   bool _bloquearCidade = false, _enderecoObrigatorio = true;
   String? _erro;
 
@@ -64,7 +65,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
 
   Future<void> _carregarPadraoEndereco() async {
     ConfiguracaoEnderecoCliente? configuracao;
-    bool? temOutroEnderecoPadrao;
+    List<Map<String, dynamic>>? outrosEnderecosPadrao;
     try {
       final resposta =
           await widget.servico.consultar('config_clientes/listar_cliente.php');
@@ -74,7 +75,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     }
 
     try {
-      temOutroEnderecoPadrao = await _clienteTemOutroEnderecoPadrao();
+      outrosEnderecosPadrao = await _buscarOutrosEnderecosPadrao();
     } catch (_) {
       // Se a consulta falhar, mantem a escolha manual do usuario.
     } finally {
@@ -87,17 +88,18 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             _bloquearCidade = configuracao.bloquearCidade;
             _enderecoObrigatorio = configuracao.enderecoObrigatorio;
           }
-          if (temOutroEnderecoPadrao != null) {
-            _temOutroEnderecoPadrao = temOutroEnderecoPadrao;
+          if (outrosEnderecosPadrao != null) {
+            _outrosEnderecosPadrao = outrosEnderecosPadrao;
+            _temOutroEnderecoPadrao = outrosEnderecosPadrao.isNotEmpty;
           }
-          if (temOutroEnderecoPadrao == false) _padrao = true;
+          if (outrosEnderecosPadrao?.isEmpty == true) _padrao = true;
           _carregandoPadrao = false;
         });
       }
     }
   }
 
-  Future<bool> _clienteTemOutroEnderecoPadrao() async {
+  Future<List<Map<String, dynamic>>> _buscarOutrosEnderecosPadrao() async {
     final resposta = await widget.servico
         .consultar('enderecos_clientes/listar_por_cliente.php', {
       'cliente': widget.cliente,
@@ -105,11 +107,13 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     });
     final enderecos = resposta is List ? resposta : const [];
     final idAtual = widget.endereco?['id']?.toString().trim() ?? '';
-    return enderecos.any((endereco) {
-      if (endereco is! Map) return false;
-      final idEndereco = endereco['id']?.toString().trim() ?? '';
-      return idEndereco != idAtual && _ehPadrao(endereco['padrao']);
-    });
+    return [
+      for (final endereco in enderecos)
+        if (endereco is Map &&
+            (endereco['id']?.toString().trim() ?? '') != idAtual &&
+            _ehPadrao(endereco['padrao']))
+          Map<String, dynamic>.from(endereco)
+    ];
   }
 
   Future<bool> _confirmarTrocaEnderecoPadrao() async {
@@ -162,6 +166,24 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     controller.text = campo == 'uf' ? valor.toUpperCase() : valor;
   }
 
+  Future<void> _salvarEnderecoExistenteComoNaoPadrao(
+      Map<String, dynamic> endereco) async {
+    await widget.servico.salvar('clientes/inserir_endereco.php', {
+      'cep': _valor(endereco, ['cep']),
+      'endereco': _valor(endereco, ['endereco']),
+      'numero': _valor(endereco, ['numero']),
+      'bairro': _valor(endereco, ['bairro']),
+      'complemento': _valor(endereco, ['complemento']),
+      'cidade': _valor(endereco, ['cidade']),
+      'uf': _valor(endereco, ['estado', 'uf']).toUpperCase(),
+      'id': endereco['id']?.toString() ?? '',
+      'idCliente': widget.cliente,
+      'padrao': 'Não',
+      'substituirPadrao': false,
+      'podeInserirNovaCidade': false,
+    });
+  }
+
   Future<void> _salvar() async {
     if (_salvando || _carregandoPadrao || !_form.currentState!.validate()) {
       return;
@@ -180,6 +202,11 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       _erro = null;
     });
     try {
+      if (substituirPadrao) {
+        for (final endereco in _outrosEnderecosPadrao) {
+          await _salvarEnderecoExistenteComoNaoPadrao(endereco);
+        }
+      }
       await widget.servico.salvar('clientes/inserir_endereco.php', {
         for (final e in _campos.entries) e.key: e.value.text.trim(),
         'uf': _campos['uf']!.text.trim().toUpperCase(),
