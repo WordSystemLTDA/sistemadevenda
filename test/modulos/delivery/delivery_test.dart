@@ -387,8 +387,9 @@ void main() {
     final pedido = pedidoTeste(campos: {
       'enderecoCliente': 'Rua selecionada',
       'numeroCliente': '133',
-      'complementoCliente': '',
-      'bairroCliente': 'Lobato',
+      'complementoCliente': 'Fundos',
+      'bairroCliente': 'Centro',
+      'cidadeCliente': 'Lobato',
     }).comEndereco(Modeloworddadoscardapio(
         enderecoCliente: 'Rua padrao incorreta',
         numeroCliente: '169',
@@ -404,12 +405,30 @@ void main() {
     expect(json['tipoImpressao'], '3');
     expect(json['enderecoCliente'], 'Rua selecionada');
     expect(json['numeroCliente'], '133');
-    expect(json['complementoCliente'], isEmpty);
-    expect(json['bairroCliente'], 'Lobato');
+    expect(json['complementoCliente'], 'Fundos');
+    expect(json['bairroCliente'], 'Centro');
+    expect(json['cidadeCliente'], 'Lobato');
     expect(json['nomedopc'], 'CAIXA');
     expect(json['numeroPedido'], '14');
     expect(json['comanda'], 'Delivery 25');
     expect(json['protocoloImpressao'], 2);
+  });
+  test('endereco do comprovante mantem os campos separados e sem espacos', () {
+    final pedido = pedidoTeste(campos: {
+      'enderecoCliente': '  Rua Sem Saida  ',
+      'numeroCliente': ' 133 ',
+      'bairroCliente': ' Centro ',
+      'complementoCliente': ' Fundos ',
+      'cidadeCliente': ' Lobato ',
+    });
+
+    expect(ImpressaoDelivery.camposEnderecoComprovante(pedido), {
+      'enderecoCliente': 'Rua Sem Saida',
+      'numeroCliente': '133',
+      'bairroCliente': 'Centro',
+      'complementoCliente': 'Fundos',
+      'cidadeCliente': 'Lobato',
+    });
   });
   test('comprovante aceita endereco do cardapio como fallback', () {
     final pedido = pedidoTeste(campos: {
