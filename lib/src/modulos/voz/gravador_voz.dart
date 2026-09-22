@@ -56,7 +56,8 @@ class GravadorVoz {
   }
 
   Future<void> aguardarFimDaFala(
-      {Duration limite = const Duration(seconds: 12)}) async {
+      {Duration limite = const Duration(seconds: 12),
+      Future<void>? pararSolicitado}) async {
     final gravador = _gravador;
     if (gravador == null || _encerrado) {
       throw const FalhaPedidoVoz('O microfone nao esta gravando.');
@@ -91,7 +92,11 @@ class GravadorVoz {
       },
     );
     try {
-      await Future.any([fim.future, Future<void>.delayed(limite)]);
+      await Future.any([
+        fim.future,
+        Future<void>.delayed(limite),
+        if (pararSolicitado != null) pararSolicitado,
+      ]);
     } finally {
       await amplitude.cancel();
     }

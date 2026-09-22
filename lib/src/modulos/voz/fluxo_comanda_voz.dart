@@ -17,14 +17,19 @@ Future<String?> abrirComandaVoz(
   required ProvedorCarrinho carrinho,
   required ProvedorCardapio cardapio,
   required UsuarioProvedor usuario,
+  Future<void>? pararSolicitado,
+  VoidCallback? aoParar,
+  VoidCallback? aoIniciarGravacao,
+  VoidCallback? aoEncerrarGravacao,
 }) async {
   FocusManager.instance.primaryFocus?.unfocus();
   final esperado = carrinho.contexto;
   final identidade = usuario.usuario;
   ServicoPedidoVoz? servico;
   GravadorVoz? gravador;
+  var gravando = false;
 
-  void status(String mensagem, {bool erro = false}) {
+  void status(String mensagem, {bool erro = false, VoidCallback? acaoParar}) {
     if (!context.mounted) return;
     final mensageiro = ScaffoldMessenger.of(context);
     mensageiro.hideCurrentSnackBar();
@@ -39,7 +44,10 @@ Future<String?> abrirComandaVoz(
         ],
         Expanded(child: Text(mensagem)),
       ]),
-      showCloseIcon: erro,
+      showCloseIcon: erro && acaoParar == null,
+      action: acaoParar == null
+          ? null
+          : SnackBarAction(label: 'Parar', onPressed: acaoParar),
     ));
   }
 
@@ -61,18 +69,27 @@ Future<String?> abrirComandaVoz(
 
     servico = ServicoPedidoVoz(servidor: servidor, usuario: usuario);
     gravador = GravadorVoz();
-    status('Ouvindo em $atendimento... Fale o produto.');
+    status('Preparando o microfone...');
     await gravador.iniciar();
+    gravando = true;
+    aoIniciarGravacao?.call();
+    status('Ouvindo em $atendimento... Fale e toque em Parar.',
+        acaoParar: aoParar);
 
     late String caminho;
     await Future.wait([
       () async {
-        await gravador!.aguardarFimDaFala();
+        try {
+          await gravador!.aguardarFimDaFala(pararSolicitado: pararSolicitado);
+        } finally {
+          gravando = false;
+          aoEncerrarGravacao?.call();
+        }
         caminho = await gravador!.concluir();
+        status('Entendendo o comando...');
       }(),
       servico.verificar(),
     ]);
-    status('Entendendo o comando...');
 
     final resultado = await servico.interpretarLote(
       caminho: caminho,
@@ -122,6 +139,7 @@ Future<String?> abrirComandaVoz(
             : 'Não foi possível concluir o comando de voz. Confira a conexão.',
         erro: true);
   } finally {
+    if (gravando) aoEncerrarGravacao?.call();
     await gravador?.dispose();
     servico?.dispose();
   }

@@ -15,7 +15,9 @@ class TabCustom extends StatefulWidget {
   final bool finalizar;
   final FavoritosProdutos? favoritos;
   final VoidCallback? onPedidoVoz;
+  final VoidCallback? onPararVoz;
   final bool vozOcupada;
+  final bool vozGravando;
   final String? pesquisaVoz;
   final int pesquisaVozVersao;
   final bool modeloRecorrente;
@@ -27,7 +29,9 @@ class TabCustom extends StatefulWidget {
     required this.finalizar,
     this.favoritos,
     this.onPedidoVoz,
+    this.onPararVoz,
     this.vozOcupada = false,
+    this.vozGravando = false,
     this.pesquisaVoz,
     this.pesquisaVozVersao = 0,
     this.modeloRecorrente = false,
@@ -205,15 +209,26 @@ class _TabCustomState extends State<TabCustom>
                     const SizedBox(width: 4),
                     IconButton.filledTonal(
                       key: const ValueKey('pedido_por_voz'),
-                      tooltip: 'Pedido por voz',
-                      style:
-                          IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                      onPressed: widget.vozOcupada ? null : widget.onPedidoVoz,
-                      icon: widget.vozOcupada
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.mic_rounded),
+                      tooltip: widget.vozGravando
+                          ? 'Parar gravação'
+                          : 'Pedido por voz',
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                        foregroundColor: widget.vozGravando ? cs.error : null,
+                      ),
+                      onPressed: widget.vozGravando
+                          ? widget.onPararVoz
+                          : widget.vozOcupada
+                              ? null
+                              : widget.onPedidoVoz,
+                      icon: widget.vozGravando
+                          ? const Icon(Icons.stop_circle_outlined)
+                          : widget.vozOcupada
+                              ? const SizedBox.square(
+                                  dimension: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.mic_rounded),
                     ),
                   ],
                 ],

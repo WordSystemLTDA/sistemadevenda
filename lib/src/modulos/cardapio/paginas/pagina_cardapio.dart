@@ -93,6 +93,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   bool finalizar = false;
   bool _carregandoDados = false;
   bool _vozAberta = false;
+  bool _gravandoVoz = false;
+  Completer<void>? _paradaManualVoz;
   bool _vozDisponivel = false;
   String? _termoPesquisaVoz;
   String? _categoriaPesquisaVoz;
@@ -116,6 +118,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   @override
   void dispose() {
+    final paradaVoz = _paradaManualVoz;
+    if (paradaVoz != null && !paradaVoz.isCompleted) paradaVoz.complete();
     WidgetsBinding.instance.removeObserver(this);
     _favoritos.dispose();
     _sincronizador?.revisaoCatalogo.removeListener(_atualizarCategorias);
@@ -236,13 +240,30 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   Future<void> _pedidoVoz() async {
     if (!_vozDisponivel || _vozAberta) return;
-    setState(() => _vozAberta = true);
+    final paradaManual = Completer<void>();
+    _paradaManualVoz = paradaManual;
+    setState(() {
+      _vozAberta = true;
+      _gravandoVoz = false;
+    });
     try {
-      final termo = await abrirComandaVoz(context,
-          atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
-          carrinho: carrinhoProvedor,
-          cardapio: provedor,
-          usuario: provedor.usuarioProvedor);
+      final termo = await abrirComandaVoz(
+        context,
+        atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
+        carrinho: carrinhoProvedor,
+        cardapio: provedor,
+        usuario: provedor.usuarioProvedor,
+        pararSolicitado: paradaManual.future,
+        aoParar: _pararGravacaoVoz,
+        aoIniciarGravacao: () {
+          if (mounted) setState(() => _gravandoVoz = true);
+        },
+        aoEncerrarGravacao: () {
+          if (mounted && _gravandoVoz) {
+            setState(() => _gravandoVoz = false);
+          }
+        },
+      );
       if (!mounted || termo == null || termo.trim().isEmpty) return;
       final indiceTodos = _categorias.indexWhere((item) => item.id == '0');
       final indice = indiceTodos >= 0 ? indiceTodos : indexTabBar;
@@ -253,8 +274,21 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       });
       _tabController?.animateTo(indice);
     } finally {
-      if (mounted) setState(() => _vozAberta = false);
+      _paradaManualVoz = null;
+      if (mounted) {
+        setState(() {
+          _vozAberta = false;
+          _gravandoVoz = false;
+        });
+      }
     }
+  }
+
+  void _pararGravacaoVoz() {
+    final parada = _paradaManualVoz;
+    if (!_gravandoVoz || parada == null || parada.isCompleted) return;
+    parada.complete();
+    if (mounted) setState(() => _gravandoVoz = false);
   }
 
   @override
@@ -435,7 +469,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                                   widget.modeloRecorrente || !_vozDisponivel
                                       ? null
                                       : _pedidoVoz,
+                              onPararVoz: _pararGravacaoVoz,
                               vozOcupada: _vozAberta,
+                              vozGravando: _gravandoVoz,
                               pesquisaVoz: categoria.id == _categoriaPesquisaVoz
                                   ? _termoPesquisaVoz
                                   : null,
