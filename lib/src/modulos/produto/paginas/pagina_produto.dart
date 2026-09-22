@@ -237,7 +237,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       if (!mounted) return;
       itemProduto = value;
       if (value != null) {
-        value.idCategoriaCardapio ??= widget.produto.idCategoriaCardapio;
+        if (!_idCardapioValido(value.idCategoriaCardapio) &&
+            _idCardapioValido(widget.produto.idCategoriaCardapio)) {
+          value.idCategoriaCardapio = widget.produto.idCategoriaCardapio;
+        }
         if (_idCardapioValido(value.idCategoriaCardapio) &&
             !(value.opcoesPacotes?.any(_grupoMontagemCardapio) ?? false)) {
           itemProduto = null;

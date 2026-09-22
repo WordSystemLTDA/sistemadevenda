@@ -31,8 +31,9 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
       ..['id_categoria_cardapio'] = null
       ..['opcoesPacotes'] = [desktopAntigo['opcoesPacotes'][1]];
 
-    if (caminho
-        .endsWith('/api_restaurantes_venda/api1/produtos/listar_por_id.php')) {
+    if (RegExp(
+            r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_id\.php$')
+        .hasMatch(caminho)) {
       return _json(quebrado);
     }
     if (caminho
@@ -145,5 +146,34 @@ void main() {
     ]);
     expect(adapter.chamadas[0].uri.queryParameters['modelo_recorrente'], 'Sim');
     expect(adapter.chamadas[1].uri.queryParameters['modelo_recorrente'], 'Sim');
+  });
+
+  test('api37 local tambem recupera a montagem pelo endpoint desktop',
+      () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    almoco['id'] = '151';
+    almoco['codigo'] = '151';
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api37/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco);
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    addTearDown(usuario.dispose);
+
+    final produto = await ServicoProduto(api, usuario).listarPorId('151', '0');
+
+    expect(produto!.idCategoriaCardapio, '3');
+    expect(produto.opcoesPacotes!.first.tipo, 8);
+    expect(produto.opcoesPacotes!.first.dados!.map((item) => item.nome),
+        ['Arroz', 'Carne de Panela', 'Feijão']);
+    expect(adapter.chamadas.map((e) => e.uri.path).take(2), [
+      '/sistema/apis_restaurantes/api_restaurantes_venda/api37/produtos/listar_por_id.php',
+      '/sistema/apis_restaurantes/api_desktop/1.0.01/produtos/listar_por_categoria.php',
+    ]);
   });
 }

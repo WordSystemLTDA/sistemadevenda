@@ -290,17 +290,11 @@ class ServicoProduto {
   String? _baseDesktop(String baseGarcom) {
     if (baseGarcom.isEmpty) return null;
     final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
-    final local = normalizada.replaceFirst(
-      '/api_restaurantes_venda/api1/',
+    final desktop = normalizada.replaceFirst(
+      RegExp(r'/api_restaurantes_venda/api(?:1|6|37)/'),
       '/api_desktop/1.0.01/',
     );
-    if (local != normalizada) return local;
-
-    final online = normalizada.replaceFirst(
-      '/api_restaurantes_venda/api6/',
-      '/api_desktop/1.0.01/',
-    );
-    return online == normalizada ? null : online;
+    return desktop == normalizada ? null : desktop;
   }
 
   Future<Modelowordprodutos?> _buscarProdutoDesktop(
