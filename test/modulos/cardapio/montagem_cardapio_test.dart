@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -32,6 +33,21 @@ void main() {
           diaSemana: 'quinta',
         ),
       ];
+
+  test('configuracao le o valor da embalagem separada', () {
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'valorembalagemseparada': '5.50',
+      }).valorembalagemseparada,
+      '5.50',
+    );
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'valor_embalagem_separada': '4.25',
+      }).valorembalagemseparada,
+      '4.25',
+    );
+  });
 
   test(
       'montagem inicia normal, aplica alteracoes e reabre pelas escolhas salvas',
