@@ -11,6 +11,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto_acompanhar
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -320,6 +321,10 @@ void main() {
 
   testWidgets('carrinho exibe montagem do cardapio para conferencia',
       (tester) async {
+    tester.view.physicalSize = const Size(800, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
         UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
     addTearDown(carrinho.dispose);
@@ -327,7 +332,7 @@ void main() {
     final item = produtoCarrinho()
       ..nome = 'Almoço Livre'
       ..codigo = '151'
-      ..valorVenda = '45.00'
+      ..valorVenda = '50.00'
       ..idCategoriaCardapio = '9'
       ..observacao = 'Tirar a Cebola'
       ..opcoesPacotesListaFinal = [
@@ -339,12 +344,14 @@ void main() {
           dados: [
             ModeloDadosOpcoesPacotes(
               id: '1',
-              nome: 'Arroz',
-              valor: '0',
+              nome: 'Arroz (SEPARADO)',
+              valor: '5.00',
               idCategoriaCardapio: '9',
               montagemCardapio: const MontagemIngredienteCardapio(
                 nomeOriginal: 'Arroz',
                 acao: AcaoIngredienteCardapio.normal,
+                separado: true,
+                valorEmbalagemSeparada: '5.00',
               ),
             ),
             ModeloDadosOpcoesPacotes(
@@ -400,7 +407,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cardápio:'), findsOneWidget);
-    expect(find.text('Arroz'), findsNothing);
+    expect(find.text('Arroz'), findsOneWidget);
+    expect(find.text('Embalar separado'), findsOneWidget);
+    expect(find.text(5.0.obterReal()), findsOneWidget);
     expect(find.text('Salada'), findsOneWidget);
     expect(find.text('Sem'), findsOneWidget);
     expect(find.text('Carne de Panela'), findsOneWidget);

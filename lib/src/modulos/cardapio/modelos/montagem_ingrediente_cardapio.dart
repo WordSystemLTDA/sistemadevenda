@@ -24,6 +24,7 @@ class MontagemIngredienteCardapio {
   final String? destinoTipo;
   final int quantidadeTroca;
   final bool separado;
+  final String valorEmbalagemSeparada;
 
   const MontagemIngredienteCardapio({
     required this.nomeOriginal,
@@ -33,6 +34,7 @@ class MontagemIngredienteCardapio {
     this.destinoTipo,
     this.quantidadeTroca = 1,
     this.separado = false,
+    this.valorEmbalagemSeparada = '0.00',
   });
 
   bool get possuiAlteracao =>
@@ -103,6 +105,7 @@ class MontagemIngredienteCardapio {
     String? destinoTipo,
     int? quantidadeTroca,
     bool? separado,
+    String? valorEmbalagemSeparada,
     bool limparDestino = false,
   }) {
     return MontagemIngredienteCardapio(
@@ -113,6 +116,8 @@ class MontagemIngredienteCardapio {
       destinoTipo: limparDestino ? null : destinoTipo ?? this.destinoTipo,
       quantidadeTroca: quantidadeTroca ?? this.quantidadeTroca,
       separado: separado ?? this.separado,
+      valorEmbalagemSeparada:
+          valorEmbalagemSeparada ?? this.valorEmbalagemSeparada,
     );
   }
 
@@ -158,6 +163,7 @@ class MontagemIngredienteCardapio {
       'destinoTipo': destinoTipo,
       'quantidadeTroca': quantidadeTroca,
       'separado': separado,
+      'valorEmbalagemSeparada': valorEmbalagemSeparada,
     };
   }
 
@@ -183,6 +189,10 @@ class MontagemIngredienteCardapio {
                   .toString()) ??
           1,
       separado: _parseBool(map['separado'] ?? map['embalar_separado']),
+      valorEmbalagemSeparada: (map['valorEmbalagemSeparada'] ??
+              map['valor_embalagem_separada'] ??
+              '0.00')
+          .toString(),
     );
   }
 

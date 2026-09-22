@@ -50,6 +50,23 @@ class _PaginaEditarProdutoCarrinhoState
 
   bool get _usarPermissoesAposFinalizar => widget.edicaoAposFinalizar;
 
+  bool get _produtoCardapio {
+    final idCategoria = edicao.original.idCategoriaCardapio?.trim() ?? '';
+    if (idCategoria.isNotEmpty &&
+        idCategoria != '0' &&
+        idCategoria.toLowerCase() != 'null') {
+      return true;
+    }
+    return (edicao.original.opcoesPacotesListaFinal ??
+            const <ModeloOpcoesPacotes>[])
+        .any(
+      (grupo) =>
+          grupo.tipo == 8 ||
+          (grupo.dados ?? const [])
+              .any((dado) => dado.montagemCardapio != null),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +81,8 @@ class _PaginaEditarProdutoCarrinhoState
       _erroConfiguracao = null;
     });
     try {
-      final precisaConfiguracao = edicao.pizza || _usarPermissoesAposFinalizar;
+      final precisaConfiguracao =
+          edicao.pizza || _produtoCardapio || _usarPermissoesAposFinalizar;
       final configuracao =
           precisaConfiguracao ? await widget.carregarConfiguracao() : null;
       if (!mounted) return;

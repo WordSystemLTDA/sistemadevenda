@@ -87,12 +87,14 @@ void main() {
         'nomeOriginal': 'Arroz',
         'acao': 'mais',
         'separado': true,
+        'valorEmbalagemSeparada': '5.00',
       }),
     });
 
     expect(dado.idCategoriaCardapio, '9');
     expect(dado.diaSemana, 'quinta');
     expect(dado.montagemCardapio!.acao, AcaoIngredienteCardapio.mais);
+    expect(dado.montagemCardapio!.valorEmbalagemSeparada, '5.00');
     expect(dado.toMap()['montagemCardapio'], isA<Map<String, dynamic>>());
 
     final produto = Modelowordprodutos(
@@ -140,6 +142,27 @@ void main() {
     expect(ingrediente['categoria_cardapio'], '9');
     expect(ingrediente['montagemCardapio']['acao'], 'mais');
     expect(ingrediente['montagemCardapio']['separado'], isTrue);
+    expect(ingrediente['montagemCardapio']['valorEmbalagemSeparada'], '5.00');
+  });
+
+  test('embalagem separada agrega uma tarifa por ingrediente', () {
+    final item = MontagemCardapio.aplicar(
+      ingredientes().first,
+      const MontagemIngredienteCardapio(
+        nomeOriginal: 'Arroz',
+        separado: true,
+        valorEmbalagemSeparada: '5.00',
+      ),
+    );
+
+    expect(item.valor, '5.00');
+    expect(item.montagemCardapio!.separado, isTrue);
+    expect(
+      ModeloDadosOpcoesPacotes.fromMap(item.toMap())
+          .montagemCardapio!
+          .valorEmbalagemSeparada,
+      '5.00',
+    );
   });
 
   test('permissoes do banco removem a acao sem e sobrevivem a serializacao',

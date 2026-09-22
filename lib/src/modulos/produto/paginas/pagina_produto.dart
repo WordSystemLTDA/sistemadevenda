@@ -69,6 +69,13 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   String? _tipoDestinoTrocaCardapio;
   int _quantidadeTrocaCardapio = 1;
 
+  String get _valorEmbalagemSeparada =>
+      (double.tryParse(provedorCardapio.configBigchef?.valorembalagemseparada
+                      .replaceAll(',', '.') ??
+                  '') ??
+              0)
+          .toStringAsFixed(2);
+
   @override
   void initState() {
     super.initState();
@@ -483,10 +490,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final montagem = montagemAtual.copyWith(
       acao: acao,
       limparDestino: acao != AcaoIngredienteCardapio.trocar,
-      separado: acao == AcaoIngredienteCardapio.sem ||
-              acao == AcaoIngredienteCardapio.normal
-          ? false
-          : montagemAtual.separado,
+      separado:
+          acao == AcaoIngredienteCardapio.sem ? false : montagemAtual.separado,
+      valorEmbalagemSeparada: acao == AcaoIngredienteCardapio.sem
+          ? '0.00'
+          : montagemAtual.valorEmbalagemSeparada,
     );
 
     setState(() {
@@ -517,7 +525,10 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     setState(() {
       dados[index] = MontagemCardapio.aplicar(
         atual,
-        montagemAtual.copyWith(separado: separado),
+        montagemAtual.copyWith(
+          separado: separado,
+          valorEmbalagemSeparada: separado ? _valorEmbalagemSeparada : '0.00',
+        ),
       );
     });
     _provedorProduto.calcularValorVenda(false, '0');
