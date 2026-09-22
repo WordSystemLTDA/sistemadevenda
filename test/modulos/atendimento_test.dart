@@ -123,9 +123,11 @@ class BalcaoTeste extends Fake implements ServicoBalcao {
 }
 
 class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
+  ModeloConfigBigchef? resposta;
+
   @override
   Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
-      null;
+      resposta;
 }
 
 class ConfigTeste extends Fake implements ServicoConfig {
@@ -144,6 +146,7 @@ class ModuloAtendimentoTeste extends Module {
   final mesas = MesasTeste();
   final comandas = ComandasTeste();
   final balcao = BalcaoTeste();
+  final configBigchef = ConfigBigchefTeste();
   late final provedorMesas = ProvedorMesas(mesas);
   late final provedorComandas = ProvedorComanda(comandas);
   late final provedorBalcao = ProvedorBalcao(balcao);
@@ -157,7 +160,7 @@ class ModuloAtendimentoTeste extends Module {
     i.addInstance<UsuarioProvedor>(UsuarioProvedor()
       ..setUsuario(
           UsuarioModelo(nome: 'Atendente', nomeEmpresa: 'Restaurante')));
-    i.addInstance<ServicoConfigBigchef>(ConfigBigchefTeste());
+    i.addInstance<ServicoConfigBigchef>(configBigchef);
     i.addInstance<ServicoConfig>(ConfigTeste());
     i.addInstance<Server>(ServerTeste());
     i.addInstance<ServicoAutenticacao>(AutenticacaoTeste());
@@ -362,6 +365,20 @@ void main() {
       Theme.of(tester.element(localizadorImpressoes)).colorScheme.surface,
     );
     expect(tester.getSize(localizadorImpressoes).height, lessThan(80));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inicio mostra acesso a vendas recorrentes quando habilitado',
+      (tester) async {
+    modulo.configBigchef.resposta = ModeloConfigBigchef.fromMap({
+      'clientecompedidosdecorrentes': 'Sim',
+    });
+
+    await abrir(tester, const PaginaInicio());
+
+    expect(
+        find.byKey(const ValueKey('atalho-home-Recorrentes')), findsOneWidget);
+    expect(find.text('Programados'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

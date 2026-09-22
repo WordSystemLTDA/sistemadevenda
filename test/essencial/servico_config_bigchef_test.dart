@@ -21,7 +21,10 @@ class _AdaptadorConfigAntiga implements HttpClientAdapter {
     final desktop = options.uri.path.contains('/api_desktop/1.0.01/');
     return ResponseBody.fromString(
       jsonEncode(desktop
-          ? {'valorembalagemseparada': '5.00'}
+          ? {
+              'clientecompedidosdecorrentes': 'Sim',
+              'valorembalagemseparada': '5.00',
+            }
           : {'valordaentrega': '4.00'}),
       200,
       headers: {
@@ -37,8 +40,7 @@ class _AdaptadorConfigAntiga implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-      'busca tarifa no endpoint desktop da mesma empresa quando API local e antiga',
+  test('completa recorrentes e tarifa pelo desktop quando API local e antiga',
       () async {
     final api = DioCliente(
       servidor:
@@ -55,6 +57,7 @@ void main() {
         .listar(forcarAtualizacao: true);
 
     expect(config?.valorembalagemseparada, '5.00');
+    expect(config?.recorrentesHabilitados, isTrue);
     expect(adaptador.chamadas.map((e) => e.uri.path), [
       '/sistema/apis_restaurantes/api_restaurantes_venda/api1/config_bigchef/listar.php',
       '/sistema/apis_restaurantes/api_desktop/1.0.01/config_bigchef/listar.php',

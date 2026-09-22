@@ -31,13 +31,15 @@ class ServicoConfigBigchef {
       if (jsonData is! Map) return _cachePorDestino[chaveCache];
 
       final dados = Map<String, dynamic>.from(jsonData);
-      if (!_possuiValorEmbalagemSeparada(dados)) {
-        final valorDesktop = await _listarValorEmbalagemSeparadaDesktop(
+      if (_precisaCompletarComDesktop(dados)) {
+        final dadosDesktop = await _listarConfiguracaoDesktop(
           response.requestOptions.baseUrl,
           idEmpresa,
         );
-        if (valorDesktop != null) {
-          dados['valorembalagemseparada'] = valorDesktop;
+        if (dadosDesktop != null) {
+          for (final entrada in dadosDesktop.entries) {
+            dados.putIfAbsent(entrada.key, () => entrada.value);
+          }
         }
       }
 
@@ -59,6 +61,14 @@ class ServicoConfigBigchef {
       dados.containsKey('valorembalagemseparada') ||
       dados.containsKey('valor_embalagem_separada');
 
+  bool _possuiConfiguracaoRecorrentes(Map<String, dynamic> dados) =>
+      dados.containsKey('clientecompedidosdecorrentes') ||
+      dados.containsKey('cliente_com_pedidos_decorrentes');
+
+  bool _precisaCompletarComDesktop(Map<String, dynamic> dados) =>
+      !_possuiValorEmbalagemSeparada(dados) ||
+      !_possuiConfiguracaoRecorrentes(dados);
+
   String _chaveCache(RequestOptions requisicao, String empresa) {
     final base = requisicao.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
     return '$base|$empresa';
@@ -74,7 +84,7 @@ class ServicoConfigBigchef {
     return desktop == normalizada ? null : desktop;
   }
 
-  Future<String?> _listarValorEmbalagemSeparadaDesktop(
+  Future<Map<String, dynamic>?> _listarConfiguracaoDesktop(
     String baseGarcom,
     String empresa,
   ) async {
@@ -92,11 +102,7 @@ class ServicoConfigBigchef {
       );
       final dados = response.data;
       if (dados is! Map) return null;
-      final mapa = Map<String, dynamic>.from(dados);
-      if (!_possuiValorEmbalagemSeparada(mapa)) return null;
-      return (mapa['valorembalagemseparada'] ??
-              mapa['valor_embalagem_separada'])
-          ?.toString();
+      return Map<String, dynamic>.from(dados);
     } on DioException {
       return null;
     }
