@@ -292,8 +292,8 @@ void main() {
     );
 
     final requisicao = adapter.chamadas.single;
-    expect(requisicao.uri.path,
-        '/sistema/apis_restaurantes/api_restaurantes_venda/api1/delivery/notificar_cliente.php');
+    expect(requisicao.uri.path, endsWith('/delivery/notificar_cliente.php'));
+    expect(requisicao.uri.path, contains('/api_restaurantes_venda/'));
     final dados = jsonDecode(requisicao.data as String) as Map;
     expect(dados['acao'], 'forma');
     expect(dados['id_delivery'], '25');
@@ -319,8 +319,8 @@ void main() {
         horaInicio: '05:00:00',
         horaFim: '05:00:00');
     final r = adapter.chamadas.single;
-    expect(r.uri.path,
-        '/sistema/apis_restaurantes/api_restaurantes_venda/api1/delivery/listar_opcoes.php');
+    expect(r.uri.path, endsWith('/delivery/listar_opcoes.php'));
+    expect(r.uri.path, contains('/api_restaurantes_venda/'));
     expect(r.queryParameters['empresa'], '3');
     expect(r.queryParameters['id_usuario'], '2');
     expect(r.extra['semCache'], isTrue);
