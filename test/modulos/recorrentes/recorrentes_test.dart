@@ -31,6 +31,7 @@ ModeloRecorrente pedido(
         String horario = '11:30',
         String horarioFim = '13:00',
         int tempoEnvio = 20,
+        String numeroPedido = '',
         List<Map<String, dynamic>>? itens}) =>
     ModeloRecorrente.fromMap({
       'id': '1',
@@ -40,6 +41,7 @@ ModeloRecorrente pedido(
       'idDelivery': idDelivery,
       'tipoEntrega': retirada ? '2' : '1',
       'status': status,
+      'numeroPedido': numeroPedido,
       'ativo': 'Sim',
       'total': 37,
       'data': DateFormat('yyyy-MM-dd').format(data ?? DateTime.now()),
@@ -361,6 +363,24 @@ void main() {
         'Processo Cancelado');
     expect(pedido(status: 'Previsto').statusProcesso, 'Previsto');
   });
+  test('interpreta ingredientes estruturados sem duplicar detalhe legado', () {
+    final item = ItemRecorrente.fromMap({
+      'nome': 'Marmitex M',
+      'quantidade': 1,
+      'detalhes': ['Cardápio: POUCO Arroz'],
+      'ingredientesCardapio': [
+        {'nome': 'Arroz', 'detalhe': 'Pouco'},
+        {'nome': 'Carne de Panela', 'detalhe': 'Embalar Separado'},
+      ],
+    });
+
+    expect(item.detalhes, isEmpty);
+    expect(item.ingredientesCardapio, hasLength(2));
+    expect(item.ingredientesCardapio.first.nome, 'Arroz');
+    expect(item.ingredientesCardapio.first.detalhe, 'Pouco');
+    expect(item.ingredientesCardapio.last.nome, 'Carne de Panela');
+    expect(item.ingredientesCardapio.last.detalhe, 'Embalar Separado');
+  });
   testWidgets('processamento automático acompanha a sessão sem sobrepor minuto',
       (tester) async {
     final api = Api();
@@ -589,6 +609,39 @@ void main() {
     p.dispose();
   });
 
+  testWidgets('processo feito usa card verde e cabecalho compacto no celular',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()
+      ..dados = [
+        pedido(
+            idDelivery: '80',
+            status: 'Pendente',
+            numeroPedido: '1',
+            cliente: 'Bruno Masson')
+      ];
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
+    await tester.pumpAndSettle();
+
+    final cabecalho = find.text('#1 Processo Feito');
+    expect(cabecalho, findsOneWidget);
+    expect(find.text('#1'), findsNothing);
+    final card = tester.widget<Card>(
+        find.ancestor(of: cabecalho, matching: find.byType(Card)).first);
+    expect(card.color, isNotNull);
+    expect(card.color!.g, greaterThan(card.color!.r));
+    expect(card.color!.g, greaterThan(card.color!.b));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
   testWidgets('processo manual envia ao delivery e exibe confirmação',
       (tester) async {
     tester.view.physicalSize = const Size(900, 800);
@@ -704,7 +757,11 @@ void main() {
           {
             'nome': 'Pizza especial',
             'quantidade': 1,
-            'detalhes': ['Sabores: Calabresa / Frango', 'Borda: Catupiry']
+            'detalhes': [
+              'Sabores: Calabresa / Frango',
+              'Borda: Catupiry',
+              'Cardápio: POUCO Arroz / Carne de Panela'
+            ]
           }
         ])
       ];
@@ -714,11 +771,17 @@ void main() {
             provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
     await tester.pumpAndSettle();
     expect(find.text('Pizza especial'), findsNothing);
+    expect(find.text('Ingredientes do Cardápio'), findsNothing);
     await tester.tap(find.text('Ver itens'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Pizza especial'), findsOneWidget);
     expect(find.text('• Sabores: Calabresa / Frango'), findsOneWidget);
     expect(find.text('• Borda: Catupiry'), findsOneWidget);
+    expect(find.text('Ingredientes do Cardápio'), findsOneWidget);
+    expect(find.text('Arroz'), findsOneWidget);
+    expect(find.text('Pouco'), findsOneWidget);
+    expect(find.text('Carne de Panela'), findsOneWidget);
+    expect(find.textContaining('Cardápio:'), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
   });

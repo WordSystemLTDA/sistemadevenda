@@ -263,6 +263,7 @@ class _BotaoFlutuantePendenciasImpressaoState
     extends State<BotaoFlutuantePendenciasImpressao> {
   late final Server? _server;
   late final FilaImpressao _fila;
+  late final bool _descartarFila;
 
   @override
   void initState() {
@@ -270,12 +271,26 @@ class _BotaoFlutuantePendenciasImpressaoState
     if (widget.fila != null) {
       _server = null;
       _fila = widget.fila!;
+      _descartarFila = false;
     } else {
-      final server = Modular.get<Server>();
+      var server = Modular.tryGet<Server>();
+      FilaImpressao? fila;
+      try {
+        fila = server?.filaImpressao;
+      } catch (_) {
+        server = null;
+      }
       _server = server;
-      _fila = server.filaImpressao;
+      _fila = fila ?? FilaImpressao();
+      _descartarFila = fila == null;
     }
     unawaited(_fila.carregar());
+  }
+
+  @override
+  void dispose() {
+    if (_descartarFila) _fila.dispose();
+    super.dispose();
   }
 
   void _abrirPendencias(BuildContext context) {

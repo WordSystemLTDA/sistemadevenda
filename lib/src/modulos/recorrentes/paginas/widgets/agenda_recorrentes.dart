@@ -987,18 +987,23 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                             : item.processoFeito
                                 ? 'Processo Feito'
                                 : 'Realizar Processo';
-    final corFundo = automaticoAtrasado
-        ? cs.error
-            .withValues(alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
-        : preparandoAutomatico
-            ? corSucesso.withValues(
-                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
-            : cs.surface;
-    final corBorda = automaticoAtrasado
-        ? cs.error.withValues(alpha: 0.45)
-        : preparandoAutomatico
-            ? corSucesso.withValues(alpha: 0.45)
-            : cs.outlineVariant;
+    final corFundo = item.processoFeito
+        ? corSucesso.withValues(
+            alpha: tema.brightness == Brightness.dark ? 0.16 : 0.10)
+        : automaticoAtrasado
+            ? cs.error.withValues(
+                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
+            : preparandoAutomatico
+                ? corSucesso.withValues(
+                    alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
+                : cs.surface;
+    final corBorda = item.processoFeito
+        ? corSucesso.withValues(alpha: 0.40)
+        : automaticoAtrasado
+            ? cs.error.withValues(alpha: 0.45)
+            : preparandoAutomatico
+                ? corSucesso.withValues(alpha: 0.45)
+                : cs.outlineVariant;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _alturaMinimaCardAgenda),
@@ -1015,6 +1020,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (item.numeroPedido.isNotEmpty) ...[
+                  Text('#${item.numeroPedido}',
+                      style: tema.textTheme.labelMedium
+                          ?.copyWith(color: cs.primary)),
+                  const SizedBox(width: 6),
+                ],
                 Flexible(
                     child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -1028,12 +1039,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                             style: tema.textTheme.labelSmall?.copyWith(
                                 color: corStatus,
                                 fontWeight: FontWeight.w700)))),
-                if (item.numeroPedido.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Text('#${item.numeroPedido}',
-                      style: tema.textTheme.labelMedium
-                          ?.copyWith(color: cs.onSurfaceVariant)),
-                ],
                 const Spacer(),
                 _menuCard(item, futuro),
               ]),
@@ -1209,18 +1214,23 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                             : item.processoFeito
                                 ? 'Processo feito'
                                 : 'Realizar processo';
-    final corFundo = automaticoAtrasado
-        ? cs.error
-            .withValues(alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
-        : preparandoAutomatico
-            ? corSucesso.withValues(
-                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
-            : cs.surfaceContainerLowest;
-    final corBorda = automaticoAtrasado
-        ? cs.error.withValues(alpha: 0.45)
-        : preparandoAutomatico
-            ? corSucesso.withValues(alpha: 0.45)
-            : cs.outlineVariant;
+    final corFundo = item.processoFeito
+        ? corSucesso.withValues(
+            alpha: tema.brightness == Brightness.dark ? 0.16 : 0.10)
+        : automaticoAtrasado
+            ? cs.error.withValues(
+                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
+            : preparandoAutomatico
+                ? corSucesso.withValues(
+                    alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
+                : cs.surfaceContainerLowest;
+    final corBorda = item.processoFeito
+        ? corSucesso.withValues(alpha: 0.40)
+        : automaticoAtrasado
+            ? cs.error.withValues(alpha: 0.45)
+            : preparandoAutomatico
+                ? corSucesso.withValues(alpha: 0.45)
+                : cs.outlineVariant;
 
     return Card(
         margin: EdgeInsets.zero,
@@ -1242,8 +1252,17 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                     children: [
                       Row(children: [
                         Expanded(
-                            child: Text(situacao,
-                                maxLines: 2,
+                            child: Text.rich(
+                                TextSpan(children: [
+                                  if (item.numeroPedido.isNotEmpty) ...[
+                                    TextSpan(
+                                        text: '#${item.numeroPedido}',
+                                        style: TextStyle(color: cs.primary)),
+                                    const TextSpan(text: ' '),
+                                  ],
+                                  TextSpan(text: situacao),
+                                ]),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     color: corStatus,
@@ -1261,13 +1280,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                 fontSize: 12, color: cs.onSurfaceVariant)),
                         _menuCard(item, futuro),
                       ]),
-                      if (item.numeroPedido.isNotEmpty)
-                        Text('#${item.numeroPedido}',
-                            style: TextStyle(
-                                color: cs.primary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(item.cliente,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -1495,12 +1508,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                         Text(item.itens[indice].texto,
                             style: tema.textTheme.bodySmall
                                 ?.copyWith(fontWeight: FontWeight.w600)),
-                        for (final detalhe in item.itens[indice].detalhes)
-                          Padding(
-                              padding: const EdgeInsets.only(left: 12, top: 3),
-                              child: Text('• $detalhe',
-                                  style: tema.textTheme.bodySmall
-                                      ?.copyWith(color: cs.onSurfaceVariant))),
+                        _detalhesItemRecorrente(item.itens[indice]),
                       ]
                     ])),
         ]);
@@ -1566,15 +1574,51 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 Text(item.itens[indice].texto,
                     style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w600)),
-                for (final detalhe in item.itens[indice].detalhes)
-                  Padding(
-                      padding: const EdgeInsets.only(left: 12, top: 3),
-                      child: Text('• $detalhe',
-                          style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant))),
+                _detalhesItemRecorrente(item.itens[indice], celular: true),
               ]
             ])),
     ]);
+  }
+
+  Widget _detalhesItemRecorrente(ItemRecorrente item, {bool celular = false}) {
+    final cs = Theme.of(context).colorScheme;
+    if (item.detalhes.isEmpty && item.ingredientesCardapio.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+        padding: const EdgeInsets.only(left: 12, top: 3),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final detalhe in item.detalhes)
+            Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text('• $detalhe',
+                    style: TextStyle(
+                        fontSize: celular ? 12 : null,
+                        color: cs.onSurfaceVariant))),
+          if (item.ingredientesCardapio.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Text('Ingredientes do Cardápio',
+                style: TextStyle(
+                    fontSize: celular ? 12.5 : 12,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            for (final ingrediente in item.ingredientesCardapio)
+              Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(ingrediente.nome,
+                            style: TextStyle(fontSize: celular ? 12.5 : 12)),
+                        if (ingrediente.detalhe.isNotEmpty)
+                          Text(ingrediente.detalhe,
+                              style: TextStyle(
+                                  fontSize: celular ? 11.5 : 11,
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w600)),
+                      ])),
+          ],
+        ]));
   }
 
   Widget _cardCadastro(ModeloRecorrente item) {

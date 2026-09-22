@@ -2,6 +2,7 @@ import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'dart:async';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
+import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
@@ -236,10 +237,11 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                 onPressed: _ocupado == null ? _provedor.listar : null,
                 icon: const Icon(Icons.refresh)),
           ]),
-      floatingActionButton: _BotaoNovoPedido(
-          habilitado: _ocupado == null,
-          onPressed: () =>
-              _abrir(PaginaNovoDelivery(servico: _provedor.servico))),
+      floatingActionButton: _AcoesFlutuantesDelivery(
+        habilitado: _ocupado == null,
+        onNovoPedido: () =>
+            _abrir(PaginaNovoDelivery(servico: _provedor.servico)),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: ListenableBuilder(
           listenable: _provedor,
@@ -438,7 +440,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                           keyboardDismissBehavior:
                               ScrollViewKeyboardDismissBehavior.onDrag,
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 170),
                           itemCount:
                               etapa.pedidos.isEmpty ? 1 : etapa.pedidos.length,
                           itemBuilder: (_, j) {
@@ -931,6 +933,42 @@ class _BotaoNovoPedido extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AcoesFlutuantesDelivery extends StatelessWidget {
+  const _AcoesFlutuantesDelivery({
+    required this.habilitado,
+    required this.onNovoPedido,
+  });
+
+  final bool habilitado;
+  final VoidCallback onNovoPedido;
+
+  @override
+  Widget build(BuildContext context) {
+    final largura =
+        (MediaQuery.sizeOf(context).width - 32).clamp(0.0, double.infinity);
+    return SizedBox(
+      width: largura,
+      height: 134,
+      child: Stack(
+        children: [
+          const Positioned(
+            left: 0,
+            top: 0,
+            child: BotaoFlutuantePendenciasImpressao(tag: 'delivery'),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _BotaoNovoPedido(
+              habilitado: habilitado,
+              onPressed: onNovoPedido,
+            ),
+          ),
+        ],
       ),
     );
   }

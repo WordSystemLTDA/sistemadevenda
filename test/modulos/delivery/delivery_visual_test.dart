@@ -73,14 +73,20 @@ void main() {
       await abrir(tester, PaginaDelivery(provedor: p));
       expect(find.byTooltip('Novo Delivery'), findsOneWidget);
       expect(find.text('Novo Delivery'), findsOneWidget);
-      final tamanhoBotao =
-          tester.getSize(find.byKey(const ValueKey('novo-delivery')));
+      final novoDelivery = find.byKey(const ValueKey('novo-delivery'));
+      final impressora =
+          find.byKey(const ValueKey('botao_pendencias_impressao_delivery'));
+      expect(impressora, findsOneWidget);
+      final tamanhoBotao = tester.getSize(novoDelivery);
       expect(tamanhoBotao.height, greaterThanOrEqualTo(64));
       expect(tamanhoBotao.width, greaterThan(280));
       expect(
-        tester.getCenter(find.byKey(const ValueKey('novo-delivery'))).dx,
+        tester.getCenter(novoDelivery).dx,
         closeTo(size.width / 2, 0.1),
       );
+      expect(tester.getRect(impressora).left, lessThan(40));
+      expect(tester.getRect(impressora).bottom,
+          lessThan(tester.getRect(novoDelivery).top));
       expect(find.text('Bruno Masson'), findsWidgets);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_$nome');

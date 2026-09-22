@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 
 DateTime? _momentoRecorrente(
   Map<String, dynamic> json,
@@ -233,24 +234,83 @@ class ConfiguracaoRecorrencia {
       );
 }
 
+class IngredienteCardapioRecorrente {
+  final String nome, detalhe;
+
+  const IngredienteCardapioRecorrente(this.nome, {this.detalhe = ''});
+
+  factory IngredienteCardapioRecorrente.fromMap(Map<String, dynamic> json) =>
+      IngredienteCardapioRecorrente(
+        '${json['nome'] ?? ''}'.trim(),
+        detalhe: '${json['detalhe'] ?? ''}'.trim(),
+      );
+
+  factory IngredienteCardapioRecorrente.fromDescricao(String descricao) {
+    final montagem = MontagemIngredienteCardapio.inferirAlteracao(descricao);
+    return IngredienteCardapioRecorrente(
+      montagem?.nomeOriginal ?? descricao.trim(),
+      detalhe: montagem?.detalheVisualizacao ?? '',
+    );
+  }
+}
+
+bool _detalheCardapio(String detalhe) {
+  final texto = detalhe.trim().toLowerCase();
+  return texto.startsWith('cardápio:') || texto.startsWith('cardapio:');
+}
+
+List<IngredienteCardapioRecorrente> _ingredientesCardapio(
+    Map<String, dynamic> json, List<String> detalhes) {
+  if (json['ingredientesCardapio'] is List) {
+    final estruturados = (json['ingredientesCardapio'] as List)
+        .whereType<Map>()
+        .map((ingrediente) => IngredienteCardapioRecorrente.fromMap(
+            Map<String, dynamic>.from(ingrediente)))
+        .where((ingrediente) => ingrediente.nome.isNotEmpty)
+        .toList(growable: false);
+    if (estruturados.isNotEmpty) return estruturados;
+  }
+
+  final legado = detalhes.where(_detalheCardapio).firstOrNull;
+  if (legado == null) return const [];
+  final separador = legado.indexOf(':');
+  if (separador < 0) return const [];
+  return legado
+      .substring(separador + 1)
+      .split(' / ')
+      .map((descricao) =>
+          IngredienteCardapioRecorrente.fromDescricao(descricao.trim()))
+      .where((ingrediente) => ingrediente.nome.isNotEmpty)
+      .toList(growable: false);
+}
+
 class ItemRecorrente {
   final String nome;
   final num quantidade;
   final List<String> detalhes;
-  const ItemRecorrente(this.nome, this.quantidade, {this.detalhes = const []});
+  final List<IngredienteCardapioRecorrente> ingredientesCardapio;
+  const ItemRecorrente(this.nome, this.quantidade,
+      {this.detalhes = const [], this.ingredientesCardapio = const []});
   String get texto =>
       '${NumberFormat('0.###', 'pt_BR').format(quantidade)} × $nome';
 
-  factory ItemRecorrente.fromMap(Map<String, dynamic> json) => ItemRecorrente(
-        '${json['nome'] ?? ''}',
-        num.tryParse('${json['quantidade']}') ?? 0,
-        detalhes: json['detalhes'] is List
-            ? (json['detalhes'] as List)
-                .map((detalhe) => '$detalhe'.trim())
-                .where((detalhe) => detalhe.isNotEmpty)
-                .toList(growable: false)
-            : const [],
-      );
+  factory ItemRecorrente.fromMap(Map<String, dynamic> json) {
+    final detalhes = json['detalhes'] is List
+        ? (json['detalhes'] as List)
+            .map((detalhe) => '$detalhe'.trim())
+            .where((detalhe) => detalhe.isNotEmpty)
+            .toList(growable: false)
+        : <String>[];
+    final ingredientes = _ingredientesCardapio(json, detalhes);
+    return ItemRecorrente(
+      '${json['nome'] ?? ''}',
+      num.tryParse('${json['quantidade']}') ?? 0,
+      detalhes: ingredientes.isEmpty
+          ? detalhes
+          : detalhes.where((detalhe) => !_detalheCardapio(detalhe)).toList(),
+      ingredientesCardapio: ingredientes,
+    );
+  }
 }
 
 class ModeloRecorrente {
