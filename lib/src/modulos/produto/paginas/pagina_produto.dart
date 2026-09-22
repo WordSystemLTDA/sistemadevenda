@@ -521,13 +521,16 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final montagemAtual = atual.montagemCardapio ??
         MontagemIngredienteCardapio(nomeOriginal: atual.nome);
     if (montagemAtual.acao == AcaoIngredienteCardapio.sem) return;
+    final cobrarEmbalagem =
+        separado && _idCardapioValido(itemProduto?.idCategoriaCardapio);
 
     setState(() {
       dados[index] = MontagemCardapio.aplicar(
         atual,
         montagemAtual.copyWith(
           separado: separado,
-          valorEmbalagemSeparada: separado ? _valorEmbalagemSeparada : '0.00',
+          valorEmbalagemSeparada:
+              cobrarEmbalagem ? _valorEmbalagemSeparada : '0.00',
         ),
       );
     });

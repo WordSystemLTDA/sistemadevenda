@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -195,6 +196,67 @@ void main() {
       everyElement(AcaoIngredienteCardapio.normal),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'embalagem separada soma a tarifa no total do produto de cardapio',
+      (tester) async {
+    cardapio.configBigchef = ModeloConfigBigchef.fromMap({
+      'valor_embalagem_separada': '5.00',
+    });
+    cardapio.tipo = TipoCardapio.comanda;
+    cardapio.idComanda = '4';
+    await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
+      tipo: 'comanda',
+      idAtendimento: '104',
+      idRecurso: '4',
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProduto(
+          estaPesquisando: false,
+          item: produtos.produtoCardapio,
+          categoria: null,
+          finalizar: false,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CardProduto));
+    await tester.pumpAndSettle();
+
+    final arroz = find.ancestor(
+      of: find.text('Arroz'),
+      matching: find.byType(CardIngredientesCardapio),
+    );
+    await tester.tap(
+      find.descendant(of: arroz, matching: find.text('Separado')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+      contains('50,00'),
+    );
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adicionar_produto_carrinho')));
+    await tester.pumpAndSettle();
+
+    final item = Modular.get<ProvedorCarrinho>()
+        .itensCarrinho
+        .listaComandosPedidos
+        .single;
+    expect(item.valorVenda, '50.00');
+    expect(
+      item.opcoesPacotesListaFinal!
+          .singleWhere((grupo) => grupo.tipo == 8)
+          .dados!
+          .singleWhere((ingrediente) => ingrediente.id == '1')
+          .valor,
+      '5.00',
+    );
   });
 
   testWidgets('produto vinculado nao pula montagem quando API omite o grupo',

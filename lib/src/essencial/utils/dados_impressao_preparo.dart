@@ -51,7 +51,10 @@ class DadosImpressaoPreparo {
         : nomeComProporcao;
   }
 
-  static Map<String, dynamic> produto(Modelowordprodutos produto) {
+  static Map<String, dynamic> produto(
+    Modelowordprodutos produto, {
+    String? modeloValorBorda,
+  }) {
     final dados = produto.toMap();
     final opcoes =
         produto.opcoesPacotesListaFinal ?? produto.opcoesPacotes ?? [];
@@ -74,15 +77,23 @@ class DadosImpressaoPreparo {
         : _observacaoNasOpcoes(opcoesFinais) ??
             _observacaoNasOpcoes(produto.opcoesPacotes) ??
             '';
-    dados['opcoesPacotes'] =
-        opcoesFinais == null ? _opcoesParaPreparo(produto.opcoesPacotes) : null;
-    dados['opcoesPacotesListaFinal'] = _opcoesParaPreparo(opcoesFinais);
+    dados['opcoesPacotes'] = opcoesFinais == null
+        ? _opcoesParaPreparo(
+            produto.opcoesPacotes,
+            modeloValorBorda: modeloValorBorda,
+          )
+        : null;
+    dados['opcoesPacotesListaFinal'] = _opcoesParaPreparo(
+      opcoesFinais,
+      modeloValorBorda: modeloValorBorda,
+    );
     return dados;
   }
 
   static List<Map<String, dynamic>>? _opcoesParaPreparo(
-    List<ModeloOpcoesPacotes>? opcoes,
-  ) {
+    List<ModeloOpcoesPacotes>? opcoes, {
+    String? modeloValorBorda,
+  }) {
     if (opcoes == null) return null;
     final resultado = <Map<String, dynamic>>[];
 
@@ -94,11 +105,18 @@ class DadosImpressaoPreparo {
             .where((dado) => dado.alteracaoMontagemCardapio != null)
             .toList();
         if (alteracoes.isEmpty) continue;
-        resultado.add(_opcao(opcao, dadosFiltrados: alteracoes));
+        resultado.add(_opcao(
+          opcao,
+          dadosFiltrados: alteracoes,
+          modeloValorBorda: modeloValorBorda,
+        ));
         continue;
       }
 
-      resultado.add(_opcao(opcao));
+      resultado.add(_opcao(
+        opcao,
+        modeloValorBorda: modeloValorBorda,
+      ));
     }
 
     return resultado;
@@ -130,6 +148,7 @@ class DadosImpressaoPreparo {
   static Map<String, dynamic> _opcao(
     ModeloOpcoesPacotes opcao, {
     List<ModeloDadosOpcoesPacotes>? dadosFiltrados,
+    String? modeloValorBorda,
   }) {
     final dados = opcao.toMap();
     final dadosOpcao = dadosFiltrados ?? opcao.dados;
@@ -137,8 +156,16 @@ class DadosImpressaoPreparo {
     if (montagemCardapio) {
       dados['titulo'] = 'Cardápio';
     }
-    dados['produtos'] = opcao.produtos?.map(produto).toList();
-    dados['opcoesPacote'] = _opcoesParaPreparo(opcao.opcoesPacote);
+    dados['produtos'] = opcao.produtos
+        ?.map((item) => produto(
+              item,
+              modeloValorBorda: modeloValorBorda,
+            ))
+        .toList();
+    dados['opcoesPacote'] = _opcoesParaPreparo(
+      opcao.opcoesPacote,
+      modeloValorBorda: modeloValorBorda,
+    );
     dados['dados'] = dadosOpcao?.map((item) {
       final mapa = item.toMap();
       final montagem = item.alteracaoMontagemCardapio;
@@ -161,7 +188,10 @@ class DadosImpressaoPreparo {
         };
       }).toList();
     } else if (opcao.id == 6) {
-      final bordas = _dadosSelecionadosQuandoMarcados(opcao);
+      final bordas = ValoresPizza.normalizarMeiaBordaVendida(
+        _dadosSelecionadosQuandoMarcados(opcao),
+        modeloValorBorda,
+      );
       final meiaBorda = ValoresPizza.bordaSomenteMetade(bordas);
       dados['titulo'] = meiaBorda
           ? 'Bordas - MEIA PIZZA (${bordas.length})'

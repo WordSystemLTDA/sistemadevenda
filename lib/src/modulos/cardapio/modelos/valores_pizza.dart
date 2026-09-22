@@ -13,6 +13,36 @@ class ValoresPizza {
   static bool bordaSomenteMetade(List<ModeloDadosOpcoesPacotes> dados) =>
       dados.any((dado) => dado.somenteMetadeBorda);
 
+  static List<ModeloDadosOpcoesPacotes> normalizarMeiaBordaVendida(
+    List<ModeloDadosOpcoesPacotes> dados,
+    String? modelo,
+  ) {
+    if (dados.isEmpty ||
+        dados.any((dado) =>
+            dado.valorOriginal == null || _centavos(dado.valorOriginal) <= 0)) {
+      return dados;
+    }
+
+    final valoresInteiros =
+        dados.map((dado) => _centavos(dado.valorOriginal)).toList();
+    final referencia = modelo?.trim().toLowerCase() == 'maior'
+        ? valoresInteiros.reduce((a, b) => a > b ? a : b)
+        : (valoresInteiros.reduce((a, b) => a + b) / dados.length).round();
+    final totalVendido = dados.fold<int>(
+      0,
+      (total, dado) => total + _centavos(dado.valor),
+    );
+    final somenteMetade =
+        referencia > 0 && (totalVendido - (referencia / 2).round()).abs() <= 2;
+
+    return dados
+        .map((dado) => ModeloDadosOpcoesPacotes.fromMap({
+              ...dado.toMap(),
+              'somenteMetadeBorda': somenteMetade,
+            }))
+        .toList();
+  }
+
   static int _divisorProporcaoBorda(List<ModeloDadosOpcoesPacotes> dados) =>
       bordaSomenteMetade(dados) ? dados.length * 2 : dados.length;
 

@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dar
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/valores_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -33,6 +34,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
   bool _descartado = false;
   bool _modeloRecorrente = false;
   double _composicaoInicial = 0;
+  double _correcaoEmbalagemSeparadaInicial = 0;
   String _assinaturaInicial = '';
   late final _saboresOriginais = _dadosOriginais(10);
 
@@ -78,6 +80,57 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     return double.tryParse(texto) ?? 0;
   }
 
+  double _normalizarEmbalagensSeparadas(
+    List<ModeloOpcoesPacotes> selecionadas,
+  ) {
+    if (!produtoVinculadoCardapio) return 0;
+
+    final valorConfigurado = _valor(
+      cardapio.configBigchef?.valorembalagemseparada,
+    );
+    var valorAusente = 0.0;
+    for (final grupo in selecionadas.where(_ehMontagemCardapio)) {
+      final dados = grupo.dados;
+      if (dados == null) continue;
+      for (var indice = 0; indice < dados.length; indice++) {
+        final item = dados[indice];
+        final montagem = item.montagemCardapio;
+        if (montagem == null ||
+            !montagem.separado ||
+            montagem.acao == AcaoIngredienteCardapio.sem) {
+          continue;
+        }
+
+        final valorItem = _valor(item.valor);
+        final valorSnapshot = _valor(montagem.valorEmbalagemSeparada);
+        final tarifa = valorSnapshot > 0
+            ? valorSnapshot
+            : valorItem > 0
+                ? valorItem
+                : valorConfigurado;
+        if (tarifa <= 0) continue;
+
+        valorAusente += math.max(0, tarifa - valorItem);
+        dados[indice] = MontagemCardapio.aplicar(
+          item,
+          montagem.copyWith(
+            valorEmbalagemSeparada: tarifa.toStringAsFixed(2),
+          ),
+        );
+      }
+    }
+    return valorAusente;
+  }
+
+  bool _deveCorrigirEmbalagemSeparada(double valorAusente) {
+    if (valorAusente <= 0) return false;
+    final valorOriginal = _valor(original.valorVenda);
+    final diferencaSemTarifa =
+        (valorOriginal - (_composicaoInicial - valorAusente)).abs();
+    final diferencaComTarifa = (valorOriginal - _composicaoInicial).abs();
+    return diferencaSemTarifa < diferencaComTarifa;
+  }
+
   List<ModeloDadosOpcoesPacotes> _dadosOriginais(int id) =>
       (original.opcoesPacotesListaFinal ?? [])
           .where((opcao) => opcao.id == id)
@@ -87,6 +140,9 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
 
   bool get pizza => _saboresOriginais.isNotEmpty;
   bool get modeloRecorrente => _modeloRecorrente;
+  bool get produtoVinculadoCardapio =>
+      _idCardapioValido(original.idCategoriaCardapio) ||
+      _idCardapioValido(_catalogo?.idCategoriaCardapio);
   String get _idTamanhoOriginal => _dadosOriginais(9).firstOrNull?.id ?? '0';
   double get _valorTamanhoOriginal =>
       _valor(_dadosOriginais(9).firstOrNull?.valor);
@@ -96,7 +152,8 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       ? _valor(original.valorVenda)
       : _valor((_valor(original.valorVenda) +
               produto.valorVenda -
-              _composicaoInicial)
+              _composicaoInicial +
+              _correcaoEmbalagemSeparadaInicial)
           .toStringAsFixed(2));
   double get total => valorUnitario * (original.quantidade ?? 1);
   int get limiteBordas => math.max(
@@ -133,6 +190,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
           opcoes.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
       ..observacao = observacao
       .._composicaoInicial = _composicaoInicial
+      .._correcaoEmbalagemSeparadaInicial = _correcaoEmbalagemSeparadaInicial
       .._modeloRecorrente = _modeloRecorrente
       ..carregando = false;
     rascunho.cardapio
@@ -298,6 +356,8 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
           selecionadas[indiceSelecionada] = mesclada;
         }
       }
+      final correcaoEmbalagemSeparada =
+          _normalizarEmbalagensSeparadas(selecionadas);
       produto.opcoesPacotesListaFinal = selecionadas;
       for (final adicional in produto.retornarDadosPorID([7], false, '0')) {
         adicional.quantidade ??= 1;
@@ -310,6 +370,10 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       produto.calcularValorVenda(false, '0');
       // Aplica apenas a diferenca da edicao, sem cobrar a montagem duas vezes.
       _composicaoInicial = produto.valorVenda;
+      _correcaoEmbalagemSeparadaInicial =
+          _deveCorrigirEmbalagemSeparada(correcaoEmbalagemSeparada)
+              ? correcaoEmbalagemSeparada
+              : 0;
       final bordasOriginais = (original.opcoesPacotesListaFinal ?? [])
           .where((o) => o.id == 6)
           .firstOrNull;

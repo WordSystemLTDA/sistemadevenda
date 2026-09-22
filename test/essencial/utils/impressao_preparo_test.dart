@@ -217,6 +217,50 @@ void main() {
     );
   });
 
+  test('reimpressao nao transforma duas bordas rateadas em meia borda', () {
+    final pizza = produto(nome: 'Pizza')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Selecione as Bordas',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Cheddar',
+              valor: '6.00',
+              valorOriginal: '12.00',
+              somenteMetadeBorda: true,
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Catupiry',
+              valor: '6.00',
+              valorOriginal: '12.00',
+              somenteMetadeBorda: true,
+            ),
+          ],
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(
+      pizza,
+      modeloValorBorda: 'media',
+    );
+    final opcao = (dados['opcoesPacotesListaFinal'] as List).single as Map;
+    final bordas = opcao['dados'] as List;
+
+    expect(opcao['titulo'], 'Bordas (2)');
+    expect(
+      bordas.map((borda) => borda['nome']),
+      ['(1/2) Cheddar', '(1/2) Catupiry'],
+    );
+    expect(
+      bordas.any((borda) => borda['somenteMetadeBorda'] == true),
+      isFalse,
+    );
+  });
+
   test('bordas marcadas imprimem somente o que foi pedido', () {
     final bordasCatalogo = List.generate(
       14,

@@ -4,8 +4,10 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
@@ -58,6 +60,29 @@ class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
                   ingredientes: const [],
                   quantidade: 1,
                   observacao: 'Sem cebola',
+                  opcoesPacotesListaFinal: [
+                    ModeloOpcoesPacotes(
+                      id: 6,
+                      titulo: 'Selecione as Bordas',
+                      obrigatorio: false,
+                      dados: [
+                        ModeloDadosOpcoesPacotes(
+                          id: '1',
+                          nome: 'Cheddar',
+                          valor: '6.00',
+                          valorOriginal: '12.00',
+                          somenteMetadeBorda: true,
+                        ),
+                        ModeloDadosOpcoesPacotes(
+                          id: '2',
+                          nome: 'Catupiry',
+                          valor: '6.00',
+                          valorOriginal: '12.00',
+                          somenteMetadeBorda: true,
+                        ),
+                      ],
+                    ),
+                  ],
                   destinoDeImpressao: ModeloDestinoImpressao(
                     nome: '1',
                     nomeDaImpressora: 'Cozinha',
@@ -226,8 +251,15 @@ void main() {
       expect(impressao['comanda'], 'REIMPRESSÃO - ${tipo.nome}: 4');
       expect(impressao['numeroPedido'], '30');
       expect(impressao['nomedopc'], 'computador-cozinha');
+      final produtoImpresso = (impressao['produtos'] as List).single as Map;
+      expect(produtoImpresso['observacao'], 'Sem cebola');
+      final grupoBordas =
+          (produtoImpresso['opcoesPacotesListaFinal'] as List).single as Map;
+      expect(grupoBordas['titulo'], 'Bordas (2)');
       expect(
-          (impressao['produtos'] as List).single['observacao'], 'Sem cebola');
+        (grupoBordas['dados'] as List).map((borda) => borda['nome']),
+        ['(1/2) Cheddar', '(1/2) Catupiry'],
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     });

@@ -100,8 +100,13 @@ class Impressao {
               'protocoloImpressao': 2,
               if (grupo.key.isNotEmpty) 'nomedopc': grupo.key,
               'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-              'produtos':
-                  grupo.value.map(DadosImpressaoPreparo.produto).toList(),
+              'produtos': grupo.value
+                  .map((produto) => DadosImpressaoPreparo.produto(
+                        produto,
+                        modeloValorBorda: usuario
+                            .usuario?.configuracoes?.modelovaloradicionalpizza,
+                      ))
+                  .toList(),
               'comanda': comanda,
               'numeroPedido': numeroPedido,
               'nomeCliente': nomeCliente,

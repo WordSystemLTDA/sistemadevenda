@@ -452,6 +452,150 @@ void main() {
   });
 
   test(
+      'corrige no carrinho a tarifa de embalagem separada ausente do total do cardapio',
+      () async {
+    ModeloDadosOpcoesPacotes ingrediente({
+      required String valor,
+      required String valorEmbalagem,
+    }) =>
+        ModeloDadosOpcoesPacotes(
+          id: '65',
+          nome: 'POUCO Arroz (SEPARADO)',
+          valor: valor,
+          idCategoriaCardapio: '70',
+          montagemCardapio: MontagemIngredienteCardapio(
+            nomeOriginal: 'Arroz',
+            acao: AcaoIngredienteCardapio.pouco,
+            separado: true,
+            valorEmbalagemSeparada: valorEmbalagem,
+          ),
+        );
+
+    ModeloOpcoesPacotes montagem(ModeloDadosOpcoesPacotes item) =>
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [item],
+        );
+
+    final catalogo = Modelowordprodutos(
+      id: '151',
+      nome: 'Almoço Livre',
+      codigo: '151',
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: '45.00',
+      categoria: 'Almoço',
+      nomeCategoria: 'Almoço',
+      habilTipo: 'Pacote',
+      idCategoriaCardapio: '70',
+      ingredientes: const [],
+      opcoesPacotes: [montagem(ingrediente(valor: '0', valorEmbalagem: '0'))],
+    );
+    final original = Modelowordprodutos.fromMap(catalogo.toMap())
+      ..quantidade = 1
+      ..opcoesPacotesListaFinal = [
+        montagem(ingrediente(valor: '0', valorEmbalagem: '0')),
+      ];
+    api.respostaPersonalizada = catalogo;
+    final edicao = criar(original);
+    addTearDown(edicao.dispose);
+
+    await edicao.carregar(
+      configuracao: ModeloConfigBigchef.fromMap({
+        'valor_embalagem_separada': '5.00',
+      }),
+    );
+
+    expect(edicao.valorUnitario, 50);
+    final salvo = await edicao.concluir();
+    expect(salvo.valorVenda, '50.00');
+    final separado = salvo.opcoesPacotesListaFinal!
+        .singleWhere((opcao) => opcao.tipo == 8)
+        .dados!
+        .single;
+    expect(separado.valor, '5.00');
+    expect(separado.montagemCardapio!.valorEmbalagemSeparada, '5.00');
+
+    final reaberta = criar(salvo);
+    addTearDown(reaberta.dispose);
+    await reaberta.carregar(
+      configuracao: ModeloConfigBigchef.fromMap({
+        'valor_embalagem_separada': '5.00',
+      }),
+    );
+    expect(reaberta.valorUnitario, 50);
+    expect((await reaberta.concluir()).valorVenda, '50.00');
+  });
+
+  test('nao aplica tarifa de separado fora de produto vinculado ao cardapio',
+      () async {
+    final montagem = ModeloOpcoesPacotes(
+      id: 12,
+      titulo: 'Preferências',
+      tipo: 8,
+      obrigatorio: false,
+      dados: [
+        ModeloDadosOpcoesPacotes(
+          id: '65',
+          nome: 'Arroz (SEPARADO)',
+          valor: '0',
+          montagemCardapio: const MontagemIngredienteCardapio(
+            nomeOriginal: 'Arroz',
+            separado: true,
+          ),
+        ),
+      ],
+    );
+    final catalogo = Modelowordprodutos(
+      id: '151',
+      nome: 'Produto comum',
+      codigo: '151',
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: '45.00',
+      categoria: 'Almoço',
+      nomeCategoria: 'Almoço',
+      habilTipo: 'Pacote',
+      ingredientes: const [],
+      opcoesPacotes: [montagem],
+    );
+    final original = Modelowordprodutos.fromMap(catalogo.toMap())
+      ..quantidade = 1
+      ..opcoesPacotesListaFinal = [montagem];
+    api.respostaPersonalizada = catalogo;
+    final edicao = criar(original);
+    addTearDown(edicao.dispose);
+
+    await edicao.carregar(
+      configuracao: ModeloConfigBigchef.fromMap({
+        'valor_embalagem_separada': '5.00',
+      }),
+    );
+
+    expect(edicao.produtoVinculadoCardapio, isFalse);
+    expect(edicao.valorUnitario, 45);
+    final salvo = await edicao.concluir();
+    expect(salvo.valorVenda, '45.00');
+    expect(
+      salvo.opcoesPacotesListaFinal!
+          .singleWhere((opcao) => opcao.tipo == 8)
+          .dados!
+          .single
+          .valor,
+      '0',
+    );
+  });
+
+  test(
       'edicao recorrente conserva preferencia e inclui ingrediente novo como Normal',
       () async {
     ModeloDadosOpcoesPacotes ingrediente(
