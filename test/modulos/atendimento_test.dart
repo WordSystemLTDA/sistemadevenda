@@ -333,20 +333,26 @@ void main() {
     expect(tester.getRect(menu).left, lessThan(20));
     expect(tester.getCenter(menu).dx,
         lessThan(tester.getCenter(statusConexao).dx));
+    final marcaEmpresa = find.text('RESTAURANTE');
+    expect(marcaEmpresa, findsOneWidget);
+    expect(tester.getRect(marcaEmpresa).left,
+        greaterThan(tester.getRect(menu).right));
+    expect(tester.getRect(marcaEmpresa).left - tester.getRect(menu).right,
+        lessThan(65));
 
     final mesas = find.byKey(const ValueKey('card-home-Mesas'));
     final comandas = find.byKey(const ValueKey('card-home-Comandas'));
-    final balcao = find.byKey(const ValueKey('card-home-Balcão'));
+    final delivery = find.byKey(const ValueKey('card-home-Delivery'));
     expect(mesas, findsOneWidget);
     expect(comandas, findsOneWidget);
-    expect(balcao, findsOneWidget);
-    expect(tester.getSize(mesas).width, 361);
-    expect(
-        tester.getSize(comandas).width, lessThan(tester.getSize(mesas).width));
-    expect(tester.getTopLeft(comandas).dy, tester.getTopLeft(balcao).dy);
-    expect(tester.getTopLeft(mesas).dy, lessThan(500));
+    expect(delivery, findsOneWidget);
+    expect(tester.getSize(comandas).width, 361);
+    expect(tester.getSize(delivery).width,
+        lessThan(tester.getSize(comandas).width));
+    expect(tester.getTopLeft(delivery).dy, tester.getTopLeft(mesas).dy);
+    expect(tester.getTopLeft(comandas).dy, lessThan(500));
 
-    expect(find.byKey(const ValueKey('atalho-home-Delivery')), findsOneWidget);
+    expect(find.byKey(const ValueKey('atalho-home-Balcão')), findsOneWidget);
     final localizadorImpressoes =
         find.byKey(const ValueKey('card_pendencias_impressao'));
     final impressoes = tester.widget<Material>(localizadorImpressoes);
@@ -355,6 +361,25 @@ void main() {
       Theme.of(tester.element(localizadorImpressoes)).colorScheme.surface,
     );
     expect(tester.getSize(localizadorImpressoes).height, lessThan(80));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inicio prioriza os atalhos mais usados pelo usuario',
+      (tester) async {
+    await abrir(tester, const PaginaInicio());
+
+    final balcaoCompacto = find.byKey(const ValueKey('atalho-home-Balcão'));
+    expect(balcaoCompacto, findsOneWidget);
+    await tester.tap(balcaoCompacto);
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaBalcao), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(PaginaBalcao))).pop();
+    await tester.pumpAndSettle();
+
+    final balcaoPriorizado = find.byKey(const ValueKey('card-home-Balcão'));
+    expect(balcaoPriorizado, findsOneWidget);
+    expect(tester.getSize(balcaoPriorizado).width, 361);
     expect(tester.takeException(), isNull);
   });
 
