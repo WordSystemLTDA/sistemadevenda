@@ -17,6 +17,7 @@ import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
 import 'package:app/src/modulos/comandas/paginas/pagina_comandas.dart';
 import 'package:app/src/modulos/comandos_nfc/paginas/pagina_comandos_nfc.dart';
+import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/inicio/paginas/widgets/card_home.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_mesas.dart';
 import 'package:app/src/modulos/indicadores/modelo_indicadores.dart';
@@ -303,6 +304,7 @@ class _PaginaInicioState extends State<PaginaInicio>
               _StatusConexao(
                 online: _server.connected,
                 compacto: statusCompacto,
+                onTap: () => _abrirConfiguracoesConexao(context),
               ),
             ],
             bottom: PreferredSize(
@@ -670,6 +672,14 @@ class _PaginaInicioState extends State<PaginaInicio>
       ),
     );
   }
+
+  void _abrirConfiguracoesConexao(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) {
+        return const PaginaConfiguracao();
+      },
+    ));
+  }
 }
 
 class _AtalhoInicio {
@@ -777,10 +787,15 @@ class _MarcaEmpresa extends StatelessWidget {
 }
 
 class _StatusConexao extends StatelessWidget {
-  const _StatusConexao({required this.online, required this.compacto});
+  const _StatusConexao({
+    required this.online,
+    required this.compacto,
+    required this.onTap,
+  });
 
   final bool online;
   final bool compacto;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -789,40 +804,51 @@ class _StatusConexao extends StatelessWidget {
     final texto = online ? 'Online' : 'Offline';
 
     return Tooltip(
-      message: texto,
+      message: 'Abrir configurações de conexão',
       child: Semantics(
-        label: 'Canal da cozinha $texto',
-        child: Container(
-          key: const ValueKey('status-conexao-inicio'),
-          constraints: const BoxConstraints(minHeight: 30, minWidth: 30),
-          padding:
-              EdgeInsets.symmetric(horizontal: compacto ? 10 : 11, vertical: 7),
-          decoration: BoxDecoration(
-            color: fundo,
+        label: 'Canal da cozinha $texto. Abrir configurações de conexão',
+        button: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: const ValueKey('status-conexao-inicio'),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: cor.withValues(alpha: 0.22)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: cor),
-              ),
-              if (!compacto) ...[
-                const SizedBox(width: 6),
-                Text(
-                  texto,
-                  style: TextStyle(
-                    color: cor,
-                    fontSize: 10,
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                  ),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 30, minWidth: 30),
+              child: Ink(
+                padding: EdgeInsets.symmetric(
+                    horizontal: compacto ? 10 : 11, vertical: 7),
+                decoration: BoxDecoration(
+                  color: fundo,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: cor.withValues(alpha: 0.22)),
                 ),
-              ],
-            ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration:
+                          BoxDecoration(shape: BoxShape.circle, color: cor),
+                    ),
+                    if (!compacto) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        texto,
+                        style: TextStyle(
+                          color: cor,
+                          fontSize: 10,
+                          height: 1,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

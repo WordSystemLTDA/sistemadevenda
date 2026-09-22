@@ -10,6 +10,7 @@ import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
+import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/widgets/card_vendas_balcao.dart';
@@ -361,6 +362,18 @@ void main() {
       Theme.of(tester.element(localizadorImpressoes)).colorScheme.surface,
     );
     expect(tester.getSize(localizadorImpressoes).height, lessThan(80));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('status offline do inicio abre configuracao de conexao',
+      (tester) async {
+    await abrir(tester, const PaginaInicio());
+
+    await tester.tap(find.byKey(const ValueKey('status-conexao-inicio')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaConfiguracao), findsOneWidget);
+    expect(find.text('Configurar Conexão'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
