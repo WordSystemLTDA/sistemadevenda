@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -32,6 +33,21 @@ void main() {
           diaSemana: 'quinta',
         ),
       ];
+
+  test('configuracao le o valor da embalagem separada', () {
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'valorembalagemseparada': '5.50',
+      }).valorembalagemseparada,
+      '5.50',
+    );
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'valor_embalagem_separada': '4.25',
+      }).valorembalagemseparada,
+      '4.25',
+    );
+  });
 
   test(
       'montagem inicia normal, aplica alteracoes e reabre pelas escolhas salvas',
@@ -87,12 +103,14 @@ void main() {
         'nomeOriginal': 'Arroz',
         'acao': 'mais',
         'separado': true,
+        'valorEmbalagemSeparada': '5.00',
       }),
     });
 
     expect(dado.idCategoriaCardapio, '9');
     expect(dado.diaSemana, 'quinta');
     expect(dado.montagemCardapio!.acao, AcaoIngredienteCardapio.mais);
+    expect(dado.montagemCardapio!.valorEmbalagemSeparada, '5.00');
     expect(dado.toMap()['montagemCardapio'], isA<Map<String, dynamic>>());
 
     final produto = Modelowordprodutos(
@@ -140,6 +158,27 @@ void main() {
     expect(ingrediente['categoria_cardapio'], '9');
     expect(ingrediente['montagemCardapio']['acao'], 'mais');
     expect(ingrediente['montagemCardapio']['separado'], isTrue);
+    expect(ingrediente['montagemCardapio']['valorEmbalagemSeparada'], '5.00');
+  });
+
+  test('embalagem separada agrega uma tarifa por ingrediente', () {
+    final item = MontagemCardapio.aplicar(
+      ingredientes().first,
+      const MontagemIngredienteCardapio(
+        nomeOriginal: 'Arroz',
+        separado: true,
+        valorEmbalagemSeparada: '5.00',
+      ),
+    );
+
+    expect(item.valor, '5.00');
+    expect(item.montagemCardapio!.separado, isTrue);
+    expect(
+      ModeloDadosOpcoesPacotes.fromMap(item.toMap())
+          .montagemCardapio!
+          .valorEmbalagemSeparada,
+      '5.00',
+    );
   });
 
   test('permissoes do banco removem a acao sem e sobrevivem a serializacao',

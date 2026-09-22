@@ -6,13 +6,20 @@ class MontagemCardapio {
     ModeloDadosOpcoesPacotes ingrediente,
     MontagemIngredienteCardapio montagem,
   ) {
+    final valorEmbalagem = double.tryParse(
+          montagem.valorEmbalagemSeparada.replaceAll(',', '.'),
+        ) ??
+        0;
+    final cobrarEmbalagem = montagem.separado &&
+        montagem.acao != AcaoIngredienteCardapio.sem &&
+        valorEmbalagem > 0;
     return ModeloDadosOpcoesPacotes.fromMap({
       ...ingrediente.toMap(),
       'nome': montagem.descricao,
       'montagemCardapio': montagem.toMap(),
       'estaSelecionado': true,
       'quantidade': 1,
-      'valor': '0',
+      'valor': cobrarEmbalagem ? montagem.valorEmbalagemSeparada : '0',
     });
   }
 

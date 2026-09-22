@@ -139,7 +139,8 @@ class ProvedorCardapio extends ChangeNotifier {
   }
 
   Future<void> listarConfigBigChef() async {
-    configBigchef = await Modular.get<ServicoConfigBigchef>().listar();
+    configBigchef = await Modular.get<ServicoConfigBigchef>()
+        .listar(forcarAtualizacao: true);
     notifyListeners();
   }
 

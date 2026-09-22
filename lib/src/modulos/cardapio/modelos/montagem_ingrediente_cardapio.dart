@@ -17,6 +17,8 @@ bool tituloIngredientesCardapio(Object? titulo) {
 }
 
 class MontagemIngredienteCardapio {
+  static const String rotuloEmbalagemSeparada = 'Embalar Separado';
+
   final String nomeOriginal;
   final AcaoIngredienteCardapio acao;
   final String? destinoId;
@@ -24,6 +26,7 @@ class MontagemIngredienteCardapio {
   final String? destinoTipo;
   final int quantidadeTroca;
   final bool separado;
+  final String valorEmbalagemSeparada;
 
   const MontagemIngredienteCardapio({
     required this.nomeOriginal,
@@ -33,6 +36,7 @@ class MontagemIngredienteCardapio {
     this.destinoTipo,
     this.quantidadeTroca = 1,
     this.separado = false,
+    this.valorEmbalagemSeparada = '0.00',
   });
 
   bool get possuiAlteracao =>
@@ -103,6 +107,7 @@ class MontagemIngredienteCardapio {
     String? destinoTipo,
     int? quantidadeTroca,
     bool? separado,
+    String? valorEmbalagemSeparada,
     bool limparDestino = false,
   }) {
     return MontagemIngredienteCardapio(
@@ -113,6 +118,8 @@ class MontagemIngredienteCardapio {
       destinoTipo: limparDestino ? null : destinoTipo ?? this.destinoTipo,
       quantidadeTroca: quantidadeTroca ?? this.quantidadeTroca,
       separado: separado ?? this.separado,
+      valorEmbalagemSeparada:
+          valorEmbalagemSeparada ?? this.valorEmbalagemSeparada,
     );
   }
 
@@ -142,9 +149,9 @@ class MontagemIngredienteCardapio {
         'Trocar por ${quantidadeTroca}x ${destinoNome ?? ''}',
     };
 
-    if (texto == null) return separado ? 'Embalar separado' : null;
+    if (texto == null) return separado ? rotuloEmbalagemSeparada : null;
     return separado && acao != AcaoIngredienteCardapio.sem
-        ? '$texto - Embalar separado'
+        ? '$texto - $rotuloEmbalagemSeparada'
         : texto;
   }
 
@@ -158,6 +165,7 @@ class MontagemIngredienteCardapio {
       'destinoTipo': destinoTipo,
       'quantidadeTroca': quantidadeTroca,
       'separado': separado,
+      'valorEmbalagemSeparada': valorEmbalagemSeparada,
     };
   }
 
@@ -183,6 +191,10 @@ class MontagemIngredienteCardapio {
                   .toString()) ??
           1,
       separado: _parseBool(map['separado'] ?? map['embalar_separado']),
+      valorEmbalagemSeparada: (map['valorEmbalagemSeparada'] ??
+              map['valor_embalagem_separada'] ??
+              '0.00')
+          .toString(),
     );
   }
 

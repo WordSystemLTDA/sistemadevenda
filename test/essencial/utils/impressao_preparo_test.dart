@@ -305,10 +305,13 @@ void main() {
             ModeloDadosOpcoesPacotes(
               id: '2',
               nome: 'Feijao',
+              valor: '5.00',
               idCategoriaCardapio: '9',
               montagemCardapio: const MontagemIngredienteCardapio(
                 nomeOriginal: 'Feijao',
                 acao: AcaoIngredienteCardapio.pouco,
+                separado: true,
+                valorEmbalagemSeparada: '5.00',
               ),
             ),
           ],
@@ -344,6 +347,11 @@ void main() {
     expect(ingredientes, hasLength(1));
     expect(ingredientes.single['nome'], 'Feijao');
     expect(ingredientes.single['montagemCardapio']['acao'], 'pouco');
+    expect(ingredientes.single['montagemCardapio']['separado'], isTrue);
+    expect(
+      ingredientes.single['montagemCardapio']['valorEmbalagemSeparada'],
+      '5.00',
+    );
     expect(jsonEncode(dados), isNot(contains('Arroz')));
   });
 

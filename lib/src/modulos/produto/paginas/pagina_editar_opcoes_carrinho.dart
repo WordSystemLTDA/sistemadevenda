@@ -48,6 +48,12 @@ class _PaginaEditarOpcoesCarrinhoState
   ModeloDadosOpcoesPacotes? _destinoTrocaCardapio;
   String? _tipoDestinoTrocaCardapio;
   int _quantidadeTrocaCardapio = 1;
+  String get _valorEmbalagemSeparada =>
+      (double.tryParse(edicao.cardapio.configBigchef?.valorembalagemseparada
+                      .replaceAll(',', '.') ??
+                  '') ??
+              0)
+          .toStringAsFixed(2);
   late final _categorias = [
     ModeloCategoria(id: '0', nomeCategoria: 'Todos', quantidadeProdutos: '0'),
     ...edicao.cardapio.categorias
@@ -131,10 +137,11 @@ class _PaginaEditarOpcoesCarrinhoState
     final montagem = montagemAtual.copyWith(
       acao: acao,
       limparDestino: acao != AcaoIngredienteCardapio.trocar,
-      separado: acao == AcaoIngredienteCardapio.sem ||
-              acao == AcaoIngredienteCardapio.normal
-          ? false
-          : montagemAtual.separado,
+      separado:
+          acao == AcaoIngredienteCardapio.sem ? false : montagemAtual.separado,
+      valorEmbalagemSeparada: acao == AcaoIngredienteCardapio.sem
+          ? '0.00'
+          : montagemAtual.valorEmbalagemSeparada,
     );
 
     setState(() {
@@ -164,7 +171,10 @@ class _PaginaEditarOpcoesCarrinhoState
     setState(() {
       dados[index] = MontagemCardapio.aplicar(
         atual,
-        montagemAtual.copyWith(separado: separado),
+        montagemAtual.copyWith(
+          separado: separado,
+          valorEmbalagemSeparada: separado ? _valorEmbalagemSeparada : '0.00',
+        ),
       );
     });
     edicao.produto.calcularValorVenda(false, '0');

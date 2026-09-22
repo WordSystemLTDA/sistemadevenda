@@ -28,6 +28,7 @@ class ModeloConfigBigchef {
   final String tamanhofontepreparolargura;
   final String formacobrancaentregadelivery;
   final String valordaentrega;
+  final String valorembalagemseparada;
   final String agrupamentodeitenscomprovconsumo;
   final String agrupamentodeitenscomproventregador;
   final String valordiferenca;
@@ -65,6 +66,7 @@ class ModeloConfigBigchef {
     required this.tamanhofontepreparolargura,
     required this.formacobrancaentregadelivery,
     required this.valordaentrega,
+    this.valorembalagemseparada = '0.00',
     required this.agrupamentodeitenscomprovconsumo,
     required this.agrupamentodeitenscomproventregador,
     required this.valordiferenca,
@@ -136,6 +138,7 @@ class ModeloConfigBigchef {
       'tamanhofontepreparolargura': tamanhofontepreparolargura,
       'formacobrancaentregadelivery': formacobrancaentregadelivery,
       'valordaentrega': valordaentrega,
+      'valorembalagemseparada': valorembalagemseparada,
       'agrupamentodeitenscomprovconsumo': agrupamentodeitenscomprovconsumo,
       'agrupamentodeitenscomproventregador':
           agrupamentodeitenscomproventregador,
@@ -189,6 +192,10 @@ class ModeloConfigBigchef {
       tamanhofontepreparolargura: _texto(map, 'tamanhofontepreparolargura'),
       formacobrancaentregadelivery: _texto(map, 'formacobrancaentregadelivery'),
       valordaentrega: _texto(map, 'valordaentrega'),
+      valorembalagemseparada: (map['valorembalagemseparada'] ??
+              map['valor_embalagem_separada'] ??
+              '0.00')
+          .toString(),
       agrupamentodeitenscomprovconsumo:
           _texto(map, 'agrupamentodeitenscomprovconsumo'),
       agrupamentodeitenscomproventregador:
