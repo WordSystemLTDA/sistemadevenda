@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -52,6 +53,48 @@ class GravadorVoz {
           'Não foi possível concluir a gravação. Grave novamente.');
     }
     return caminho;
+  }
+
+  Future<void> aguardarFimDaFala(
+      {Duration limite = const Duration(seconds: 12)}) async {
+    final gravador = _gravador;
+    if (gravador == null || _encerrado) {
+      throw const FalhaPedidoVoz('O microfone nao esta gravando.');
+    }
+
+    final inicio = DateTime.now();
+    DateTime? ultimaVoz;
+    var ouviuVoz = false;
+    final fim = Completer<void>();
+    late final StreamSubscription<Amplitude> amplitude;
+    amplitude =
+        gravador.onAmplitudeChanged(const Duration(milliseconds: 180)).listen(
+      (valor) {
+        if (fim.isCompleted) return;
+        final agora = DateTime.now();
+        final decorrido = agora.difference(inicio);
+        if (valor.current >= -42) {
+          ouviuVoz = true;
+          ultimaVoz = agora;
+        }
+        final silencio =
+            ultimaVoz == null ? Duration.zero : agora.difference(ultimaVoz!);
+        if ((ouviuVoz &&
+                decorrido >= const Duration(milliseconds: 900) &&
+                silencio >= const Duration(milliseconds: 1400)) ||
+            (!ouviuVoz && decorrido >= const Duration(seconds: 5))) {
+          fim.complete();
+        }
+      },
+      onError: (_) {
+        if (!fim.isCompleted) fim.complete();
+      },
+    );
+    try {
+      await Future.any([fim.future, Future<void>.delayed(limite)]);
+    } finally {
+      await amplitude.cancel();
+    }
   }
 
   Future<void> cancelar() async {

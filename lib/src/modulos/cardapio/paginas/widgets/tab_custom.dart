@@ -16,6 +16,8 @@ class TabCustom extends StatefulWidget {
   final FavoritosProdutos? favoritos;
   final VoidCallback? onPedidoVoz;
   final bool vozOcupada;
+  final String? pesquisaVoz;
+  final int pesquisaVozVersao;
   final bool modeloRecorrente;
 
   const TabCustom({
@@ -26,6 +28,8 @@ class TabCustom extends StatefulWidget {
     this.favoritos,
     this.onPedidoVoz,
     this.vozOcupada = false,
+    this.pesquisaVoz,
+    this.pesquisaVozVersao = 0,
     this.modeloRecorrente = false,
   });
 
@@ -51,6 +55,36 @@ class _TabCustomState extends State<TabCustom>
     _scrollController.addListener(_carregarMais);
     _sincronizador?.revisaoCatalogo.addListener(_catalogoAtualizado);
     _atualizar();
+    final pesquisaVoz = widget.pesquisaVoz?.trim();
+    if (pesquisaVoz?.isNotEmpty == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _aplicarPesquisaVoz(pesquisaVoz!);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TabCustom oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final pesquisaVoz = widget.pesquisaVoz?.trim();
+    if (pesquisaVoz?.isNotEmpty == true &&
+        (oldWidget.pesquisaVozVersao != widget.pesquisaVozVersao ||
+            oldWidget.pesquisaVoz != widget.pesquisaVoz)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _aplicarPesquisaVoz(pesquisaVoz!);
+      });
+    }
+  }
+
+  void _aplicarPesquisaVoz(String termo) {
+    _debounce?.cancel();
+    _somenteFavoritos = false;
+    _pesquisaController.value = TextEditingValue(
+        text: termo, selection: TextSelection.collapsed(offset: termo.length));
+    provedor.prepararPesquisa(termo);
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    unawaited(_atualizar());
+    setState(() {});
   }
 
   void _catalogoAtualizado() {

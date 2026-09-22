@@ -1,22 +1,48 @@
 import 'package:flutter/material.dart';
+
 import '../../essencial/api/conexao.dart';
 import '../../essencial/provedores/usuario/usuario_provedor.dart';
+import '../cardapio/provedores/provedor_cardapio.dart';
 import '../cardapio/provedores/provedor_carrinho.dart';
-import 'dialogo_comanda_voz.dart';
+import 'acao_pedido_voz.dart';
 import 'gravador_voz.dart';
-import 'lote_pedido_voz.dart';
 import 'pedido_falado.dart';
 import 'servico_pedido_voz.dart';
 
-Future<void> abrirComandaVoz(
+enum RetornoCarrinhoVoz { iniciar }
+
+Future<String?> abrirComandaVoz(
   BuildContext context, {
   required String atendimento,
   required ProvedorCarrinho carrinho,
+  required ProvedorCardapio cardapio,
   required UsuarioProvedor usuario,
 }) async {
   FocusManager.instance.primaryFocus?.unfocus();
   final esperado = carrinho.contexto;
   final identidade = usuario.usuario;
+  ServicoPedidoVoz? servico;
+  GravadorVoz? gravador;
+
+  void status(String mensagem, {bool erro = false}) {
+    if (!context.mounted) return;
+    final mensageiro = ScaffoldMessenger.of(context);
+    mensageiro.hideCurrentSnackBar();
+    mensageiro.showSnackBar(SnackBar(
+      duration: erro ? const Duration(seconds: 5) : const Duration(seconds: 30),
+      backgroundColor: erro ? Theme.of(context).colorScheme.error : null,
+      content: Row(children: [
+        if (!erro) ...[
+          const SizedBox.square(
+              dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 12),
+        ],
+        Expanded(child: Text(mensagem)),
+      ]),
+      showCloseIcon: erro,
+    ));
+  }
+
   try {
     if (esperado == null || !esperado.valido) {
       throw const FalhaPedidoVoz(
@@ -25,49 +51,79 @@ Future<void> abrirComandaVoz(
     final servidor =
         (await Apis().getConexao().timeout(const Duration(seconds: 5)))
             .servidor;
-    if (!context.mounted) return;
+    if (!context.mounted) return null;
     if (!identical(esperado, carrinho.contexto) ||
         !identical(identidade, usuario.usuario) ||
         ModalRoute.of(context)?.isCurrent != true) {
       throw const FalhaPedidoVoz(
           'O atendimento mudou. Abra o pedido por voz novamente.');
     }
-    final servico = ServicoPedidoVoz(servidor: servidor, usuario: usuario);
-    final gravador = GravadorVoz();
-    final resultado = await showDialog<LotePedidoVoz>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => DialogoComandaVoz(
-            atendimento: atendimento, servico: servico, gravador: gravador));
-    if (!context.mounted || resultado == null) return;
-    final servidorAtual =
-        (await Apis().getConexao().timeout(const Duration(seconds: 5)))
-            .servidor;
-    if (!context.mounted) return;
+
+    servico = ServicoPedidoVoz(servidor: servidor, usuario: usuario);
+    gravador = GravadorVoz();
+    status('Ouvindo em $atendimento... Fale o produto.');
+    await gravador.iniciar();
+
+    late String caminho;
+    await Future.wait([
+      () async {
+        await gravador!.aguardarFimDaFala();
+        caminho = await gravador!.concluir();
+      }(),
+      servico.verificar(),
+    ]);
+    status('Entendendo o comando...');
+
+    final resultado = await servico.interpretarLote(
+      caminho: caminho,
+      categoriasDisponiveis: cardapio.categorias,
+      configuracaoDisponivel: cardapio.configBigchef,
+    );
+    if (!context.mounted) return null;
     if (!identical(esperado, carrinho.contexto) ||
         !identical(identidade, usuario.usuario) ||
-        servidorAtual != servidor ||
-        ModalRoute.of(context)?.isCurrent != true) {
+        ModalRoute.of(context)?.isCurrent != true ||
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       throw const FalhaPedidoVoz(
-          'O atendimento ou a conexão mudou. Abra o pedido por voz novamente.');
+          'O atendimento mudou. Faça o pedido por voz novamente.');
     }
+
+    if (resultado.acao == AcaoPedidoVoz.buscar) {
+      final termo = resultado.termoBusca?.trim();
+      if (termo == null || termo.isEmpty) {
+        throw const FalhaPedidoVoz(
+            'Não consegui identificar qual produto deve ser buscado.');
+      }
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Mostrando resultados para “$termo”.'),
+        duration: const Duration(seconds: 3),
+      ));
+      return termo;
+    }
+
+    status('Adicionando ao carrinho...');
     if (!await carrinho.adicionarLoteVoz(resultado.itens, esperado)) {
       throw const FalhaPedidoVoz(
           'Não foi possível adicionar o pedido. Confira o atendimento.');
     }
     if (context.mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '${resultado.itens.length} ${resultado.itens.length == 1 ? 'item adicionado' : 'itens adicionados'} ao carrinho. Confira e finalize para enviar.'),
-          showCloseIcon: true));
+        content: Text(
+            '${resultado.itens.length} ${resultado.itens.length == 1 ? 'item adicionado' : 'itens adicionados'} ao carrinho.'),
+        duration: const Duration(seconds: 3),
+      ));
     }
   } catch (erro) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(erro is FalhaPedidoVoz
-              ? erro.mensagem
-              : 'Não foi possível abrir o pedido por voz. Confira a conexão.'),
-          showCloseIcon: true));
-    }
+    status(
+        erro is FalhaPedidoVoz
+            ? erro.mensagem
+            : 'Não foi possível concluir o comando de voz. Confira a conexão.',
+        erro: true);
+  } finally {
+    await gravador?.dispose();
+    servico?.dispose();
   }
+  return null;
 }

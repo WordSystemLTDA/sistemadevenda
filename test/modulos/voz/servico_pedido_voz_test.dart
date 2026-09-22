@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/modulos/voz/acao_pedido_voz.dart';
 import 'package:app/src/modulos/voz/falha_pedido_voz.dart';
 import 'package:app/src/modulos/voz/servico_pedido_voz.dart';
 import 'package:dio/dio.dart';
@@ -132,6 +133,54 @@ void main() {
     expect(campos.containsKey('senha'), isFalse);
     expect(chamada.headers['X-Garcom-Voz'], 'token-teste');
     expect(chamada.receiveTimeout, const Duration(seconds: 260));
+  });
+
+  test('comando de busca retorna o termo sem montar ou adicionar produto',
+      () async {
+    adaptador.sessao = {
+      'sucesso': true,
+      'protocolo': 2,
+      'token': 'token-teste'
+    };
+    adaptador.capacidades = {
+      'sucesso': true,
+      'protocolo': 2,
+      'provedor': 'openai',
+      'timeout_segundos': 120
+    };
+    adaptador.pedido = {
+      'sucesso': true,
+      'protocolo': 2,
+      'texto': 'Busque uma Coca-Cola de 1 litro',
+      'pedido': {
+        'itens': [
+          {
+            'tipo': 'produto',
+            'produto': 'Coca-Cola 1L',
+            'tamanho': '',
+            'quantidade': 1,
+            'sabores': [],
+            'bordas': [],
+            'adicionais': [],
+            'ingredientes': [],
+            'retiradas': [],
+            'acompanhamentos': [],
+            'cortesias': [],
+            'observacao': '',
+          }
+        ],
+        'esclarecimento': ''
+      }
+    };
+
+    await servico.verificar();
+    final lote =
+        await servico.interpretarLote(texto: 'Busque uma Coca-Cola de 1 litro');
+
+    expect(lote.acao, AcaoPedidoVoz.buscar);
+    expect(lote.termoBusca, 'Coca-Cola 1L');
+    expect(lote.itens, isEmpty);
+    expect(adaptador.chamadas, hasLength(3));
   });
 
   for (final status in [401, 429, 503]) {

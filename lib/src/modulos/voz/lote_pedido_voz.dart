@@ -1,12 +1,19 @@
 import '../cardapio/modelos/modelo_produto.dart';
+import 'acao_pedido_voz.dart';
 import 'pedido_falado.dart';
 
 class LotePedidoVoz {
   final String texto;
   final List<PedidoFalado> pedidos;
   final List<Modelowordprodutos> itens;
+  final AcaoPedidoVoz acao;
+  final String? termoBusca;
   const LotePedidoVoz(
-      {required this.texto, required this.pedidos, required this.itens});
+      {required this.texto,
+      required this.pedidos,
+      required this.itens,
+      this.acao = AcaoPedidoVoz.adicionar,
+      this.termoBusca});
 
   static List<PedidoFalado> lerPedidos(Map dados) {
     final esclarecimento = dados['esclarecimento'];
@@ -38,5 +45,7 @@ class LotePedidoVoz {
   LotePedidoVoz remover(int indice) => LotePedidoVoz(
       texto: texto,
       pedidos: [...pedidos]..removeAt(indice),
-      itens: [...itens]..removeAt(indice));
+      itens: [...itens]..removeAt(indice),
+      acao: acao,
+      termoBusca: termoBusca);
 }

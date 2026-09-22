@@ -81,7 +81,6 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   Modeloworddadoscardapio? dados;
   bool carregando = true;
   bool _tentouEnvioVoz = false;
-  bool _vozAberta = false;
   bool _vozDisponivel = false;
 
   Future<void> _carregarDisponibilidadeVoz() async {
@@ -94,21 +93,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   Future<void> _pedidoVoz() async {
     if (!_vozDisponivel ||
-        _vozAberta ||
         isLoading ||
+        carregando ||
         _finalizacao.pedidoRegistrado) {
       return;
     }
-    setState(() => _vozAberta = true);
-    try {
-      await abrirComandaVoz(context,
-          atendimento:
-              '${_tipo.nome} #${_contextoCarrinho?.idAtendimento ?? ''}',
-          carrinho: carrinhoProvedor,
-          usuario: usuarioProvedor);
-    } finally {
-      if (mounted) setState(() => _vozAberta = false);
-    }
+    Navigator.of(context).pop(RetornoCarrinhoVoz.iniciar);
   }
 
   @override
@@ -579,17 +569,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 if (!widget.modeloRecorrente && _vozDisponivel)
                   IconButton(
                       tooltip: 'Pedido por voz',
-                      onPressed: _vozAberta ||
-                              isLoading ||
+                      onPressed: isLoading ||
                               carregando ||
                               _finalizacao.pedidoRegistrado
                           ? null
                           : _pedidoVoz,
-                      icon: _vozAberta
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.mic_rounded)),
+                      icon: const Icon(Icons.mic_rounded)),
                 if (carrinhoProvedor
                     .itensCarrinho.listaComandosPedidos.isNotEmpty)
                   Padding(

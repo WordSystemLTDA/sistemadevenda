@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -9,6 +11,7 @@ import 'package:dio/dio.dart';
 
 import 'pedido_falado.dart';
 import 'abertura_falada.dart';
+import 'acao_pedido_voz.dart';
 import 'lote_pedido_voz.dart';
 
 class ServicoPedidoVoz {
@@ -193,7 +196,9 @@ class ServicoPedidoVoz {
       {String? caminho,
       String? texto,
       Map<String, dynamic>? rascunho,
-      Map<String, dynamic>? contexto}) async {
+      Map<String, dynamic>? contexto,
+      List<ModeloCategoria>? categoriasDisponiveis,
+      ModeloConfigBigchef? configuracaoDisponivel}) async {
     if (!suportaLote) {
       throw const FalhaPedidoVoz(
           'Atualize a API para usar a comanda eletrônica e por voz.');
@@ -222,27 +227,39 @@ class ServicoPedidoVoz {
           pergunta.trim(), resposta['texto'] as String? ?? texto ?? '');
     }
     final pedidos = LotePedidoVoz.lerPedidos(pedidoResposta);
+    final textoReconhecido = resposta['texto'] as String? ?? texto ?? '';
+    final acao = identificarAcaoPedidoVoz(textoReconhecido);
+    if (acao == AcaoPedidoVoz.buscar) {
+      return LotePedidoVoz(
+          texto: textoReconhecido,
+          pedidos: pedidos,
+          itens: const [],
+          acao: acao,
+          termoBusca: termoBuscaPedidoVoz(pedidos));
+    }
     final produtos = ServicoProduto(_catalogo, usuario);
     final categorias = ServicosCategoria(_catalogo, usuario);
-    final listaCategorias = await categorias.listar();
+    final listaCategorias = categoriasDisponiveis?.isNotEmpty == true
+        ? categoriasDisponiveis!
+        : await categorias.listar();
     _validar();
-    final config = await ServicoConfigBigchef(_catalogo, usuario).listar();
+    final config = configuracaoDisponivel ??
+        await ServicoConfigBigchef(_catalogo, usuario).listar();
     _validar();
     if (config == null) {
       throw const FalhaPedidoVoz('Configuração do cardápio indisponível.');
     }
     final catalogo = <String, Modelowordprodutos>{};
-    for (var pagina = 1;; pagina++) {
-      final encontrados = await produtos.listarPorCategoria('0', pagina);
+    final nomes = <String>{
+      for (final pedido in pedidos)
+        ...(pedido.pizza ? pedido.sabores : [pedido.produto]),
+    };
+    final resultados = await Future.wait(
+        [for (final nome in nomes) produtos.listarPorNome(nome, '0', '0')]);
+    for (final encontrados in resultados) {
       _validar();
-      final antes = catalogo.length;
       for (final item in encontrados) {
         catalogo[item.id] = item;
-      }
-      if (encontrados.length < 15) break;
-      if (antes == catalogo.length || pagina >= 200) {
-        throw const FalhaPedidoVoz(
-            'Não consegui consultar o cardápio completo. Tente novamente.');
       }
     }
     final montador = MontadorPedidoVoz(
@@ -263,9 +280,7 @@ class ServicoPedidoVoz {
       itens.add(montador.montar(pedido, detalhes));
     }
     return LotePedidoVoz(
-        texto: resposta['texto'] as String? ?? '',
-        pedidos: pedidos,
-        itens: itens);
+        texto: textoReconhecido, pedidos: pedidos, itens: itens, acao: acao);
   }
 
   Future<AberturaFalada> interpretarAbertura(

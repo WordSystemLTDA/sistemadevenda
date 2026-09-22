@@ -94,6 +94,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   bool _carregandoDados = false;
   bool _vozAberta = false;
   bool _vozDisponivel = false;
+  String? _termoPesquisaVoz;
+  String? _categoriaPesquisaVoz;
+  int _versaoPesquisaVoz = 0;
   String? _erroCarregamento;
   final _sincronizador = Sincronizador.instancia;
   late final _favoritos = FavoritosProdutos(provedor.usuarioProvedor);
@@ -235,10 +238,20 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     if (!_vozDisponivel || _vozAberta) return;
     setState(() => _vozAberta = true);
     try {
-      await abrirComandaVoz(context,
+      final termo = await abrirComandaVoz(context,
           atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
           carrinho: carrinhoProvedor,
+          cardapio: provedor,
           usuario: provedor.usuarioProvedor);
+      if (!mounted || termo == null || termo.trim().isEmpty) return;
+      final indiceTodos = _categorias.indexWhere((item) => item.id == '0');
+      final indice = indiceTodos >= 0 ? indiceTodos : indexTabBar;
+      setState(() {
+        _termoPesquisaVoz = termo.trim();
+        _categoriaPesquisaVoz = _categorias[indice].id;
+        _versaoPesquisaVoz++;
+      });
+      _tabController?.animateTo(indice);
     } finally {
       if (mounted) setState(() => _vozAberta = false);
     }
@@ -371,15 +384,20 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                             carrinhoProvedor.itensCarrinho.quantidadeTotal,
                         numeroAdicoes: carrinhoProvedor.numeroAdicoes,
                         expandido: !temPizza,
-                        onPressed: () {
+                        onPressed: () async {
                           if (_carregandoDados) return;
-                          Navigator.of(context).push(MaterialPageRoute(
+                          final retorno = await Navigator.of(context)
+                              .push<RetornoCarrinhoVoz>(MaterialPageRoute(
                             builder: (context) => PaginaCarrinho(
                               retornarParaFinalizacao:
                                   widget.retornarParaFinalizacao,
                               modeloRecorrente: widget.modeloRecorrente,
                             ),
                           ));
+                          if (retorno == RetornoCarrinhoVoz.iniciar &&
+                              mounted) {
+                            await _pedidoVoz();
+                          }
                         },
                       ),
                     ],
@@ -418,6 +436,10 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                                       ? null
                                       : _pedidoVoz,
                               vozOcupada: _vozAberta,
+                              pesquisaVoz: categoria.id == _categoriaPesquisaVoz
+                                  ? _termoPesquisaVoz
+                                  : null,
+                              pesquisaVozVersao: _versaoPesquisaVoz,
                               modeloRecorrente: widget.modeloRecorrente,
                             ),
                         ],

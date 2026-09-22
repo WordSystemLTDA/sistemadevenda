@@ -5,6 +5,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
@@ -63,7 +64,9 @@ class ServicoLoteTeste extends Fake implements ServicoPedidoVoz {
       {String? caminho,
       String? texto,
       Map<String, dynamic>? rascunho,
-      Map<String, dynamic>? contexto}) async {
+      Map<String, dynamic>? contexto,
+      List<ModeloCategoria>? categoriasDisponiveis,
+      ModeloConfigBigchef? configuracaoDisponivel}) async {
     rascunhos.add(rascunho);
     contextos.add(contexto == null
         ? null
