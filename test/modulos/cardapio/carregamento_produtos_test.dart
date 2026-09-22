@@ -53,6 +53,25 @@ void main() {
 
   tearDown(() => provedor.dispose());
 
+  test('produto preserva configuracao de quantidade por peso', () {
+    final camelCase = Modelowordprodutos.fromMap({
+      ...produto('200').toMap(),
+      'ativarEdQtd': 'Sim',
+    });
+    final snakeCase = Modelowordprodutos.fromMap({
+      ...produto('201').toMap(),
+      'ativarEdQtd': null,
+      'ativar_ed_qtd': 'Sim',
+    });
+
+    expect(camelCase.ativarEdQtd, 'Sim');
+    expect(snakeCase.ativarEdQtd, 'Sim');
+    expect(
+      Modelowordprodutos.fromMap(camelCase.toMap()).ativarEdQtd,
+      'Sim',
+    );
+  });
+
   test('a busca mais recente vence mesmo quando a antiga termina depois',
       () async {
     final antiga = provedor.listarProdutosPorNome('co', '0', '0');

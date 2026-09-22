@@ -6,8 +6,10 @@ import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/modal_adicionar_valor.dart';
+import 'package:app/src/modulos/cardapio/paginas/widgets/modal_quantidade_gramas.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/uteis/produto_vendido_por_peso.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -146,9 +148,12 @@ class _CardProdutoState extends State<CardProduto> {
             ? 0.0
             : carrinhoProvedor.quantidadeDoProduto(item.id);
         final marcado = selecionado || quantidadeNoCarrinho > 0;
-        final quantidadeTexto = quantidadeNoCarrinho
-            .toStringAsFixed(quantidadeNoCarrinho % 1 == 0 ? 0 : 2)
-            .replaceAll('.', ',');
+        final vendidoPorPeso = produtoVendidoPorPeso(item);
+        final quantidadeTexto = vendidoPorPeso
+            ? '${(quantidadeNoCarrinho * 1000).round()} g'
+            : quantidadeNoCarrinho
+                .toStringAsFixed(quantidadeNoCarrinho % 1 == 0 ? 0 : 2)
+                .replaceAll('.', ',');
         final cs = Theme.of(context).colorScheme;
 
         final indisponivel = normalizarBusca(item.ativo) == 'nao';
@@ -233,6 +238,23 @@ class _CardProdutoState extends State<CardProduto> {
             if (bloquear) return;
           }
 
+          var quantidade = 1.0;
+          if (vendidoPorPeso) {
+            if (!context.mounted) return;
+            final peso = await showModalBottomSheet<QuantidadeProdutoPorPeso>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              showDragHandle: false,
+              builder: (_) => ModalQuantidadeGramas(
+                nomeProduto: item.nome,
+                precoPorQuilo: double.tryParse(valor) ?? 0,
+              ),
+            );
+            if (peso == null) return;
+            quantidade = peso.quilos;
+          }
+
           if (!context.mounted) return;
 
           await carrinhoProvedor
@@ -266,16 +288,16 @@ class _CardProdutoState extends State<CardProduto> {
               valorRestoDivisao: item.valorRestoDivisao,
               valorTotalVendas: item.valorTotalVendas,
               tamanhoLista: item.tamanhoLista,
-              quantidade: 1,
+              quantidade: quantidade,
             ),
             provedorCardapio.tipo.nome,
             mesa,
             comanda,
-            item.valorVenda,
+            valor,
             '',
             item.id,
             item.nome,
-            item.quantidade,
+            quantidade,
             '',
           )
               .then((sucesso) {
@@ -386,6 +408,11 @@ class _CardProdutoState extends State<CardProduto> {
                                   style: TextStyle(
                                       fontSize: 12,
                                       color: cs.onSurfaceVariant)),
+                            if (vendidoPorPeso)
+                              Text('Por peso',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: cs.onSurfaceVariant)),
                             if (item.descontoProduto != null)
                               Text('Promoção',
                                   style: TextStyle(
@@ -421,7 +448,10 @@ class _CardProdutoState extends State<CardProduto> {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600))
                         else
-                          Text(_preco(temTamanhosPizza),
+                          Text(
+                              vendidoPorPeso
+                                  ? '${_preco(temTamanhosPizza)} / kg'
+                                  : _preco(temTamanhosPizza),
                               style: TextStyle(
                                   color: precoCor,
                                   fontSize: 15,
@@ -471,7 +501,9 @@ class _CardProdutoState extends State<CardProduto> {
                                     : 'Selecionar sabor')
                                 : personalizavel
                                     ? 'Personalizar produto'
-                                    : 'Adicionar ao carrinho',
+                                    : vendidoPorPeso
+                                        ? 'Informar peso em gramas'
+                                        : 'Adicionar ao carrinho',
                         constraints: const BoxConstraints.tightFor(
                             width: 48, height: 48),
                         color: selecionado ? precoCor : cs.primary,
@@ -483,7 +515,9 @@ class _CardProdutoState extends State<CardProduto> {
                                     : Icons.add_circle_outline)
                                 : personalizavel
                                     ? Icons.tune_rounded
-                                    : Icons.add_circle_outline,
+                                    : vendidoPorPeso
+                                        ? Icons.scale_outlined
+                                        : Icons.add_circle_outline,
                             semanticLabel: selecionado ? 'Selecionado' : null),
                       ),
                     ],

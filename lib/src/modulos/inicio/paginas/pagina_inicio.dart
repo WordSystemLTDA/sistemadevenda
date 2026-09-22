@@ -12,6 +12,7 @@ import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
+import 'package:app/src/essencial/widgets/dialogo_atualizacao_disponivel.dart';
 import 'package:app/src/essencial/widgets/drawer_customizado.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_delivery.dart';
@@ -25,7 +26,6 @@ import 'package:app/src/modulos/indicadores/pagina_indicadores.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class PaginaInicio extends StatefulWidget {
   const PaginaInicio({super.key});
@@ -113,58 +113,37 @@ class _PaginaInicioState extends State<PaginaInicio>
     }
   }
 
-  void verificarAtualizacao(BuildContext context, ConfigModelo versoes) async {
+  Future<void> verificarAtualizacao(
+      BuildContext context, ConfigModelo versoes) async {
     if (await FuncoesGlobais.appPrecisaAtualizar(
         versoes.versaoAppAndroid, versoes.versaoAppIos)) {
       if (!context.mounted) return;
-      showDialog<void>(
+      final versaoInstalada = await FuncoesGlobais.getVersaoInstalada();
+      if (!context.mounted) return;
+
+      final versaoDisponivel = _normalizarVersao(
+        Platform.isIOS ? versoes.versaoAppIos : versoes.versaoAppAndroid,
+      );
+      final linkAtualizacao = Platform.isIOS
+          ? versoes.linkAtualizacaoIos
+          : versoes.linkAtualizacaoAndroid;
+      final linkApk = versoes.linkBaixarApk.trim();
+
+      await exibirDialogoAtualizacaoDisponivel(
         context: context,
-        barrierDismissible: false,
-        builder: (BuildContext contextDialog) {
-          return AlertDialog(
-            title: const Text(
-              'Atualização disponível',
-              style: TextStyle(fontSize: 16),
-            ),
-            content: const Text(
-                'Clique no botão ATUALIZAR para poder atualizar o aplicativo'),
-            actions: <Widget>[
-              TextButton(
-                style: TextButton.styleFrom(
-                  textStyle: Theme.of(context).textTheme.labelLarge,
-                ),
-                child: const Text('Atualizar'),
-                onPressed: () async {
-                  try {
-                    if (Platform.isAndroid) {
-                      if (await canLaunchUrl(
-                          Uri.parse(versoes.linkAtualizacaoAndroid))) {
-                        await launchUrl(
-                            Uri.parse(versoes.linkAtualizacaoAndroid));
-                      }
-                    } else if (Platform.isIOS) {
-                      if (await canLaunchUrl(
-                          Uri.parse(versoes.linkAtualizacaoIos))) {
-                        await launchUrl(Uri.parse(versoes.linkAtualizacaoIos));
-                      }
-                    }
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text(
-                          'Não foi possível abrir o LINK, entre em contato com o suporte.'),
-                      backgroundColor: Colors.red,
-                      showCloseIcon: true,
-                    ));
-                  }
-                },
-              ),
-            ],
-          );
-        },
+        versaoInstalada: versaoInstalada,
+        versaoDisponivel: versaoDisponivel,
+        onAtualizar: () => abrirLinkExternoAtualizacao(linkAtualizacao),
+        onBaixarApk: Platform.isAndroid && linkApk.isNotEmpty
+            ? () => abrirLinkExternoAtualizacao(linkApk)
+            : null,
       );
     }
+  }
+
+  String _normalizarVersao(String versao) {
+    final valor = versao.trim();
+    return valor.split('.').length <= 2 ? '$valor.0' : valor;
   }
 
   Future<void> conectarAoServidor() async {

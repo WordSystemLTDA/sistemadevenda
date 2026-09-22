@@ -5,6 +5,7 @@ import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:app/src/modulos/cardapio/uteis/produto_vendido_por_peso.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorCarrinho extends ChangeNotifier {
@@ -23,6 +24,12 @@ class ProvedorCarrinho extends ChangeNotifier {
   final Map<String, double> _quantidadesPorProduto = {};
 
   double quantidadeDoProduto(String id) => _quantidadesPorProduto[id] ?? 0;
+
+  num get quantidadeExibidaCarrinho =>
+      itensCarrinho.listaComandosPedidos.fold<num>(0, (total, item) {
+        return total +
+            (produtoVendidoPorPeso(item) ? 1 : (item.quantidade ?? 1));
+      });
 
   var itensCarrinho = ItensModeloComandao(
       listaComandosPedidos: [], quantidadeTotal: 0, precoTotal: 0);

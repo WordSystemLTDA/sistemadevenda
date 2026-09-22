@@ -8,6 +8,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_pedido_kit.dart';
 import 'package:app/src/modulos/cardapio/uteis/nome_exibicao_produto.dart';
+import 'package:app/src/modulos/cardapio/uteis/produto_vendido_por_peso.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
@@ -137,6 +138,9 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     final observacao = item.observacao?.trim() ?? '';
     final temObservacao = observacao.isNotEmpty;
     final quantidade = item.quantidade ?? 1;
+    final textoQuantidade = produtoVendidoPorPeso(item)
+        ? formatarQuantidadeEmGramas(item)
+        : quantidade.toStringAsFixed(0);
     final valorUnitario = double.tryParse(item.valorVenda) ?? 0;
     final valorTotal = valorUnitario * quantidade;
     final nomeExibicao = nomeExibicaoProduto(item);
@@ -267,7 +271,7 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                               const Spacer(),
                               const Text("Quant.:  ",
                                   style: TextStyle(fontSize: 13)),
-                              Text(quantidade.toStringAsFixed(0),
+                              Text(textoQuantidade,
                                   style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold)),
@@ -864,9 +868,11 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
     final nomeExibicao = nomeExibicaoProduto(item);
     final temOpcoes = (item.opcoesPacotesListaFinal ?? []).isNotEmpty;
     final quantidade = item.quantidade ?? 1;
-    final textoQuantidade = quantidade == quantidade.roundToDouble()
-        ? quantidade.toInt().toString()
-        : quantidade.toString();
+    final textoQuantidade = produtoVendidoPorPeso(item)
+        ? formatarQuantidadeEmGramas(item)
+        : quantidade == quantidade.roundToDouble()
+            ? quantidade.toInt().toString()
+            : quantidade.toString();
     return InkWell(
       onTap: temOpcoes ? _expandOnChanged : null,
       child: Padding(

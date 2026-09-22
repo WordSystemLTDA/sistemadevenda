@@ -129,6 +129,45 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant({TargetPlatform.iOS}));
 
+  testWidgets('produto por peso solicita gramas e calcula o total correto',
+      (tester) async {
+    produtos.produtos[0]
+      ..nome = 'Almoço por KG'
+      ..codigo = '200'
+      ..valorVenda = '45'
+      ..ativarEdQtd = 'Sim';
+
+    await abrir(tester);
+    await tester.tap(find.byKey(const ValueKey('adicionar_produto_0')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quantidade em gramas'), findsOneWidget);
+    expect(find.text('Digite o peso em gramas. Exemplo: 1000 gramas = 1 kg.'),
+        findsOneWidget);
+    final campo = tester
+        .widget<TextField>(find.byKey(const ValueKey('peso_gramas_campo')));
+    expect(campo.focusNode?.hasFocus, isTrue);
+
+    await tester.enterText(
+        find.byKey(const ValueKey('peso_gramas_campo')), '200');
+    await tester.pump();
+    expect(find.text('200 g = 0,200 kg'), findsOneWidget);
+    expect(find.textContaining('9,00'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('confirmar_peso_gramas')));
+    await tester.pumpAndSettle();
+
+    final carrinho = Modular.get<ProvedorCarrinho>();
+    final item = carrinho.itensCarrinho.listaComandosPedidos.single;
+    expect(item.quantidade, closeTo(0.2, 0.0001));
+    expect(item.valorVenda, '45');
+    expect(item.ativarEdQtd, 'Sim');
+    expect(carrinho.itensCarrinho.precoTotal, closeTo(9, 0.001));
+    expect(carrinho.quantidadeExibidaCarrinho, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
       'favoritar nao adiciona e filtro inclui produto alem da primeira pagina',
       (tester) async {

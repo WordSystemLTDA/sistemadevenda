@@ -142,6 +142,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('produto por peso exibe gramas e total proporcional',
+      (tester) async {
+    final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),
+        UsuarioProvedor()..setUsuario(UsuarioModelo(empresa: '32'))));
+    addTearDown(carrinho.dispose);
+    Modular.init(ModuloCarrinhoTeste(carrinho));
+    final item = produtoCarrinho(quantidade: 0.2)
+      ..nome = 'Almoço por KG'
+      ..codigo = '200'
+      ..valorVenda = '45'
+      ..ativarEdQtd = 'Sim';
+
+    await carregarCard(
+      tester,
+      item: item,
+      setarQuantidade: (_) async => false,
+    );
+
+    expect(find.text('200 g'), findsOneWidget);
+    expect(find.textContaining('9,00'), findsOneWidget);
+    expect(find.byTooltip('Excluir item'), findsOneWidget);
+    expect(find.byTooltip('Aumentar quantidade'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('pizza exibe sabores no lugar do nome generico no carrinho',
       (tester) async {
     final carrinho = ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(),

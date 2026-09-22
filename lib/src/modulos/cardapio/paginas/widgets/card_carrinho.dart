@@ -11,6 +11,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/conferencia_produto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/titulo_opcoes_carrinho.dart';
 import 'package:app/src/modulos/cardapio/uteis/nome_exibicao_produto.dart';
+import 'package:app/src/modulos/cardapio/uteis/produto_vendido_por_peso.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
@@ -347,6 +348,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     final produtoCardapio = _idCardapioValido(item.idCategoriaCardapio) ||
         (item.opcoesPacotesListaFinal ?? const <ModeloOpcoesPacotes>[])
             .any(_grupoMontagemCardapio);
+    final vendidoPorPeso = produtoVendidoPorPeso(item);
     final observacao = item.observacao?.trim() ?? '';
     final temDetalhes = opcoesComDetalhes.isNotEmpty ||
         (produtoCardapio && observacao.isNotEmpty);
@@ -371,8 +373,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600)),
                       valor: Text(
-                        (double.parse(item.valorVenda) *
-                                item.quantidade!.toInt())
+                        (double.parse(item.valorVenda) * (item.quantidade ?? 1))
                             .obterReal(),
                         textAlign: TextAlign.end,
                         style: TextStyle(
@@ -429,7 +430,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: item.quantidade! <= 1
+                              tooltip: vendidoPorPeso || item.quantidade! <= 1
                                   ? 'Excluir item'
                                   : 'Diminuir quantidade',
                               icon: _processandoAcao
@@ -438,13 +439,14 @@ class _CardCarrinhoState extends State<CardCarrinho>
                                       height: 20,
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2))
-                                  : Icon(item.quantidade! <= 1
+                                  : Icon(vendidoPorPeso || item.quantidade! <= 1
                                       ? Icons.delete_outline_outlined
                                       : Icons.remove_circle_outline_outlined),
                               onPressed: _processandoAcao
                                   ? null
                                   : () {
-                                      if (item.quantidade! <= 1) {
+                                      if (vendidoPorPeso ||
+                                          item.quantidade! <= 1) {
                                         _confirmarExclusaoItem();
                                       } else {
                                         _confirmarAlteracaoQuantidade(false);
@@ -453,18 +455,22 @@ class _CardCarrinhoState extends State<CardCarrinho>
                             ),
                             ConstrainedBox(
                               constraints: const BoxConstraints(minWidth: 30),
-                              child: Text(item.quantidade!.toStringAsFixed(0),
+                              child: Text(
+                                  vendidoPorPeso
+                                      ? formatarQuantidadeEmGramas(item)
+                                      : item.quantidade!.toStringAsFixed(0),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(fontSize: 16)),
                             ),
-                            IconButton(
-                              tooltip: 'Aumentar quantidade',
-                              icon:
-                                  const Icon(Icons.add_circle_outline_outlined),
-                              onPressed: _processandoAcao
-                                  ? null
-                                  : () => _confirmarAlteracaoQuantidade(true),
-                            ),
+                            if (!vendidoPorPeso)
+                              IconButton(
+                                tooltip: 'Aumentar quantidade',
+                                icon: const Icon(
+                                    Icons.add_circle_outline_outlined),
+                                onPressed: _processandoAcao
+                                    ? null
+                                    : () => _confirmarAlteracaoQuantidade(true),
+                              ),
                           ],
                         ),
                       ],

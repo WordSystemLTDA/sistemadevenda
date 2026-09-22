@@ -453,8 +453,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                         const Spacer(),
                       BotaoCarrinho(
                         key: const ValueKey('carrinho_cardapio'),
-                        quantidade:
-                            carrinhoProvedor.itensCarrinho.quantidadeTotal,
+                        quantidade: carrinhoProvedor.quantidadeExibidaCarrinho,
                         numeroAdicoes: carrinhoProvedor.numeroAdicoes,
                         expandido: !temPizza,
                         onPressed: () async {

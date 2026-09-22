@@ -260,6 +260,7 @@ class Modelowordprodutos {
       categoria: _texto(map['categoria']),
       nomeCategoria: _texto(map['nomeCategoria']),
       dataLancado: map['dataLancado']?.toString(),
+      ativarEdQtd: (map['ativarEdQtd'] ?? map['ativar_ed_qtd'])?.toString(),
       habilsepardelivery: map['habilsepardelivery']?.toString(),
       idCategoriaCardapio: map['idCategoriaCardapio']?.toString() ??
           map['categoriaCardapio']?.toString() ??
