@@ -40,31 +40,34 @@ class _AdaptadorConfigAntiga implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('completa recorrentes e tarifa pelo desktop quando API local e antiga',
-      () async {
-    final api = DioCliente(
-      servidor:
-          'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api1/',
-    );
-    addTearDown(() => api.cliente.close(force: true));
-    final adaptador = _AdaptadorConfigAntiga();
-    api.cliente.httpClientAdapter = adaptador;
-    final usuario = UsuarioProvedor()
-      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
-    addTearDown(usuario.dispose);
+  for (final versaoApi in ['api1', 'api37']) {
+    test(
+        'completa recorrentes e tarifa pelo desktop quando $versaoApi local e antiga',
+        () async {
+      final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/$versaoApi/',
+      );
+      addTearDown(() => api.cliente.close(force: true));
+      final adaptador = _AdaptadorConfigAntiga();
+      api.cliente.httpClientAdapter = adaptador;
+      final usuario = UsuarioProvedor()
+        ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+      addTearDown(usuario.dispose);
 
-    final config = await ServicoConfigBigchef(api, usuario)
-        .listar(forcarAtualizacao: true);
+      final config = await ServicoConfigBigchef(api, usuario)
+          .listar(forcarAtualizacao: true);
 
-    expect(config?.valorembalagemseparada, '5.00');
-    expect(config?.recorrentesHabilitados, isTrue);
-    expect(adaptador.chamadas.map((e) => e.uri.path), [
-      '/sistema/apis_restaurantes/api_restaurantes_venda/api1/config_bigchef/listar.php',
-      '/sistema/apis_restaurantes/api_desktop/1.0.01/config_bigchef/listar.php',
-    ]);
-    expect(
-      adaptador.chamadas.map((e) => e.uri.queryParameters['empresa']),
-      everyElement('32'),
-    );
-  });
+      expect(config?.valorembalagemseparada, '5.00');
+      expect(config?.recorrentesHabilitados, isTrue);
+      expect(adaptador.chamadas.map((e) => e.uri.path), [
+        '/sistema/apis_restaurantes/api_restaurantes_venda/$versaoApi/config_bigchef/listar.php',
+        '/sistema/apis_restaurantes/api_desktop/1.0.01/config_bigchef/listar.php',
+      ]);
+      expect(
+        adaptador.chamadas.map((e) => e.uri.queryParameters['empresa']),
+        everyElement('32'),
+      );
+    });
+  }
 }

@@ -78,7 +78,7 @@ class ServicoConfigBigchef {
     if (baseGarcom.isEmpty) return null;
     final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
     final desktop = normalizada.replaceFirst(
-      RegExp(r'/api_restaurantes_venda/api(?:1|6)/'),
+      RegExp(r'/api_restaurantes_venda/api(?:1|6|37)/'),
       '/api_desktop/1.0.01/',
     );
     return desktop == normalizada ? null : desktop;

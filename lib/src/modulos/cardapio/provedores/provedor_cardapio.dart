@@ -152,10 +152,10 @@ class ProvedorCardapio extends ChangeNotifier {
     }
   }
 
-  Future<void> garantirConfigBigChef() {
+  Future<void> garantirConfigBigChef({bool forcarAtualizacao = false}) {
     final carregamentoAtual = _carregamentoConfigBigChef;
     if (carregamentoAtual != null) return carregamentoAtual;
-    if (configBigchef != null) return Future.value();
+    if (!forcarAtualizacao && configBigchef != null) return Future.value();
     return listarConfigBigChef();
   }
 

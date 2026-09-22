@@ -525,7 +525,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
     if (separado && produtoVinculadoCardapio) {
       try {
-        await provedorCardapio.garantirConfigBigChef();
+        await provedorCardapio.garantirConfigBigChef(
+          forcarAtualizacao: true,
+        );
       } catch (_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context)

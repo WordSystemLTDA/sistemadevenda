@@ -235,6 +235,9 @@ void main() {
       idAtendimento: '104',
       idRecurso: '4',
     );
+    cardapio.configBigchef = ModeloConfigBigchef.fromMap({
+      'valor_embalagem_separada': '0.00',
+    });
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
