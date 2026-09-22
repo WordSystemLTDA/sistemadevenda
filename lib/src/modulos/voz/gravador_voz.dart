@@ -38,18 +38,16 @@ class GravadorVoz {
     }
     await gravador.start(
         const RecordConfig(
-            encoder: AudioEncoder.aacLc,
-            bitRate: 64000,
-            sampleRate: 24000,
-            numChannels: 1),
-        path: '${_pasta!.path}/pedido.m4a');
+            encoder: AudioEncoder.wav, sampleRate: 16000, numChannels: 1),
+        path: '${_pasta!.path}/pedido.wav');
   }
 
   Future<String> concluir() async {
     final caminho = await _gravador?.stop();
     if (caminho == null ||
         !await File(caminho).exists() ||
-        await File(caminho).length() > 1024 * 1024) {
+        await File(caminho).length() <= 44 ||
+        await File(caminho).length() > 3 * 1024 * 1024) {
       throw const FalhaPedidoVoz(
           'Não foi possível concluir a gravação. Grave novamente.');
     }

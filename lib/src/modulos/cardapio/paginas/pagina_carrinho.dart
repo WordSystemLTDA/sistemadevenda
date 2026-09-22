@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
 import 'dart:developer' as developer;
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';
@@ -78,6 +79,21 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   Modeloworddadoscardapio? dados;
   bool carregando = true;
   bool _tentouEnvioVoz = false;
+  bool _vozAberta = false;
+
+  Future<void> _pedidoVoz() async {
+    if (_vozAberta || isLoading || _finalizacao.pedidoRegistrado) return;
+    setState(() => _vozAberta = true);
+    try {
+      await abrirComandaVoz(context,
+          atendimento:
+              '${_tipo.nome} #${_contextoCarrinho?.idAtendimento ?? ''}',
+          carrinho: carrinhoProvedor,
+          usuario: usuarioProvedor);
+    } finally {
+      if (mounted) setState(() => _vozAberta = false);
+    }
+  }
 
   @override
   void initState() {
@@ -543,6 +559,20 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 ],
               ),
               actions: [
+                if (!widget.modeloRecorrente)
+                  IconButton(
+                      tooltip: 'Pedido por voz',
+                      onPressed: _vozAberta ||
+                              isLoading ||
+                              carregando ||
+                              _finalizacao.pedidoRegistrado
+                          ? null
+                          : _pedidoVoz,
+                      icon: _vozAberta
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.mic_rounded)),
                 if (carrinhoProvedor
                     .itensCarrinho.listaComandosPedidos.isNotEmpty)
                   Padding(

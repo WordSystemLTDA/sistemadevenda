@@ -12,6 +12,8 @@ import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 
 import 'falha_pedido_voz.dart';
 import 'destino_pedido_voz.dart';
+import '../cardapio/modelos/montagem_ingrediente_cardapio.dart';
+import '../cardapio/uteis/montagem_cardapio.dart';
 export 'falha_pedido_voz.dart';
 export 'destino_pedido_voz.dart';
 
@@ -28,6 +30,8 @@ class PedidoFalado {
   final DestinoPedidoVoz destino;
   final List<String> sabores, bordas;
   final List<({String nome, int quantidade})> adicionais;
+  final List<IngredienteFalado> ingredientes;
+  final List<String> retiradas, acompanhamentos, cortesias;
 
   const PedidoFalado(
       {required this.pizza,
@@ -38,12 +42,16 @@ class PedidoFalado {
       required this.bordas,
       required this.adicionais,
       required this.observacao,
+      this.ingredientes = const [],
+      this.retiradas = const [],
+      this.acompanhamentos = const [],
+      this.cortesias = const [],
       this.destino = DestinoPedidoVoz.carrinho});
 
-  factory PedidoFalado.fromMap(Map dados) {
+  factory PedidoFalado.fromMap(Map dados, {bool lote = false}) {
     String texto(String campo, {int limite = 160}) {
       final valor = dados[campo];
-      if (valor is! String || valor.length > limite) {
+      if (valor is! String || valor.length > (lote ? 500 : limite)) {
         throw const FalhaPedidoVoz(
             'A resposta da voz veio incompleta. Repita o pedido.');
       }
@@ -60,9 +68,11 @@ class PedidoFalado {
     List<String> nomes(String campo, int maximo) {
       final lista = dados[campo];
       if (lista is! List ||
-          lista.length > maximo ||
-          lista
-              .any((e) => e is! String || e.trim().isEmpty || e.length > 160)) {
+          lista.length > (lote ? 40 : maximo) ||
+          lista.any((e) =>
+              e is! String ||
+              e.trim().isEmpty ||
+              e.length > (lote ? 500 : 160))) {
         throw const FalhaPedidoVoz(
             'Não foi possível identificar as opções do pedido.');
       }
@@ -70,11 +80,14 @@ class PedidoFalado {
     }
 
     final quantidade = dados['quantidade'];
-    if (quantidade is! int || quantidade < 1 || quantidade > 20) {
-      throw const FalhaPedidoVoz('Informe uma quantidade de 1 a 20 unidades.');
+    if (quantidade is! int ||
+        quantidade < 1 ||
+        quantidade > (lote ? 100 : 20)) {
+      throw FalhaPedidoVoz(
+          'Informe uma quantidade de 1 a ${lote ? 100 : 20} unidades.');
     }
     final adicionais = dados['adicionais'];
-    if (adicionais is! List || adicionais.length > 20) {
+    if (adicionais is! List || adicionais.length > (lote ? 40 : 20)) {
       throw const FalhaPedidoVoz('Adicionais inválidos. Repita o pedido.');
     }
     final lista = <({String nome, int quantidade})>[];
@@ -82,10 +95,10 @@ class PedidoFalado {
       if (adicional is! Map ||
           adicional['nome'] is! String ||
           (adicional['nome'] as String).trim().isEmpty ||
-          (adicional['nome'] as String).length > 160 ||
+          (adicional['nome'] as String).length > (lote ? 500 : 160) ||
           adicional['quantidade'] is! int ||
           adicional['quantidade'] < 1 ||
-          adicional['quantidade'] > 20) {
+          adicional['quantidade'] > (lote ? 100 : 20)) {
         throw const FalhaPedidoVoz(
             'Informe o nome e a quantidade de cada adicional.');
       }
@@ -103,17 +116,99 @@ class PedidoFalado {
         sabores: nomes('sabores', 8),
         bordas: nomes('bordas', 8),
         adicionais: lista,
+        ingredientes: IngredienteFalado.lerLista(dados['ingredientes']),
+        retiradas: dados.containsKey('retiradas') ? nomes('retiradas', 20) : [],
+        acompanhamentos: dados.containsKey('acompanhamentos')
+            ? nomes('acompanhamentos', 20)
+            : [],
+        cortesias: dados.containsKey('cortesias') ? nomes('cortesias', 20) : [],
         observacao: texto('observacao', limite: 500));
     if (pedido.pizza
         ? pedido.tamanho.isEmpty || pedido.sabores.isEmpty
         : pedido.produto.isEmpty ||
-            pedido.sabores.isNotEmpty ||
+            (!lote && pedido.sabores.isNotEmpty) ||
             pedido.bordas.isNotEmpty) {
       throw const FalhaPedidoVoz(
           'Faltam detalhes do produto. Para pizza, informe tamanho e sabores.');
     }
     return pedido;
   }
+
+  Map<String, dynamic> toMap() => {
+        'tipo': pizza ? 'pizza' : 'produto',
+        'produto': produto,
+        'tamanho': tamanho,
+        'quantidade': quantidade,
+        'sabores': sabores,
+        'bordas': bordas,
+        'adicionais': adicionais
+            .map((e) => {'nome': e.nome, 'quantidade': e.quantidade})
+            .toList(),
+        'ingredientes': ingredientes.map((e) => e.toMap()).toList(),
+        'retiradas': retiradas,
+        'acompanhamentos': acompanhamentos,
+        'cortesias': cortesias,
+        'observacao': observacao,
+      };
+}
+
+class IngredienteFalado {
+  final String nome, destino;
+  final AcaoIngredienteCardapio acao;
+  final int quantidade;
+  final bool separado;
+  const IngredienteFalado(
+      this.nome, this.acao, this.destino, this.quantidade, this.separado);
+
+  static List<IngredienteFalado> lerLista(Object? dados) {
+    if (dados == null) return [];
+    if (dados is! List || dados.length > 60) {
+      throw const FalhaPedidoVoz('Ingredientes inválidos. Repita a montagem.');
+    }
+    final nomes = <String>{};
+    return dados.map((e) {
+      if (e is! Map ||
+          e['nome'] is! String ||
+          (e['nome'] as String).trim().isEmpty ||
+          (e['nome'] as String).length > 500 ||
+          e['destino'] is! String ||
+          (e['destino'] as String).length > 500 ||
+          e['quantidade'] is! int ||
+          e['quantidade'] < 1 ||
+          e['quantidade'] > 100 ||
+          e['separado'] is! bool) {
+        throw const FalhaPedidoVoz(
+            'Não consegui identificar os ingredientes completos.');
+      }
+      final acao = AcaoIngredienteCardapio.values
+          .where((a) => a.name == e['acao'])
+          .firstOrNull;
+      if (acao == null ||
+          !nomes.add(normalizarNomeVoz(e['nome'])) ||
+          (acao == AcaoIngredienteCardapio.trocar &&
+              (e['destino'] as String).trim().isEmpty) ||
+          (acao != AcaoIngredienteCardapio.trocar &&
+              (e['destino'] as String).trim().isNotEmpty) ||
+          (acao == AcaoIngredienteCardapio.sem && e['separado'] == true)) {
+        throw const FalhaPedidoVoz(
+            'Há escolhas contraditórias nos ingredientes. Confira a montagem.');
+      }
+      return IngredienteFalado(
+          (e['nome'] as String).trim(),
+          acao,
+          (e['destino'] as String).trim(),
+          e['quantidade'] as int,
+          e['separado'] as bool);
+    }).toList();
+  }
+
+  Map<String, dynamic> toMap() => {
+        'nome': nome,
+        'acao': acao.name,
+        'destino': destino,
+        'quantidade': quantidade,
+        'separado': separado
+      };
 }
 
 String normalizarNomeVoz(String texto) {
@@ -235,6 +330,10 @@ class MontadorPedidoVoz {
       void selecionar(int grupo, List<({String nome, int quantidade})> nomes) {
         if (nomes.isEmpty) return;
         final opcoes = grupos.where((o) => o.id == grupo).firstOrNull;
+        if (opcoes?.tipo == 1 && nomes.length > 1) {
+          throw FalhaPedidoVoz(
+              'Escolha apenas uma opção em ${opcoes!.titulo}.');
+        }
         final dados = <ModeloDadosOpcoesPacotes>[];
         for (final nome in nomes) {
           final original = encontrarOpcaoVoz(nome.nome,
@@ -262,6 +361,102 @@ class MontadorPedidoVoz {
       selecionar(
           6, pedido.bordas.map((n) => (nome: n, quantidade: 1)).toList());
       selecionar(7, pedido.adicionais);
+      if (!pedido.pizza) {
+        selecionar(
+            11, pedido.sabores.map((n) => (nome: n, quantidade: 1)).toList());
+      }
+      selecionar(
+          8, pedido.retiradas.map((n) => (nome: n, quantidade: 1)).toList());
+      selecionar(5,
+          pedido.acompanhamentos.map((n) => (nome: n, quantidade: 1)).toList());
+      selecionar(
+          1, pedido.cortesias.map((n) => (nome: n, quantidade: 1)).toList());
+      final montagens = grupos
+          .where((g) => g.tipo == 8 || tituloIngredientesCardapio(g.titulo))
+          .toList();
+      if ((detalhes.idCategoriaCardapio ?? '').isNotEmpty &&
+          detalhes.idCategoriaCardapio != '0' &&
+          montagens.isEmpty) {
+        throw const FalhaPedidoVoz(
+            'A montagem do cardápio está incompleta. Atualize a API e tente novamente.');
+      }
+      final ingredientesUsados = <String>{};
+      for (final grupo in montagens) {
+        final ingredientes = MontagemCardapio.iniciar(grupo.dados ?? []);
+        if (ingredientes.isEmpty) {
+          throw const FalhaPedidoVoz(
+              'O cardápio do dia não possui ingredientes disponíveis.');
+        }
+        // Aplique todas as ações antes de validar trocas: uma escolha posterior
+        // não pode remover o ingrediente usado como destino de outra escolha.
+        for (final falado in pedido.ingredientes) {
+          final encontrados = ingredientes
+              .where((e) =>
+                  normalizarNomeVoz(
+                      e.montagemCardapio?.nomeOriginal ?? e.nome) ==
+                  normalizarNomeVoz(falado.nome))
+              .toList();
+          if (encontrados.isEmpty) continue;
+          if (encontrados.length != 1 ||
+              !ingredientesUsados.add(normalizarNomeVoz(falado.nome))) {
+            throw FalhaPedidoVoz(
+                'O ingrediente ${falado.nome} é ambíguo. Confira pelo cardápio.');
+          }
+          final original = encontrados.single;
+          if (!original.permiteMontagemCardapio(falado.acao)) {
+            throw FalhaPedidoVoz(
+                '${falado.acao.rotulo} não está permitido para ${falado.nome}.');
+          }
+          ModeloDadosOpcoesPacotes? destino;
+          String? tipoDestino;
+          if (falado.acao == AcaoIngredienteCardapio.trocar) {
+            final possibilidades =
+                <({ModeloDadosOpcoesPacotes item, String tipo})>[
+              for (final item in ingredientes)
+                (item: item, tipo: 'ingrediente'),
+              for (final item in grupos
+                  .where((g) => g.id == 7)
+                  .expand((g) => g.dados ?? <ModeloDadosOpcoesPacotes>[]))
+                (item: item, tipo: 'adicional'),
+            ];
+            final encontrado = encontrarOpcaoVoz(falado.destino, possibilidades,
+                (p) => p.item.montagemCardapio?.nomeOriginal ?? p.item.nome);
+            destino = encontrado.item;
+            tipoDestino = encontrado.tipo;
+          }
+          ingredientes[ingredientes.indexOf(original)] =
+              MontagemCardapio.aplicar(
+                  original,
+                  MontagemIngredienteCardapio(
+                      nomeOriginal: original.montagemCardapio!.nomeOriginal,
+                      acao: falado.acao,
+                      separado: falado.separado,
+                      valorEmbalagemSeparada:
+                          _preco(configuracao.valorembalagemseparada)
+                              .toStringAsFixed(2),
+                      destinoId: destino?.id,
+                      destinoNome: destino?.montagemCardapio?.nomeOriginal ??
+                          destino?.nome,
+                      destinoTipo: tipoDestino,
+                      quantidadeTroca: falado.quantidade));
+        }
+        for (final item in ingredientes) {
+          final montagem = item.montagemCardapio!;
+          if (montagem.acao != AcaoIngredienteCardapio.trocar) continue;
+          final erro = MontagemCardapio.validarTroca(ingredientes, item.id,
+              montagem.destinoId!, montagem.destinoTipo!);
+          if (erro != null) throw FalhaPedidoVoz(erro);
+        }
+        escolhas[grupo.id] = ingredientes;
+      }
+      if (ingredientesUsados.length != pedido.ingredientes.length) {
+        final nome = pedido.ingredientes
+            .firstWhere(
+                (e) => !ingredientesUsados.contains(normalizarNomeVoz(e.nome)))
+            .nome;
+        throw FalhaPedidoVoz(
+            'Não encontrei $nome nos ingredientes disponíveis hoje.');
+      }
       if (!pedido.pizza && pedido.tamanho.isNotEmpty) {
         selecionar(4, [(nome: pedido.tamanho, quantidade: 1)]);
       }

@@ -1,5 +1,38 @@
 # Configuracao dos pedidos por voz
 
+## Comanda eletrônica e por voz — 22/09/2026
+
+O fluxo atual usa protocolo 2 e a configuração do painel em **Integrações >
+Comanda Eletrônica e por Voz**. O modo Local usa Whisper.cpp para transcrever
+WAV mono 16 kHz e Ollama para interpretar o pedido. Os serviços executam no
+computador do restaurante; o celular acessa a API PHP configurada no login.
+As URLs dos serviços ficam no servidor. O celular não precisa instalar modelos.
+
+O microfone aparece ao lado dos favoritos no cardápio e no cabeçalho do carrinho
+para mesa, comanda, balcão e delivery. Também é possível digitar. Um comando pode
+montar vários produtos, pizzas e marmitas com ingredientes do dia, Sem, Pouco,
+Mais, Trocar e Separado. Preços, adicionais e embalagem usam os cadastros atuais.
+Kits com produtos internos continuam exigindo montagem pelo configurador manual.
+
+Depois da interpretação, o operador confere os itens. Pode remover um item,
+acrescentar produtos ou corrigir por voz/texto (por exemplo, "na segunda marmita,
+tire o feijão"). Perguntas como "qual tamanho?" preservam o contexto da fala
+anterior. **Confirmar e adicionar ao carrinho** salva o lote inteiro no atendimento
+atual e mantém os itens anteriores. O envio à cozinha ocorre somente pelo botão
+de finalização existente. O comando falado nunca envia automaticamente.
+
+Gravações duram até 60 segundos. Permissões Android/iOS já declaradas continuam
+obrigatórias. Ao sair do aplicativo, a operação é interrompida; fechar o diálogo
+descarta o rascunho não confirmado. Erros de interpretação preservam a última
+versão revisável, sem gravação parcial no carrinho. API antiga deve ser atualizada
+para protocolo 2; não existe retorno automático ao envio direto legado.
+
+Validação automatizada: `test/modulos/voz/comanda_voz_test.dart`, testes do parser,
+serviço e diálogo legado. Ainda é necessário testar o microfone físico, o ruído do
+salão e os serviços locais instalados, usando um atendimento de homologação.
+
+## Compatibilidade com a configuração OpenAI anterior
+
 O painel `sistemarestaurante` salva a OpenAI em Integracoes > IA, usando
 `integracoes_config` com `empresa` da conta, `integracao = openai` e chaves
 `habilitado`, `api_key` e `modelo`. O app `sistemadevenda` autentica o usuario

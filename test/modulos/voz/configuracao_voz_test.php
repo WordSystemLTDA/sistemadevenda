@@ -23,16 +23,19 @@ class ConfiguracaoVozConsultaTeste extends PDOStatement
 {
     private $pdo;
     private $empresa;
+    private $integracao;
     public function __construct(ConfiguracaoVozPdoTeste $pdo) { $this->pdo = $pdo; }
     public function execute($parametros = null)
     {
-        if ($parametros[1] !== 'openai') throw new RuntimeException('Integracao incorreta');
+        if (!in_array($parametros[1], ['openai', 'comanda_voz'], true)) throw new RuntimeException('Integracao incorreta');
+        $this->integracao = $parametros[1];
         $this->empresa = $parametros[0];
         return true;
     }
     public function fetchAll($modo = null, $argumento = null, $args = null)
     {
         $linhas = [];
+        if ($this->integracao === 'comanda_voz') return $linhas;
         foreach ($this->pdo->empresas[$this->empresa] ?? [] as $chave => $valor) {
             $linhas[] = ['chave' => $chave, 'valor' => $valor];
         }

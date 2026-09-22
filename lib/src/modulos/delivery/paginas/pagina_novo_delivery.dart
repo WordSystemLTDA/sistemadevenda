@@ -69,7 +69,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   void initState() {
     super.initState();
     if (widget.recorrente) {
-      _controladorAbas = TabController(length: 2, vsync: this);
+      _controladorAbas = TabController(length: 3, vsync: this);
     }
     final base = widget.editarPedido ?? widget.clonar;
     if (base != null) {
@@ -320,7 +320,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         _exibirErroRecorrencia = true;
         _erro = null;
       });
-      _irParaAba(1);
+      _irParaAba(_recorrencia.erroInformacoes != null ? 1 : 2);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(erroRecorrencia)));
@@ -444,6 +444,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                               key: const ValueKey('abas-novo-recorrente'),
                               controller: _controladorAbas,
                               indicatorSize: TabBarIndicatorSize.tab,
+                              isScrollable: MediaQuery.sizeOf(context).width <
+                                      600 ||
+                                  MediaQuery.textScalerOf(context).scale(14) >
+                                      17,
                               onTap: (indice) =>
                                   setState(() => _abaRecorrente = indice),
                               tabs: const [
@@ -455,6 +459,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                     key: ValueKey('aba-informacoes-recorrente'),
                                     height: 44,
                                     text: 'Informações'),
+                                Tab(
+                                    key: ValueKey('aba-endereco-recorrente'),
+                                    height: 44,
+                                    text: 'Endereço de Entrega'),
                               ],
                             ),
                           ),
@@ -474,7 +482,17 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                       valor: _recorrencia,
                                       primeiroPedido: true,
                                       exibirErro: _exibirErroRecorrencia,
+                                      onChanged: (valor) => setState(() {
+                                            _recorrencia = valor;
+                                            _erro = null;
+                                          }))
+                                else if (widget.recorrente &&
+                                    _abaRecorrente == 2)
+                                  CamposRecorrencia(
+                                      valor: _recorrencia,
+                                      somenteEnderecos: true,
                                       permitirEnderecos: _tipo == '1',
+                                      exibirErro: _exibirErroRecorrencia,
                                       enderecoPadraoId: _idEndereco(_endereco),
                                       enderecos: _enderecos
                                           .map((endereco) =>

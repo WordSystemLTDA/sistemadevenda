@@ -182,6 +182,33 @@ class ProvedorCarrinho extends ChangeNotifier {
     return salvo;
   }
 
+  Future<bool> adicionarLoteVoz(
+      List<Modelowordprodutos> produtos, ContextoCarrinho esperado) async {
+    if (_descartado ||
+        !identical(_contexto, esperado) ||
+        !esperado.valido ||
+        produtos.isEmpty) {
+      return false;
+    }
+    final copias = produtos
+        .map((p) =>
+            Modelowordprodutos.fromMap(p.toMap())..conferidoNoCarrinho = false)
+        .toList();
+    final salvo = await _servico.armazenamento.alterar(esperado, (itens) {
+      if (_descartado || !identical(_contexto, esperado)) {
+        throw StateError(
+            'O atendimento mudou. Abra o pedido por voz novamente.');
+      }
+      // Persiste o lote inteiro em uma escrita e preserva rascunhos anteriores.
+      itens.addAll(copias);
+    });
+    if (salvo && identical(_contexto, esperado) && !_descartado) {
+      _numeroAdicoes += copias.length;
+      await listarComandasPedidos();
+    }
+    return salvo;
+  }
+
   Future<bool> definirConferencia(
       Modelowordprodutos item, int index, bool conferido) async {
     final alvo = _contexto;

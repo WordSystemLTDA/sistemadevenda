@@ -112,16 +112,20 @@ class ConfiguracaoRecorrencia {
         enderecosPorDia: enderecosPorDia ?? this.enderecosPorDia,
       );
 
-  String? get erro {
-    if (dias.isEmpty || dias.any((d) => d < 1 || d > 7)) {
-      return 'Selecione os dias da semana.';
-    }
+  String? get erroEnderecoEntrega {
     if (!['padrao', 'por_dia'].contains(enderecoModo)) {
       return 'Selecione como usar os endereços.';
     }
     if (enderecoModo == 'por_dia' &&
         dias.any((dia) => (enderecosPorDia[dia] ?? '').isEmpty)) {
       return 'Escolha o endereço de todos os dias selecionados.';
+    }
+    return null;
+  }
+
+  String? get erroInformacoes {
+    if (dias.isEmpty || dias.any((d) => d < 1 || d > 7)) {
+      return 'Selecione os dias da semana.';
     }
     if (!['livre', 'fixo', 'intervalo'].contains(horarioTipo)) {
       return 'Selecione uma opção de horário.';
@@ -144,6 +148,8 @@ class ConfiguracaoRecorrencia {
     }
     return null;
   }
+
+  String? get erro => erroInformacoes ?? erroEnderecoEntrega;
 
   String get diasTexto => dias.length == 7
       ? 'Todos os dias'

@@ -8,6 +8,7 @@ class CamposRecorrencia extends StatelessWidget {
   final bool exibirErro;
   final DateTime Function()? relogio;
   final bool permitirEnderecos;
+  final bool somenteEnderecos;
   final String enderecoPadraoId;
   final List<EnderecoRecorrente> enderecos;
   const CamposRecorrencia(
@@ -18,6 +19,7 @@ class CamposRecorrencia extends StatelessWidget {
       this.exibirErro = true,
       this.relogio,
       this.permitirEnderecos = false,
+      this.somenteEnderecos = false,
       this.enderecoPadraoId = '',
       this.enderecos = const []});
 
@@ -211,7 +213,7 @@ class CamposRecorrencia extends StatelessWidget {
             .firstOrNull ??
         enderecos.firstOrNull;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const SizedBox(height: 20),
+      if (!somenteEnderecos) const SizedBox(height: 20),
       _titulo(context, 'Endereço de entrega', Icons.location_on_outlined),
       _gradeJustificada(
         context,
@@ -301,11 +303,28 @@ class CamposRecorrencia extends StatelessWidget {
             'O pedido usará automaticamente o endereço programado para a data.',
             style: Theme.of(context).textTheme.bodySmall),
       ],
+      if (exibirErro && valor.erroEnderecoEntrega != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(valor.erroEnderecoEntrega!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ),
     ]);
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    if (somenteEnderecos) {
+      if (permitirEnderecos) return _enderecosEntrega(context);
+      return const ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.shopping_bag_outlined),
+        title: Text('Retirada no balcão'),
+        subtitle: Text(
+            'Pedidos para retirada não utilizam endereço de entrega.'),
+      );
+    }
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -452,11 +471,12 @@ class CamposRecorrencia extends StatelessWidget {
                         .textoPrimeiroPedido(relogio?.call() ?? DateTime.now())
                     : 'A alteração vale para os próximos pedidos.',
                 style: Theme.of(context).textTheme.bodySmall),
-            if (exibirErro && valor.erro != null)
+            if (exibirErro && valor.erroInformacoes != null)
               Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(valor.erro!,
+                  child: Text(valor.erroInformacoes!,
                       style: TextStyle(
                           color: Theme.of(context).colorScheme.error))),
           ]);
+  }
 }

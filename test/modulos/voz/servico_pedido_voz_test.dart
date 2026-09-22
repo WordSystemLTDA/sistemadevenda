@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 class AdaptadorVozTeste implements HttpClientAdapter {
   int status = 200;
   Object sessao = {'sucesso': true, 'protocolo': 1, 'token': 'token-teste'};
+  Object capacidades = {'sucesso': true, 'protocolo': 1, 'destino_voz': 1};
+  Object? pedido;
   final chamadas = <RequestOptions>[];
 
   @override
@@ -19,7 +21,9 @@ class AdaptadorVozTeste implements HttpClientAdapter {
     chamadas.add(options);
     final dados = options.path == 'voz/sessao.php'
         ? sessao
-        : {'sucesso': true, 'protocolo': 1, 'destino_voz': 1};
+        : options.method == 'POST'
+            ? pedido ?? capacidades
+            : capacidades;
     return ResponseBody.fromString(jsonEncode(dados), status, headers: {
       Headers.contentTypeHeader: [Headers.jsonContentType]
     });
@@ -59,6 +63,46 @@ void main() {
         {'empresa': '32', 'id_usuario': '7', 'senha': 'senha-teste'});
     expect(adaptador.chamadas.last.headers['X-Garcom-Voz'], 'token-teste');
     expect(adaptador.chamadas.last.data, isNull);
+  });
+
+  test(
+      'protocolo2 envia rascunho e contexto e preserva pergunta sem consultar catálogo',
+      () async {
+    adaptador.sessao = {
+      'sucesso': true,
+      'protocolo': 2,
+      'token': 'token-teste'
+    };
+    adaptador.capacidades = {
+      'sucesso': true,
+      'protocolo': 2,
+      'provedor': 'local',
+      'timeout_segundos': 120
+    };
+    adaptador.pedido = {
+      'sucesso': true,
+      'protocolo': 2,
+      'texto': 'Uma pizza',
+      'pedido': {'itens': [], 'esclarecimento': 'Qual tamanho?'}
+    };
+    await servico.verificar();
+    expect(servico.suportaLote, isTrue);
+    await expectLater(
+        servico.interpretarLote(
+            texto: 'Uma pizza',
+            rascunho: {'itens': [], 'esclarecimento': ''},
+            contexto: {'historico': [], 'pergunta': ''}),
+        throwsA(isA<EsclarecimentoPedidoVoz>()
+            .having((e) => e.texto, 'texto', 'Uma pizza')));
+    final chamada = adaptador.chamadas.last;
+    final campos = Map.fromEntries((chamada.data as FormData).fields);
+    expect(campos['protocolo'], '2');
+    expect(
+        jsonDecode(campos['rascunho']!), {'itens': [], 'esclarecimento': ''});
+    expect(jsonDecode(campos['contexto']!), {'historico': [], 'pergunta': ''});
+    expect(campos.containsKey('senha'), isFalse);
+    expect(chamada.headers['X-Garcom-Voz'], 'token-teste');
+    expect(chamada.receiveTimeout, const Duration(seconds: 260));
   });
 
   for (final status in [401, 429, 503]) {

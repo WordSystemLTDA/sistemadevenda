@@ -1,5 +1,12 @@
 # Pedidos por voz
 
+> Atualização de 22/09/2026: o pedido atual usa o protocolo 2, com vários itens,
+> correção e confirmação no carrinho, incluindo Delivery e Balcão. O modo local
+> Whisper.cpp + Ollama é configurado em Integrações > Comanda Eletrônica e por Voz.
+> Consulte [a documentação atual](docs/PEDIDOS_POR_VOZ.md). As notas abaixo
+> descrevem o protocolo 1 preservado para compatibilidade; o cardápio e o carrinho
+> não usam mais seu envio automático por voz.
+
 ## O que foi implementado
 
 - Microfone ao lado dos favoritos no cardapio.

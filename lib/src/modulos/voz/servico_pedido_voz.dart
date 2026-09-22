@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -8,12 +9,19 @@ import 'package:dio/dio.dart';
 
 import 'pedido_falado.dart';
 import 'abertura_falada.dart';
+import 'lote_pedido_voz.dart';
 
 class ServicoPedidoVoz {
   final String servidor;
   final UsuarioProvedor usuario;
   late final _identidade = usuario.usuario;
   String? _token;
+  Map capacidades = const {};
+  int get _timeoutProcessamento =>
+      (int.tryParse('${capacidades['timeout_segundos']}') ?? 180)
+          .clamp(30, 300);
+  bool get suportaLote =>
+      capacidades['protocolo'] == 2 || capacidades['protocolo2'] == 1;
   Dio? _clienteVoz;
   DioCliente? _clienteCatalogo;
   Dio get _voz => _clienteVoz ??= Dio(BaseOptions(
@@ -76,7 +84,8 @@ class ServicoPedidoVoz {
     try {
       final opcoes = Options(
           headers: {'X-Garcom-Voz': _token},
-          receiveTimeout: Duration(seconds: audio == null ? 12 : 90));
+          receiveTimeout: Duration(
+              seconds: audio == null ? 12 : _timeoutProcessamento * 2 + 20));
       final resposta = audio == null
           ? await _voz.get('voz/pedido.php',
               options: opcoes, cancelToken: _cancelamento)
@@ -85,7 +94,7 @@ class ServicoPedidoVoz {
       _validar();
       if (resposta.data is! Map ||
           resposta.data['sucesso'] != true ||
-          resposta.data['protocolo'] != 1) {
+          ![1, 2].contains(resposta.data['protocolo'])) {
         throw const FalhaPedidoVoz(
             'Atualize a API do servidor para usar pedidos por voz.');
       }
@@ -116,7 +125,7 @@ class ServicoPedidoVoz {
       _validar();
       if (resposta.data is! Map ||
           resposta.data['sucesso'] != true ||
-          resposta.data['protocolo'] != 1 ||
+          ![1, 2].contains(resposta.data['protocolo']) ||
           resposta.data['token'] is! String ||
           (resposta.data['token'] as String).isEmpty) {
         throw const FalhaPedidoVoz(
@@ -134,22 +143,102 @@ class ServicoPedidoVoz {
       throw const FalhaPedidoVoz(
           'Não consegui conectar ao serviço de voz. Verifique o endereço, a rede e o HTTPS para acesso online.');
     }
-    final capacidades = await _requisicao();
+    capacidades = await _requisicao();
     if (abertura != null && capacidades['abertura_voz'] != 1) {
       throw const FalhaPedidoVoz(
           'Atualize a API do servidor para abrir mesas e comandas por voz.');
     }
-    if (abertura == null && capacidades['destino_voz'] != 1) {
+    if (abertura == null && !suportaLote && capacidades['destino_voz'] != 1) {
       throw const FalhaPedidoVoz(
           'Atualize a API de voz para escolher entre carrinho e cozinha. Nenhum pedido foi enviado.');
     }
+  }
+
+  Future<LotePedidoVoz> interpretarLote(
+      {String? caminho,
+      String? texto,
+      Map<String, dynamic>? rascunho,
+      Map<String, dynamic>? contexto}) async {
+    if (!suportaLote) {
+      throw const FalhaPedidoVoz(
+          'Atualize a API para usar a comanda eletrônica e por voz.');
+    }
+    final resposta = await _requisicao(
+        audio: FormData.fromMap({
+      'protocolo': '2',
+      'finalidade': 'pedido',
+      'destino_voz': '1',
+      if (caminho != null)
+        'audio': await MultipartFile.fromFile(caminho, filename: 'pedido.wav'),
+      if (texto != null) 'texto': texto,
+      if (rascunho != null) 'rascunho': jsonEncode(rascunho),
+      if (contexto != null) 'contexto': jsonEncode(contexto),
+    }));
+    if (resposta['protocolo'] != 2 || resposta['pedido'] is! Map) {
+      throw const FalhaPedidoVoz(
+          'A API não retornou o pedido completo. Atualize o servidor.');
+    }
+    final pedidoResposta = resposta['pedido'] as Map;
+    final pergunta = pedidoResposta['esclarecimento'];
+    if (pergunta is String &&
+        pergunta.trim().isNotEmpty &&
+        pergunta.length <= 500) {
+      throw EsclarecimentoPedidoVoz(
+          pergunta.trim(), resposta['texto'] as String? ?? texto ?? '');
+    }
+    final pedidos = LotePedidoVoz.lerPedidos(pedidoResposta);
+    final produtos = ServicoProduto(_catalogo, usuario);
+    final categorias = ServicosCategoria(_catalogo, usuario);
+    final listaCategorias = await categorias.listar();
+    _validar();
+    final config = await ServicoConfigBigchef(_catalogo, usuario).listar();
+    _validar();
+    if (config == null) {
+      throw const FalhaPedidoVoz('Configuração do cardápio indisponível.');
+    }
+    final catalogo = <String, Modelowordprodutos>{};
+    for (var pagina = 1;; pagina++) {
+      final encontrados = await produtos.listarPorCategoria('0', pagina);
+      _validar();
+      final antes = catalogo.length;
+      for (final item in encontrados) {
+        catalogo[item.id] = item;
+      }
+      if (encontrados.length < 15) break;
+      if (antes == catalogo.length || pagina >= 200) {
+        throw const FalhaPedidoVoz(
+            'Não consegui consultar o cardápio completo. Tente novamente.');
+      }
+    }
+    final montador = MontadorPedidoVoz(
+        usuario: usuario,
+        servicoCategorias: categorias,
+        configuracao: config,
+        categorias: listaCategorias,
+        catalogo: catalogo.values.toList());
+    final itens = <Modelowordprodutos>[];
+    for (final pedido in pedidos) {
+      final principal = montador.produtosDoPedido(pedido).first;
+      final detalhes =
+          await produtos.listarPorId(principal.id, montador.idTamanho(pedido));
+      _validar();
+      if (detalhes == null) {
+        throw FalhaPedidoVoz('${principal.nome} não está mais disponível.');
+      }
+      itens.add(montador.montar(pedido, detalhes));
+    }
+    return LotePedidoVoz(
+        texto: resposta['texto'] as String? ?? '',
+        pedidos: pedidos,
+        itens: itens);
   }
 
   Future<AberturaFalada> interpretarAbertura(
       String caminho, TipoAberturaVoz tipo) async {
     final resposta = await _requisicao(
         audio: FormData.fromMap({
-      'audio': await MultipartFile.fromFile(caminho, filename: 'abertura.m4a'),
+      'audio': await MultipartFile.fromFile(caminho,
+          filename: caminho.endsWith('.wav') ? 'abertura.wav' : 'abertura.m4a'),
       'finalidade': 'abertura',
       'tipo_atendimento': tipo.name,
     }));
@@ -191,7 +280,8 @@ class ServicoPedidoVoz {
   Future<ResultadoPedidoVoz> interpretar(String caminho) async {
     final resposta = await _requisicao(
         audio: FormData.fromMap({
-      'audio': await MultipartFile.fromFile(caminho, filename: 'pedido.m4a'),
+      'audio': await MultipartFile.fromFile(caminho,
+          filename: caminho.endsWith('.wav') ? 'pedido.wav' : 'pedido.m4a'),
       'destino_voz': '1',
     }));
     if (resposta['pedido'] is! Map) {

@@ -105,7 +105,7 @@ class _ConfigAutomaticos extends Fake implements ServicoConfigBigchef {
 }
 
 void main() {
-  testWidgets('novo recorrente separa geral e informacoes em abas',
+  testWidgets('novo recorrente separa geral informacoes e endereco em abas',
       (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
@@ -118,6 +118,8 @@ void main() {
     expect(find.byKey(const ValueKey('aba-geral-recorrente')), findsOneWidget);
     expect(find.byKey(const ValueKey('aba-informacoes-recorrente')),
         findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('aba-endereco-recorrente')), findsOneWidget);
     expect(find.text('No local'), findsNothing);
     expect(find.text('Tipo de entrega'), findsOneWidget);
     expect(find.byType(CamposRecorrencia), findsNothing);
@@ -138,7 +140,17 @@ void main() {
     await tester.tap(find.text('A cada pedido'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Geral'));
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('aba-endereco-recorrente')));
+    await tester.tap(find.byKey(const ValueKey('aba-endereco-recorrente')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CamposRecorrencia), findsOneWidget);
+    expect(find.text('Endereço de entrega'), findsOneWidget);
+    expect(find.text('Repetir o pedido'), findsNothing);
+
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('aba-geral-recorrente')));
+    await tester.tap(find.byKey(const ValueKey('aba-geral-recorrente')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Retirada'));
     await tester.pumpAndSettle();
@@ -263,6 +275,12 @@ void main() {
       configuracao.copyWith(enderecosPorDia: const {1: '20'}).erro,
       'Escolha o endereço de todos os dias selecionados.',
     );
+    expect(configuracao.erroInformacoes, isNull);
+    expect(
+      configuracao
+          .copyWith(enderecosPorDia: const {1: '20'}).erroEnderecoEntrega,
+      'Escolha o endereço de todos os dias selecionados.',
+    );
   });
 
   testWidgets('formulario permite escolher o endereco de cada dia',
@@ -282,6 +300,7 @@ void main() {
           child: StatefulBuilder(builder: (context, setState) {
             return CamposRecorrencia(
               valor: configuracao,
+              somenteEnderecos: true,
               permitirEnderecos: true,
               enderecoPadraoId: '20',
               enderecos: const [

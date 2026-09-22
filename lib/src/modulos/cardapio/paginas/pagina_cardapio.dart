@@ -2,11 +2,8 @@
 import 'dart:developer';
 import 'dart:convert';
 import 'dart:async';
-import 'package:app/src/essencial/api/conexao.dart';
-import 'package:app/src/modulos/voz/dialogo_pedido_voz.dart';
-import 'package:app/src/modulos/voz/gravador_voz.dart';
-import 'package:app/src/modulos/voz/pedido_falado.dart';
-import 'package:app/src/modulos/voz/servico_pedido_voz.dart';
+import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
+
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
@@ -19,7 +16,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:brasil_fields/brasil_fields.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
@@ -222,96 +219,11 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   Future<void> _pedidoVoz() async {
     if (_vozAberta) return;
     setState(() => _vozAberta = true);
-    FocusManager.instance.primaryFocus?.unfocus();
-    final esperado = carrinhoProvedor.contexto;
-    final usuario = provedor.usuarioProvedor.usuario;
     try {
-      if (kIsWeb ||
-          ![TargetPlatform.android, TargetPlatform.iOS]
-              .contains(defaultTargetPlatform)) {
-        throw const FalhaPedidoVoz(
-            'O pedido por voz está disponível no aplicativo para Android e iPhone.');
-      }
-      if (esperado == null ||
-          !esperado.valido ||
-          !['mesa', 'comanda'].contains(esperado.tipo)) {
-        throw const FalhaPedidoVoz(
-            'Aguarde a abertura da mesa ou comanda e tente o microfone novamente.');
-      }
-      final servidor =
-          (await Apis().getConexao().timeout(const Duration(seconds: 5)))
-              .servidor;
-      if (!mounted) return;
-      if (!identical(esperado, carrinhoProvedor.contexto) ||
-          !identical(usuario, provedor.usuarioProvedor.usuario) ||
-          ModalRoute.of(context)?.isCurrent != true) {
-        throw const FalhaPedidoVoz(
-            'O atendimento mudou. Abra o microfone novamente.');
-      }
-      final servicoVoz = ServicoPedidoVoz(
-          servidor: servidor, usuario: provedor.usuarioProvedor);
-      final gravadorVoz = GravadorVoz();
-      final resultado = await showDialog<ResultadoPedidoVoz>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => DialogoPedidoVoz(
-            atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
-            servico: servicoVoz,
-            gravador: gravadorVoz),
-      );
-      if (!mounted || resultado == null) return;
-      final item = resultado.item;
-      final cozinha = resultado.destino == DestinoPedidoVoz.cozinha;
-      final servidorAtual =
-          (await Apis().getConexao().timeout(const Duration(seconds: 5)))
-              .servidor;
-      if (!mounted) return;
-      if (!identical(esperado, carrinhoProvedor.contexto) ||
-          !identical(usuario, provedor.usuarioProvedor.usuario) ||
-          ModalRoute.of(context)?.isCurrent != true ||
-          servidor != servidorAtual) {
-        throw const FalhaPedidoVoz(
-            'O atendimento ou a conexão mudou. Nenhum pedido foi enviado.');
-      }
-      if (cozinha && Sincronizador.instancia == null) {
-        throw const FalhaPedidoVoz(
-            'Aguarde a sincronização antes de enviar à cozinha. Nenhum pedido foi enviado.');
-      }
-      if (!mounted ||
-          !await carrinhoProvedor.prepararEnvioVoz(item, esperado,
-              exigirCarrinhoVazio: cozinha)) {
-        throw const FalhaPedidoVoz(
-            'O carrinho ou atendimento mudou. Para envio direto, finalize antes os outros itens. Nenhum pedido foi enviado.');
-      }
-      if (!mounted) return;
-      if (!cozinha) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:
-              Text('Produto adicionado ao carrinho. Não enviado à cozinha.'),
-          showCloseIcon: true,
-        ));
-        return;
-      }
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PaginaCarrinho(
-            contextoVoz: esperado,
-            assinaturaVoz: jsonEncode([item.toMap()]),
-            servidorVoz: servidor,
-            usuarioVoz: usuario?.id,
-            retornarParaFinalizacao: widget.retornarParaFinalizacao,
-            modeloRecorrente: widget.modeloRecorrente),
-      ));
-    } catch (erro) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(erro is FalhaPedidoVoz
-              ? erro.mensagem
-              : erro is TimeoutException
-                  ? 'Não foi possível abrir a conexão de voz. Tente novamente.'
-                  : 'Não foi possível concluir o pedido por voz. Confira o carrinho.'),
-          showCloseIcon: true,
-        ));
-      }
+      await abrirComandaVoz(context,
+          atendimento: widget.nomeAtendimento ?? widget.tipo.nome,
+          carrinho: carrinhoProvedor,
+          usuario: provedor.usuarioProvedor);
     } finally {
       if (mounted) setState(() => _vozAberta = false);
     }
@@ -486,7 +398,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               categoria: categoria,
                               finalizar: finalizar,
                               favoritos: _favoritos,
-                              onPedidoVoz: _pedidoVoz,
+                              onPedidoVoz:
+                                  widget.modeloRecorrente ? null : _pedidoVoz,
                               vozOcupada: _vozAberta,
                               modeloRecorrente: widget.modeloRecorrente,
                             ),
