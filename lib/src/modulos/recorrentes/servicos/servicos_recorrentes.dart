@@ -119,7 +119,4 @@ class ServicosRecorrentes {
 
   Future<void> excluir(ModeloRecorrente item) async =>
       _requisicao('excluir', {'id': item.id});
-
-  Future<void> processarAutomaticos() async =>
-      _requisicao('automaticos', const {});
 }

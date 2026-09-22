@@ -6,7 +6,6 @@ import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import '../provedores/provedor_recorrentes.dart';
-import '../servicos/servico_automaticos_recorrentes.dart';
 import '../servicos/servicos_recorrentes.dart';
 import 'widgets/agenda_recorrentes.dart';
 
@@ -17,7 +16,6 @@ class PaginaRecorrentes extends StatefulWidget {
 }
 
 class _PaginaRecorrentesState extends State<PaginaRecorrentes> {
-  late final automaticos = Modular.get<ServicoAutomaticosRecorrentes>();
   late final provedor = ProvedorRecorrentes(Modular.get<ServicosRecorrentes>());
   ServicoDelivery get delivery => Modular.get<ServicoDelivery>();
   @override
@@ -30,10 +28,6 @@ class _PaginaRecorrentesState extends State<PaginaRecorrentes> {
   Widget build(BuildContext context) => AgendaRecorrentes(
         provedor: provedor,
         exibirAppBar: true,
-        atualizacoesAutomaticas: automaticos,
-        sincronizarAutomaticos: () async {
-          await automaticos.processarAgora(forcar: true);
-        },
         novo: () => Navigator.push<void>(
             context,
             MaterialPageRoute(

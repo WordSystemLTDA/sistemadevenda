@@ -6,7 +6,6 @@ class CamposRecorrencia extends StatelessWidget {
   final ValueChanged<ConfiguracaoRecorrencia> onChanged;
   final bool primeiroPedido;
   final bool exibirErro;
-  final DateTime Function()? relogio;
   final bool permitirEnderecos;
   final bool somenteEnderecos;
   final String enderecoPadraoId;
@@ -17,7 +16,6 @@ class CamposRecorrencia extends StatelessWidget {
       required this.onChanged,
       this.primeiroPedido = false,
       this.exibirErro = true,
-      this.relogio,
       this.permitirEnderecos = false,
       this.somenteEnderecos = false,
       this.enderecoPadraoId = '',
@@ -467,8 +465,7 @@ class CamposRecorrencia extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
                 primeiroPedido
-                    ? valor
-                        .textoPrimeiroPedido(relogio?.call() ?? DateTime.now())
+                    ? valor.textoPrimeiroPedido
                     : 'A alteração vale para os próximos pedidos.',
                 style: Theme.of(context).textTheme.bodySmall),
             if (exibirErro && valor.erroInformacoes != null)

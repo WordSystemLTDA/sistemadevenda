@@ -33,8 +33,6 @@ class AgendaRecorrentes extends StatefulWidget {
   final Future<void> Function(String id, ModeloRecorrente item) abrirPedido;
   final Future<void> Function(ModeloRecorrente item)? editarItens;
   final Future<void> Function(String id, ModeloRecorrente item)? imprimirPedido;
-  final Listenable? atualizacoesAutomaticas;
-  final Future<void> Function()? sincronizarAutomaticos;
   final bool exibirAppBar;
   final Widget Function(BuildContext context, String titulo, Widget conteudo,
       VoidCallback? salvar)? formulario;
@@ -46,8 +44,6 @@ class AgendaRecorrentes extends StatefulWidget {
       required this.abrirPedido,
       this.editarItens,
       this.imprimirPedido,
-      this.atualizacoesAutomaticas,
-      this.sincronizarAutomaticos,
       this.exibirAppBar = false,
       this.formulario,
       this.agora});
@@ -59,7 +55,6 @@ class AgendaRecorrentes extends StatefulWidget {
 class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   ProvedorRecorrentes get p => widget.provedor;
-  Timer? _relogio;
   late DateTime _agora;
   late final TabController _abasHorarios;
   bool _recarregando = false;
@@ -75,74 +70,30 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     _agora = widget.agora?.call() ?? DateTime.now();
     _abasHorarios =
         TabController(length: _opcoesHorarioAgenda.length, vsync: this);
-    widget.atualizacoesAutomaticas?.addListener(_aoAtualizacaoAutomatica);
-    unawaited(p.listar());
-    _relogio =
-        Timer.periodic(const Duration(seconds: 1), (_) => _atualizarRelogio());
-  }
-
-  @override
-  void didUpdateWidget(covariant AgendaRecorrentes oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.atualizacoesAutomaticas != widget.atualizacoesAutomaticas) {
-      oldWidget.atualizacoesAutomaticas
-          ?.removeListener(_aoAtualizacaoAutomatica);
-      widget.atualizacoesAutomaticas?.addListener(_aoAtualizacaoAutomatica);
-    }
-  }
-
-  void _aoAtualizacaoAutomatica() {
-    if (!mounted ||
-        _recarregando ||
-        p.ocupado ||
-        p.carregando ||
-        ModalRoute.of(context)?.isCurrent == false) {
-      return;
-    }
     unawaited(p.listar());
   }
 
-  Future<void> _recarregar({bool processarAutomaticos = false}) async {
+  Future<void> _recarregar() async {
     if (_recarregando) return;
     _recarregando = true;
     try {
-      if (processarAutomaticos) {
-        await widget.sincronizarAutomaticos?.call();
-      }
       if (mounted) await p.listar();
     } finally {
       _recarregando = false;
     }
   }
 
-  void _atualizarRelogio() {
-    if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
-    final anterior = _agora;
-    final agora = widget.agora?.call() ?? DateTime.now();
-    final tinhaContagem = p.itens
-        .any((item) => _estadoAutomatico(item, anterior)?.emContagem == true);
-    final temContagem = p.itens
-        .any((item) => _estadoAutomatico(item, agora)?.emContagem == true);
-    final mudouAtraso = p.itens.any((item) =>
-        (_estadoAutomatico(item, anterior)?.atrasado ?? false) !=
-        (_estadoAutomatico(item, agora)?.atrasado ?? false));
-    _agora = agora;
-    if (tinhaContagem || temContagem || mudouAtraso) setState(() {});
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !p.carregando && !p.ocupado) {
-      unawaited(_recarregar(processarAutomaticos: true));
+      unawaited(_recarregar());
     }
   }
 
   @override
   void dispose() {
-    _relogio?.cancel();
     _abasHorarios.dispose();
     _busca.dispose();
-    widget.atualizacoesAutomaticas?.removeListener(_aoAtualizacaoAutomatica);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -366,39 +317,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         if (mounted) await p.listar();
       });
 
-  bool _pendenteAutomatico(ModeloRecorrente item) =>
-      item.ativo &&
-      !item.temPedido &&
-      !item.processoCancelado &&
-      item.status != 'Pulado' &&
-      ['fixo', 'intervalo'].contains(item.configuracao.horarioTipo);
-
-  DateTime? _horarioAutomatico(ModeloRecorrente item) {
-    if (!_pendenteAutomatico(item)) return null;
-    return item.dataHoraEnvio;
-  }
-
-  _EstadoAutomatico? _estadoAutomatico(ModeloRecorrente item, DateTime agora) {
-    final horario = _horarioAutomatico(item);
-    if (horario == null) return null;
-    return _EstadoAutomatico(
-      restante: horario.difference(agora),
-      emContagem: agora.isBefore(horario) &&
-          !agora.isBefore(
-            item.dataHoraAlerta ??
-                horario.subtract(const Duration(minutes: 10)),
-          ),
-    );
-  }
-
-  String _duracao(Duration duracao) {
-    final segundos = duracao.inSeconds.clamp(0, 359999);
-    final horas = segundos ~/ 3600;
-    final minutos = (segundos % 3600) ~/ 60;
-    final restante = segundos % 60;
-    return '${horas.toString().padLeft(2, '0')}:${minutos.toString().padLeft(2, '0')}:${restante.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) => ListenableBuilder(
       listenable: p,
@@ -421,8 +339,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                               tooltip: 'Atualizar recorrentes',
                               onPressed: p.carregando || p.ocupado
                                   ? null
-                                  : () =>
-                                      _recarregar(processarAutomaticos: true),
+                                  : _recarregar,
                               icon: const Icon(Icons.refresh))
                         ]
                       : null)
@@ -466,8 +383,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                           textAlign: TextAlign.center),
                                       const SizedBox(height: 12),
                                       OutlinedButton(
-                                          onPressed: () => _recarregar(
-                                              processarAutomaticos: true),
+                                          onPressed: _recarregar,
                                           child: const Text('Tentar Novamente'))
                                     ])))
                         : p.carregando && p.itens.isEmpty
@@ -498,8 +414,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                 : celular && p.visao != 'cadastros'
                                     ? _carrosselAgendaCelular(itens)
                                     : RefreshIndicator(
-                                        onRefresh: () => _recarregar(
-                                            processarAutomaticos: true),
+                                        onRefresh: _recarregar,
                                         child: LayoutBuilder(
                                             builder: (context, constraints) {
                                           final escala =
@@ -616,7 +531,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       _OpcaoHorarioAgenda opcao, List<ModeloRecorrente> itens) {
     final cs = Theme.of(context).colorScheme;
     return RefreshIndicator(
-        onRefresh: () => _recarregar(processarAutomaticos: true),
+        onRefresh: _recarregar,
         child: ListView(
             key: PageStorageKey('recorrentes-horario-${opcao.tipo}'),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -774,8 +689,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 border: OutlineInputBorder())));
     final atualizar = IconButton(
         tooltip: 'Atualizar',
-        onPressed:
-            p.carregando ? null : () => _recarregar(processarAutomaticos: true),
+        onPressed: p.carregando ? null : _recarregar,
         icon: const Icon(Icons.refresh));
     if (largura < 600) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -942,9 +856,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final futuro = !item.disponivelEm(_agora);
     final pulado = item.status == 'Pulado';
     final indisponivel = item.status == 'Indisponivel';
-    final automatico = _estadoAutomatico(item, _agora);
-    final preparandoAutomatico = automatico?.emContagem ?? false;
-    final automaticoAtrasado = automatico?.atrasado ?? false;
     final podeProcessar = !p.ocupado &&
         item.ativo &&
         !futuro &&
@@ -952,20 +863,18 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         !indisponivel &&
         !item.processoFeito &&
         item.itens.isNotEmpty;
-    final situacao = automaticoAtrasado
-        ? 'Envio Atrasado'
-        : pulado
-            ? 'Não entregar'
-            : item.statusProcesso == 'Previsto'
-                ? 'Aguardando Processo'
-                : item.statusProcesso;
+    final situacao = pulado
+        ? 'Não entregar'
+        : item.statusProcesso == 'Previsto'
+            ? 'Aguardando Processo'
+            : item.statusProcesso;
     final corSucesso = tema.brightness == Brightness.dark
         ? const Color(0xFF34D399)
         : const Color(0xFF059669);
     final corAlerta = tema.brightness == Brightness.dark
         ? const Color(0xFFFBBF24)
         : const Color(0xFFB45309);
-    final corStatus = item.processoCancelado || automaticoAtrasado
+    final corStatus = item.processoCancelado
         ? cs.error
         : item.processoFeito
             ? corSucesso
@@ -990,20 +899,10 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final corFundo = item.processoFeito
         ? corSucesso.withValues(
             alpha: tema.brightness == Brightness.dark ? 0.16 : 0.10)
-        : automaticoAtrasado
-            ? cs.error.withValues(
-                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
-            : preparandoAutomatico
-                ? corSucesso.withValues(
-                    alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
-                : cs.surface;
+        : cs.surface;
     final corBorda = item.processoFeito
         ? corSucesso.withValues(alpha: 0.40)
-        : automaticoAtrasado
-            ? cs.error.withValues(alpha: 0.45)
-            : preparandoAutomatico
-                ? corSucesso.withValues(alpha: 0.45)
-                : cs.outlineVariant;
+        : cs.outlineVariant;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _alturaMinimaCardAgenda),
@@ -1049,17 +948,14 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                   style: tema.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              if (item.possuiEnvioAutomatico)
-                _linhaHorariosOperacionais(item)
-              else
-                Wrap(spacing: 16, runSpacing: 8, children: [
-                  _detalhe(
-                      item.tipoEntrega == '2'
-                          ? Icons.shopping_bag_outlined
-                          : Icons.delivery_dining_outlined,
-                      item.entregaTexto),
-                  _detalhe(Icons.schedule, item.configuracao.horarioTexto),
-                ]),
+              Wrap(spacing: 16, runSpacing: 8, children: [
+                _detalhe(
+                    item.tipoEntrega == '2'
+                        ? Icons.shopping_bag_outlined
+                        : Icons.delivery_dining_outlined,
+                    item.entregaTexto),
+                _detalhe(Icons.schedule, item.configuracao.horarioTexto),
+              ]),
               Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child:
@@ -1075,35 +971,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(item.endereco,
                         style: Theme.of(context).textTheme.bodySmall)),
-              if (preparandoAutomatico || automaticoAtrasado) ...[
-                const SizedBox(height: 7),
-                Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-                    decoration: BoxDecoration(
-                        color: (automaticoAtrasado ? cs.error : corSucesso)
-                            .withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(4)),
-                    child: Row(children: [
-                      Icon(
-                          automaticoAtrasado
-                              ? Icons.warning_amber_rounded
-                              : Icons.timer_outlined,
-                          size: 16,
-                          color: automaticoAtrasado ? cs.error : corSucesso),
-                      const SizedBox(width: 6),
-                      Expanded(
-                          child: Text(
-                              automaticoAtrasado
-                                  ? 'Envio automático não realizado'
-                                  : 'Envio automático em ${automatico == null ? '00:00:00' : _duracao(automatico.restante)}',
-                              style: tema.textTheme.labelMedium?.copyWith(
-                                  color: automaticoAtrasado
-                                      ? cs.error
-                                      : corSucesso,
-                                  fontWeight: FontWeight.w700)))
-                    ])),
-              ],
               const Divider(height: 18),
               _secaoItens(item, corSucesso),
               if (item.observacao.isNotEmpty)
@@ -1169,9 +1036,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final futuro = !item.disponivelEm(_agora);
     final pulado = item.status == 'Pulado';
     final indisponivel = item.status == 'Indisponivel';
-    final automatico = _estadoAutomatico(item, _agora);
-    final preparandoAutomatico = automatico?.emContagem ?? false;
-    final automaticoAtrasado = automatico?.atrasado ?? false;
     final podeProcessar = !p.ocupado &&
         item.ativo &&
         !futuro &&
@@ -1179,20 +1043,18 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         !indisponivel &&
         !item.processoFeito &&
         item.itens.isNotEmpty;
-    final situacao = automaticoAtrasado
-        ? 'Envio atrasado'
-        : pulado
-            ? 'Não entregar'
-            : item.statusProcesso == 'Previsto'
-                ? 'Aguardando processo'
-                : item.statusProcesso;
+    final situacao = pulado
+        ? 'Não entregar'
+        : item.statusProcesso == 'Previsto'
+            ? 'Aguardando processo'
+            : item.statusProcesso;
     final corSucesso = tema.brightness == Brightness.dark
         ? const Color(0xFF34D399)
         : const Color(0xFF059669);
     final corAlerta = tema.brightness == Brightness.dark
         ? const Color(0xFFFBBF24)
         : const Color(0xFFB45309);
-    final corStatus = item.processoCancelado || automaticoAtrasado
+    final corStatus = item.processoCancelado
         ? cs.error
         : item.processoFeito
             ? corSucesso
@@ -1217,20 +1079,10 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final corFundo = item.processoFeito
         ? corSucesso.withValues(
             alpha: tema.brightness == Brightness.dark ? 0.16 : 0.10)
-        : automaticoAtrasado
-            ? cs.error.withValues(
-                alpha: tema.brightness == Brightness.dark ? 0.14 : 0.06)
-            : preparandoAutomatico
-                ? corSucesso.withValues(
-                    alpha: tema.brightness == Brightness.dark ? 0.14 : 0.07)
-                : cs.surfaceContainerLowest;
+        : cs.surfaceContainerLowest;
     final corBorda = item.processoFeito
         ? corSucesso.withValues(alpha: 0.40)
-        : automaticoAtrasado
-            ? cs.error.withValues(alpha: 0.45)
-            : preparandoAutomatico
-                ? corSucesso.withValues(alpha: 0.45)
-                : cs.outlineVariant;
+        : cs.outlineVariant;
 
     return Card(
         margin: EdgeInsets.zero,
@@ -1295,18 +1147,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                 style: TextStyle(
                                     fontSize: 13, color: cs.onSurfaceVariant))),
                       const SizedBox(height: 12),
-                      if (item.possuiEnvioAutomatico) ...[
-                        _linhaHorariosOperacionais(item),
-                        const SizedBox(height: 10),
-                      ],
                       Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                                 child: Text(
-                                    item.possuiEnvioAutomatico
-                                        ? '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'}'
-                                        : '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
+                                    '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: cs.onSurfaceVariant))),
@@ -1328,39 +1174,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                 'Vence em ${DateFormat('dd/MM/yyyy').format(item.pagamento.vencimento!)}',
                                 style: TextStyle(
                                     fontSize: 12, color: cs.onSurfaceVariant))),
-                      if (preparandoAutomatico || automaticoAtrasado) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 8),
-                            decoration: BoxDecoration(
-                                color:
-                                    (automaticoAtrasado ? cs.error : corSucesso)
-                                        .withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(8)),
-                            child: Row(children: [
-                              Icon(
-                                  automaticoAtrasado
-                                      ? Icons.warning_amber_rounded
-                                      : Icons.timer_outlined,
-                                  size: 18,
-                                  color: automaticoAtrasado
-                                      ? cs.error
-                                      : corSucesso),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: Text(
-                                      automaticoAtrasado
-                                          ? 'Envio automático não realizado'
-                                          : 'Envio automático em ${automatico == null ? '00:00:00' : _duracao(automatico.restante)}',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: automaticoAtrasado
-                                              ? cs.error
-                                              : corSucesso,
-                                          fontWeight: FontWeight.w700))),
-                            ])),
-                      ],
                       const SizedBox(height: 10),
                       _secaoItens(item, corSucesso),
                       if (item.observacao.isNotEmpty)
@@ -1831,46 +1644,6 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         const SizedBox(width: 4),
         Flexible(child: Text(texto))
       ]);
-
-  Widget _linhaHorariosOperacionais(ModeloRecorrente item) => Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: _detalheHorario(
-              item.tipoEntrega == '2'
-                  ? Icons.shopping_bag_outlined
-                  : Icons.delivery_dining_outlined,
-              '${item.entregaTexto}: ${item.horarioEntregaTexto}',
-              Alignment.centerLeft,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
-            child: _detalheHorario(
-              Icons.restaurant_outlined,
-              'Envio à Cozinha: ${item.horarioEnvioTexto}',
-              Alignment.centerRight,
-            ),
-          ),
-        ],
-      );
-
-  Widget _detalheHorario(IconData icone, String texto, Alignment alinhamento) =>
-      FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: alinhamento,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icone,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(width: 4),
-            Text(texto, maxLines: 1, softWrap: false),
-          ],
-        ),
-      );
 }
 
 class _FiltroRecorrentes {
@@ -2042,13 +1815,6 @@ class _OpcaoHorarioAgenda {
       required this.titulo,
       required this.descricao,
       required this.icone});
-}
-
-class _EstadoAutomatico {
-  final Duration restante;
-  final bool emContagem;
-  const _EstadoAutomatico({required this.restante, required this.emContagem});
-  bool get atrasado => restante <= Duration.zero;
 }
 
 class _FaixaHorarioAgenda {

@@ -11,11 +11,7 @@ import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
-import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
-import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
-import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
-import 'package:app/src/modulos/recorrentes/servicos/servico_automaticos_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/provedores/provedor_recorrentes.dart';
 import 'package:app/src/modulos/recorrentes/paginas/widgets/agenda_recorrentes.dart';
@@ -64,7 +60,6 @@ class Api extends Fake implements ServicosRecorrentes {
   bool falhar = false;
   int aberturas = 0;
   int exclusoes = 0;
-  int processamentosAutomaticos = 0;
   DateTime? inicioConsultado, fimConsultado;
   @override
   Future<List<ModeloRecorrente>> listar(DateTime inicio, DateTime fim,
@@ -91,20 +86,9 @@ class Api extends Fake implements ServicosRecorrentes {
     exclusoes++;
     dados = dados.where((registro) => registro.id != item.id).toList();
   }
-
-  @override
-  Future<void> processarAutomaticos() async {
-    processamentosAutomaticos++;
-  }
 }
 
 class _Delivery extends Fake implements ServicoDelivery {}
-
-class _ConfigAutomaticos extends Fake implements ServicoConfigBigchef {
-  @override
-  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
-      ModeloConfigBigchef.fromMap({'clientecompedidosdecorrentes': 'Sim'});
-}
 
 void main() {
   testWidgets('novo recorrente separa geral informacoes e endereco em abas',
@@ -245,20 +229,8 @@ void main() {
 
     const fixo = ConfiguracaoRecorrencia(
         horarioTipo: 'fixo', horario: '12:00', pagamentoModo: 'diario');
-    expect(
-        fixo.primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12)), isFalse);
-    expect(fixo.primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12, 0, 1)),
-        isTrue);
-    expect(
-        fixo
-            .copyWith(horarioTipo: 'intervalo')
-            .primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12, 0, 1)),
-        isTrue);
-    expect(
-        fixo
-            .copyWith(horarioTipo: 'livre')
-            .primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 23, 59, 59)),
-        isFalse);
+    expect(fixo.textoPrimeiroPedido,
+        'O primeiro pedido é de hoje. Os próximos seguem os dias escolhidos.');
   });
 
   test('programa e restaura um endereco para cada dia de entrega', () {
@@ -325,23 +297,19 @@ void main() {
     expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
-  testWidgets('formulario informa quando o primeiro pedido sera amanha',
+  testWidgets('formulario informa que o primeiro pedido sempre sera hoje',
       (tester) async {
     final campos = CamposRecorrencia(
       valor: const ConfiguracaoRecorrencia(
           horarioTipo: 'fixo', horario: '12:00', pagamentoModo: 'diario'),
       primeiroPedido: true,
-      relogio: () => DateTime(2026, 9, 21, 12, 0, 1),
       onChanged: (_) {},
     );
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SingleChildScrollView(child: campos))));
 
-    expect(
-        find.text(
-            'O horário de hoje já passou. O primeiro pedido será amanhã; os próximos seguem os dias escolhidos.'),
-        findsOneWidget);
-    expect(find.textContaining('O primeiro pedido é de hoje'), findsNothing);
+    expect(find.textContaining('O primeiro pedido é de hoje'), findsOneWidget);
+    expect(find.textContaining('primeiro pedido será amanhã'), findsNothing);
     expect(tester.takeException(), isNull);
   });
   test('agenda abre no dia atual e amplia o período sob demanda', () async {
@@ -380,24 +348,6 @@ void main() {
     expect(item.ingredientesCardapio.first.detalhe, 'Pouco');
     expect(item.ingredientesCardapio.last.nome, 'Carne de Panela');
     expect(item.ingredientesCardapio.last.detalhe, 'Embalar Separado');
-  });
-  testWidgets('processamento automático acompanha a sessão sem sobrepor minuto',
-      (tester) async {
-    final api = Api();
-    final usuario = UsuarioProvedor();
-    final automaticos =
-        ServicoAutomaticosRecorrentes(api, usuario, _ConfigAutomaticos())
-          ..iniciar();
-    usuario.setUsuario(UsuarioModelo(id: '7', empresa: '32'));
-    await tester.pump();
-    await tester.pump();
-    expect(api.processamentosAutomaticos, 1);
-    await automaticos.processarAgora();
-    expect(api.processamentosAutomaticos, 1);
-    await automaticos.processarAgora(forcar: true);
-    expect(api.processamentosAutomaticos, 2);
-    automaticos.dispose();
-    usuario.dispose();
   });
   test('resposta antiga nao substitui a data escolhida', () async {
     final api = Api();
@@ -663,13 +613,13 @@ void main() {
     p.dispose();
   });
 
-  testWidgets('card mostra entrega, envio antecipado e alerta verde',
+  testWidgets('horario fixo vencido continua aguardando processo manual',
       (tester) async {
     tester.view.physicalSize = const Size(900, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    var agora = DateTime(2026, 9, 21, 11, 30);
+    final agora = DateTime(2026, 9, 21, 12, 1);
     final api = Api()
       ..dados = [
         pedido(
@@ -687,24 +637,15 @@ void main() {
             agora: () => agora)));
     await tester.pumpAndSettle();
 
-    final entrega = find.text('Entrega: 12:00');
-    final envio = find.text('Envio à Cozinha: 11:40');
-    expect(entrega, findsOneWidget);
-    expect(envio, findsOneWidget);
-    expect(find.textContaining('Alerta verde:'), findsNothing);
-    expect(
-        tester.getCenter(envio).dx, greaterThan(tester.getCenter(entrega).dx));
-    expect(
-        tester.getCenter(envio).dy, closeTo(tester.getCenter(entrega).dy, 0.5));
-    expect(tester.widget<Text>(envio).maxLines, 1);
-    expect(tester.widget<Text>(envio).softWrap, isFalse);
-    expect(find.text('Envio automático em 00:10:00'), findsOneWidget);
+    expect(find.text('Entrega'), findsOneWidget);
+    expect(find.text('Às 12:00'), findsOneWidget);
+    expect(find.text('Aguardando Processo'), findsOneWidget);
+    expect(find.textContaining('Envio automático'), findsNothing);
+    expect(find.text('Envio Atrasado'), findsNothing);
 
-    agora = DateTime(2026, 9, 21, 11, 41);
-    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('Realizar Processo'));
     await tester.pumpAndSettle();
-    expect(find.text('Envio Atrasado'), findsOneWidget);
-    expect(find.text('Envio automático não realizado'), findsOneWidget);
+    expect(api.aberturas, 1);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
