@@ -88,6 +88,28 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('consulta comum nao solicita ingredientes de outros dias', () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api1/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco);
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '1', empresa: '32'));
+    addTearDown(usuario.dispose);
+
+    await ServicoProduto(api, usuario).listarPorId('436', '0');
+
+    expect(
+        adapter.chamadas[0].uri.queryParameters['modelo_recorrente'], isNull);
+    expect(
+        adapter.chamadas[1].uri.queryParameters['modelo_recorrente'], isNull);
+  });
+
   test(
       'completa montagem pelo endpoint desktop quando API do garcom vem antiga',
       () async {
@@ -104,7 +126,8 @@ void main() {
       ..setUsuario(UsuarioModelo(id: '1', empresa: '32'));
     addTearDown(usuario.dispose);
 
-    final produto = await ServicoProduto(api, usuario).listarPorId('436', '0');
+    final produto = await ServicoProduto(api, usuario)
+        .listarPorId('436', '0', modeloRecorrente: true);
 
     expect(produto!.idCategoriaCardapio, '3');
     expect(produto.opcoesPacotes!.map((e) => e.tipo), [8, 3]);
@@ -120,5 +143,7 @@ void main() {
       '/sistema/apis_restaurantes/api_desktop/1.0.01/produtos/listar_por_categoria.php',
       '/sistema/apis_restaurantes/api_desktop/1.0.01/cardapio/vincular_cardapio/listar_ingredientes_dia.php',
     ]);
+    expect(adapter.chamadas[0].uri.queryParameters['modelo_recorrente'], 'Sim');
+    expect(adapter.chamadas[1].uri.queryParameters['modelo_recorrente'], 'Sim');
   });
 }

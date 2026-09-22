@@ -171,7 +171,8 @@ class ProdutosTeste extends Fake implements ServicoProduto {
   }
 
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
     consultasPorId.add((id, tamanho));
     return Modelowordprodutos.fromMap(
         produtos.firstWhere((p) => p.id == id).toMap())
@@ -181,7 +182,8 @@ class ProdutosTeste extends Fake implements ServicoProduto {
 
 class ProdutosComBordasTeste extends ProdutosTeste {
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
     consultasPorId.add((id, tamanho));
     return produtoComBordas(id);
   }
@@ -238,7 +240,8 @@ class ProdutosComBordasLentoTeste extends ProdutosComBordasTeste {
   final Completer<Modelowordprodutos?> resposta = Completer();
 
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) {
     consultasPorId.add((id, tamanho));
     return resposta.future;
   }
@@ -252,7 +255,8 @@ class ProdutosComBordasLentoTeste extends ProdutosComBordasTeste {
 
 class ProdutosComAdicionaisTeste extends ProdutosTeste {
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
     consultasPorId.add((id, tamanho));
     return Modelowordprodutos.fromMap(
         produtos.firstWhere((p) => p.id == id).toMap())
@@ -283,7 +287,8 @@ class ProdutosComAdicionaisTeste extends ProdutosTeste {
 
 class ProdutosComAdicionaisERetiradaTeste extends ProdutosTeste {
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
     consultasPorId.add((id, tamanho));
     return Modelowordprodutos.fromMap(
         produtos.firstWhere((p) => p.id == id).toMap())

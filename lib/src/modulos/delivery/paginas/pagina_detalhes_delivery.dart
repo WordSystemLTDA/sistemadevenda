@@ -156,6 +156,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
               builder: (_) => PaginaEditarProdutoCarrinho(
                   edicao: edicao,
                   mostrarControleQuantidade: true,
+                  modeloRecorrente: widget.modeloRecorrente,
                   carregarConfiguracao: () =>
                       Modular.get<ServicoConfigBigchef>().listar(),
                   aoSalvar: (produto) async {

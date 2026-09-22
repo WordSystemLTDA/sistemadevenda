@@ -29,6 +29,7 @@ class PaginaProduto extends StatefulWidget {
   final bool montagemPizza;
   final int? indexProduto;
   final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
+  final bool modeloRecorrente;
 
   const PaginaProduto({
     super.key,
@@ -38,6 +39,7 @@ class PaginaProduto extends StatefulWidget {
     this.montagemPizza = false,
     this.indexProduto,
     this.inserirEmItensRecorrentes,
+    this.modeloRecorrente = false,
   });
 
   @override
@@ -219,7 +221,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final idTamanhoPizza =
         widget.montagemPizza ? provedorCardapio.tamanhosPizza?.id ?? '0' : '0';
     await inicioServico
-        .listarPorId(widget.produto.id, idTamanhoPizza)
+        .listarPorId(
+      widget.produto.id,
+      idTamanhoPizza,
+      modeloRecorrente: widget.modeloRecorrente,
+    )
         .then((value) {
       if (!mounted) return;
       itemProduto = value;
@@ -797,6 +803,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
                           aoTrocar: _iniciarTrocaCardapio,
                           aoRestaurar: _restaurarMontagemCardapio,
                           aoVoltar: _voltarMontagemCardapio,
+                          preferenciasTodosDias: widget.modeloRecorrente,
                         )
                       : EtapaTrocaCardapio(
                           item: itemTroca,

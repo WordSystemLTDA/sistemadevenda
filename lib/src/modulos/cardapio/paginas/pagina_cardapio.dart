@@ -488,6 +488,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               favoritos: _favoritos,
                               onPedidoVoz: _pedidoVoz,
                               vozOcupada: _vozAberta,
+                              modeloRecorrente: widget.modeloRecorrente,
                             ),
                         ],
                       ),

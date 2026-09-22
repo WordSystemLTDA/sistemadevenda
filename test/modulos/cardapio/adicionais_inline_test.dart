@@ -21,9 +21,12 @@ class ProdutosLentos extends fixture.ProdutosComAdicionaisTeste {
   bool falhar = false;
   Completer<Modelowordprodutos?>? pendente;
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
     if (falhar) throw StateError('Offline');
-    return pendente == null ? super.listarPorId(id, tamanho) : pendente!.future;
+    return pendente == null
+        ? super.listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente)
+        : pendente!.future;
   }
 }
 

@@ -31,6 +31,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   ServicoProduto? servicoReal;
   bool omitirMontagem = false;
   bool semIngredientes = false;
+  bool? ultimaConsultaModeloRecorrente;
   final produtoCardapio = Modelowordprodutos(
     id: '151',
     nome: 'Almoço Livre',
@@ -53,10 +54,17 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   }
 
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
-    if (servicoReal != null) return servicoReal!.listarPorId(id, tamanho);
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
+    ultimaConsultaModeloRecorrente = modeloRecorrente;
+    if (servicoReal != null) {
+      return servicoReal!
+          .listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente);
+    }
     consultasPorId.add((id, tamanho));
-    if (id != produtoCardapio.id) return super.listarPorId(id, tamanho);
+    if (id != produtoCardapio.id) {
+      return super.listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente);
+    }
     return Modelowordprodutos.fromMap(produtoCardapio.toMap())
       ..opcoesPacotes = [
         if (!omitirMontagem)
@@ -80,6 +88,13 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
                       valor: '0',
                       idCategoriaCardapio: '9',
                     ),
+                    if (modeloRecorrente)
+                      ModeloDadosOpcoesPacotes(
+                        id: '3',
+                        nome: 'Frango',
+                        valor: '0',
+                        idCategoriaCardapio: '9',
+                      ),
                   ],
           ),
       ];
@@ -144,6 +159,41 @@ void main() {
     expect(find.text('Normal'), findsWidgets);
     expect(Modular.get<ProvedorCarrinho>().itensCarrinho.listaComandosPedidos,
         isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'modelo recorrente carrega ingredientes de todos os dias como Normal',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProduto(
+          estaPesquisando: false,
+          item: produtos.produtoCardapio,
+          categoria: null,
+          finalizar: false,
+          modeloRecorrente: true,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(CardProduto));
+    await tester.pumpAndSettle();
+
+    expect(produtos.ultimaConsultaModeloRecorrente, isTrue);
+    expect(
+        find.textContaining('Preferências para todos os dias'), findsOneWidget);
+    final ingredientes = tester
+        .widget<EtapaMontagemCardapio>(find.byType(EtapaMontagemCardapio))
+        .ingredientes;
+    expect(
+        ingredientes.map((item) => item.nome), ['Arroz', 'Feijão', 'Frango']);
+    expect(ingredientes, hasLength(3));
+    expect(
+      ingredientes.map((item) => item.montagemCardapio?.acao),
+      everyElement(AcaoIngredienteCardapio.normal),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -304,9 +354,9 @@ void main() {
       final impressao = DadosImpressaoPreparo.produto(item);
       final grupoImpresso = (impressao['opcoesPacotesListaFinal'] as List)
           .singleWhere((g) => g['tipo'] == 8);
-      expect(grupoImpresso['dados'][1]['nome'],
+      expect(grupoImpresso['dados'][0]['nome'],
           'TROCAR Carne de Panela POR 1x Arroz');
-      expect(grupoImpresso['dados'][2]['nome'], 'POUCO Feijão');
+      expect(grupoImpresso['dados'][1]['nome'], 'POUCO Feijão');
       await tester.pumpWidget(RepaintBoundary(
         key: const ValueKey('captura'),
         child: MaterialApp(
@@ -326,7 +376,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Mostrar detalhes'));
       await tester.pumpAndSettle();
-      expect(find.text('Ingredientes do Cardápio'), findsOneWidget);
+      expect(find.text('Cardápio:'), findsOneWidget);
       expect(find.text('Trocar por 1x Arroz'), findsOneWidget);
       expect(find.text('Pouco'), findsOneWidget);
       expect(find.textContaining('TROCAR Carne'), findsNothing);

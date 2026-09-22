@@ -19,6 +19,7 @@ class MontagemCardapio {
   static List<ModeloDadosOpcoesPacotes> iniciar(
     List<ModeloDadosOpcoesPacotes> disponiveis, {
     List<ModeloDadosOpcoesPacotes>? salvos,
+    bool novosComoNormal = false,
   }) {
     final salvosPorId = {
       for (final item in salvos ?? <ModeloDadosOpcoesPacotes>[]) item.id: item,
@@ -40,7 +41,7 @@ class MontagemCardapio {
                   ingrediente.nome,
               acao: acaoInicial(
                 ingrediente,
-                preferirSem: possuiSalvos,
+                preferirSem: possuiSalvos && !novosComoNormal,
               ),
             ),
           ),

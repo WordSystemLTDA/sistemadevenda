@@ -31,6 +31,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
   bool carregando = true;
   String? erro;
   bool _descartado = false;
+  bool _modeloRecorrente = false;
   double _composicaoInicial = 0;
   String _assinaturaInicial = '';
   late final _saboresOriginais = _dadosOriginais(10);
@@ -85,6 +86,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       [];
 
   bool get pizza => _saboresOriginais.isNotEmpty;
+  bool get modeloRecorrente => _modeloRecorrente;
   String get _idTamanhoOriginal => _dadosOriginais(9).firstOrNull?.id ?? '0';
   double get _valorTamanhoOriginal =>
       _valor(_dadosOriginais(9).firstOrNull?.valor);
@@ -131,6 +133,7 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
           opcoes.map((o) => ModeloOpcoesPacotes.fromMap(o.toMap())).toList()
       ..observacao = observacao
       .._composicaoInicial = _composicaoInicial
+      .._modeloRecorrente = _modeloRecorrente
       ..carregando = false;
     rascunho.cardapio
       ..configBigchef = cardapio.configBigchef
@@ -183,7 +186,11 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       if (!catalogoPorId.containsKey(selecionado.id)) {
         final detalhes = selecionado.id == original.id
             ? _catalogo
-            : await servico.listarPorId(selecionado.id, idTamanho);
+            : await servico.listarPorId(
+                selecionado.id,
+                idTamanho,
+                modeloRecorrente: _modeloRecorrente,
+              );
         if (_descartado) return [];
         if (detalhes == null) {
           throw StateError('Sabor indisponível: ${selecionado.id}.');
@@ -216,12 +223,20 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     return sabores;
   }
 
-  Future<void> carregar({ModeloConfigBigchef? configuracao}) async {
+  Future<void> carregar({
+    ModeloConfigBigchef? configuracao,
+    bool modeloRecorrente = false,
+  }) async {
     carregando = true;
     erro = null;
+    _modeloRecorrente = modeloRecorrente;
     notifyListeners();
     try {
-      _catalogo = await servico.listarPorId(original.id, idTamanho);
+      _catalogo = await servico.listarPorId(
+        original.id,
+        idTamanho,
+        modeloRecorrente: _modeloRecorrente,
+      );
       if (_descartado) return;
       if (_catalogo == null) throw StateError('Produto indisponível.');
       cardapio.configBigchef = configuracao;
@@ -264,12 +279,23 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
         }
       }
       for (final opcao in opcoes) {
-        if (!selecionadas.any((o) => o.id == opcao.id)) {
+        final indiceSelecionada = selecionadas
+            .indexWhere((selecionada) => selecionada.id == opcao.id);
+        if (indiceSelecionada < 0) {
           final copia = ModeloOpcoesPacotes.fromMap(opcao.toMap());
           copia.dados = _ehMontagemCardapio(copia)
               ? MontagemCardapio.iniciar(copia.dados ?? [])
               : [];
           selecionadas.add(copia);
+        } else if (_modeloRecorrente && _ehMontagemCardapio(opcao)) {
+          final salva = selecionadas[indiceSelecionada];
+          final mesclada = ModeloOpcoesPacotes.fromMap(opcao.toMap());
+          mesclada.dados = MontagemCardapio.iniciar(
+            opcao.dados ?? [],
+            salvos: salva.dados,
+            novosComoNormal: true,
+          );
+          selecionadas[indiceSelecionada] = mesclada;
         }
       }
       produto.opcoesPacotesListaFinal = selecionadas;
@@ -377,8 +403,11 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
       if (saboresAlterados) {
         final saborPrincipal = Modelowordprodutos.fromMap(
             cardapio.saboresPizzaSelecionados.first.toMap());
-        final primeiro =
-            await servico.listarPorId(saborPrincipal.id, idTamanho);
+        final primeiro = await servico.listarPorId(
+          saborPrincipal.id,
+          idTamanho,
+          modeloRecorrente: _modeloRecorrente,
+        );
         if (primeiro == null) throw StateError('Produto indisponível.');
         resultado
           ..id = primeiro.id

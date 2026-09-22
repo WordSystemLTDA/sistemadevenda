@@ -24,6 +24,7 @@ class CardProduto extends StatefulWidget {
   final VoidCallback? aoAlternarFavorito;
   final ProvedorCardapio? cardapioEdicao;
   final ValueChanged<Modelowordprodutos>? aoSelecionarSabor;
+  final bool modeloRecorrente;
 
   const CardProduto({
     super.key,
@@ -36,6 +37,7 @@ class CardProduto extends StatefulWidget {
     this.aoAlternarFavorito,
     this.cardapioEdicao,
     this.aoSelecionarSabor,
+    this.modeloRecorrente = false,
   }) : assert((cardapioEdicao == null) == (aoSelecionarSabor == null));
 
   @override
@@ -195,7 +197,10 @@ class _CardProdutoState extends State<CardProduto> {
 
             Navigator.of(context).push(MaterialPageRoute(
               builder: (context) {
-                return PaginaProduto(produto: item);
+                return PaginaProduto(
+                  produto: item,
+                  modeloRecorrente: widget.modeloRecorrente,
+                );
               },
             ));
 
@@ -295,7 +300,10 @@ class _CardProdutoState extends State<CardProduto> {
             widget.searchController!.closeView(item.nome);
           }
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => PaginaProduto(produto: item),
+            builder: (_) => PaginaProduto(
+              produto: item,
+              modeloRecorrente: widget.modeloRecorrente,
+            ),
           ));
         }
 

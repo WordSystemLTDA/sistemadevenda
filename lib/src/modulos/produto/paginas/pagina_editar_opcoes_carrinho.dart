@@ -435,6 +435,7 @@ class _PaginaEditarOpcoesCarrinhoState
               aoTrocar: _iniciarTrocaCardapio,
               aoRestaurar: _restaurarMontagemCardapio,
               aoVoltar: () => Navigator.pop(context, false),
+              preferenciasTodosDias: edicao.modeloRecorrente,
             )
           : EtapaTrocaCardapio(
               item: itemTroca,

@@ -17,6 +17,7 @@ class TabCustom extends StatefulWidget {
   final FavoritosProdutos? favoritos;
   final VoidCallback? onPedidoVoz;
   final bool vozOcupada;
+  final bool modeloRecorrente;
 
   const TabCustom({
     super.key,
@@ -26,6 +27,7 @@ class TabCustom extends StatefulWidget {
     this.favoritos,
     this.onPedidoVoz,
     this.vozOcupada = false,
+    this.modeloRecorrente = false,
   });
 
   @override
@@ -280,6 +282,7 @@ class _TabCustomState extends State<TabCustom>
                                     item: item,
                                     categoria: widget.categoria,
                                     finalizar: widget.finalizar,
+                                    modeloRecorrente: widget.modeloRecorrente,
                                     favorito:
                                         widget.favoritos?.contem(item.id) ??
                                             false,

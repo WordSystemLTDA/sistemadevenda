@@ -17,6 +17,7 @@ class EtapaMontagemCardapio extends StatefulWidget {
   final ValueChanged<ModeloDadosOpcoesPacotes> aoTrocar;
   final VoidCallback aoRestaurar;
   final VoidCallback aoVoltar;
+  final bool preferenciasTodosDias;
 
   const EtapaMontagemCardapio({
     super.key,
@@ -29,6 +30,7 @@ class EtapaMontagemCardapio extends StatefulWidget {
     required this.aoTrocar,
     required this.aoRestaurar,
     required this.aoVoltar,
+    this.preferenciasTodosDias = false,
   });
 
   @override
@@ -121,7 +123,9 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               Text(
-                'Cardápio do dia - $valorFormatado',
+                widget.preferenciasTodosDias
+                    ? 'Preferências para todos os dias - $valorFormatado'
+                    : 'Cardápio do dia - $valorFormatado',
                 style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
               ),
             ]),
@@ -183,9 +187,11 @@ class _EtapaMontagemCardapioState extends State<EtapaMontagemCardapio> {
                 ),
               ),
             if (widget.ingredientes.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Nenhum ingrediente disponível hoje.'),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(widget.preferenciasTodosDias
+                    ? 'Nenhum ingrediente vinculado a este cardápio.'
+                    : 'Nenhum ingrediente disponível hoje.'),
               ),
             if (widget.ingredientes.isNotEmpty && ingredientesFiltrados.isEmpty)
               const Padding(

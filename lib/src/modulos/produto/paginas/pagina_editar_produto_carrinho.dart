@@ -19,6 +19,7 @@ class PaginaEditarProdutoCarrinho extends StatefulWidget {
   final bool recorrentes;
   final bool edicaoAposFinalizar;
   final bool mostrarControleQuantidade;
+  final bool modeloRecorrente;
 
   const PaginaEditarProdutoCarrinho({
     super.key,
@@ -28,6 +29,7 @@ class PaginaEditarProdutoCarrinho extends StatefulWidget {
     this.recorrentes = false,
     this.edicaoAposFinalizar = false,
     this.mostrarControleQuantidade = false,
+    this.modeloRecorrente = false,
   });
 
   @override
@@ -70,7 +72,10 @@ class _PaginaEditarProdutoCarrinhoState
         throw StateError('Configuração indisponível.');
       }
       _configuracao = configuracao;
-      await edicao.carregar(configuracao: configuracao);
+      await edicao.carregar(
+        configuracao: configuracao,
+        modeloRecorrente: widget.modeloRecorrente,
+      );
     } catch (error, stackTrace) {
       developer.log('Falha ao iniciar edição do produto.',
           name: 'PaginaEditarProdutoCarrinho',

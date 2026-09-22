@@ -7,6 +7,7 @@ import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
@@ -78,6 +79,8 @@ class ProdutosEdicaoTeste extends ProdutosTeste {
   bool repetirPrimeiraPagina = false;
   Completer<void>? aguardar;
   Completer<void>? aguardarCatalogo;
+  Modelowordprodutos? respostaPersonalizada;
+  bool? ultimaConsultaModeloRecorrente;
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
@@ -93,10 +96,16 @@ class ProdutosEdicaoTeste extends ProdutosTeste {
   }
 
   @override
-  Future<Modelowordprodutos?> listarPorId(String id, String tamanho) async {
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
+    ultimaConsultaModeloRecorrente = modeloRecorrente;
     await aguardar?.future;
     if (falhar) throw StateError('Sem conexão');
-    final produto = await super.listarPorId(id, tamanho);
+    if (respostaPersonalizada != null) {
+      return Modelowordprodutos.fromMap(respostaPersonalizada!.toMap());
+    }
+    final produto = await super
+        .listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente);
     // listar_por_id.php devolve a categoria da pizza e nao inclui tamanhosPizza.
     final dados = produto!.toMap()..remove('tamanhosPizza');
     dados['nome'] = produto.nomeCategoria;
@@ -440,6 +449,95 @@ void main() {
     expect(salvo.valorVenda, '29.00');
     expect(salvo.quantidade, 2);
     expect(salvo.opcoesPacotesListaFinal!.where((o) => o.id == 10), isEmpty);
+  });
+
+  test(
+      'edicao recorrente conserva preferencia e inclui ingrediente novo como Normal',
+      () async {
+    ModeloDadosOpcoesPacotes ingrediente(
+      String id,
+      String nome, {
+      MontagemIngredienteCardapio? montagem,
+    }) =>
+        ModeloDadosOpcoesPacotes(
+          id: id,
+          nome: nome,
+          valor: '0',
+          idCategoriaCardapio: '70',
+          montagemCardapio: montagem,
+        );
+
+    ModeloOpcoesPacotes montagem(List<ModeloDadosOpcoesPacotes> ingredientes) =>
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Preferências do Cardápio (todos os dias)',
+          tipo: 8,
+          obrigatorio: false,
+          dados: ingredientes,
+        );
+
+    final catalogo = Modelowordprodutos(
+      id: '151',
+      nome: 'Marmita M',
+      codigo: '151',
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: '10.00',
+      categoria: 'Almoço',
+      nomeCategoria: 'Almoço',
+      habilTipo: 'Pacote',
+      idCategoriaCardapio: '70',
+      ingredientes: const [],
+      opcoesPacotes: [
+        montagem([
+          ingrediente('65', 'Arroz'),
+          ingrediente('66', 'Frango'),
+        ]),
+      ],
+    );
+    final original = Modelowordprodutos.fromMap(catalogo.toMap())
+      ..quantidade = 1
+      ..opcoesPacotesListaFinal = [
+        montagem([
+          ingrediente(
+            '65',
+            'POUCO Arroz',
+            montagem: const MontagemIngredienteCardapio(
+              nomeOriginal: 'Arroz',
+              acao: AcaoIngredienteCardapio.pouco,
+            ),
+          ),
+        ]),
+      ];
+    api.respostaPersonalizada = catalogo;
+    final edicao = criar(original);
+    addTearDown(edicao.dispose);
+
+    await edicao.carregar(modeloRecorrente: true);
+
+    expect(edicao.erro, isNull);
+    expect(api.ultimaConsultaModeloRecorrente, isTrue);
+    final preferencias = edicao.produto.opcoesPacotesListaFinal
+        .singleWhere((opcao) => opcao.tipo == 8)
+        .dados!;
+    expect(preferencias.map((item) => item.id), ['65', '66']);
+    expect(preferencias.first.montagemCardapio?.acao,
+        AcaoIngredienteCardapio.pouco);
+    expect(preferencias.last.montagemCardapio?.acao,
+        AcaoIngredienteCardapio.normal);
+    expect(preferencias.last.nome, 'Frango');
+
+    final salvo = await edicao.concluir();
+    expect(
+      salvo.opcoesPacotesListaFinal!
+          .singleWhere((opcao) => opcao.tipo == 8)
+          .dados!
+          .map((item) => item.montagemCardapio?.acao),
+      [AcaoIngredienteCardapio.pouco, AcaoIngredienteCardapio.normal],
+    );
   });
 
   test(

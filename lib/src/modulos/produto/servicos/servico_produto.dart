@@ -85,12 +85,23 @@ class ServicoProduto {
   }
 
   Future<Modelowordprodutos?> listarPorId(
-      String id, String idtamanhospizza) async {
+    String id,
+    String idtamanhospizza, {
+    bool modeloRecorrente = false,
+  }) async {
     final empresa = usuarioProvedor.usuario!.empresa ?? '';
     final idUsuario = usuarioProvedor.usuario!.id ?? '';
     final response = await dio.cliente.get(
-        '/produtos/listar_por_id.php?id=$id&empresa=$empresa&id_usuario=$idUsuario&id_tamanhos_pizza=$idtamanhospizza',
-        options: Options(extra: {'atualizarMontagemCardapio': true}));
+      '/produtos/listar_por_id.php',
+      queryParameters: {
+        'id': id,
+        'empresa': empresa,
+        'id_usuario': idUsuario,
+        'id_tamanhos_pizza': idtamanhospizza,
+        if (modeloRecorrente) 'modelo_recorrente': 'Sim',
+      },
+      options: Options(extra: {'atualizarMontagemCardapio': true}),
+    );
 
     if (response.data == null) return null;
 
@@ -100,6 +111,7 @@ class ServicoProduto {
       empresa: empresa,
       idUsuario: idUsuario,
       baseGarcom: response.requestOptions.baseUrl,
+      modeloRecorrente: modeloRecorrente,
     );
     return _completarPermissoesMontagemCardapio(
       produtoCompleto,
@@ -125,6 +137,7 @@ class ServicoProduto {
     required String empresa,
     required String idUsuario,
     required String baseGarcom,
+    required bool modeloRecorrente,
   }) async {
     if (_grupoMontagemCardapio(produto) || produto.categoria.trim().isEmpty) {
       return produto;
@@ -138,6 +151,7 @@ class ServicoProduto {
       empresa: empresa,
       idUsuario: idUsuario,
       baseDesktop: baseDesktop,
+      modeloRecorrente: modeloRecorrente,
     );
     if (produtoDesktop == null || !_grupoMontagemCardapio(produtoDesktop)) {
       return produto;
@@ -294,6 +308,7 @@ class ServicoProduto {
     required String empresa,
     required String idUsuario,
     required String baseDesktop,
+    required bool modeloRecorrente,
   }) async {
     for (var pagina = 1; pagina <= 10; pagina++) {
       try {
@@ -303,6 +318,7 @@ class ServicoProduto {
           idUsuario: idUsuario,
           pagina: pagina,
           baseDesktop: baseDesktop,
+          modeloRecorrente: modeloRecorrente,
         );
         final encontrado = lista.where((item) =>
             item['id']?.toString() == produto.id ||
@@ -325,8 +341,10 @@ class ServicoProduto {
     required String idUsuario,
     required int pagina,
     required String baseDesktop,
+    bool modeloRecorrente = false,
   }) {
-    final chave = '$baseDesktop|$empresa|$idUsuario|$categoria|$pagina';
+    final chave =
+        '$baseDesktop|$empresa|$idUsuario|$categoria|$pagina|$modeloRecorrente';
     return _catalogosDesktop.putIfAbsent(chave, () async {
       try {
         final response = await dio.cliente.get(
@@ -336,6 +354,7 @@ class ServicoProduto {
             'empresa': empresa,
             'id_usuario': idUsuario,
             'pagina': pagina,
+            if (modeloRecorrente) 'modelo_recorrente': 'Sim',
           },
           options: Options(extra: {
             'semCache': true,
