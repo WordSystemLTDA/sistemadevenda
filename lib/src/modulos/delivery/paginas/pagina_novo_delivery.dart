@@ -35,7 +35,8 @@ class PaginaNovoDelivery extends StatefulWidget {
   State<PaginaNovoDelivery> createState() => _PaginaNovoDeliveryState();
 }
 
-class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
+class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
+    with SingleTickerProviderStateMixin {
   ConfiguracaoRecorrencia _recorrencia = const ConfiguracaoRecorrencia();
   final _chaveRecorrencia = ServicosRecorrentes.novaChave();
   final _observacao = TextEditingController();
@@ -48,6 +49,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
   ConfigDelivery? _config;
+  TabController? _controladorAbas;
+  int _abaRecorrente = 0;
   double get _taxa {
     if (_tipo != '1') return 0;
     final original = widget.editarPedido;
@@ -65,6 +68,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
   @override
   void initState() {
     super.initState();
+    if (widget.recorrente) {
+      _controladorAbas = TabController(length: 2, vsync: this);
+    }
     final base = widget.editarPedido ?? widget.clonar;
     if (base != null) {
       _observacao.text = base.observacao;
@@ -81,8 +87,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
 
   @override
   void dispose() {
+    _controladorAbas?.dispose();
     _observacao.dispose();
     super.dispose();
+  }
+
+  void _irParaAba(int indice) {
+    final controlador = _controladorAbas;
+    if (!widget.recorrente || controlador == null) return;
+    if (_abaRecorrente != indice) {
+      setState(() => _abaRecorrente = indice);
+    }
+    if (controlador.index != indice) controlador.animateTo(indice);
   }
 
   String _textoCliente(Map<String, dynamic> dados, List<String> chaves) {
@@ -270,19 +286,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
 
   Future<void> _abrir() async {
     if (_salvando) return;
-    if (widget.recorrente && _recorrencia.erro != null) {
-      final erroRecorrencia = _recorrencia.erro!;
-      setState(() {
-        _exibirErroRecorrencia = true;
-        _erro = null;
-      });
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(erroRecorrencia)));
-      return;
-    }
     if (widget.recorrente && _cliente == '0') {
-      setState(() => _erro = 'Selecione um cliente cadastrado.');
+      setState(() {
+        _exibirErroRecorrencia = false;
+        _erro = 'Selecione um cliente cadastrado.';
+      });
+      _irParaAba(0);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(_erro!)));
@@ -294,7 +303,23 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
             _endereco == null ||
             _carregando ||
             _config == null)) {
-      setState(() => _erro = 'Selecione o cliente e o endereço para entrega.');
+      setState(() {
+        _exibirErroRecorrencia = false;
+        _erro = 'Selecione o cliente e o endereço para entrega.';
+      });
+      _irParaAba(0);
+      return;
+    }
+    if (widget.recorrente && _recorrencia.erro != null) {
+      final erroRecorrencia = _recorrencia.erro!;
+      setState(() {
+        _exibirErroRecorrencia = true;
+        _erro = null;
+      });
+      _irParaAba(1);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(erroRecorrencia)));
       return;
     }
     setState(() {
@@ -407,225 +432,293 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery> {
               child: Center(
                   child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 800),
-                      child: ListView(
-                          keyboardDismissBehavior:
-                              ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            if (widget.recorrente) ...[
-                              CamposRecorrencia(
-                                  valor: _recorrencia,
-                                  primeiroPedido: true,
-                                  exibirErro: _exibirErroRecorrencia,
-                                  onChanged: (valor) => setState(() {
-                                        _recorrencia = valor;
-                                        _erro = null;
-                                      })),
-                              const Divider(height: 32),
-                            ],
-                            _titulo('Tipo de entrega', Icons.delivery_dining),
-                            Row(children: [
-                              for (final opcao in [
-                                if (widget.permitirEntrega)
-                                  ('1', 'Entrega', Icons.delivery_dining),
-                                ('2', 'Retirada', Icons.shopping_bag_outlined),
-                                if (!widget.recorrente)
-                                  ('3', 'No local', Icons.restaurant_outlined)
-                              ]) ...[
-                                Expanded(
-                                  child: _cardTipoEntrega(
-                                      valor: opcao.$1,
-                                      texto: opcao.$2,
-                                      icone: opcao.$3),
-                                ),
-                                if (opcao.$1 != '3') const SizedBox(width: 8),
-                              ]
-                            ]),
-                            const SizedBox(height: 20),
-                            _titulo('Cliente', Icons.person_outline),
-                            ListTile(
-                                key: const ValueKey('selecionar-cliente'),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    side: BorderSide(color: cs.outlineVariant)),
-                                tileColor: cs.surfaceContainerLowest,
-                                leading:
-                                    const Icon(Icons.person_search_outlined),
-                                title: Text(_nome.isEmpty
-                                    ? 'Selecionar cliente'
-                                    : _nome),
-                                subtitle:
-                                    _telefone.isEmpty ? null : Text(_telefone),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: _salvando ? null : _selecionarCliente),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: FilledButton.tonalIcon(
-                                    key: const ValueKey('novo-cliente'),
-                                    onPressed: _salvando
-                                        ? null
-                                        : () => _selecionarCliente(novo: true),
-                                    icon: const Icon(
-                                        Icons.person_add_alt_1_outlined),
-                                    label: const Text('Novo Cliente'))),
-                            if (_tipo == '1') ...[
-                              const SizedBox(height: 20),
-                              Row(children: [
-                                Expanded(
-                                    child: _titulo('Endereço de entrega',
-                                        Icons.location_on_outlined)),
-                                IconButton(
-                                    tooltip: 'Atualizar endereços',
-                                    onPressed: _cliente == '0' || _carregando
-                                        ? null
-                                        : _carregarEnderecos,
-                                    icon: const Icon(Icons.refresh)),
-                              ]),
-                              if (_carregando)
-                                const LinearProgressIndicator()
-                              else if (_enderecos.isEmpty)
-                                Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                    child: Text(
-                                        _cliente == '0'
-                                            ? 'Selecione um cliente'
-                                            : 'Nenhum endereço cadastrado',
-                                        style: TextStyle(
-                                            color: cs.onSurfaceVariant)))
-                              else
-                                ..._enderecos.map((e) {
-                                  final padrao = _ehEnderecoPadrao(e);
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      selected: e['id'] == _endereco?['id'],
-                                      isThreeLine: padrao,
-                                      selectedTileColor: cs.primaryContainer
-                                          .withValues(alpha: .4),
+                      child: Column(children: [
+                        if (widget.recorrente) ...[
+                          Material(
+                            color: cs.surface,
+                            child: TabBar(
+                              key: const ValueKey('abas-novo-recorrente'),
+                              controller: _controladorAbas,
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              onTap: (indice) =>
+                                  setState(() => _abaRecorrente = indice),
+                              tabs: const [
+                                Tab(
+                                    key: ValueKey('aba-geral-recorrente'),
+                                    height: 44,
+                                    text: 'Geral'),
+                                Tab(
+                                    key: ValueKey('aba-informacoes-recorrente'),
+                                    height: 44,
+                                    text: 'Informações'),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 1),
+                        ],
+                        Expanded(
+                          child: ListView(
+                              key: ValueKey(widget.recorrente
+                                  ? 'conteudo-aba-$_abaRecorrente'
+                                  : 'conteudo-novo-delivery'),
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                if (widget.recorrente && _abaRecorrente == 1)
+                                  CamposRecorrencia(
+                                      valor: _recorrencia,
+                                      primeiroPedido: true,
+                                      exibirErro: _exibirErroRecorrencia,
+                                      onChanged: (valor) => setState(() {
+                                            _recorrencia = valor;
+                                            _erro = null;
+                                          }))
+                                else ...[
+                                  _titulo(
+                                      'Tipo de entrega', Icons.delivery_dining),
+                                  Row(children: [
+                                    for (final opcao in [
+                                      if (widget.permitirEntrega)
+                                        ('1', 'Entrega', Icons.delivery_dining),
+                                      (
+                                        '2',
+                                        'Retirada',
+                                        Icons.shopping_bag_outlined
+                                      ),
+                                      if (!widget.recorrente)
+                                        (
+                                          '3',
+                                          'No local',
+                                          Icons.restaurant_outlined
+                                        )
+                                    ]) ...[
+                                      Expanded(
+                                        child: _cardTipoEntrega(
+                                            valor: opcao.$1,
+                                            texto: opcao.$2,
+                                            icone: opcao.$3),
+                                      ),
+                                      if (opcao.$1 != '3')
+                                        const SizedBox(width: 8),
+                                    ]
+                                  ]),
+                                  const SizedBox(height: 20),
+                                  _titulo('Cliente', Icons.person_outline),
+                                  ListTile(
+                                      key: const ValueKey('selecionar-cliente'),
                                       shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(8),
                                           side: BorderSide(
-                                              color: e['id'] == _endereco?['id']
-                                                  ? cs.primary
-                                                  : cs.outlineVariant)),
-                                      leading: Icon(e['id'] == _endereco?['id']
-                                          ? Icons.radio_button_checked
-                                          : Icons.radio_button_unchecked),
-                                      trailing: IconButton(
-                                          tooltip: 'Editar endereço',
-                                          onPressed: _salvando
-                                              ? null
-                                              : () =>
-                                                  _abrirEndereco(endereco: e),
-                                          icon: const Icon(Icons
-                                              .edit_location_alt_outlined)),
-                                      title: Text(
-                                          '${e['endereco']}, ${e['numero']}'),
-                                      subtitle: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text([
-                                              e['bairro'],
-                                              e['cidade'],
-                                              e['complemento']
-                                            ]
-                                                .where((s) =>
-                                                    s != null &&
-                                                    s.toString().isNotEmpty)
-                                                .join(' · ')),
-                                            if (padrao)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 4),
-                                                child: Container(
-                                                  key: ValueKey(
-                                                      'endereco-padrao-${_idEndereco(e)}'),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        cs.secondaryContainer,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            20),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(Icons.home_outlined,
-                                                          size: 15,
-                                                          color: cs
-                                                              .onSecondaryContainer),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        'Padrão',
-                                                        style: TextStyle(
-                                                          color: cs
-                                                              .onSecondaryContainer,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                          ]),
+                                              color: cs.outlineVariant)),
+                                      tileColor: cs.surfaceContainerLowest,
+                                      leading: const Icon(
+                                          Icons.person_search_outlined),
+                                      title: Text(_nome.isEmpty
+                                          ? 'Selecionar cliente'
+                                          : _nome),
+                                      subtitle: _telefone.isEmpty
+                                          ? null
+                                          : Text(_telefone),
+                                      trailing: const Icon(Icons.chevron_right),
                                       onTap: _salvando
                                           ? null
-                                          : () => setState(() => _endereco = e),
-                                    ),
-                                  );
-                                }),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: FilledButton.tonalIcon(
-                                      key: const ValueKey('novo-endereco'),
-                                      onPressed: _cliente == '0' || _salvando
-                                          ? null
-                                          : () => _abrirEndereco(),
-                                      icon: const Icon(
-                                          Icons.add_location_alt_outlined),
-                                      label: const Text('Novo endereço'))),
-                              if (_endereco != null && !_carregando)
-                                Padding(
-                                    padding: const EdgeInsets.only(top: 12),
-                                    child: Text(
-                                        'Taxa de entrega: ${_taxa.obterReal()}',
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600))),
-                            ],
-                            const SizedBox(height: 20),
-                            _titulo('Observação', Icons.edit_note),
-                            TextField(
-                                controller: _observacao,
-                                maxLines: 3,
-                                maxLength: 200,
-                                enabled: !_salvando,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                onTapOutside: (_) => FocusManager
-                                    .instance.primaryFocus
-                                    ?.unfocus(),
-                                decoration: const InputDecoration(
-                                    hintText: 'Observação do pedido',
-                                    border: OutlineInputBorder())),
-                            const SizedBox(height: 8),
-                            _mensagensCliente(),
-                            if (_erro != null)
-                              Text(_erro!, style: TextStyle(color: cs.error)),
-                          ])))),
+                                          : _selecionarCliente),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                      width: double.infinity,
+                                      height: 50,
+                                      child: FilledButton.tonalIcon(
+                                          key: const ValueKey('novo-cliente'),
+                                          onPressed: _salvando
+                                              ? null
+                                              : () => _selecionarCliente(
+                                                  novo: true),
+                                          icon: const Icon(
+                                              Icons.person_add_alt_1_outlined),
+                                          label: const Text('Novo Cliente'))),
+                                  if (_tipo == '1') ...[
+                                    const SizedBox(height: 20),
+                                    Row(children: [
+                                      Expanded(
+                                          child: _titulo('Endereço de entrega',
+                                              Icons.location_on_outlined)),
+                                      IconButton(
+                                          tooltip: 'Atualizar endereços',
+                                          onPressed:
+                                              _cliente == '0' || _carregando
+                                                  ? null
+                                                  : _carregarEnderecos,
+                                          icon: const Icon(Icons.refresh)),
+                                    ]),
+                                    if (_carregando)
+                                      const LinearProgressIndicator()
+                                    else if (_enderecos.isEmpty)
+                                      Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          child: Text(
+                                              _cliente == '0'
+                                                  ? 'Selecione um cliente'
+                                                  : 'Nenhum endereço cadastrado',
+                                              style: TextStyle(
+                                                  color: cs.onSurfaceVariant)))
+                                    else
+                                      ..._enderecos.map((e) {
+                                        final padrao = _ehEnderecoPadrao(e);
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: ListTile(
+                                            selected:
+                                                e['id'] == _endereco?['id'],
+                                            isThreeLine: padrao,
+                                            selectedTileColor: cs
+                                                .primaryContainer
+                                                .withValues(alpha: .4),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                side: BorderSide(
+                                                    color: e['id'] ==
+                                                            _endereco?['id']
+                                                        ? cs.primary
+                                                        : cs.outlineVariant)),
+                                            leading: Icon(e['id'] ==
+                                                    _endereco?['id']
+                                                ? Icons.radio_button_checked
+                                                : Icons.radio_button_unchecked),
+                                            trailing: IconButton(
+                                                tooltip: 'Editar endereço',
+                                                onPressed: _salvando
+                                                    ? null
+                                                    : () => _abrirEndereco(
+                                                        endereco: e),
+                                                icon: const Icon(Icons
+                                                    .edit_location_alt_outlined)),
+                                            title: Text(
+                                                '${e['endereco']}, ${e['numero']}'),
+                                            subtitle: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text([
+                                                    e['bairro'],
+                                                    e['cidade'],
+                                                    e['complemento']
+                                                  ]
+                                                      .where((s) =>
+                                                          s != null &&
+                                                          s
+                                                              .toString()
+                                                              .isNotEmpty)
+                                                      .join(' · ')),
+                                                  if (padrao)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 4),
+                                                      child: Container(
+                                                        key: ValueKey(
+                                                            'endereco-padrao-${_idEndereco(e)}'),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 3),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: cs
+                                                              .secondaryContainer,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(20),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                                Icons
+                                                                    .home_outlined,
+                                                                size: 15,
+                                                                color: cs
+                                                                    .onSecondaryContainer),
+                                                            const SizedBox(
+                                                                width: 4),
+                                                            Text(
+                                                              'Padrão',
+                                                              style: TextStyle(
+                                                                color: cs
+                                                                    .onSecondaryContainer,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ]),
+                                            onTap: _salvando
+                                                ? null
+                                                : () => setState(
+                                                    () => _endereco = e),
+                                          ),
+                                        );
+                                      }),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                        width: double.infinity,
+                                        height: 50,
+                                        child: FilledButton.tonalIcon(
+                                            key:
+                                                const ValueKey('novo-endereco'),
+                                            onPressed:
+                                                _cliente == '0' || _salvando
+                                                    ? null
+                                                    : () => _abrirEndereco(),
+                                            icon: const Icon(Icons
+                                                .add_location_alt_outlined),
+                                            label:
+                                                const Text('Novo endereço'))),
+                                    if (_endereco != null && !_carregando)
+                                      Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 12),
+                                          child: Text(
+                                              'Taxa de entrega: ${_taxa.obterReal()}',
+                                              style: const TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.w600))),
+                                  ],
+                                  const SizedBox(height: 20),
+                                  _titulo('Observação', Icons.edit_note),
+                                  TextField(
+                                      controller: _observacao,
+                                      maxLines: 3,
+                                      maxLength: 200,
+                                      enabled: !_salvando,
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      onTapOutside: (_) => FocusManager
+                                          .instance.primaryFocus
+                                          ?.unfocus(),
+                                      decoration: const InputDecoration(
+                                          hintText: 'Observação do pedido',
+                                          border: OutlineInputBorder())),
+                                  const SizedBox(height: 8),
+                                  _mensagensCliente(),
+                                  if (_erro != null)
+                                    Text(_erro!,
+                                        style: TextStyle(color: cs.error)),
+                                ],
+                              ]),
+                        ),
+                      ])))),
         ));
   }
 

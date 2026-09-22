@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -102,41 +103,72 @@ class _ConfigAutomaticos extends Fake implements ServicoConfigBigchef {
 }
 
 void main() {
-  testWidgets('novo recorrente exige horario, pagamento e cliente na retirada',
+  testWidgets('novo recorrente separa geral e informacoes em abas',
       (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
         home: PaginaNovoDelivery(servico: _Delivery(), recorrente: true)));
     await tester.pumpAndSettle();
     expect(find.text('Novo Recorrente'), findsOneWidget);
+    expect(find.byKey(const ValueKey('aba-geral-recorrente')), findsOneWidget);
+    expect(find.byKey(const ValueKey('aba-informacoes-recorrente')),
+        findsOneWidget);
     expect(find.text('No local'), findsNothing);
-    expect(find.byType(CamposRecorrencia), findsOneWidget);
-    expect(find.text('Às 12:00'), findsNothing);
-    await tester.tap(find.text('Abrir cardápio'));
+    expect(find.text('Tipo de entrega'), findsOneWidget);
+    expect(find.byType(CamposRecorrencia), findsNothing);
+
+    await tester.tap(find.text('Informações'));
     await tester.pumpAndSettle();
-    expect(find.text('Selecione uma opção de horário.'), findsWidgets);
+    expect(find.byType(CamposRecorrencia), findsOneWidget);
+    expect(find.text('Repetir o pedido'), findsOneWidget);
+    expect(find.text('Tipo de entrega'), findsNothing);
+    expect(find.text('Às 12:00'), findsNothing);
 
     await tester.ensureVisible(find.text('Qualquer horário'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Qualquer horário'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Abrir cardápio'));
-    await tester.pumpAndSettle();
-    expect(find.text('Selecione como o cliente paga.'), findsWidgets);
-
     await tester.ensureVisible(find.text('A cada pedido'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('A cada pedido'));
     await tester.pumpAndSettle();
 
-    final formulario = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(find.text('Retirada'), 300,
-        scrollable: formulario);
+    await tester.tap(find.text('Geral'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Retirada'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Abrir cardápio'));
     await tester.pumpAndSettle();
     expect(find.text('Selecione um cliente cadastrado.'), findsWidgets);
+    expect(find.text('Tipo de entrega'), findsOneWidget);
+    expect(find.byType(CamposRecorrencia), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('validacao abre a aba de informacoes quando ela tem pendencias',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: _Delivery(),
+      recorrente: true,
+      clonar: PedidoDelivery.fromMap({
+        'idCliente': '7',
+        'nomeCliente': 'Cliente recorrente',
+        'tipodeentrega': '2',
+      }),
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tipo de entrega'), findsOneWidget);
+    await tester.tap(find.text('Abrir cardápio'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CamposRecorrencia), findsOneWidget);
+    expect(find.text('Repetir o pedido'), findsOneWidget);
+    expect(find.text('Selecione uma opção de horário.'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
