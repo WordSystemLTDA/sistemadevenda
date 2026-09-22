@@ -6,10 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 class CartaoPendenciasImpressao extends StatefulWidget {
-  const CartaoPendenciasImpressao({super.key, this.fila, this.onAbrir});
+  const CartaoPendenciasImpressao({
+    super.key,
+    this.fila,
+    this.onAbrir,
+    this.estiloInicio = false,
+  });
 
   final FilaImpressao? fila;
   final void Function(BuildContext context)? onAbrir;
+  final bool estiloInicio;
 
   @override
   State<CartaoPendenciasImpressao> createState() =>
@@ -58,6 +64,11 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
         final quantidade = _quantidade;
         final temPendencia = quantidade > 0;
         final corDestaque = temPendencia ? cs.error : cs.primary;
+        final estiloInicio = widget.estiloInicio;
+        final corPrincipal = isDark ? cs.onSurface : const Color(0xFF123F53);
+        final corTexto = estiloInicio ? corPrincipal : cs.onSurface;
+        final corTextoSecundario = cs.onSurfaceVariant;
+        final raio = estiloInicio ? 16.0 : 8.0;
         final subtitulo = temPendencia
             ? '$quantidade ${quantidade == 1 ? 'impressão aguardando' : 'impressões aguardando'}'
             : 'Nenhuma pendência agora';
@@ -65,96 +76,164 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
         return SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-            child: Material(
-              key: const ValueKey('card_pendencias_impressao'),
-              color: isDark ? const Color(0xFF1F2937) : cs.surface,
-              elevation: temPendencia ? 5 : 2,
-              shadowColor: corDestaque.withValues(alpha: 0.18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: temPendencia
-                      ? corDestaque.withValues(alpha: 0.35)
-                      : cs.outlineVariant,
-                ),
-              ),
-              child: InkWell(
-                onTap: () => _abrirPendencias(context),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: corDestaque.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(Icons.print_outlined,
-                            color: corDestaque, size: 26),
+            padding: EdgeInsets.fromLTRB(16, estiloInicio ? 8 : 6, 16, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Material(
+                      key: const ValueKey('card_pendencias_impressao'),
+                      color: estiloInicio
+                          ? isDark
+                              ? cs.surfaceContainerHigh
+                              : cs.surface
+                          : isDark
+                              ? const Color(0xFF1F2937)
+                              : cs.surface,
+                      elevation: estiloInicio ? 2 : (temPendencia ? 5 : 2),
+                      shadowColor: estiloInicio
+                          ? const Color(0xFF123F53).withValues(alpha: 0.07)
+                          : corDestaque.withValues(alpha: 0.18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(raio),
+                        side: estiloInicio
+                            ? BorderSide(
+                                color: cs.outlineVariant.withValues(alpha: 0.8),
+                              )
+                            : BorderSide(
+                                color: temPendencia
+                                    ? corDestaque.withValues(alpha: 0.35)
+                                    : cs.outlineVariant,
+                              ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Impressões Pendentes',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurface,
-                                  ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitulo,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ],
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _abrirPendencias(context),
+                        borderRadius: BorderRadius.circular(raio),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: estiloInicio ? 40 : 46,
+                                height: estiloInicio ? 40 : 46,
+                                decoration: BoxDecoration(
+                                  color: estiloInicio
+                                      ? temPendencia
+                                          ? cs.errorContainer
+                                          : isDark
+                                              ? cs.surfaceContainerHighest
+                                              : const Color(0xFFEDF4F8)
+                                      : corDestaque.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(
+                                      estiloInicio ? 11 : 8),
+                                ),
+                                child: Icon(
+                                  Icons.print_outlined,
+                                  color: estiloInicio
+                                      ? temPendencia
+                                          ? cs.error
+                                          : corPrincipal
+                                      : corDestaque,
+                                  size: estiloInicio ? 21 : 26,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      estiloInicio
+                                          ? 'Impressões pendentes'
+                                          : 'Impressões Pendentes',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontSize: estiloInicio ? 14 : null,
+                                            fontWeight: estiloInicio
+                                                ? FontWeight.w800
+                                                : FontWeight.w700,
+                                            color: corTexto,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitulo,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            fontSize: estiloInicio ? 11 : null,
+                                            color: corTextoSecundario,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                key: const ValueKey(
+                                    'contador_pendencias_impressao'),
+                                constraints: BoxConstraints(
+                                  minWidth: estiloInicio ? 34 : 36,
+                                  minHeight: 34,
+                                ),
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: estiloInicio ? 9 : 10),
+                                decoration: BoxDecoration(
+                                  color: estiloInicio
+                                      ? temPendencia
+                                          ? cs.errorContainer
+                                          : isDark
+                                              ? cs.surfaceContainerHighest
+                                              : const Color(0xFFEDF4F8)
+                                      : corDestaque.withValues(alpha: 0.13),
+                                  borderRadius: BorderRadius.circular(
+                                      estiloInicio ? 11 : 8),
+                                ),
+                                child: Text(
+                                  '$quantidade',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        fontSize: estiloInicio ? 13 : null,
+                                        color: estiloInicio
+                                            ? temPendencia
+                                                ? cs.error
+                                                : corPrincipal
+                                            : corDestaque,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: cs.onSurfaceVariant,
+                                size: estiloInicio ? 21 : 24,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Container(
-                        key: const ValueKey('contador_pendencias_impressao'),
-                        constraints:
-                            const BoxConstraints(minWidth: 36, minHeight: 34),
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: corDestaque.withValues(alpha: 0.13),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$quantidade',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: corDestaque,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(Icons.chevron_right_rounded,
-                          color: cs.onSurfaceVariant, size: 24),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         );

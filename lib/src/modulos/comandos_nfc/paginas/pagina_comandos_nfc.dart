@@ -86,7 +86,9 @@ class _PaginaComandosNfcState extends State<PaginaComandosNfc> {
                     height: 170,
                     child: CardHome(
                       nome: 'Mesas',
-                      icone: const Icon(Icons.table_bar_outlined, size: 40),
+                      descricao: 'Gravar comando na tag',
+                      icone: Icons.table_bar_outlined,
+                      cor: const Color(0xFF0D455D),
                       onPressed: () {
                         abrirLeitorNFC(TipoCardapio.mesa);
                       },
@@ -97,7 +99,9 @@ class _PaginaComandosNfcState extends State<PaginaComandosNfc> {
                     height: 170,
                     child: CardHome(
                       nome: 'Comandas',
-                      icone: const Icon(Icons.fact_check_outlined, size: 40),
+                      descricao: 'Gravar comando na tag',
+                      icone: Icons.fact_check_outlined,
+                      cor: const Color(0xFFEF6956),
                       onPressed: () {
                         abrirLeitorNFC(TipoCardapio.comanda);
                       },
