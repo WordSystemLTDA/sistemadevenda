@@ -14,4 +14,19 @@ class ProvedorFinalizarPagamento extends ChangeNotifier {
     _valor = value;
     notifyListeners();
   }
+
+  bool? _deliveryRecorrenteVinculado;
+  bool? get deliveryRecorrenteVinculado => _deliveryRecorrenteVinculado;
+
+  bool _deliveryComPagamentoParcial = false;
+  bool get deliveryComPagamentoParcial => _deliveryComPagamentoParcial;
+
+  void definirContextoDelivery({
+    bool? recorrenteVinculado,
+    bool pagamentoParcial = false,
+  }) {
+    _deliveryRecorrenteVinculado = recorrenteVinculado;
+    _deliveryComPagamentoParcial = pagamentoParcial;
+    notifyListeners();
+  }
 }

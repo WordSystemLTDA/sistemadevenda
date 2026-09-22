@@ -86,6 +86,13 @@ class PedidoDelivery {
   bool get encerrado =>
       ['Finalizado', 'Cancelado'].contains(texto('status')) ||
       (int.tryParse(texto('idVenda')) ?? 0) > 0;
+  bool? get recorrenteVinculado {
+    final valor = dados['recorrenteVinculado'] ?? dados['recorrente_vinculado'];
+    if (valor == null) return null;
+    if (valor is bool) return valor;
+    return ['sim', 'true', '1'].contains(valor.toString().trim().toLowerCase());
+  }
+
   bool get cancelado => texto('status') == 'Cancelado';
   // A venda pode estar paga antes de o pedido entrar em preparo.
   bool podeAvancar(EtapaDelivery origem) =>

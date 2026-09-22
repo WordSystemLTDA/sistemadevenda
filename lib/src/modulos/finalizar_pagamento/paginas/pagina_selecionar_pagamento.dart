@@ -102,7 +102,11 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       await _atualizarFormas();
       if (!mounted) return;
 
-      if (provedorCardapio.tipo == TipoCardapio.delivery) {
+      final consultarRecorrencia =
+          provedor.deliveryRecorrenteVinculado != false ||
+              provedor.deliveryComPagamentoParcial;
+      if (provedorCardapio.tipo == TipoCardapio.delivery &&
+          consultarRecorrencia) {
         _recorrencia = await Modular.get<ServicoDelivery>()
             .pagamentoRecorrente(provedor.idVenda);
         if (_recorrencia?.mensal == true) {

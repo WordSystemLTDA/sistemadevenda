@@ -279,6 +279,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     provedorFinalizarPagamento.idVenda = _contextoCarrinho!.idAtendimento;
     provedorFinalizarPagamento.valor =
         carrinhoProvedor.itensCarrinho.precoTotal;
+    provedorFinalizarPagamento.definirContextoDelivery();
     if (_tipo == TipoCardapio.balcao) {
       Navigator.push(
           context,
@@ -465,6 +466,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       _saldoDelivery = pedido.restante;
       provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
       provedorFinalizarPagamento.valor = _saldoDelivery!;
+      provedorFinalizarPagamento.definirContextoDelivery(
+        recorrenteVinculado: pedido.recorrenteVinculado,
+        pagamentoParcial: pedido.pago > 0.009 || pedido.pagamentos.isNotEmpty,
+      );
       setState(() => isLoading = false);
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;

@@ -27,18 +27,28 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   _DeliveryFinalizacao(super.dio, super.usuario);
 
   @override
-  Future<PagamentoRecorrente?> pagamentoRecorrente(String id) async => null;
+  Future<PagamentoRecorrente?> pagamentoRecorrente(String id) async {
+    consultasRecorrencia++;
+    if (falharRecorrencia) {
+      throw StateError(
+          'Não foi possível acessar os recorrentes. Verifique a conexão e a atualização da API.');
+    }
+    return null;
+  }
 
   int envios = 0;
   int consultas = 0;
   int pagamentos = 0;
   int conclusoes = 0;
   int notificacoes = 0;
+  int consultasRecorrencia = 0;
   MensagemClienteDelivery? ultimaMensagem;
   String? deliveryNotificado;
   String pago = '0';
   bool falharConsultaAposSalvar = false;
   bool falharEnvio = false;
+  bool falharRecorrencia = false;
+  bool recorrenteVinculado = false;
   Completer<void>? esperaEnvio;
   Completer<void>? consultaFinalBloqueada;
 
@@ -62,6 +72,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
         'status': conclusoes > 0 ? 'Finalizado' : 'Pendente',
         'valorVenda': envios > 0 ? '14.00' : '4.00',
         'somaValorHistorico': pago,
+        'recorrenteVinculado': recorrenteVinculado,
         'valordaentrega': '4.00',
       },
     };
@@ -218,6 +229,54 @@ void main() {
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('delivery comum sem pagamento ignora falha dos recorrentes',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.falharRecorrencia = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaSelecionarPagamento), findsOneWidget);
+    expect(m.delivery.consultasRecorrencia, 0);
+    expect(find.textContaining('recorrentes'), findsNothing);
+    expect(find.text('Dinheiro'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('delivery recorrente preserva erro da consulta de pagamento',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery
+      ..recorrenteVinculado = true
+      ..falharRecorrencia = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.consultasRecorrencia, 1);
+    expect(find.textContaining('Não foi possível acessar os recorrentes'),
+        findsOneWidget);
+  });
+
+  testWidgets('delivery com pagamento parcial preserva consulta protegida',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery
+      ..pago = '5.00'
+      ..falharRecorrencia = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.consultasRecorrencia, 1);
+    expect(find.textContaining('Não foi possível acessar os recorrentes'),
+        findsOneWidget);
   });
 
   testWidgets('delivery pergunta forma de pagamento sem selecionar ou cobrar',
