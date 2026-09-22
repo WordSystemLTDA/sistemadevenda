@@ -352,6 +352,10 @@ void main() {
       ingredientes.single['montagemCardapio']['valorEmbalagemSeparada'],
       '5.00',
     );
+    expect(
+      opcoes.where((opcao) => (opcao as Map)['titulo'] == 'Embalar Separado'),
+      isEmpty,
+    );
     expect(jsonEncode(dados), isNot(contains('Arroz')));
   });
 
