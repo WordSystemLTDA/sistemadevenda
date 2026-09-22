@@ -356,6 +356,13 @@ class ServicoDelivery {
       'delivery/finalizar_pedido_delivery.php',
       {'id_delivery': pedido.id, 'cliente': pedido.cliente});
 
+  Future<void> confirmar(String id) async {
+    if ((int.tryParse(id) ?? 0) <= 0) {
+      throw StateError('Pedido invÃ¡lido para confirmaÃ§Ã£o.');
+    }
+    await salvar('delivery/confirmar_pedido.php', {'id': id});
+  }
+
   Future<Map<String, dynamic>> acao(String acao, PedidoDelivery pedido,
           [Map<String, dynamic> campos = const {}]) =>
       salvar('delivery/acoes_pedido.php', {

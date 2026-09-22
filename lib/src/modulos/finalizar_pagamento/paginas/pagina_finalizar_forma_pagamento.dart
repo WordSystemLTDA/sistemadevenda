@@ -177,6 +177,7 @@ class _PaginaFinalizarFormaPagamentoState
     final quitado = pagamentoIntegral || atualizado.restante <= 0.009;
     if (quitado) {
       await servico.concluir(atualizado);
+      await servico.confirmar(provedor.idVenda);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, provedor.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       await carrinhoProvedor.removerComandasPedidos();

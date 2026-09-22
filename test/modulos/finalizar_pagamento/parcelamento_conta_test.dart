@@ -34,6 +34,7 @@ class _DeliveryContaTeste extends ServicoDelivery {
   List<ParcelasModelo> parcelas = const [];
   int pagamentos = 0;
   int conclusoes = 0;
+  int confirmacoes = 0;
 
   final pedidoTeste = PedidoDelivery.fromMap({
     'id': '10118',
@@ -72,6 +73,12 @@ class _DeliveryContaTeste extends ServicoDelivery {
   @override
   Future<void> concluir(PedidoDelivery pedido) async {
     conclusoes++;
+  }
+
+  @override
+  Future<void> confirmar(String id) async {
+    expect(id, '10118');
+    confirmacoes++;
   }
 }
 
@@ -285,6 +292,7 @@ void main() {
 
     expect(modulo.delivery.pagamentos, 1);
     expect(modulo.delivery.conclusoes, 1);
+    expect(modulo.delivery.confirmacoes, 1);
     expect(
       modulo.delivery.vencimento,
       DateFormat('yyyy-MM-dd').format(vencimentoEm45Dias),

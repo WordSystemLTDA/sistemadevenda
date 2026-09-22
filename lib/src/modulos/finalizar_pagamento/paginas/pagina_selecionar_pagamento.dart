@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
+import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -41,6 +42,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   PagamentoRecorrente? _recorrencia;
   String? _erro;
   bool _perguntandoPagamento = false;
+  bool _confirmandoPedido = false;
 
   bool carregando = true;
   MonitorAtualizacaoTela? _monitorFormas;
@@ -103,7 +105,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       if (!mounted) return;
 
       final consultarRecorrencia =
-          provedor.deliveryRecorrenteVinculado != false ||
+          provedor.deliveryRecorrenteVinculado == true ||
               provedor.deliveryComPagamentoParcial;
       if (provedorCardapio.tipo == TipoCardapio.delivery &&
           consultarRecorrencia) {
@@ -127,19 +129,36 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
     });
   }
 
-  void _pagarDepois() {
+  Future<void> _pagarDepois() async {
     if (provedorCardapio.tipo != TipoCardapio.delivery ||
-        _perguntandoPagamento) {
+        _perguntandoPagamento ||
+        _confirmandoPedido) {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    Navigator.popUntil(
-      context,
-      (rota) =>
-          ['PaginaDelivery', 'PaginaRecorrentes']
-              .contains(rota.settings.name) ||
-          rota.isFirst,
-    );
+    setState(() => _confirmandoPedido = true);
+    try {
+      await Modular.get<ServicoDelivery>().confirmar(provedor.idVenda);
+      FeedbackUsuario.pedidoFinalizado();
+      if (!mounted) return;
+      Navigator.popUntil(
+        context,
+        (rota) =>
+            ['PaginaDelivery', 'PaginaRecorrentes']
+                .contains(rota.settings.name) ||
+            rota.isFirst,
+      );
+    } catch (erro) {
+      if (!mounted) return;
+      _mostrarRetornoMensagem(
+        erro is StateError
+            ? erro.message.toString()
+            : 'NÃ£o foi possÃ­vel confirmar o Delivery.',
+        false,
+      );
+    } finally {
+      if (mounted) setState(() => _confirmandoPedido = false);
+    }
   }
 
   Future<void> _perguntarFormaPagamento() async {
@@ -254,8 +273,15 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 height: 48,
                 child: OutlinedButton.icon(
                   key: const ValueKey('pagar-depois-delivery'),
-                  onPressed: _perguntandoPagamento ? null : _pagarDepois,
-                  icon: const Icon(Icons.schedule_rounded, size: 20),
+                  onPressed: _perguntandoPagamento || _confirmandoPedido
+                      ? null
+                      : _pagarDepois,
+                  icon: _confirmandoPedido
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.schedule_rounded, size: 20),
                   label: const Text(
                     'Pagar depois',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),

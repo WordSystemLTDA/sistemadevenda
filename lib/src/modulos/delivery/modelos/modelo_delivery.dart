@@ -18,8 +18,8 @@ double valorDelivery(Object? valor) {
 
 bool _pedidoOperacional(dynamic pedido) {
   if (pedido is! Map) return true;
-  return (pedido['status'] ?? '').toString().trim().toLowerCase() !=
-      'modelo recorrente';
+  final status = (pedido['status'] ?? '').toString().trim().toLowerCase();
+  return !{'modelo recorrente', 'rascunho aplicativo'}.contains(status);
 }
 
 class EtapaDelivery {

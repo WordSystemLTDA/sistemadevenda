@@ -40,6 +40,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int consultas = 0;
   int pagamentos = 0;
   int conclusoes = 0;
+  int confirmacoes = 0;
   int notificacoes = 0;
   int consultasRecorrencia = 0;
   MensagemClienteDelivery? ultimaMensagem;
@@ -98,6 +99,11 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     if (rota == 'delivery/finalizar_pedido_delivery.php') {
       expect(campos['id_delivery'], '10118');
       conclusoes++;
+      return {'sucesso': true};
+    }
+    if (rota == 'delivery/confirmar_pedido.php') {
+      expect(campos['id'], '10118');
+      confirmacoes++;
       return {'sucesso': true};
     }
     fail('Rota inesperada no delivery: $rota');
@@ -192,6 +198,7 @@ void main() {
     expect(Modular.get<ProvedorFinalizarPagamento>().idVenda, '10118');
     expect(Modular.get<ProvedorFinalizarPagamento>().valor, 14);
     expect(m.delivery.envios, 1);
+    expect(m.delivery.confirmacoes, 0);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(m.api.pedidos, isEmpty);
     await tester.tap(find.text('Avançar'));
@@ -226,6 +233,7 @@ void main() {
     expect(m.delivery.envios, 1);
     expect(m.delivery.pagamentos, 0);
     expect(m.delivery.conclusoes, 0);
+    expect(m.delivery.confirmacoes, 1);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -323,6 +331,7 @@ void main() {
 
     expect(m.delivery.pagamentos, 1);
     expect(m.delivery.conclusoes, 1);
+    expect(m.delivery.confirmacoes, 1);
     expect(m.delivery.consultas, consultasAntesDoPagamento + 2);
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);

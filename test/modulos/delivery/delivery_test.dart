@@ -261,11 +261,12 @@ void main() {
           'https://exemplo/sistema/apis_restaurantes/api_restaurantes_venda/$versao/');
     }
   });
-  test('modelo recorrente nunca aparece no carrossel do Delivery', () {
+  test('modelos e rascunhos nunca aparecem no carrossel do Delivery', () {
     final etapa = EtapaDelivery.fromMap({
       'id': '1',
       'vendas': [
         {'id': '10', 'status': ' Modelo Recorrente '},
+        {'id': '12', 'status': ' Rascunho Aplicativo '},
         {'id': '11', 'status': 'Pendente'},
       ],
     });

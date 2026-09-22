@@ -243,6 +243,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     final quitado = pagamentoIntegral || atualizado.restante <= 0.009;
     if (quitado) {
       await servico.concluir(atualizado);
+      await servico.confirmar(widget.idVenda);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, widget.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       await carrinhoProvedor.removerComandasPedidos();
