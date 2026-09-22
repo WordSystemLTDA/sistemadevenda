@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/voz/abertura_falada.dart';
 import 'package:app/src/modulos/voz/botao_abertura_voz.dart';
@@ -38,6 +39,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
   final ProvedorComanda provedor = Modular.get<ProvedorComanda>();
   bool isLoading = true;
   bool nfcDisponivel = true;
+  bool _vozDisponivel = false;
   ModeloConfigBigchef? configBigchef;
 
   @override
@@ -45,6 +47,14 @@ class _PaginaComandasState extends State<PaginaComandas> {
     super.initState();
     listarComandas();
     _carregarConfiguracao();
+    unawaited(_carregarDisponibilidadeVoz());
+  }
+
+  Future<void> _carregarDisponibilidadeVoz() async {
+    final disponivel = await ConfiguracaoVoz.carregar(usuarioProvedor);
+    if (mounted && disponivel != _vozDisponivel) {
+      setState(() => _vozDisponivel = disponivel);
+    }
   }
 
   Future<void> listarComandas() async {
@@ -304,6 +314,7 @@ class _PaginaComandasState extends State<PaginaComandas> {
               children: [
                 _CabecalhoBusca(
                   pesquisaController: pesquisaController,
+                  vozDisponivel: _vozDisponivel,
                   onChanged: (_) => setState(() {}),
                   onAbertoPorVoz: () async {
                     pesquisaController.clear();
@@ -459,6 +470,7 @@ enum _ModoLista { todas, ocupadas, livres }
 
 class _CabecalhoBusca extends StatelessWidget {
   final TextEditingController pesquisaController;
+  final bool vozDisponivel;
   final Future<void> Function() onAbertoPorVoz;
   final ValueChanged<String> onChanged;
   final VoidCallback onAbrirModalCodigo;
@@ -467,6 +479,7 @@ class _CabecalhoBusca extends StatelessWidget {
 
   const _CabecalhoBusca({
     required this.pesquisaController,
+    required this.vozDisponivel,
     required this.onAbertoPorVoz,
     required this.onChanged,
     required this.onAbrirModalCodigo,
@@ -507,7 +520,7 @@ class _CabecalhoBusca extends StatelessWidget {
             tooltip: 'Escanear QR Code',
             onTap: onAbrirScanner,
           ),
-          if (exibirComandosVoz) ...[
+          if (vozDisponivel) ...[
             const SizedBox(width: 8),
             BotaoAberturaVoz(
                 tipo: TipoAberturaVoz.comanda, onAberto: onAbertoPorVoz),
