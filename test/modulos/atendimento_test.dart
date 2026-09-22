@@ -304,6 +304,22 @@ void main() {
     expect(modulo.balcao.pesquisas, isNot(contains('Pendente')));
   });
 
+  testWidgets('balcao mostra botao grande e centralizado para nova venda',
+      (tester) async {
+    await abrir(tester, const PaginaBalcao());
+
+    final botao = find.byKey(const ValueKey('nova-venda-balcao'));
+    expect(botao, findsOneWidget);
+    expect(find.text('Nova venda'), findsOneWidget);
+
+    final tamanho = tester.getSize(botao);
+    final centro = tester.getCenter(botao);
+    expect(tamanho.width, 361);
+    expect(tamanho.height, greaterThanOrEqualTo(64));
+    expect(centro.dx, 196.5);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final largura in [320.0, 393.0, 800.0]) {
     for (final escuro in [false, true]) {
       for (final tela in ['inicio', 'mesas', 'comandas', 'balcao']) {

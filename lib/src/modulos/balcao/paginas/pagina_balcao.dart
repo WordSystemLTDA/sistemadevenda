@@ -83,41 +83,17 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
           ],
         ),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+      floatingActionButton: _BotaoNovaVenda(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PaginaNovaVendaBalcao(aoSalvar: () {}),
             ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PaginaNovaVendaBalcao(aoSalvar: () {}),
-                  ));
-            },
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Icon(Icons.add_rounded, color: Colors.white, size: 26),
-            ),
-          ),
-        ),
+          );
+        },
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: ListenableBuilder(
         listenable: provedor,
         builder: (context, snapshot) {
@@ -414,6 +390,77 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BotaoNovaVenda extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _BotaoNovaVenda({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final largura = (MediaQuery.sizeOf(context).width - 32).clamp(0.0, 560.0).toDouble();
+
+    return Tooltip(
+      message: 'Nova venda',
+      child: Semantics(
+        label: 'Nova venda',
+        button: true,
+        excludeSemantics: true,
+        child: Container(
+          key: const ValueKey('nova-venda-balcao'),
+          width: largura,
+          constraints: const BoxConstraints(minHeight: 64),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [cs.primary, cs.primary.withValues(alpha: 0.85)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: onPressed,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                    SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'Nova venda',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
