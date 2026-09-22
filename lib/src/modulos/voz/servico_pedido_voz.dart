@@ -154,6 +154,41 @@ class ServicoPedidoVoz {
     }
   }
 
+  /// Consulta somente a ativacao. Nao cria token, nao abre o microfone e nao
+  /// carrega catalogo ou modelo de IA no aplicativo.
+  Future<bool> disponivel() async {
+    _validar();
+    try {
+      final resposta = await _voz.post('voz/sessao.php',
+          options: Options(receiveTimeout: const Duration(seconds: 12)),
+          data: {
+            'empresa': _identidade!.empresa,
+            'id_usuario': _identidade!.id,
+            'senha': _identidade!.senha,
+            'somente_disponibilidade': true,
+          },
+          cancelToken: _cancelamento);
+      _validar();
+      final dados = resposta.data;
+      if (dados is! Map ||
+          dados['sucesso'] != true ||
+          dados['protocolo'] != 2) {
+        throw const FalhaPedidoVoz(
+            'Atualize a API do servidor para consultar os pedidos por voz.');
+      }
+      return dados['habilitado'] == true ||
+          dados['habilitado'] == 1 ||
+          dados['habilitado'] == '1';
+    } on DioException catch (erro) {
+      final dados = erro.response?.data;
+      if (dados is Map && dados['mensagem'] is String) {
+        throw FalhaPedidoVoz(dados['mensagem'] as String);
+      }
+      throw const FalhaPedidoVoz(
+          'Nao foi possivel consultar a configuracao de voz.');
+    }
+  }
+
   Future<LotePedidoVoz> interpretarLote(
       {String? caminho,
       String? texto,

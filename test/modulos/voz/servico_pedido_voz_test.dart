@@ -65,6 +65,35 @@ void main() {
     expect(adaptador.chamadas.last.data, isNull);
   });
 
+  test('disponibilidade nao cria token nem consulta catalogo', () async {
+    adaptador.sessao = {
+      'sucesso': true,
+      'protocolo': 2,
+      'habilitado': true,
+      'provedor': 'openai'
+    };
+    expect(await servico.disponivel(), isTrue);
+    expect(adaptador.chamadas, hasLength(1));
+    expect(adaptador.chamadas.single.data, {
+      'empresa': '32',
+      'id_usuario': '7',
+      'senha': 'senha-teste',
+      'somente_disponibilidade': true,
+    });
+    expect(adaptador.chamadas.single.headers['X-Garcom-Voz'], isNull);
+  });
+
+  test('disponibilidade desativada oculta a voz', () async {
+    adaptador.sessao = {
+      'sucesso': true,
+      'protocolo': 2,
+      'habilitado': false,
+      'provedor': ''
+    };
+    expect(await servico.disponivel(), isFalse);
+    expect(adaptador.chamadas, hasLength(1));
+  });
+
   test(
       'protocolo2 envia rascunho e contexto e preserva pergunta sem consultar catálogo',
       () async {

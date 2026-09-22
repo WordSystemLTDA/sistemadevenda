@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:app/src/modulos/voz/configuracao_voz.dart';
 import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
 import 'dart:developer' as developer;
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
@@ -80,9 +82,23 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   bool carregando = true;
   bool _tentouEnvioVoz = false;
   bool _vozAberta = false;
+  bool _vozDisponivel = false;
+
+  Future<void> _carregarDisponibilidadeVoz() async {
+    if (widget.modeloRecorrente) return;
+    final disponivel = await ConfiguracaoVoz.carregar(usuarioProvedor);
+    if (mounted && disponivel != _vozDisponivel) {
+      setState(() => _vozDisponivel = disponivel);
+    }
+  }
 
   Future<void> _pedidoVoz() async {
-    if (_vozAberta || isLoading || _finalizacao.pedidoRegistrado) return;
+    if (!_vozDisponivel ||
+        _vozAberta ||
+        isLoading ||
+        _finalizacao.pedidoRegistrado) {
+      return;
+    }
     setState(() => _vozAberta = true);
     try {
       await abrirComandaVoz(context,
@@ -103,6 +119,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         ? provedorCardapio.tipo
         : TipoCardapio.values.byName(_contextoCarrinho!.tipo);
     _tipoDeEntrega = provedorCardapio.tipodeentrega;
+    unawaited(_carregarDisponibilidadeVoz());
     listar();
   }
 
@@ -559,7 +576,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 ],
               ),
               actions: [
-                if (!widget.modeloRecorrente)
+                if (!widget.modeloRecorrente && _vozDisponivel)
                   IconButton(
                       tooltip: 'Pedido por voz',
                       onPressed: _vozAberta ||

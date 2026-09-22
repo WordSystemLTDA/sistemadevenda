@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:convert';
 import 'dart:async';
 import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
+import 'package:app/src/modulos/voz/configuracao_voz.dart';
 
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
@@ -92,6 +93,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   bool finalizar = false;
   bool _carregandoDados = false;
   bool _vozAberta = false;
+  bool _vozDisponivel = false;
   String? _erroCarregamento;
   final _sincronizador = Sincronizador.instancia;
   late final _favoritos = FavoritosProdutos(provedor.usuarioProvedor);
@@ -101,6 +103,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _favoritos.carregar();
+    unawaited(_carregarDisponibilidadeVoz());
     _sincronizador?.revisaoCatalogo.addListener(_atualizarCategorias);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -120,7 +123,19 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _favoritos.carregar();
+    if (state == AppLifecycleState.resumed) {
+      _favoritos.carregar();
+      unawaited(_carregarDisponibilidadeVoz(forcar: true));
+    }
+  }
+
+  Future<void> _carregarDisponibilidadeVoz({bool forcar = false}) async {
+    if (widget.modeloRecorrente) return;
+    final disponivel = await ConfiguracaoVoz.carregar(provedor.usuarioProvedor,
+        forcar: forcar);
+    if (mounted && disponivel != _vozDisponivel) {
+      setState(() => _vozDisponivel = disponivel);
+    }
   }
 
   Future<void> _atualizarCategorias() async {
@@ -217,7 +232,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   }
 
   Future<void> _pedidoVoz() async {
-    if (_vozAberta) return;
+    if (!_vozDisponivel || _vozAberta) return;
     setState(() => _vozAberta = true);
     try {
       await abrirComandaVoz(context,
@@ -399,7 +414,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               finalizar: finalizar,
                               favoritos: _favoritos,
                               onPedidoVoz:
-                                  widget.modeloRecorrente ? null : _pedidoVoz,
+                                  widget.modeloRecorrente || !_vozDisponivel
+                                      ? null
+                                      : _pedidoVoz,
                               vozOcupada: _vozAberta,
                               modeloRecorrente: widget.modeloRecorrente,
                             ),
