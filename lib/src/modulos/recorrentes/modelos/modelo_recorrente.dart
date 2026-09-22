@@ -25,6 +25,50 @@ int _tempoEnvioRecorrente(Map<String, dynamic> json) {
   return valor == null || valor < 0 ? 20 : valor;
 }
 
+Map<int, String> _enderecosPorDia(dynamic valor) {
+  if (valor is! Map) return const {};
+  return {
+    for (final item in valor.entries)
+      if ((int.tryParse('${item.key}') ?? 0) >= 1 &&
+          (int.tryParse('${item.key}') ?? 0) <= 7 &&
+          '${item.value}'.isNotEmpty)
+        int.parse('${item.key}'): '${item.value}',
+  };
+}
+
+class EnderecoRecorrente {
+  final String id, endereco, numero, complemento, bairro, cidade, cep, padrao;
+
+  const EnderecoRecorrente({
+    required this.id,
+    required this.endereco,
+    required this.numero,
+    this.complemento = '',
+    this.bairro = '',
+    this.cidade = '',
+    this.cep = '',
+    this.padrao = 'Não',
+  });
+
+  factory EnderecoRecorrente.fromMap(Map<String, dynamic> json) =>
+      EnderecoRecorrente(
+        id: '${json['id'] ?? ''}',
+        endereco: '${json['endereco'] ?? ''}',
+        numero: '${json['numero'] ?? ''}',
+        complemento: '${json['complemento'] ?? ''}',
+        bairro: '${json['bairro'] ?? ''}',
+        cidade: '${json['cidade'] ?? ''}',
+        cep: '${json['cep'] ?? ''}',
+        padrao: '${json['padrao'] ?? 'Não'}',
+      );
+
+  String get titulo =>
+      [endereco, numero].where((parte) => parte.trim().isNotEmpty).join(', ');
+  String get detalhe => [bairro, cidade, complemento]
+      .where((parte) => parte.trim().isNotEmpty)
+      .join(' · ');
+}
+
 class ConfiguracaoRecorrencia {
   final List<int> dias;
   final String horarioTipo;
@@ -32,6 +76,8 @@ class ConfiguracaoRecorrencia {
   final String horarioFim;
   final String pagamentoModo;
   final int diaVencimento;
+  final String enderecoModo;
+  final Map<int, String> enderecosPorDia;
 
   const ConfiguracaoRecorrencia({
     this.dias = const [1, 2, 3, 4, 5],
@@ -40,6 +86,8 @@ class ConfiguracaoRecorrencia {
     this.horarioFim = '14:00',
     this.pagamentoModo = '',
     this.diaVencimento = 10,
+    this.enderecoModo = 'padrao',
+    this.enderecosPorDia = const {},
   });
 
   static const nomesDias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -50,7 +98,9 @@ class ConfiguracaoRecorrencia {
           String? horario,
           String? horarioFim,
           String? pagamentoModo,
-          int? diaVencimento}) =>
+          int? diaVencimento,
+          String? enderecoModo,
+          Map<int, String>? enderecosPorDia}) =>
       ConfiguracaoRecorrencia(
         dias: dias ?? this.dias,
         horarioTipo: horarioTipo ?? this.horarioTipo,
@@ -58,11 +108,20 @@ class ConfiguracaoRecorrencia {
         horarioFim: horarioFim ?? this.horarioFim,
         pagamentoModo: pagamentoModo ?? this.pagamentoModo,
         diaVencimento: diaVencimento ?? this.diaVencimento,
+        enderecoModo: enderecoModo ?? this.enderecoModo,
+        enderecosPorDia: enderecosPorDia ?? this.enderecosPorDia,
       );
 
   String? get erro {
     if (dias.isEmpty || dias.any((d) => d < 1 || d > 7)) {
       return 'Selecione os dias da semana.';
+    }
+    if (!['padrao', 'por_dia'].contains(enderecoModo)) {
+      return 'Selecione como usar os endereços.';
+    }
+    if (enderecoModo == 'por_dia' &&
+        dias.any((dia) => (enderecosPorDia[dia] ?? '').isEmpty)) {
+      return 'Escolha o endereço de todos os dias selecionados.';
     }
     if (!['livre', 'fixo', 'intervalo'].contains(horarioTipo)) {
       return 'Selecione uma opção de horário.';
@@ -145,6 +204,10 @@ class ConfiguracaoRecorrencia {
         'horarioFim': horarioFim,
         'pagamentoModo': pagamentoModo,
         'diaVencimento': diaVencimento,
+        'enderecoModo': enderecoModo,
+        'enderecosPorDia': {
+          for (final item in enderecosPorDia.entries) '${item.key}': item.value
+        },
       };
 
   factory ConfiguracaoRecorrencia.fromMap(Map<String, dynamic> json) =>
@@ -159,6 +222,8 @@ class ConfiguracaoRecorrencia {
         horarioFim: (json['horarioFim']?.toString().isNotEmpty ?? false)
             ? '${json['horarioFim']}'
             : '14:00',
+        enderecoModo: '${json['enderecoModo'] ?? 'padrao'}',
+        enderecosPorDia: _enderecosPorDia(json['enderecosPorDia']),
       );
 }
 
@@ -190,6 +255,7 @@ class ModeloRecorrente {
       idCliente,
       idDelivery,
       idDeliveryBase,
+      idEnderecoBase,
       tipoEntrega,
       status,
       statusDelivery,
@@ -202,6 +268,7 @@ class ModeloRecorrente {
   final bool ativo, pago;
   final double total;
   final List<ItemRecorrente> itens;
+  final List<EnderecoRecorrente> enderecosDisponiveis;
 
   ModeloRecorrente.fromMap(Map<String, dynamic> json)
       : pagamento = PagamentoRecorrente.fromMap(json),
@@ -211,6 +278,7 @@ class ModeloRecorrente {
         idCliente = '${json['idCliente']}',
         idDelivery = '${json['idDelivery'] ?? ''}',
         idDeliveryBase = '${json['idDeliveryBase']}',
+        idEnderecoBase = '${json['idEnderecoBase'] ?? ''}',
         tipoEntrega = '${json['tipoEntrega']}',
         status = '${json['status']}',
         statusDelivery = '${json['statusDelivery'] ?? json['status'] ?? ''}',
@@ -237,6 +305,12 @@ class ModeloRecorrente {
         ativo = json['ativo'] == 'Sim',
         pago = json['pago'] == 'Sim',
         total = double.tryParse('${json['total']}') ?? 0,
+        enderecosDisponiveis = json['enderecosDisponiveis'] is List
+            ? (json['enderecosDisponiveis'] as List)
+                .map((endereco) => EnderecoRecorrente.fromMap(
+                    Map<String, dynamic>.from(endereco as Map)))
+                .toList(growable: false)
+            : const [],
         itens = (json['itens'] as List)
             .map((i) =>
                 ItemRecorrente.fromMap(Map<String, dynamic>.from(i as Map)))

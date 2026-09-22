@@ -207,6 +207,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
               children: [
                 CamposRecorrencia(
                     valor: configuracao,
+                    permitirEnderecos: item.tipoEntrega == '1',
+                    enderecoPadraoId: item.idEnderecoBase,
+                    enderecos: item.enderecosDisponiveis,
                     onChanged: (valor) => setState(() => configuracao = valor)),
                 const SizedBox(height: 12),
                 SwitchListTile.adaptive(
@@ -1041,26 +1044,17 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                   style: tema.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Wrap(spacing: 16, runSpacing: 8, children: [
-                if (item.possuiEnvioAutomatico) ...[
-                  _detalhe(
-                      item.tipoEntrega == '2'
-                          ? Icons.shopping_bag_outlined
-                          : Icons.delivery_dining_outlined,
-                      '${item.entregaTexto}: ${item.horarioEntregaTexto}'),
-                  _detalhe(Icons.restaurant_outlined,
-                      'Envio à cozinha: ${item.horarioEnvioTexto}'),
-                  _detalhe(Icons.notifications_active_outlined,
-                      'Alerta verde: ${item.horarioAlertaTexto}'),
-                ] else ...[
+              if (item.possuiEnvioAutomatico)
+                _linhaHorariosOperacionais(item)
+              else
+                Wrap(spacing: 16, runSpacing: 8, children: [
                   _detalhe(
                       item.tipoEntrega == '2'
                           ? Icons.shopping_bag_outlined
                           : Icons.delivery_dining_outlined,
                       item.entregaTexto),
                   _detalhe(Icons.schedule, item.configuracao.horarioTexto),
-                ],
-              ]),
+                ]),
               Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child:
@@ -1289,14 +1283,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                     fontSize: 13, color: cs.onSurfaceVariant))),
                       const SizedBox(height: 12),
                       if (item.possuiEnvioAutomatico) ...[
-                        Wrap(spacing: 12, runSpacing: 6, children: [
-                          _detalhe(Icons.schedule_outlined,
-                              '${item.entregaTexto}: ${item.horarioEntregaTexto}'),
-                          _detalhe(Icons.restaurant_outlined,
-                              'Envio à cozinha: ${item.horarioEnvioTexto}'),
-                          _detalhe(Icons.notifications_active_outlined,
-                              'Alerta verde: ${item.horarioAlertaTexto}'),
-                        ]),
+                        _linhaHorariosOperacionais(item),
                         const SizedBox(height: 10),
                       ],
                       Row(
@@ -1800,6 +1787,46 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         const SizedBox(width: 4),
         Flexible(child: Text(texto))
       ]);
+
+  Widget _linhaHorariosOperacionais(ModeloRecorrente item) => Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _detalheHorario(
+              item.tipoEntrega == '2'
+                  ? Icons.shopping_bag_outlined
+                  : Icons.delivery_dining_outlined,
+              '${item.entregaTexto}: ${item.horarioEntregaTexto}',
+              Alignment.centerLeft,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 3,
+            child: _detalheHorario(
+              Icons.restaurant_outlined,
+              'Envio à Cozinha: ${item.horarioEnvioTexto}',
+              Alignment.centerRight,
+            ),
+          ),
+        ],
+      );
+
+  Widget _detalheHorario(IconData icone, String texto, Alignment alinhamento) =>
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: alinhamento,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icone,
+                size: 16,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(texto, maxLines: 1, softWrap: false),
+          ],
+        ),
+      );
 }
 
 class _FiltroRecorrentes {

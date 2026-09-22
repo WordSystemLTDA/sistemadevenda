@@ -246,6 +246,64 @@ void main() {
             .primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 23, 59, 59)),
         isFalse);
   });
+
+  test('programa e restaura um endereco para cada dia de entrega', () {
+    const configuracao = ConfiguracaoRecorrencia(
+      dias: [1, 6, 7],
+      horarioTipo: 'livre',
+      pagamentoModo: 'diario',
+      enderecoModo: 'por_dia',
+      enderecosPorDia: {1: '20', 6: '21', 7: '21'},
+    );
+    final restaurada = ConfiguracaoRecorrencia.fromMap(configuracao.toMap());
+    expect(restaurada.erro, isNull);
+    expect(restaurada.enderecoModo, 'por_dia');
+    expect(restaurada.enderecosPorDia, {1: '20', 6: '21', 7: '21'});
+    expect(
+      configuracao.copyWith(enderecosPorDia: const {1: '20'}).erro,
+      'Escolha o endereço de todos os dias selecionados.',
+    );
+  });
+
+  testWidgets('formulario permite escolher o endereco de cada dia',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var configuracao = const ConfiguracaoRecorrencia(
+      dias: [1, 6, 7],
+      horarioTipo: 'livre',
+      pagamentoModo: 'diario',
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: StatefulBuilder(builder: (context, setState) {
+            return CamposRecorrencia(
+              valor: configuracao,
+              permitirEnderecos: true,
+              enderecoPadraoId: '20',
+              enderecos: const [
+                EnderecoRecorrente(
+                    id: '20', endereco: 'Rua Principal', numero: '10'),
+                EnderecoRecorrente(
+                    id: '21', endereco: 'Rua do Fim de Semana', numero: '50'),
+              ],
+              onChanged: (valor) => setState(() => configuracao = valor),
+            );
+          }),
+        ),
+      ),
+    ));
+    await tester.ensureVisible(find.text('Escolher por dia'));
+    await tester.tap(find.text('Escolher por dia'));
+    await tester.pumpAndSettle();
+    expect(configuracao.enderecoModo, 'por_dia');
+    expect(configuracao.enderecosPorDia.keys, containsAll([1, 6, 7]));
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(3));
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('formulario informa quando o primeiro pedido sera amanha',
       (tester) async {
     final campos = CamposRecorrencia(
@@ -557,9 +615,17 @@ void main() {
             agora: () => agora)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Entrega: 12:00'), findsOneWidget);
-    expect(find.text('Envio à cozinha: 11:40'), findsOneWidget);
-    expect(find.text('Alerta verde: 11:30'), findsOneWidget);
+    final entrega = find.text('Entrega: 12:00');
+    final envio = find.text('Envio à Cozinha: 11:40');
+    expect(entrega, findsOneWidget);
+    expect(envio, findsOneWidget);
+    expect(find.textContaining('Alerta verde:'), findsNothing);
+    expect(
+        tester.getCenter(envio).dx, greaterThan(tester.getCenter(entrega).dx));
+    expect(
+        tester.getCenter(envio).dy, closeTo(tester.getCenter(entrega).dy, 0.5));
+    expect(tester.widget<Text>(envio).maxLines, 1);
+    expect(tester.widget<Text>(envio).softWrap, isFalse);
     expect(find.text('Envio automático em 00:10:00'), findsOneWidget);
 
     agora = DateTime(2026, 9, 21, 11, 41);

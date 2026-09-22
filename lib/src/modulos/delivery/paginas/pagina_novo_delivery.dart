@@ -170,6 +170,10 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
           _textoCliente(resultado, ['celular', 'telefone', 'celularCliente']));
       _endereco = null;
       _enderecos = [];
+      if (widget.recorrente) {
+        _recorrencia = _recorrencia
+            .copyWith(enderecoModo: 'padrao', enderecosPorDia: const {});
+      }
     });
     await _carregarEnderecos();
   }
@@ -470,6 +474,13 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                       valor: _recorrencia,
                                       primeiroPedido: true,
                                       exibirErro: _exibirErroRecorrencia,
+                                      permitirEnderecos: _tipo == '1',
+                                      enderecoPadraoId: _idEndereco(_endereco),
+                                      enderecos: _enderecos
+                                          .map((endereco) =>
+                                              EnderecoRecorrente.fromMap(
+                                                  endereco))
+                                          .toList(growable: false),
                                       onChanged: (valor) => setState(() {
                                             _recorrencia = valor;
                                             _erro = null;
@@ -825,7 +836,15 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        onTap: _salvando ? null : () => setState(() => _tipo = valor),
+        onTap: _salvando
+            ? null
+            : () => setState(() {
+                  _tipo = valor;
+                  if (valor != '1') {
+                    _recorrencia = _recorrencia.copyWith(
+                        enderecoModo: 'padrao', enderecosPorDia: const {});
+                  }
+                }),
         child: AnimatedContainer(
           key: ValueKey('tipo-entrega-$valor'),
           duration: const Duration(milliseconds: 150),

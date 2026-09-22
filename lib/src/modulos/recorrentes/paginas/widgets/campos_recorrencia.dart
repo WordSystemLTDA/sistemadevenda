@@ -7,13 +7,49 @@ class CamposRecorrencia extends StatelessWidget {
   final bool primeiroPedido;
   final bool exibirErro;
   final DateTime Function()? relogio;
+  final bool permitirEnderecos;
+  final String enderecoPadraoId;
+  final List<EnderecoRecorrente> enderecos;
   const CamposRecorrencia(
       {super.key,
       required this.valor,
       required this.onChanged,
       this.primeiroPedido = false,
       this.exibirErro = true,
-      this.relogio});
+      this.relogio,
+      this.permitirEnderecos = false,
+      this.enderecoPadraoId = '',
+      this.enderecos = const []});
+
+  String get _primeiroEndereco =>
+      enderecos
+          .where((endereco) => endereco.id == enderecoPadraoId)
+          .firstOrNull
+          ?.id ??
+      enderecos.firstOrNull?.id ??
+      '';
+
+  void _atualizarDias(List<int> dias) {
+    final enderecosAtualizados = {...valor.enderecosPorDia};
+    if (valor.enderecoModo == 'por_dia') {
+      for (final dia in dias) {
+        enderecosAtualizados.putIfAbsent(dia, () => _primeiroEndereco);
+      }
+    }
+    onChanged(valor.copyWith(
+        dias: dias..sort(), enderecosPorDia: enderecosAtualizados));
+  }
+
+  void _alterarModoEndereco(String modo) {
+    final enderecosAtualizados = {...valor.enderecosPorDia};
+    if (modo == 'por_dia') {
+      for (final dia in valor.dias) {
+        enderecosAtualizados.putIfAbsent(dia, () => _primeiroEndereco);
+      }
+    }
+    onChanged(valor.copyWith(
+        enderecoModo: modo, enderecosPorDia: enderecosAtualizados));
+  }
 
   Future<void> _hora(BuildContext context, bool fim) async {
     final partes = (fim ? valor.horarioFim : valor.horario).split(':');
@@ -169,6 +205,105 @@ class CamposRecorrencia extends StatelessWidget {
     );
   }
 
+  Widget _enderecosEntrega(BuildContext context) {
+    final padrao = enderecos
+            .where((endereco) => endereco.id == enderecoPadraoId)
+            .firstOrNull ??
+        enderecos.firstOrNull;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 20),
+      _titulo(context, 'Endereço de entrega', Icons.location_on_outlined),
+      _gradeJustificada(
+        context,
+        larguraMinima: 140,
+        botoes: [
+          _cartaoOpcao(
+            context,
+            chave: 'recorrencia-endereco-padrao',
+            texto: 'Mesmo endereço',
+            icone: Icons.home_outlined,
+            selecionado: valor.enderecoModo == 'padrao',
+            onTap: () => _alterarModoEndereco('padrao'),
+          ),
+          _cartaoOpcao(
+            context,
+            chave: 'recorrencia-endereco-por-dia',
+            texto: 'Escolher por dia',
+            icone: Icons.edit_calendar_outlined,
+            selecionado: valor.enderecoModo == 'por_dia',
+            onTap: () => _alterarModoEndereco('por_dia'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Text(
+        valor.enderecoModo == 'padrao'
+            ? 'Todas as entregas: ${padrao?.titulo ?? 'endereço principal'}'
+            : 'Escolha onde entregar em cada dia da semana.',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+      if (valor.enderecoModo == 'por_dia') ...[
+        const SizedBox(height: 12),
+        if (enderecos.isEmpty)
+          Text(
+              'Cadastre um endereço para o cliente antes de programar as entregas.',
+              style: TextStyle(color: Theme.of(context).colorScheme.error))
+        else
+          for (final dia in [...valor.dias]..sort()) ...[
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                  'endereco-recorrente-$dia-${valor.enderecosPorDia[dia]}'),
+              initialValue: enderecos.any(
+                      (endereco) => endereco.id == valor.enderecosPorDia[dia])
+                  ? valor.enderecosPorDia[dia]
+                  : null,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: ConfiguracaoRecorrencia.nomesDias[dia - 1],
+                prefixIcon: const Icon(Icons.location_on_outlined),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: [
+                for (final endereco in enderecos)
+                  DropdownMenuItem(
+                      value: endereco.id,
+                      child: Text(endereco.titulo,
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: (endereco) {
+                if (endereco == null) return;
+                onChanged(valor.copyWith(enderecosPorDia: {
+                  ...valor.enderecosPorDia,
+                  dia: endereco
+                }));
+              },
+            ),
+            if (enderecos
+                    .where(
+                        (endereco) => endereco.id == valor.enderecosPorDia[dia])
+                    .firstOrNull
+                    ?.detalhe
+                    .isNotEmpty ??
+                false)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(48, 4, 8, 0),
+                child: Text(
+                    enderecos
+                        .firstWhere((endereco) =>
+                            endereco.id == valor.enderecosPorDia[dia])
+                        .detalhe,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+            const SizedBox(height: 8),
+          ],
+        Text(
+            'O pedido usará automaticamente o endereço programado para a data.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ],
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,8 +320,7 @@ class CamposRecorrencia extends StatelessWidget {
                   texto: 'Todos os dias',
                   icone: Icons.calendar_month_outlined,
                   selecionado: valor.dias.length == 7,
-                  onTap: () =>
-                      onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5, 6, 7])),
+                  onTap: () => _atualizarDias([1, 2, 3, 4, 5, 6, 7]),
                 ),
                 _cartaoOpcao(
                   context,
@@ -195,7 +329,7 @@ class CamposRecorrencia extends StatelessWidget {
                   icone: Icons.date_range_outlined,
                   selecionado:
                       valor.dias.length == 5 && valor.dias.every((d) => d <= 5),
-                  onTap: () => onChanged(valor.copyWith(dias: [1, 2, 3, 4, 5])),
+                  onTap: () => _atualizarDias([1, 2, 3, 4, 5]),
                 ),
               ],
             ),
@@ -216,11 +350,12 @@ class CamposRecorrencia extends StatelessWidget {
                     onTap: () {
                       final dias = [...valor.dias];
                       dias.contains(dia) ? dias.remove(dia) : dias.add(dia);
-                      onChanged(valor.copyWith(dias: dias..sort()));
+                      _atualizarDias(dias);
                     },
                   ),
               ],
             ),
+            if (permitirEnderecos) _enderecosEntrega(context),
             const SizedBox(height: 20),
             _titulo(context, 'Horário', Icons.schedule_outlined),
             _gradeJustificada(
