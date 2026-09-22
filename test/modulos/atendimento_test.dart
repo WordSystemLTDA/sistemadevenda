@@ -320,6 +320,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('inicio usa painel responsivo com acoes em destaque',
+      (tester) async {
+    await abrir(tester, const PaginaInicio());
+
+    expect(find.text('Pronto para atender?'), findsOneWidget);
+    expect(find.text('Escolha uma área para começar.'), findsOneWidget);
+    final menu = find.byTooltip('Abrir menu');
+    final statusConexao = find.byKey(const ValueKey('status-conexao-inicio'));
+    expect(menu, findsOneWidget);
+    expect(statusConexao, findsOneWidget);
+    expect(tester.getRect(menu).left, lessThan(20));
+    expect(tester.getCenter(menu).dx,
+        lessThan(tester.getCenter(statusConexao).dx));
+
+    final mesas = find.byKey(const ValueKey('card-home-Mesas'));
+    final comandas = find.byKey(const ValueKey('card-home-Comandas'));
+    final balcao = find.byKey(const ValueKey('card-home-Balcão'));
+    expect(mesas, findsOneWidget);
+    expect(comandas, findsOneWidget);
+    expect(balcao, findsOneWidget);
+    expect(tester.getSize(mesas).width, 361);
+    expect(
+        tester.getSize(comandas).width, lessThan(tester.getSize(mesas).width));
+    expect(tester.getTopLeft(comandas).dy, tester.getTopLeft(balcao).dy);
+    expect(tester.getTopLeft(mesas).dy, lessThan(500));
+
+    expect(find.byKey(const ValueKey('atalho-home-Delivery')), findsOneWidget);
+    final localizadorImpressoes =
+        find.byKey(const ValueKey('card_pendencias_impressao'));
+    final impressoes = tester.widget<Material>(localizadorImpressoes);
+    expect(
+      impressoes.color,
+      Theme.of(tester.element(localizadorImpressoes)).colorScheme.surface,
+    );
+    expect(tester.getSize(localizadorImpressoes).height, lessThan(80));
+    expect(tester.takeException(), isNull);
+  });
+
   for (final largura in [320.0, 393.0, 800.0]) {
     for (final escuro in [false, true]) {
       for (final tela in ['inicio', 'mesas', 'comandas', 'balcao']) {
