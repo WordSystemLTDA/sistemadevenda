@@ -371,7 +371,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         _clonePreparado = true;
       }
       if (!mounted) return;
-      Navigator.pushReplacement(
+      // Mantem esta rota no fluxo ate o cardapio ser realmente encerrado.
+      // Com pushReplacement, o Future aguardado pela pagina de Recorrentes era
+      // concluido assim que o cardapio abria e a agenda era consultada antes de
+      // os produtos do pedido-base serem gravados.
+      setState(() => _salvando = false);
+      await Navigator.push<void>(
           context,
           MaterialPageRoute(
               builder: (_) => PaginaCardapio(
@@ -384,6 +389,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                         : 'Delivery #$id',
                     modeloRecorrente: widget.recorrente,
                   )));
+      if (!mounted) return;
+
+      // Ao voltar manualmente do cardapio, fecha tambem o formulario, como
+      // acontecia no fluxo anterior, e so entao libera a tela de origem para
+      // recarregar os dados completos.
+      Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         setState(() {
