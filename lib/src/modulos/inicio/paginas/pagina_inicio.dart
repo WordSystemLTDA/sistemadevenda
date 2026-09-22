@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:app/src/modulos/recorrentes/paginas/pagina_recorrentes.dart';
 
@@ -21,6 +23,7 @@ import 'package:app/src/modulos/indicadores/modelo_indicadores.dart';
 import 'package:app/src/modulos/indicadores/pagina_indicadores.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PaginaInicio extends StatefulWidget {
@@ -39,7 +42,18 @@ class _PaginaInicioState extends State<PaginaInicio>
   late final UsuarioProvedor _usuarioProvedor;
   late final Listenable _estadoPagina;
   ModeloConfigBigchef? configBigchef;
+  Map<String, _UsoAtalhoInicio> _usoAtalhos = const {};
   bool isLoading = true;
+
+  static const _prioridadeInicial = <String>[
+    'comandas',
+    'delivery',
+    'mesas',
+    'balcao',
+    'recorrentes',
+    'comandos_nfc',
+    'indicadores',
+  ];
 
   @override
   void initState() {
@@ -70,7 +84,10 @@ class _PaginaInicioState extends State<PaginaInicio>
   Future<void> listarDados() async {
     setState(() => isLoading = true);
     try {
-      await listarDadosConfigBigChef();
+      await Future.wait([
+        listarDadosConfigBigChef(),
+        _carregarUsoAtalhos(),
+      ]);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -172,6 +189,79 @@ class _PaginaInicioState extends State<PaginaInicio>
     configBigchef = await servicoConfigBigchef.listar(forcarAtualizacao: true);
   }
 
+  String get _chaveUsoAtalhos {
+    final usuario = _usuarioProvedor.usuario;
+    final identidade = [
+      usuario?.empresa,
+      usuario?.id,
+      usuario?.email?.toLowerCase(),
+      usuario?.nome?.toLowerCase(),
+    ]
+        .whereType<String>()
+        .map((valor) => valor.trim())
+        .where((valor) => valor.isNotEmpty)
+        .join('|');
+    final escopo = identidade.isEmpty ? 'usuario-local' : identidade;
+    final identificador = base64UrlEncode(utf8.encode(escopo));
+    return 'inicio_uso_atalhos_v1_$identificador';
+  }
+
+  Future<void> _carregarUsoAtalhos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final salvo = prefs.getString(_chaveUsoAtalhos);
+      if (salvo == null || salvo.isEmpty) {
+        _usoAtalhos = const {};
+        return;
+      }
+
+      final dados = jsonDecode(salvo);
+      if (dados is! Map) {
+        _usoAtalhos = const {};
+        return;
+      }
+
+      _usoAtalhos = {
+        for (final entrada in dados.entries)
+          if (entrada.key is String && entrada.value is Map)
+            entrada.key as String: _UsoAtalhoInicio.fromJson(
+              Map<String, dynamic>.from(entrada.value as Map),
+            ),
+      };
+    } catch (_) {
+      _usoAtalhos = const {};
+    }
+  }
+
+  Future<void> _registrarUsoAtalho(String identificador) async {
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    final usoAtual = _usoAtalhos[identificador];
+    final usosAtualizados = Map<String, _UsoAtalhoInicio>.from(_usoAtalhos)
+      ..[identificador] = _UsoAtalhoInicio(
+        quantidade: (usoAtual?.quantidade ?? 0) + 1,
+        ultimoUso: agora,
+      );
+
+    if (mounted) {
+      setState(() => _usoAtalhos = usosAtualizados);
+    } else {
+      _usoAtalhos = usosAtualizados;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _chaveUsoAtalhos,
+        jsonEncode({
+          for (final entrada in usosAtualizados.entries)
+            entrada.key: entrada.value.toJson(),
+        }),
+      );
+    } catch (_) {
+      // A ordenação continua válida durante a sessão se o armazenamento falhar.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -203,6 +293,7 @@ class _PaginaInicioState extends State<PaginaInicio>
               ),
             ),
             titleSpacing: 0,
+            centerTitle: false,
             elevation: 0,
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
@@ -282,75 +373,107 @@ class _PaginaInicioState extends State<PaginaInicio>
                         ? 68.0
                         : alturaAtalhoCalculada;
 
-                    final mesas = CardHome(
-                      nome: 'Mesas',
-                      descricao: 'Ver mapa do salão',
-                      icone: Icons.restaurant_rounded,
-                      cor: const Color(0xFF0D455D),
-                      decorado: true,
-                      onPressed: () => _abrirPagina(
-                        context,
-                        const PaginaMesas(),
-                        'PaginaMesas',
-                      ),
-                    );
-                    final comandas = CardHome(
-                      nome: 'Comandas',
-                      descricao: 'Pedidos abertos',
-                      icone: Icons.assignment_outlined,
-                      cor: const Color(0xFFEF6956),
-                      onPressed: () => _abrirPagina(
-                        context,
-                        const PaginaComandas(),
-                        'PaginaComandas',
-                      ),
-                    );
-                    final balcao = CardHome(
-                      nome: 'Balcão',
-                      descricao: 'Venda rápida',
-                      icone: Icons.receipt_long_outlined,
-                      cor: const Color(0xFF2189A4),
-                      onPressed: () => _abrirPagina(
-                        context,
-                        const PaginaBalcao(),
-                        'PaginaBalcao',
-                      ),
-                    );
-
-                    final atalhos = <_AtalhoInicio>[
+                    final acoes = _ordenarAtalhos([
                       _AtalhoInicio(
+                        identificador: 'comandas',
+                        nome: 'Comandas',
+                        descricao: 'Pedidos abertos',
+                        icone: Icons.assignment_outlined,
+                        cor: const Color(0xFFEF6956),
+                        onPressed: () => _abrirAtalho(
+                          context,
+                          'comandas',
+                          const PaginaComandas(),
+                          'PaginaComandas',
+                        ),
+                      ),
+                      _AtalhoInicio(
+                        identificador: 'delivery',
                         nome: 'Delivery',
                         descricao: 'Novo pedido',
                         icone: Icons.delivery_dining_outlined,
-                        onPressed: () => _abrirPagina(
+                        cor: const Color(0xFF347DB5),
+                        onPressed: () => _abrirAtalho(
                           context,
+                          'delivery',
                           const PaginaDelivery(),
                           'PaginaDelivery',
                         ),
                       ),
+                      _AtalhoInicio(
+                        identificador: 'mesas',
+                        nome: 'Mesas',
+                        descricao: 'Ver mapa do salão',
+                        icone: Icons.restaurant_rounded,
+                        cor: const Color(0xFF0D455D),
+                        onPressed: () => _abrirAtalho(
+                          context,
+                          'mesas',
+                          const PaginaMesas(),
+                          'PaginaMesas',
+                        ),
+                      ),
+                      _AtalhoInicio(
+                        identificador: 'balcao',
+                        nome: 'Balcão',
+                        descricao: 'Venda rápida',
+                        icone: Icons.receipt_long_outlined,
+                        cor: const Color(0xFF2189A4),
+                        onPressed: () => _abrirAtalho(
+                          context,
+                          'balcao',
+                          const PaginaBalcao(),
+                          'PaginaBalcao',
+                        ),
+                      ),
                       if (mostrarRecorrentes)
                         _AtalhoInicio(
+                          identificador: 'recorrentes',
                           nome: 'Recorrentes',
                           descricao: 'Programados',
                           icone: Icons.event_repeat_rounded,
-                          onPressed: () => _abrirPagina(
+                          cor: const Color(0xFF70579B),
+                          onPressed: () => _abrirAtalho(
                             context,
+                            'recorrentes',
                             const PaginaRecorrentes(),
                             'PaginaRecorrentes',
                           ),
                         ),
                       if (mostrarNfc)
                         _AtalhoInicio(
+                          identificador: 'comandos_nfc',
                           nome: 'Comandos NFC',
                           descricao: 'Ações por aproximação',
                           icone: Icons.send_to_mobile_outlined,
-                          onPressed: () => _abrirPagina(
+                          cor: const Color(0xFF536A99),
+                          onPressed: () => _abrirAtalho(
                             context,
+                            'comandos_nfc',
                             const PaginaComandosNfc(),
                             'PaginaComandosNfc',
                           ),
                         ),
-                    ];
+                      if (mostrarIndicadores)
+                        _AtalhoInicio(
+                          identificador: 'indicadores',
+                          nome: 'Indicadores',
+                          descricao: 'Acompanhe o desempenho do restaurante',
+                          icone: Icons.bar_chart_rounded,
+                          cor: const Color(0xFF356D85),
+                          mostrarSeta: true,
+                          onPressed: () => _abrirAtalho(
+                            context,
+                            'indicadores',
+                            const PaginaIndicadores(),
+                            'PaginaIndicadores',
+                          ),
+                        ),
+                    ]);
+                    final principal = _cardDestaque(acoes[0], decorado: true);
+                    final secundario = _cardDestaque(acoes[1]);
+                    final terciario = _cardDestaque(acoes[2]);
+                    final atalhos = acoes.skip(3).toList(growable: false);
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,9 +519,9 @@ class _PaginaInicioState extends State<PaginaInicio>
                             height: alturaPrincipal,
                             child: Row(
                               children: [
-                                Expanded(child: mesas),
+                                Expanded(child: principal),
                                 const SizedBox(width: 12),
-                                Expanded(child: comandas),
+                                Expanded(child: secundario),
                               ],
                             ),
                           ),
@@ -406,13 +529,13 @@ class _PaginaInicioState extends State<PaginaInicio>
                           SizedBox(
                             width: (largura - 12) / 2,
                             height: alturaSecundaria,
-                            child: balcao,
+                            child: terciario,
                           ),
                         ] else ...[
                           SizedBox(
                             width: double.infinity,
                             height: alturaPrincipal,
-                            child: mesas,
+                            child: principal,
                           ),
                           const SizedBox(height: 12),
                           if (empilhar)
@@ -421,13 +544,13 @@ class _PaginaInicioState extends State<PaginaInicio>
                                 SizedBox(
                                   width: double.infinity,
                                   height: alturaSecundaria,
-                                  child: comandas,
+                                  child: secundario,
                                 ),
                                 const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,
                                   height: alturaSecundaria,
-                                  child: balcao,
+                                  child: terciario,
                                 ),
                               ],
                             )
@@ -436,9 +559,9 @@ class _PaginaInicioState extends State<PaginaInicio>
                               height: alturaSecundaria,
                               child: Row(
                                 children: [
-                                  Expanded(child: comandas),
+                                  Expanded(child: secundario),
                                   const SizedBox(width: 12),
-                                  Expanded(child: balcao),
+                                  Expanded(child: terciario),
                                 ],
                               ),
                             ),
@@ -449,25 +572,6 @@ class _PaginaInicioState extends State<PaginaInicio>
                           empilhar: empilhar,
                           altura: alturaAtalho,
                         ),
-                        if (mostrarIndicadores) ...[
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: alturaAtalho,
-                            child: CardAtalhoHome(
-                              nome: 'Indicadores',
-                              descricao:
-                                  'Acompanhe o desempenho do restaurante',
-                              icone: Icons.bar_chart_rounded,
-                              mostrarSeta: true,
-                              onPressed: () => _abrirPagina(
-                                context,
-                                const PaginaIndicadores(),
-                                'PaginaIndicadores',
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     );
                   },
@@ -505,12 +609,57 @@ class _PaginaInicioState extends State<PaginaInicio>
                   descricao: atalhos[indice].descricao,
                   icone: atalhos[indice].icone,
                   onPressed: atalhos[indice].onPressed,
+                  mostrarSeta: atalhos[indice].mostrarSeta,
                 ),
               ),
           ],
         );
       },
     );
+  }
+
+  CardHome _cardDestaque(
+    _AtalhoInicio atalho, {
+    bool decorado = false,
+  }) {
+    return CardHome(
+      nome: atalho.nome,
+      descricao: atalho.descricao,
+      icone: atalho.icone,
+      cor: atalho.cor,
+      decorado: decorado,
+      onPressed: atalho.onPressed,
+    );
+  }
+
+  List<_AtalhoInicio> _ordenarAtalhos(List<_AtalhoInicio> atalhos) {
+    final ordenados = List<_AtalhoInicio>.from(atalhos);
+    ordenados.sort((primeiro, segundo) {
+      final usoPrimeiro = _usoAtalhos[primeiro.identificador];
+      final usoSegundo = _usoAtalhos[segundo.identificador];
+      final porQuantidade =
+          (usoSegundo?.quantidade ?? 0).compareTo(usoPrimeiro?.quantidade ?? 0);
+      if (porQuantidade != 0) return porQuantidade;
+
+      final porUltimoUso =
+          (usoSegundo?.ultimoUso ?? 0).compareTo(usoPrimeiro?.ultimoUso ?? 0);
+      if (porUltimoUso != 0) return porUltimoUso;
+
+      return _prioridadeInicial
+          .indexOf(primeiro.identificador)
+          .compareTo(_prioridadeInicial.indexOf(segundo.identificador));
+    });
+    return ordenados;
+  }
+
+  void _abrirAtalho(
+    BuildContext context,
+    String identificador,
+    Widget pagina,
+    String nomeRota,
+  ) {
+    unawaited(_registrarUsoAtalho(identificador));
+    _abrirPagina(context, pagina, nomeRota);
   }
 
   void _abrirPagina(BuildContext context, Widget pagina, String nomeRota) {
@@ -525,16 +674,44 @@ class _PaginaInicioState extends State<PaginaInicio>
 
 class _AtalhoInicio {
   const _AtalhoInicio({
+    required this.identificador,
     required this.nome,
     required this.descricao,
     required this.icone,
+    required this.cor,
     required this.onPressed,
+    this.mostrarSeta = false,
   });
 
+  final String identificador;
   final String nome;
   final String descricao;
   final IconData icone;
+  final Color cor;
   final VoidCallback onPressed;
+  final bool mostrarSeta;
+}
+
+class _UsoAtalhoInicio {
+  const _UsoAtalhoInicio({
+    required this.quantidade,
+    required this.ultimoUso,
+  });
+
+  final int quantidade;
+  final int ultimoUso;
+
+  factory _UsoAtalhoInicio.fromJson(Map<String, dynamic> json) {
+    return _UsoAtalhoInicio(
+      quantidade: (json['quantidade'] as num?)?.toInt() ?? 0,
+      ultimoUso: (json['ultimoUso'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, int> toJson() => {
+        'quantidade': quantidade,
+        'ultimoUso': ultimoUso,
+      };
 }
 
 class _MarcaEmpresa extends StatelessWidget {
