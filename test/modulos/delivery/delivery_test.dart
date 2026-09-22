@@ -261,6 +261,17 @@ void main() {
           'https://exemplo/sistema/apis_restaurantes/api_restaurantes_venda/$versao/');
     }
   });
+  test('modelo recorrente nunca aparece no carrossel do Delivery', () {
+    final etapa = EtapaDelivery.fromMap({
+      'id': '1',
+      'vendas': [
+        {'id': '10', 'status': ' Modelo Recorrente '},
+        {'id': '11', 'status': 'Pendente'},
+      ],
+    });
+
+    expect(etapa.pedidos.map((pedido) => pedido.id), ['11']);
+  });
   test('mensagem de cliente usa a rota do Delivery sem alterar pagamento',
       () async {
     SharedPreferences.setMockInitialValues({

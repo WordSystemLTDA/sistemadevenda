@@ -87,7 +87,12 @@ class ServicoDelivery {
     }
     final servidor =
         enderecoApi((await Apis().getConexao()).servidor).toString();
-    final dados = {...campos, 'empresa': empresa, 'id_usuario': idUsuario};
+    final dados = {
+      ...campos,
+      'empresa': empresa,
+      'id_usuario': idUsuario,
+      if (!post) '_atualizacao': DateTime.now().microsecondsSinceEpoch,
+    };
     final opcoes = Options(extra: {'servidorFixo': servidor, 'semCache': true});
     final resposta = post
         ? await dio.cliente.post(rota, data: jsonEncode(dados), options: opcoes)

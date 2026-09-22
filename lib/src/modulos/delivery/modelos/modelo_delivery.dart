@@ -16,6 +16,12 @@ double valorDelivery(Object? valor) {
   return numero.isFinite ? numero : 0;
 }
 
+bool _pedidoOperacional(dynamic pedido) {
+  if (pedido is! Map) return true;
+  return (pedido['status'] ?? '').toString().trim().toLowerCase() !=
+      'modelo recorrente';
+}
+
 class EtapaDelivery {
   final String id, nome, botao, impressao, cor;
   final bool selecionarEntregador;
@@ -50,7 +56,8 @@ class EtapaDelivery {
         selecionarEntregador = map['ativarselecaoentregador'] == 'Sim',
         pedidos = [
           for (final p in (map['vendas'] as List? ?? []))
-            PedidoDelivery.fromMap(Map<String, dynamic>.from(p as Map)),
+            if (_pedidoOperacional(p))
+              PedidoDelivery.fromMap(Map<String, dynamic>.from(p as Map)),
         ];
 }
 
