@@ -70,7 +70,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
     }
     return Modelowordprodutos.fromMap(produtoCardapio.toMap())
       ..idCategoriaCardapio =
-          omitirCategoriaNoDetalhe ? null : produtoCardapio.idCategoriaCardapio
+          omitirCategoriaNoDetalhe ? '0' : produtoCardapio.idCategoriaCardapio
       ..opcoesPacotes = [
         if (!omitirMontagem)
           ModeloOpcoesPacotes(
@@ -303,6 +303,7 @@ void main() {
   testWidgets('produto vinculado nao pula montagem quando API omite o grupo',
       (tester) async {
     produtos.omitirMontagem = true;
+    produtos.omitirCategoriaNoDetalhe = true;
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
             body: CardProduto(
