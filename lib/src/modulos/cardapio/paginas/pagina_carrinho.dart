@@ -37,6 +37,7 @@ class PaginaCarrinho extends StatefulWidget {
   final String? assinaturaVoz, servidorVoz, usuarioVoz;
   final bool retornarParaFinalizacao;
   final bool modeloRecorrente;
+  final bool deliveryDireto;
   const PaginaCarrinho(
       {super.key,
       this.contextoVoz,
@@ -44,7 +45,8 @@ class PaginaCarrinho extends StatefulWidget {
       this.servidorVoz,
       this.usuarioVoz,
       this.retornarParaFinalizacao = false,
-      this.modeloRecorrente = false});
+      this.modeloRecorrente = false,
+      this.deliveryDireto = false});
 
   @override
   State<PaginaCarrinho> createState() => _PaginaCarrinhoState();
@@ -279,7 +281,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     provedorFinalizarPagamento.idVenda = _contextoCarrinho!.idAtendimento;
     provedorFinalizarPagamento.valor =
         carrinhoProvedor.itensCarrinho.precoTotal;
-    provedorFinalizarPagamento.definirContextoDelivery();
+    provedorFinalizarPagamento.definirContextoDelivery(
+      recorrenteVinculado: widget.deliveryDireto ? false : null,
+    );
     if (_tipo == TipoCardapio.balcao) {
       Navigator.push(
           context,
@@ -467,8 +471,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
       provedorFinalizarPagamento.valor = _saldoDelivery!;
       provedorFinalizarPagamento.definirContextoDelivery(
-        recorrenteVinculado: pedido.recorrenteVinculado,
-        pagamentoParcial: pedido.pago > 0.009 || pedido.pagamentos.isNotEmpty,
+        recorrenteVinculado: pedido.recorrenteVinculado ??
+            (widget.deliveryDireto ? false : null),
+        pagamentoParcial: pedido.possuiPagamentoRegistrado,
       );
       setState(() => isLoading = false);
       await WidgetsBinding.instance.endOfFrame;

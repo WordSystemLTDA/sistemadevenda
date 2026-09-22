@@ -176,7 +176,7 @@ class ModuloFinalizacaoTeste extends Module {
         isTrue);
   }
 
-  Widget pagina(bool recorrente) {
+  Widget pagina(bool recorrente, {bool deliveryDireto = false}) {
     final contexto = carrinho.contexto!;
     final tipo = TipoCardapio.values.byName(contexto.tipo);
     return recorrente
@@ -186,12 +186,13 @@ class ModuloFinalizacaoTeste extends Module {
             idMesa: tipo == TipoCardapio.mesa ? contexto.idRecurso : '0',
             idCliente: '0',
             tipo: tipo)
-        : const PaginaCarrinho();
+        : PaginaCarrinho(deliveryDireto: deliveryDireto);
   }
 
   Future<void> montar(WidgetTester tester,
       {bool recorrente = false,
-      TipoCardapio tipo = TipoCardapio.comanda}) async {
+      TipoCardapio tipo = TipoCardapio.comanda,
+      bool deliveryDireto = false}) async {
     final rotaDestino =
         tipo == TipoCardapio.mesa ? 'PaginaMesas' : 'PaginaComandas';
     await tester.pumpWidget(MaterialApp(
@@ -212,7 +213,7 @@ class ModuloFinalizacaoTeste extends Module {
                                               builder: (_) => pagina(true))),
                                       child: const Text('Ver carrinho')),
                                 )
-                              : pagina(false))),
+                              : pagina(false, deliveryDireto: deliveryDireto))),
                   child: const Text('Abrir carrinho')),
             ),
       },

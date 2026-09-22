@@ -388,6 +388,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                         ? 'Modelo recorrente'
                         : 'Delivery #$id',
                     modeloRecorrente: widget.recorrente,
+                    deliveryDireto: !widget.recorrente,
                   )));
       if (!mounted) return;
 
