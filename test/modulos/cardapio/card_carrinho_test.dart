@@ -408,7 +408,7 @@ void main() {
 
     expect(find.text('Cardápio:'), findsOneWidget);
     expect(find.text('Arroz'), findsOneWidget);
-    expect(find.text('Embalar separado'), findsOneWidget);
+    expect(find.text('Embalar Separado'), findsOneWidget);
     expect(find.text(5.0.obterReal()), findsOneWidget);
     expect(find.text('Salada'), findsOneWidget);
     expect(find.text('Sem'), findsOneWidget);

@@ -17,6 +17,8 @@ bool tituloIngredientesCardapio(Object? titulo) {
 }
 
 class MontagemIngredienteCardapio {
+  static const String rotuloEmbalagemSeparada = 'Embalar Separado';
+
   final String nomeOriginal;
   final AcaoIngredienteCardapio acao;
   final String? destinoId;
@@ -147,9 +149,9 @@ class MontagemIngredienteCardapio {
         'Trocar por ${quantidadeTroca}x ${destinoNome ?? ''}',
     };
 
-    if (texto == null) return separado ? 'Embalar separado' : null;
+    if (texto == null) return separado ? rotuloEmbalagemSeparada : null;
     return separado && acao != AcaoIngredienteCardapio.sem
-        ? '$texto - Embalar separado'
+        ? '$texto - $rotuloEmbalagemSeparada'
         : texto;
   }
 
