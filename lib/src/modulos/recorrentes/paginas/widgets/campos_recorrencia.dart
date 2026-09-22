@@ -6,12 +6,14 @@ class CamposRecorrencia extends StatelessWidget {
   final ValueChanged<ConfiguracaoRecorrencia> onChanged;
   final bool primeiroPedido;
   final bool exibirErro;
+  final DateTime Function()? relogio;
   const CamposRecorrencia(
       {super.key,
       required this.valor,
       required this.onChanged,
       this.primeiroPedido = false,
-      this.exibirErro = true});
+      this.exibirErro = true,
+      this.relogio});
 
   Future<void> _hora(BuildContext context, bool fim) async {
     final partes = (fim ? valor.horarioFim : valor.horario).split(':');
@@ -311,7 +313,8 @@ class CamposRecorrencia extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
                 primeiroPedido
-                    ? 'O primeiro pedido é de hoje. Os próximos seguem os dias escolhidos.'
+                    ? valor
+                        .textoPrimeiroPedido(relogio?.call() ?? DateTime.now())
                     : 'A alteração vale para os próximos pedidos.',
                 style: Theme.of(context).textTheme.bodySmall),
             if (exibirErro && valor.erro != null)

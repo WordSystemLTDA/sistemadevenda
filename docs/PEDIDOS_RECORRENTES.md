@@ -5,7 +5,11 @@ O Inicio mostra **Recorrentes** no topo e nos atalhos quando
 
 O botao + abre Novo Delivery com dias da semana, horario livre/fixo/intervalo
 e entrega ou retirada. Cliente cadastrado e obrigatorio para ambos. O primeiro
-pedido e para hoje; os proximos aparecem na agenda dos dias selecionados.
+pedido e para hoje, exceto quando o cadastro ocorre depois do horario fixo ou
+do inicio da faixa da empresa: nesse caso, a primeira previsao fica para amanha,
+nao aparece atrasada e nao pode ser processada manual ou automaticamente hoje.
+Qualquer horario continua disponivel no mesmo dia. Os proximos pedidos aparecem
+na agenda dos dias selecionados.
 Os produtos sao escolhidos no cardapio existente. Revisar e Finalizar abre a
 venda diaria preenchida, sem duplicar uma ocorrencia ja aberta. Pagamento e
 impressao continuam no fluxo existente de venda. A agenda permite pausar o

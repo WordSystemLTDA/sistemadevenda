@@ -221,6 +221,42 @@ void main() {
     final comHorario = semEscolhas.copyWith(horarioTipo: 'livre');
     expect(comHorario.erro, 'Selecione como o cliente paga.');
     expect(comHorario.copyWith(pagamentoModo: 'diario').erro, isNull);
+
+    const fixo = ConfiguracaoRecorrencia(
+        horarioTipo: 'fixo', horario: '12:00', pagamentoModo: 'diario');
+    expect(
+        fixo.primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12)), isFalse);
+    expect(fixo.primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12, 0, 1)),
+        isTrue);
+    expect(
+        fixo
+            .copyWith(horarioTipo: 'intervalo')
+            .primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 12, 0, 1)),
+        isTrue);
+    expect(
+        fixo
+            .copyWith(horarioTipo: 'livre')
+            .primeiroPedidoNoDiaSeguinte(DateTime(2026, 9, 21, 23, 59, 59)),
+        isFalse);
+  });
+  testWidgets('formulario informa quando o primeiro pedido sera amanha',
+      (tester) async {
+    final campos = CamposRecorrencia(
+      valor: const ConfiguracaoRecorrencia(
+          horarioTipo: 'fixo', horario: '12:00', pagamentoModo: 'diario'),
+      primeiroPedido: true,
+      relogio: () => DateTime(2026, 9, 21, 12, 0, 1),
+      onChanged: (_) {},
+    );
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: campos))));
+
+    expect(
+        find.text(
+            'O horário de hoje já passou. O primeiro pedido será amanhã; os próximos seguem os dias escolhidos.'),
+        findsOneWidget);
+    expect(find.textContaining('O primeiro pedido é de hoje'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
   test('agenda abre no dia atual e amplia o período sob demanda', () async {
     final api = Api();
@@ -367,6 +403,22 @@ void main() {
     expect(find.text('Horário fixo (1)'), findsOneWidget);
     expect(find.text('Horário da empresa (1)'), findsOneWidget);
     expect(find.text('Cliente sem horário'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('recorrentes-dia-anterior')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('recorrentes-proximo-dia')), findsOneWidget);
+
+    final dataInicial = p.data;
+    await tester.tap(find.byKey(const ValueKey('recorrentes-proximo-dia')));
+    await tester.pumpAndSettle();
+    expect(p.data,
+        DateTime(dataInicial.year, dataInicial.month, dataInicial.day + 1));
+    expect(api.inicioConsultado, p.data);
+
+    await tester.tap(find.byKey(const ValueKey('recorrentes-dia-anterior')));
+    await tester.pumpAndSettle();
+    expect(p.data, dataInicial);
+    expect(api.inicioConsultado, dataInicial);
 
     final carrossel =
         find.byKey(const ValueKey('carrossel-horarios-recorrentes'));
@@ -387,6 +439,14 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
     await tester.pumpAndSettle();
     expect(p.visao, 'semana');
+    expect(
+        api.fimConsultado, DateTime(p.data.year, p.data.month, p.data.day + 6));
+
+    final inicioSemana = p.data;
+    await tester.tap(find.byKey(const ValueKey('recorrentes-proximo-dia')));
+    await tester.pumpAndSettle();
+    expect(p.data,
+        DateTime(inicioSemana.year, inicioSemana.month, inicioSemana.day + 1));
     expect(
         api.fimConsultado, DateTime(p.data.year, p.data.month, p.data.day + 6));
     expect(tester.takeException(), isNull);

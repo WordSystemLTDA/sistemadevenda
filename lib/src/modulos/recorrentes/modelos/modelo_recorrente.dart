@@ -79,6 +79,31 @@ class ConfiguracaoRecorrencia {
           ? 'Em conta · dia $diaVencimento do mês seguinte'
           : 'Pagamento a cada pedido';
 
+  bool primeiroPedidoNoDiaSeguinte(DateTime agora) {
+    if (!['fixo', 'intervalo'].contains(horarioTipo)) return false;
+    final partes = horario.split(':');
+    if (partes.length != 2) return false;
+    final hora = int.tryParse(partes[0]);
+    final minuto = int.tryParse(partes[1]);
+    if (hora == null ||
+        minuto == null ||
+        hora < 0 ||
+        hora > 23 ||
+        minuto < 0 ||
+        minuto > 59) {
+      return false;
+    }
+    final segundoAtual = agora.hour * 3600 + agora.minute * 60 + agora.second;
+    final segundoProgramado = hora * 3600 + minuto * 60;
+    return segundoAtual > segundoProgramado;
+  }
+
+  String textoPrimeiroPedido(DateTime agora) {
+    return primeiroPedidoNoDiaSeguinte(agora)
+        ? 'O horário de hoje já passou. O primeiro pedido será amanhã; os próximos seguem os dias escolhidos.'
+        : 'O primeiro pedido é de hoje. Os próximos seguem os dias escolhidos.';
+  }
+
   DateTime vencimentoEm(DateTime dataPedido) {
     if (!pagamentoMensal) {
       return DateTime(dataPedido.year, dataPedido.month, dataPedido.day);

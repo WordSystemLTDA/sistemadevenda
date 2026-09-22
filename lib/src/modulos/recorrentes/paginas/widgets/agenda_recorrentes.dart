@@ -341,6 +341,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     if (dia != null && mounted) await p.listar(dia: dia);
   }
 
+  Future<void> _mudarDia(int direcao) async {
+    if (p.carregando || p.ocupado || p.visao == 'cadastros') return;
+    await p.listar(
+        dia: DateTime(p.data.year, p.data.month, p.data.day + direcao));
+  }
+
   Future<void> _abrirFiltros() async {
     final filtro = await showDialog<_FiltroRecorrentes>(
         context: context,
@@ -671,15 +677,50 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 onPressed: p.ocupado ? null : _abrirFiltros,
                 icon: const Icon(Icons.tune)),
           ])),
-      Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: Row(children: [
-            Expanded(
-                child: Text(periodo,
-                    style:
-                        TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
-            Text(quantidade, style: const TextStyle(fontSize: 12)),
-          ])),
+      if (p.visao == 'cadastros')
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Row(children: [
+              Expanded(
+                  child: Text(periodo,
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
+              Text(quantidade, style: const TextStyle(fontSize: 12)),
+            ]))
+      else ...[
+        Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+            child: Row(children: [
+              IconButton.outlined(
+                  key: const ValueKey('recorrentes-dia-anterior'),
+                  tooltip: 'Dia anterior',
+                  onPressed: p.carregando || p.ocupado
+                      ? null
+                      : () => unawaited(_mudarDia(-1)),
+                  icon: const Icon(Icons.chevron_left)),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: OutlinedButton.icon(
+                      key: const ValueKey('recorrentes-selecionar-data'),
+                      onPressed: p.carregando || p.ocupado ? null : _data,
+                      icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                      label: Text(periodo,
+                          maxLines: 1, overflow: TextOverflow.ellipsis))),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                  key: const ValueKey('recorrentes-proximo-dia'),
+                  tooltip: 'Próximo dia',
+                  onPressed: p.carregando || p.ocupado
+                      ? null
+                      : () => unawaited(_mudarDia(1)),
+                  icon: const Icon(Icons.chevron_right)),
+            ])),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+            child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(quantidade, style: const TextStyle(fontSize: 12)))),
+      ],
     ]);
   }
 
