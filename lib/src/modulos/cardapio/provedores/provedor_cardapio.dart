@@ -95,6 +95,7 @@ class ProvedorCardapio extends ChangeNotifier {
   }
 
   ModeloConfigBigchef? _configBigchef;
+  Future<void>? _carregamentoConfigBigChef;
   ModeloConfigBigchef? get configBigchef => _configBigchef;
   set configBigchef(ModeloConfigBigchef? value) {
     _configBigchef = value;
@@ -138,10 +139,24 @@ class ProvedorCardapio extends ChangeNotifier {
     return res;
   }
 
-  Future<void> listarConfigBigChef() async {
-    configBigchef = await Modular.get<ServicoConfigBigchef>()
-        .listar(forcarAtualizacao: true);
-    notifyListeners();
+  Future<void> listarConfigBigChef() {
+    return _carregamentoConfigBigChef ??= _carregarConfigBigChef();
+  }
+
+  Future<void> _carregarConfigBigChef() async {
+    try {
+      configBigchef = await Modular.get<ServicoConfigBigchef>()
+          .listar(forcarAtualizacao: true);
+    } finally {
+      _carregamentoConfigBigChef = null;
+    }
+  }
+
+  Future<void> garantirConfigBigChef() {
+    final carregamentoAtual = _carregamentoConfigBigChef;
+    if (carregamentoAtual != null) return carregamentoAtual;
+    if (configBigchef != null) return Future.value();
+    return listarConfigBigChef();
   }
 
   Modelowordtamanhosproduto? tamanhoPizzaDoProduto(Modelowordprodutos produto) {

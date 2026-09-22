@@ -6,6 +6,7 @@ import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -102,6 +103,19 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   }
 }
 
+class ConfigBigchefTarifaTeste extends Fake implements ServicoConfigBigchef {
+  int consultas = 0;
+
+  @override
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async {
+    consultas++;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    return ModeloConfigBigchef.fromMap({
+      'valor_embalagem_separada': '5.00',
+    });
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(carregarFontesDeTeste);
@@ -109,6 +123,7 @@ void main() {
   late UsuarioProvedor usuario;
   late ProvedorCardapio cardapio;
   late ProdutosCategoriaCardapioTeste produtos;
+  late ConfigBigchefTarifaTeste configBigchef;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -119,7 +134,13 @@ void main() {
       ));
     cardapio = ProvedorCardapio(fixture.CategoriasTeste(), usuario);
     produtos = ProdutosCategoriaCardapioTeste();
-    Modular.init(fixture.ModuloTeste(cardapio, usuario, produtos));
+    configBigchef = ConfigBigchefTarifaTeste();
+    Modular.init(fixture.ModuloTeste(
+      cardapio,
+      usuario,
+      produtos,
+      configBigchef: configBigchef,
+    ));
   });
 
   tearDown(() {
@@ -201,9 +222,6 @@ void main() {
   testWidgets(
       'embalagem separada soma a tarifa no total do produto de cardapio',
       (tester) async {
-    cardapio.configBigchef = ModeloConfigBigchef.fromMap({
-      'valor_embalagem_separada': '5.00',
-    });
     cardapio.tipo = TipoCardapio.comanda;
     cardapio.idComanda = '4';
     await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
@@ -233,7 +251,24 @@ void main() {
     await tester.tap(
       find.descendant(of: arroz, matching: find.text('Separado')),
     );
+    await tester.pump();
+
+    expect(configBigchef.consultas, 1);
+    expect(
+      tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+      contains('45,00'),
+    );
+
+    await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
+
+    expect(cardapio.configBigchef?.valorembalagemseparada, '5.00');
+    final montagemAtual = tester
+        .widget<EtapaMontagemCardapio>(find.byType(EtapaMontagemCardapio))
+        .ingredientes
+        .firstWhere((ingrediente) => ingrediente.id == '1');
+    expect(montagemAtual.montagemCardapio?.separado, isTrue);
+    expect(montagemAtual.valor, '5.00');
 
     expect(
       tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,

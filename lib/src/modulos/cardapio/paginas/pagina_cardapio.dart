@@ -232,6 +232,17 @@ class _PaginaCardapioState extends State<PaginaCardapio>
           error: erro, stackTrace: stack);
     }));
 
+    // Inicia junto com as categorias para que a tarifa da embalagem separada
+    // esteja disponivel assim que o usuario abrir um produto de Cardapio.
+    // Se o produto for aberto antes, a acao "Separado" aguarda esta mesma
+    // consulta, sem disparar uma segunda requisicao.
+    unawaited(provedor.listarConfigBigChef().catchError(
+      (Object erro, StackTrace stack) {
+        log('Falha ao atualizar a configuracao do cardapio',
+            error: erro, stackTrace: stack);
+      },
+    ));
+
     try {
       if (_tabController == null) {
         final categorias = await provedor.listarCategorias();
@@ -245,15 +256,6 @@ class _PaginaCardapioState extends State<PaginaCardapio>
           }
         });
       }
-
-      // A configuracao tambem vem atualizada do servidor, mas nao participa da
-      // primeira pintura da lista. Carrega em paralelo com os produtos da aba.
-      unawaited(provedor.listarConfigBigChef().catchError(
-        (Object erro, StackTrace stack) {
-          log('Falha ao atualizar a configuracao do cardapio',
-              error: erro, stackTrace: stack);
-        },
-      ));
     } catch (erro, stack) {
       log('Falha ao carregar o cardapio', error: erro, stackTrace: stack);
       if (mounted) {

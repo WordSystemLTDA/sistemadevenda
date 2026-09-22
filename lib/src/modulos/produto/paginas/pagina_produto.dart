@@ -507,12 +507,44 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     _provedorProduto.calcularValorVenda(false, '0');
   }
 
-  void _separarIngredienteCardapio(
+  Future<void> _separarIngredienteCardapio(
     ModeloDadosOpcoesPacotes item,
     bool separado,
-  ) {
-    final grupo = _grupoMontagemSelecionado;
-    final dados = grupo?.dados;
+  ) async {
+    final produtoVinculadoCardapio =
+        _idCardapioValido(itemProduto?.idCategoriaCardapio);
+
+    if (separado && produtoVinculadoCardapio) {
+      try {
+        await provedorCardapio.garantirConfigBigChef();
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content: Text(
+              'Não foi possível consultar o valor da embalagem separada.',
+            ),
+            showCloseIcon: true,
+          ));
+        return;
+      }
+
+      if (!mounted) return;
+      if (provedorCardapio.configBigchef == null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content: Text(
+              'Não foi possível consultar o valor da embalagem separada.',
+            ),
+            showCloseIcon: true,
+          ));
+        return;
+      }
+    }
+
+    final dados = _grupoMontagemSelecionado?.dados;
     if (dados == null) return;
     final index = dados.indexWhere((dado) => dado.id == item.id);
     if (index < 0) return;
@@ -521,8 +553,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final montagemAtual = atual.montagemCardapio ??
         MontagemIngredienteCardapio(nomeOriginal: atual.nome);
     if (montagemAtual.acao == AcaoIngredienteCardapio.sem) return;
-    final cobrarEmbalagem =
-        separado && _idCardapioValido(itemProduto?.idCategoriaCardapio);
+    final cobrarEmbalagem = separado && produtoVinculadoCardapio;
 
     setState(() {
       dados[index] = MontagemCardapio.aplicar(
