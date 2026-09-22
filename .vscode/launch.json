@@ -10,7 +10,7 @@
       "type": "dart",
       "cwd": "${workspaceFolder}",
       "program": "lib/main.dart",
-      "deviceId": "00008150-000634503488401C"
+      //"deviceId": "00008150-000634503488401C"
     },
     {
       "name": "app (profile mode)",
@@ -18,7 +18,7 @@
       "type": "dart",
       "cwd": "${workspaceFolder}",
       "program": "lib/main.dart",
-      "deviceId": "00008150-000634503488401C",
+      //"deviceId": "00008150-000634503488401C",
       "flutterMode": "profile"
     },
     {
@@ -27,7 +27,7 @@
       "type": "dart",
       "cwd": "${workspaceFolder}",
       "program": "lib/main.dart",
-      "deviceId": "00008150-000634503488401C",
+      //"deviceId": "00008150-000634503488401C",
       "flutterMode": "release"
     }
   ]
