@@ -66,6 +66,7 @@ class PaginaCardapio extends StatefulWidget {
   final String? nomeAtendimento;
   final bool retornarParaFinalizacao;
   final bool modeloRecorrente;
+  final bool deliveryDireto;
 
   const PaginaCardapio({
     super.key,
@@ -78,6 +79,7 @@ class PaginaCardapio extends StatefulWidget {
     this.nomeAtendimento,
     this.retornarParaFinalizacao = false,
     this.modeloRecorrente = false,
+    this.deliveryDireto = false,
   });
 
   @override
@@ -464,6 +466,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                               retornarParaFinalizacao:
                                   widget.retornarParaFinalizacao,
                               modeloRecorrente: widget.modeloRecorrente,
+                              deliveryDireto: widget.deliveryDireto,
                             ),
                           ));
                           if (retorno == RetornoCarrinhoVoz.iniciar &&

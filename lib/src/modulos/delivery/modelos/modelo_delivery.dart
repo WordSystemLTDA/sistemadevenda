@@ -150,6 +150,9 @@ class PedidoDelivery {
         for (final p in dados['lancamentos'] as List? ?? [])
           Map<String, dynamic>.from(p as Map),
       ];
+  bool get possuiPagamentoRegistrado =>
+      pago > 0.009 ||
+      pagamentos.any((pagamento) => valorDelivery(pagamento['valor']) > 0.009);
 }
 
 class ConfigDelivery {
