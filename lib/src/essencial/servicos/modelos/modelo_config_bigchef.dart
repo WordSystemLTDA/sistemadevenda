@@ -11,6 +11,7 @@ bool _sim(String valor) => valor.trim().toLowerCase() == 'sim';
 
 class ModeloConfigBigchef {
   final String clientecompedidosdecorrentes;
+  final String tempoparaenviodecorrente;
   bool get recorrentesHabilitados =>
       clientecompedidosdecorrentes.trim().toLowerCase() == 'sim';
   final String balcaorapido;
@@ -52,6 +53,7 @@ class ModeloConfigBigchef {
 
   ModeloConfigBigchef({
     this.clientecompedidosdecorrentes = 'Não',
+    this.tempoparaenviodecorrente = '20',
     this.balcaorapido = 'Não',
     required this.abrircomandadireto,
     required this.abrirmesadireto,
@@ -124,6 +126,7 @@ class ModeloConfigBigchef {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'clientecompedidosdecorrentes': clientecompedidosdecorrentes,
+      'tempoparaenviodecorrente': tempoparaenviodecorrente,
       'balcaorapido': balcaorapido,
       'abrircomandadireto': abrircomandadireto,
       'abrirmesadireto': abrirmesadireto,
@@ -176,6 +179,10 @@ class ModeloConfigBigchef {
       clientecompedidosdecorrentes: (map['clientecompedidosdecorrentes'] ??
               map['cliente_com_pedidos_decorrentes'] ??
               'Não')
+          .toString(),
+      tempoparaenviodecorrente: (map['tempoparaenviodecorrente'] ??
+              map['tempo_para_envio_decorrente'] ??
+              '20')
           .toString(),
       balcaorapido:
           (map['balcaorapido'] ?? map['balcao_rapido'] ?? 'Não').toString(),

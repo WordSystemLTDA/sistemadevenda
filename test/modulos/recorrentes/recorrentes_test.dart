@@ -30,6 +30,7 @@ ModeloRecorrente pedido(
         String horarioTipo = 'intervalo',
         String horario = '11:30',
         String horarioFim = '13:00',
+        int tempoEnvio = 20,
         List<Map<String, dynamic>>? itens}) =>
     ModeloRecorrente.fromMap({
       'id': '1',
@@ -46,6 +47,7 @@ ModeloRecorrente pedido(
       'horarioTipo': horarioTipo,
       'horario': horario,
       'horarioFim': horarioFim,
+      'tempoParaEnvioDecorrente': tempoEnvio,
       'observacao': 'Entregar na recepção. Sem sal.',
       'itens': itens ??
           [
@@ -190,6 +192,11 @@ void main() {
     final configPadrao = ModeloConfigBigchef.fromMap({});
     expect(configPadrao.recorrentesHabilitados, isFalse);
     expect(configPadrao.balcaoRapidoHabilitado, isFalse);
+    expect(configPadrao.tempoparaenviodecorrente, '20');
+    expect(
+        ModeloConfigBigchef.fromMap({'tempo_para_envio_decorrente': 35})
+            .tempoparaenviodecorrente,
+        '35');
     expect(
         ModeloConfigBigchef.fromMap({'clientecompedidosdecorrentes': 'Sim'})
             .recorrentesHabilitados,
@@ -522,6 +529,45 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.aberturas, 1);
     expect(find.text('Pedido enviado para o Delivery.'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    p.dispose();
+  });
+
+  testWidgets('card mostra entrega, envio antecipado e alerta verde',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var agora = DateTime(2026, 9, 21, 11, 30);
+    final api = Api()
+      ..dados = [
+        pedido(
+          data: DateTime(2026, 9, 21),
+          horarioTipo: 'fixo',
+          horario: '12:00',
+        )
+      ];
+    final p = ProvedorRecorrentes(api);
+    await tester.pumpWidget(MaterialApp(
+        home: AgendaRecorrentes(
+            provedor: p,
+            novo: () async {},
+            abrirPedido: (id, item) async {},
+            agora: () => agora)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrega: 12:00'), findsOneWidget);
+    expect(find.text('Envio à cozinha: 11:40'), findsOneWidget);
+    expect(find.text('Alerta verde: 11:30'), findsOneWidget);
+    expect(find.text('Envio automático em 00:10:00'), findsOneWidget);
+
+    agora = DateTime(2026, 9, 21, 11, 41);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Envio Atrasado'), findsOneWidget);
+    expect(find.text('Envio automático não realizado'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
   });

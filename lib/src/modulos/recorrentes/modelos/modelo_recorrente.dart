@@ -1,5 +1,30 @@
 import 'package:intl/intl.dart';
 
+DateTime? _momentoRecorrente(
+  Map<String, dynamic> json,
+  String chave, {
+  required int minutosAntes,
+}) {
+  final recebido = DateTime.tryParse('${json[chave] ?? ''}');
+  if (recebido != null) return recebido;
+  if (!['fixo', 'intervalo'].contains('${json['horarioTipo'] ?? 'livre'}')) {
+    return null;
+  }
+  final data = DateTime.tryParse('${json['data'] ?? ''}');
+  final partes = '${json['horario'] ?? ''}'.split(':');
+  if (data == null || partes.length != 2) return null;
+  final hora = int.tryParse(partes[0]);
+  final minuto = int.tryParse(partes[1]);
+  if (hora == null || minuto == null) return null;
+  return DateTime(data.year, data.month, data.day, hora, minuto)
+      .subtract(Duration(minutes: minutosAntes));
+}
+
+int _tempoEnvioRecorrente(Map<String, dynamic> json) {
+  final valor = int.tryParse('${json['tempoParaEnvioDecorrente'] ?? 20}');
+  return valor == null || valor < 0 ? 20 : valor;
+}
+
 class ConfiguracaoRecorrencia {
   final List<int> dias;
   final String horarioTipo;
@@ -171,6 +196,8 @@ class ModeloRecorrente {
       numeroPedido,
       observacao;
   final DateTime data;
+  final DateTime? dataHoraEntrega, dataHoraEnvio, dataHoraAlerta;
+  final int tempoParaEnvioDecorrente;
   final ConfiguracaoRecorrencia configuracao;
   final bool ativo, pago;
   final double total;
@@ -190,6 +217,22 @@ class ModeloRecorrente {
         numeroPedido = '${json['numeroPedido'] ?? ''}',
         observacao = '${json['observacao'] ?? ''}',
         data = DateTime.parse('${json['data']}'),
+        tempoParaEnvioDecorrente = _tempoEnvioRecorrente(json),
+        dataHoraEntrega = _momentoRecorrente(
+          json,
+          'dataHoraEntrega',
+          minutosAntes: 0,
+        ),
+        dataHoraEnvio = _momentoRecorrente(
+          json,
+          'dataHoraEnvio',
+          minutosAntes: _tempoEnvioRecorrente(json),
+        ),
+        dataHoraAlerta = _momentoRecorrente(
+          json,
+          'dataHoraAlerta',
+          minutosAntes: _tempoEnvioRecorrente(json) + 10,
+        ),
         configuracao = ConfiguracaoRecorrencia.fromMap(json),
         ativo = json['ativo'] == 'Sim',
         pago = json['pago'] == 'Sim',
@@ -201,6 +244,12 @@ class ModeloRecorrente {
 
   String get chave => '$id:${DateFormat('yyyy-MM-dd').format(data)}';
   String get entregaTexto => tipoEntrega == '2' ? 'Retirada' : 'Entrega';
+  bool get possuiEnvioAutomatico => dataHoraEnvio != null;
+  String get horarioEntregaTexto => configuracao.horarioTipo == 'intervalo'
+      ? '${configuracao.horario}–${configuracao.horarioFim}'
+      : _horarioOperacional(dataHoraEntrega);
+  String get horarioEnvioTexto => _horarioOperacional(dataHoraEnvio);
+  String get horarioAlertaTexto => _horarioOperacional(dataHoraAlerta);
   bool get temPedido => idDelivery.isNotEmpty && idDelivery != '0';
   bool get processoCancelado =>
       ['cancelado', 'cancelada', 'processo cancelado']
@@ -225,6 +274,16 @@ class ModeloRecorrente {
       ].contains(statusDelivery);
   bool disponivelEm(DateTime hoje) =>
       !data.isAfter(DateTime(hoje.year, hoje.month, hoje.day));
+
+  String _horarioOperacional(DateTime? momento) {
+    if (momento == null) return '';
+    final horario = DateFormat('HH:mm').format(momento);
+    final dataDoCard = DateTime(data.year, data.month, data.day);
+    final dataDoMomento = DateTime(momento.year, momento.month, momento.day);
+    if (dataDoMomento.isBefore(dataDoCard)) return '$horario (dia anterior)';
+    if (dataDoMomento.isAfter(dataDoCard)) return '$horario (dia seguinte)';
+    return horario;
+  }
 }
 
 class PagamentoRecorrente {

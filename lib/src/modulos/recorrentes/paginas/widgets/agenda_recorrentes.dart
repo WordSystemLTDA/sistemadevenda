@@ -372,19 +372,20 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
 
   DateTime? _horarioAutomatico(ModeloRecorrente item) {
     if (!_pendenteAutomatico(item)) return null;
-    final partes = item.configuracao.horario.split(':');
-    if (partes.length != 2) return null;
-    final hora = int.tryParse(partes[0]);
-    final minuto = int.tryParse(partes[1]);
-    if (hora == null || minuto == null) return null;
-    return DateTime(
-        item.data.year, item.data.month, item.data.day, hora, minuto);
+    return item.dataHoraEnvio;
   }
 
   _EstadoAutomatico? _estadoAutomatico(ModeloRecorrente item, DateTime agora) {
     final horario = _horarioAutomatico(item);
     if (horario == null) return null;
-    return _EstadoAutomatico(horario.difference(agora));
+    return _EstadoAutomatico(
+      restante: horario.difference(agora),
+      emContagem: agora.isBefore(horario) &&
+          !agora.isBefore(
+            item.dataHoraAlerta ??
+                horario.subtract(const Duration(minutes: 10)),
+          ),
+    );
   }
 
   String _duracao(Duration duracao) {
@@ -1041,12 +1042,24 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                       ?.copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Wrap(spacing: 16, runSpacing: 8, children: [
-                _detalhe(
-                    item.tipoEntrega == '2'
-                        ? Icons.shopping_bag_outlined
-                        : Icons.delivery_dining_outlined,
-                    item.entregaTexto),
-                _detalhe(Icons.schedule, item.configuracao.horarioTexto),
+                if (item.possuiEnvioAutomatico) ...[
+                  _detalhe(
+                      item.tipoEntrega == '2'
+                          ? Icons.shopping_bag_outlined
+                          : Icons.delivery_dining_outlined,
+                      '${item.entregaTexto}: ${item.horarioEntregaTexto}'),
+                  _detalhe(Icons.restaurant_outlined,
+                      'Envio à cozinha: ${item.horarioEnvioTexto}'),
+                  _detalhe(Icons.notifications_active_outlined,
+                      'Alerta verde: ${item.horarioAlertaTexto}'),
+                ] else ...[
+                  _detalhe(
+                      item.tipoEntrega == '2'
+                          ? Icons.shopping_bag_outlined
+                          : Icons.delivery_dining_outlined,
+                      item.entregaTexto),
+                  _detalhe(Icons.schedule, item.configuracao.horarioTexto),
+                ],
               ]),
               Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -1275,12 +1288,25 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                                 style: TextStyle(
                                     fontSize: 13, color: cs.onSurfaceVariant))),
                       const SizedBox(height: 12),
+                      if (item.possuiEnvioAutomatico) ...[
+                        Wrap(spacing: 12, runSpacing: 6, children: [
+                          _detalhe(Icons.schedule_outlined,
+                              '${item.entregaTexto}: ${item.horarioEntregaTexto}'),
+                          _detalhe(Icons.restaurant_outlined,
+                              'Envio à cozinha: ${item.horarioEnvioTexto}'),
+                          _detalhe(Icons.notifications_active_outlined,
+                              'Alerta verde: ${item.horarioAlertaTexto}'),
+                        ]),
+                        const SizedBox(height: 10),
+                      ],
                       Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                                 child: Text(
-                                    '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
+                                    item.possuiEnvioAutomatico
+                                        ? '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'}'
+                                        : '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: cs.onSurfaceVariant))),
@@ -1948,10 +1974,9 @@ class _OpcaoHorarioAgenda {
 }
 
 class _EstadoAutomatico {
-  static const antecedencia = Duration(minutes: 30);
   final Duration restante;
-  const _EstadoAutomatico(this.restante);
-  bool get emContagem => restante > Duration.zero && restante <= antecedencia;
+  final bool emContagem;
+  const _EstadoAutomatico({required this.restante, required this.emContagem});
   bool get atrasado => restante <= Duration.zero;
 }
 
