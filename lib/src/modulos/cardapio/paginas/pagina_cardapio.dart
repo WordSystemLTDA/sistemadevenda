@@ -213,16 +213,26 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       _carregandoDados = true;
       _erroCarregamento = null;
     });
+    setarCampos();
+
+    // O carrinho fica no armazenamento local e nao precisa bloquear a consulta
+    // atual do catalogo. Em aparelhos com uma fila de gravacoes pendente, esperar
+    // por ele aqui fazia a tela permanecer vazia antes mesmo de consultar as
+    // categorias no servidor.
+    unawaited(carrinhoProvedor
+        .selecionarAtendimento(
+      tipo: widget.tipo.name,
+      idAtendimento: widget.id ?? '0',
+      idRecurso: widget.tipo == TipoCardapio.mesa
+          ? widget.idMesa ?? ''
+          : widget.idComanda ?? '',
+    )
+        .catchError((Object erro, StackTrace stack) {
+      log('Falha ao carregar o carrinho do atendimento',
+          error: erro, stackTrace: stack);
+    }));
+
     try {
-      setarCampos();
-      await carrinhoProvedor.selecionarAtendimento(
-        tipo: widget.tipo.name,
-        idAtendimento: widget.id ?? '0',
-        idRecurso: widget.tipo == TipoCardapio.mesa
-            ? widget.idMesa ?? ''
-            : widget.idComanda ?? '',
-      );
-      if (!mounted) return;
       if (_tabController == null) {
         final categorias = await provedor.listarCategorias();
         if (!mounted) return;
@@ -235,7 +245,15 @@ class _PaginaCardapioState extends State<PaginaCardapio>
           }
         });
       }
-      await provedor.listarConfigBigChef();
+
+      // A configuracao tambem vem atualizada do servidor, mas nao participa da
+      // primeira pintura da lista. Carrega em paralelo com os produtos da aba.
+      unawaited(provedor.listarConfigBigChef().catchError(
+        (Object erro, StackTrace stack) {
+          log('Falha ao atualizar a configuracao do cardapio',
+              error: erro, stackTrace: stack);
+        },
+      ));
     } catch (erro, stack) {
       log('Falha ao carregar o cardapio', error: erro, stackTrace: stack);
       if (mounted) {

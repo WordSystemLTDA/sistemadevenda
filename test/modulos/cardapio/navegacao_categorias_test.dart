@@ -8,13 +8,21 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'montagem_pizza_test.dart'
-    show CategoriasTeste, ConfiguracoesTeste, ModuloTeste, ProdutosTeste, sabor;
+    show
+        CategoriasTeste,
+        ConfiguracoesTeste,
+        DioClienteTeste,
+        ModuloTeste,
+        ProdutosTeste,
+        sabor;
 
 class CategoriasPendentes extends CategoriasTeste {
   final resposta = Completer<List<ModeloCategoria>>();
@@ -46,6 +54,21 @@ class ProdutosPendentes extends ProdutosTeste {
   }
 }
 
+class CarrinhoPendente extends ProvedorCarrinho {
+  CarrinhoPendente(UsuarioProvedor usuario)
+      : super(ServicosItensComanda(DioClienteTeste(), usuario));
+
+  final resposta = Completer<void>();
+
+  @override
+  Future<void> selecionarAtendimento({
+    required String tipo,
+    required String idAtendimento,
+    String idRecurso = '',
+  }) =>
+      resposta.future;
+}
+
 void main() {
   late UsuarioProvedor usuario;
   late ProvedorCardapio cardapio;
@@ -64,13 +87,16 @@ void main() {
   });
 
   Future<void> abrir(WidgetTester tester,
-      {CategoriasTeste? categorias, ProdutosTeste? produtos}) async {
+      {CategoriasTeste? categorias,
+      ProdutosTeste? produtos,
+      ProvedorCarrinho? carrinho}) async {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     cardapio = ProvedorCardapio(categorias ?? CategoriasTeste(), usuario);
-    Modular.init(ModuloTeste(cardapio, usuario, produtos ?? ProdutosTeste()));
+    Modular.init(ModuloTeste(cardapio, usuario, produtos ?? ProdutosTeste(),
+        carrinho: carrinho));
     await tester.pumpWidget(const MaterialApp(
         home: PaginaCardapio(
             tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
@@ -156,6 +182,26 @@ void main() {
     categorias.resposta.complete(categorias.categorias);
     await tester.pump();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('catalogo abre sem esperar a leitura pendente do carrinho',
+      (tester) async {
+    final carrinho = CarrinhoPendente(usuario);
+    await abrir(tester, carrinho: carrinho);
+
+    for (var i = 0; i < 20 && find.byType(TabBar).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.pump();
+
+    expect(carrinho.resposta.isCompleted, isFalse);
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.text('Mussarela'), findsOneWidget);
+
+    carrinho.resposta.complete();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('falha inicial permite tentar novamente e abrir os produtos',

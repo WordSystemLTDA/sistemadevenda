@@ -363,16 +363,17 @@ class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
 }
 
 class ModuloTeste extends Module {
-  ModuloTeste(this.cardapio, this.usuario, this.produtos);
+  ModuloTeste(this.cardapio, this.usuario, this.produtos, {this.carrinho});
 
   final ProvedorCardapio cardapio;
   final UsuarioProvedor usuario;
   final ProdutosTeste produtos;
+  final ProvedorCarrinho? carrinho;
 
   @override
   void binds(Injector i) {
     i.addInstance<ProvedorCardapio>(cardapio);
-    i.addInstance<ProvedorCarrinho>(
+    i.addInstance<ProvedorCarrinho>(carrinho ??
         ProvedorCarrinho(ServicosItensComanda(DioClienteTeste(), usuario)));
     i.addInstance<ProvedorProduto>(ProvedorProduto(cardapio, usuario));
     i.add<ProvedorProdutos>(() => ProvedorProdutos(produtos));
