@@ -32,6 +32,7 @@ import '../../suporte/captura_tela.dart';
 class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   ServicoProduto? servicoReal;
   bool omitirMontagem = false;
+  bool omitirCategoriaNoDetalhe = false;
   bool semIngredientes = false;
   bool? ultimaConsultaModeloRecorrente;
   final produtoCardapio = Modelowordprodutos(
@@ -68,6 +69,8 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
       return super.listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente);
     }
     return Modelowordprodutos.fromMap(produtoCardapio.toMap())
+      ..idCategoriaCardapio =
+          omitirCategoriaNoDetalhe ? null : produtoCardapio.idCategoriaCardapio
       ..opcoesPacotes = [
         if (!omitirMontagem)
           ModeloOpcoesPacotes(
@@ -222,6 +225,9 @@ void main() {
   testWidgets(
       'embalagem separada soma a tarifa no total do produto de cardapio',
       (tester) async {
+    // APIs antigas podem omitir o vinculo no produto, mas os ingredientes do
+    // grupo de Cardapio continuam identificando a categoria corretamente.
+    produtos.omitirCategoriaNoDetalhe = true;
     cardapio.tipo = TipoCardapio.comanda;
     cardapio.idComanda = '4';
     await Modular.get<ProvedorCarrinho>().selecionarAtendimento(

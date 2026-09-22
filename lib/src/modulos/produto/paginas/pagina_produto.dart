@@ -443,10 +443,17 @@ class _PaginaProdutoState extends State<PaginaProduto> {
           .where(_grupoMontagemCardapio)
           .firstOrNull;
 
+  bool get _produtoVinculadoCardapio {
+    if (_idCardapioValido(itemProduto?.idCategoriaCardapio)) return true;
+    return (_grupoMontagemSelecionado?.dados ??
+            const <ModeloDadosOpcoesPacotes>[])
+        .any((dado) => _idCardapioValido(dado.idCategoriaCardapio));
+  }
+
   bool get _produtoTemMontagemCardapio {
     final grupo = _grupoMontagemSelecionado;
     if (grupo == null) return false;
-    return _idCardapioValido(itemProduto?.idCategoriaCardapio) ||
+    return _produtoVinculadoCardapio ||
         grupo.tipo == 8 ||
         (grupo.dados ?? const <ModeloDadosOpcoesPacotes>[]).any((dado) =>
             dado.montagemCardapio != null ||
@@ -511,8 +518,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     ModeloDadosOpcoesPacotes item,
     bool separado,
   ) async {
-    final produtoVinculadoCardapio =
-        _idCardapioValido(itemProduto?.idCategoriaCardapio);
+    final produtoVinculadoCardapio = _produtoVinculadoCardapio;
 
     if (separado && produtoVinculadoCardapio) {
       try {

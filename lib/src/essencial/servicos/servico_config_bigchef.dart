@@ -12,14 +12,11 @@ class ServicoConfigBigchef {
   ServicoConfigBigchef(this.dio, this.usuarioProvedor);
 
   static const caminhoAPI = 'config_bigchef';
-  static final Map<String, ModeloConfigBigchef> _cachePorEmpresa = {};
+  static final Map<String, ModeloConfigBigchef> _cachePorDestino = {};
 
   Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async {
     final idEmpresa = usuarioProvedor.usuario?.empresa;
     if (idEmpresa == null || idEmpresa.isEmpty) return null;
-    if (!forcarAtualizacao && _cachePorEmpresa[idEmpresa] != null) {
-      return _cachePorEmpresa[idEmpresa];
-    }
 
     try {
       final response = await dio.cliente.get('$caminhoAPI/listar.php',
@@ -30,10 +27,22 @@ class ServicoConfigBigchef {
           },
           options: Options(extra: {'semCache': forcarAtualizacao}));
       final jsonData = response.data;
-      if (jsonData is! Map) return _cachePorEmpresa[idEmpresa];
-      final config =
-          ModeloConfigBigchef.fromMap(Map<String, dynamic>.from(jsonData));
-      _cachePorEmpresa[idEmpresa] = config;
+      final chaveCache = _chaveCache(response.requestOptions, idEmpresa);
+      if (jsonData is! Map) return _cachePorDestino[chaveCache];
+
+      final dados = Map<String, dynamic>.from(jsonData);
+      if (!_possuiValorEmbalagemSeparada(dados)) {
+        final valorDesktop = await _listarValorEmbalagemSeparadaDesktop(
+          response.requestOptions.baseUrl,
+          idEmpresa,
+        );
+        if (valorDesktop != null) {
+          dados['valorembalagemseparada'] = valorDesktop;
+        }
+      }
+
+      final config = ModeloConfigBigchef.fromMap(dados);
+      _cachePorDestino[chaveCache] = config;
       return config;
     } on DioException catch (e) {
       if (e.response == null) {
@@ -42,7 +51,54 @@ class ServicoConfigBigchef {
         }
       }
 
-      return _cachePorEmpresa[idEmpresa];
+      return _cachePorDestino[_chaveCache(e.requestOptions, idEmpresa)];
+    }
+  }
+
+  bool _possuiValorEmbalagemSeparada(Map<String, dynamic> dados) =>
+      dados.containsKey('valorembalagemseparada') ||
+      dados.containsKey('valor_embalagem_separada');
+
+  String _chaveCache(RequestOptions requisicao, String empresa) {
+    final base = requisicao.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    return '$base|$empresa';
+  }
+
+  String? _baseDesktop(String baseGarcom) {
+    if (baseGarcom.isEmpty) return null;
+    final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
+    final desktop = normalizada.replaceFirst(
+      RegExp(r'/api_restaurantes_venda/api(?:1|6)/'),
+      '/api_desktop/1.0.01/',
+    );
+    return desktop == normalizada ? null : desktop;
+  }
+
+  Future<String?> _listarValorEmbalagemSeparadaDesktop(
+    String baseGarcom,
+    String empresa,
+  ) async {
+    final baseDesktop = _baseDesktop(baseGarcom);
+    if (baseDesktop == null) return null;
+
+    try {
+      final response = await dio.cliente.get(
+        '$caminhoAPI/listar.php',
+        queryParameters: {'empresa': empresa},
+        options: Options(extra: {
+          'semCache': true,
+          'servidorFixo': baseDesktop,
+        }),
+      );
+      final dados = response.data;
+      if (dados is! Map) return null;
+      final mapa = Map<String, dynamic>.from(dados);
+      if (!_possuiValorEmbalagemSeparada(mapa)) return null;
+      return (mapa['valorembalagemseparada'] ??
+              mapa['valor_embalagem_separada'])
+          ?.toString();
+    } on DioException {
+      return null;
     }
   }
 }
