@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'dart:async';
 
 import 'package:app/src/essencial/widgets/campo_busca.dart';
@@ -27,9 +28,18 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
   String? dataPersonalizada;
   Timer? _debounce;
 
+  late final MonitorAtualizacaoTela _monitorAtualizacao;
+
   @override
   void initState() {
     super.initState();
+    _monitorAtualizacao = MonitorAtualizacaoTela(
+      atualizar: () async { await provedor.listar(); },
+      // Compatibilidade com o SDK usado na distribuicao Windows.
+      // ignore: deprecated_member_use
+      estaAtiva: () => mounted && TickerMode.getNotifier(context).value &&
+          ModalRoute.of(context)?.isCurrent != false,
+    );
     dataInicial = DateFormat('yyyy-MM-dd').format(provedor.dataSelecionada.start);
     dataFim = DateFormat('yyyy-MM-dd').format(provedor.dataSelecionada.end);
     final hoje = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -48,6 +58,7 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
 
   @override
   void dispose() {
+    _monitorAtualizacao.dispose();
     dataManualController.dispose();
     _horaController.dispose();
     _pesquisaController.dispose();

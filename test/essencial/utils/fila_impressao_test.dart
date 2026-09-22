@@ -36,6 +36,41 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('recupera antiga pausa por consultas mas conserva pausa do spooler',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      FilaImpressao.chave: jsonEncode([
+        ImpressaoPendente(mensagem('consulta'),
+                estado: EstadoImpressao.pausada,
+                erro:
+                    'Recuperação pausada. Confira a cozinha ou limpe a pendência.')
+            .toMap(),
+        ImpressaoPendente(mensagem('spooler'),
+                estado: EstadoImpressao.pausada,
+                erro: 'Impressora sem confirmacao')
+            .toMap(),
+      ])
+    });
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.carregar();
+    expect(fila.itens.first.estado, EstadoImpressao.semConfirmacao);
+    expect(fila.itens.last.estado, EstadoImpressao.pausada);
+  });
+
+  for (final salvo in ['{incompleto', '{}', '[{}]']) {
+    test('leitura invalida preserva comprovantes e impede sobrescrita: $salvo',
+        () async {
+      SharedPreferences.setMockInitialValues({FilaImpressao.chave: salvo});
+      final fila = FilaImpressao();
+      addTearDown(fila.dispose);
+      await expectLater(fila.carregar(), throwsStateError);
+      await expectLater(fila.registrar([mensagem('novo')]), throwsStateError);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(FilaImpressao.chave), salvo);
+    });
+  }
+
   for (final lancarExcecao in [false, true]) {
     test('falha ao persistir nao simula fila gravada (excecao: $lancarExcecao)',
         () async {

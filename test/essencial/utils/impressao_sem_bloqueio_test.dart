@@ -132,7 +132,7 @@ void main() {
         isTrue);
   });
 
-  test('servidor sem resposta para de consultar e conserva pendencia pausada',
+  test('servidor sem resposta continua consultas sem repetir a impressao',
       () async {
     var agora = DateTime(2026);
     final server = Server(agora: () => agora)..connected = true;
@@ -144,8 +144,15 @@ void main() {
       agora = agora.add(const Duration(minutes: 2));
       await server.processarImpressoesPendentes();
     }
-    expect(enviados, hasLength(4));
-    expect(server.filaImpressao.itens.single.estado, EstadoImpressao.pausada);
+    expect(enviados, hasLength(11));
+    final mensagens = enviados
+        .map((e) => jsonDecode(e as String)['data']['customData'] as Map)
+        .toList();
+    expect(mensagens.where((e) => e['tipoImpressao'] == '1'), hasLength(1));
+    expect(mensagens.skip(1).every((e) => e['tipo'] == 'ConsultarImpressao'),
+        isTrue);
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.semConfirmacao);
   });
 
   test('limpeza offline persiste e envia somente cancelamento na reconexao',

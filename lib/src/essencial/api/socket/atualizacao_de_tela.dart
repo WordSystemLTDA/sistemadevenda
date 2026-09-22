@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -7,14 +8,16 @@ import 'package:flutter_modular/flutter_modular.dart';
 
 class AtualizacaoDeTela {
   void call(ModeloRetornoSocket dados) {
-    if (dados.tipo == 'Mesa') {
-      Modular.tryGet<ProvedorMesas>()?.listarMesas('');
-    } else if (dados.tipo == 'Comanda') {
-      Modular.tryGet<ProvedorComanda>()?.listarComandas('');
-    } else if (dados.tipo == 'Balcão') {
+    EventosCatalogo.notificar(dados.tipo);
+    final tipo = dados.tipo.trim().toLowerCase();
+    if (tipo == 'mesa') {
+      Modular.tryGet<ProvedorMesas>()?.listarMesas('', mostrarCarregamento: false);
+    } else if (tipo == 'comanda') {
+      Modular.tryGet<ProvedorComanda>()?.listarComandas('', mostrarCarregamento: false);
+    } else if (tipo == 'balcao' || tipo == 'balc\u00e3o') {
       Modular.tryGet<ProvedorBalcao>()?.listar();
-    } else if (dados.tipo == 'Delivery') {
-      Modular.tryGet<ProvedorDelivery>()?.listar();
+    } else if (tipo == 'delivery') {
+      Modular.tryGet<ProvedorDelivery>()?.listar(mostrarCarregamento: false);
     }
   }
 }

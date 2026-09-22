@@ -110,7 +110,7 @@ void main() {
     expect(lista.single.idCategoriaCardapio, '3');
     expect(lista.single.opcoesPacotes!.first.dados, hasLength(3));
     await produtos.listarPorCategoria('62', 1);
-    expect(adapter.consultas, 1);
+    expect(adapter.consultas, 2);
   });
 
   test(
@@ -131,15 +131,57 @@ void main() {
     expect(adapter.consultas, 2);
   });
 
-  test('produto sem categoria cardapio continua usando cache imediato',
+  test('produto comum tambem consulta o preco atual com cache recente',
       () async {
     final comum = Map<String, dynamic>.from(almoco)
       ..['idCategoriaCardapio'] = '0'
       ..['id_categoria_cardapio'] = '0'
       ..['opcoesPacotes'] = [];
     await guardar('produtos/listar_por_id.php', getDetalhe(), comum);
+    adapter.resposta = {...comum, 'valorVenda': '23.00'};
     final produto = await produtos.listarPorId('436', '0');
     expect(produto!.opcoesPacotes, isEmpty);
-    expect(adapter.consultas, 0);
+    expect(produto.valorVenda, '23.00');
+    expect(adapter.consultas, 1);
+  });
+
+  test('produto novo aparece na proxima leitura sem esperar expirar cache',
+      () async {
+    adapter.resposta = [almoco];
+    expect(await produtos.listarPorCategoria('62', 1), hasLength(1));
+    adapter.resposta = [
+      almoco,
+      {...almoco, 'id': '999', 'nome': 'Produto novo'}
+    ];
+    expect(await produtos.listarPorCategoria('62', 1), hasLength(2));
+    expect(adapter.consultas, 2);
+  });
+
+  for (final rota in [
+    'categorias/listar.php',
+    'tela_nfe_saida/listar_bancos.php',
+    'mesas/listar.php',
+    'comandas/listar.php',
+    'balcao/listar.php',
+  ]) {
+    test('$rota consulta inclusoes mesmo com retrato recente', () async {
+      final parametros = rota.startsWith('tela_nfe_saida')
+          ? {'id_empresa': '32'}
+          : {'empresa': '32'};
+      await guardar(rota, parametros, {'nome': 'Antigo'});
+      adapter.resposta = {'nome': 'Novo'};
+      final resposta = await api.cliente.get(rota, queryParameters: parametros);
+      expect(resposta.data['nome'], 'Novo');
+      expect(resposta.extra['cacheLocal'], isNot(true));
+    });
+  }
+
+  test('parametro anticache nao multiplica as chaves offline', () {
+    RequestOptions consulta(String token) => RequestOptions(
+          path: 'produtos/listar.php',
+          queryParameters: {'empresa': '32', '_consulta_atual': token},
+        );
+    expect(CacheConsultas.chave(consulta('1')),
+        CacheConsultas.chave(consulta('2')));
   });
 }

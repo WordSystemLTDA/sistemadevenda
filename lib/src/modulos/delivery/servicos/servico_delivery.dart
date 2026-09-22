@@ -332,12 +332,16 @@ class ServicoDelivery {
 
   Future<Map<String, dynamic>> avancar(
           PedidoDelivery pedido, EtapaDelivery destino,
-          {String entregador = '', String valorEntrega = '0'}) =>
+          {String entregador = '',
+          String valorEntrega = '0',
+          List<String> impressoes = const []}) =>
       salvar('delivery/mudar_status_delivery.php', {
         'id': pedido.id,
         'status': destino.id,
         'statusOrigem': pedido.etapa,
+        'tipoImpressaoEsperado': destino.impressao,
         'valorOriginal': pedido.total,
+        if (impressoes.isNotEmpty) 'impressoes': impressoes,
         'irParaProximo': false,
         'idEntregador': entregador,
         'valor_da_entrega': valorEntrega,

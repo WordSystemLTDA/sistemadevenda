@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
+import 'politica_consultas_http.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
@@ -32,6 +33,7 @@ class DioCliente {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
+            PoliticaConsultasHttp.preparar(options);
             options.baseUrl = options.extra['servidorFixo'] as String? ??
                 servidor ??
                 (await Apis().getConexao()).servidor;

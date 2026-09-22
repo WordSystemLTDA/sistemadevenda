@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'dart:async';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
@@ -29,9 +30,10 @@ class PaginaDelivery extends StatefulWidget {
 class _PaginaDeliveryState extends State<PaginaDelivery>
     with WidgetsBindingObserver {
   late final _provedor =
-      widget.provedor ?? ProvedorDelivery(Modular.get<ServicoDelivery>());
+      widget.provedor ?? Modular.get<ProvedorDelivery>();
   final _busca = TextEditingController();
-  Timer? _debounce, _timer;
+  Timer? _debounce;
+  late final MonitorAtualizacaoTela _monitorAtualizacao;
   StreamSubscription<PedidoDelivery>? _atualizacoes;
   bool _rotaAberta = false, _ativo = true;
   String? _ocupado;
@@ -44,15 +46,11 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       _provedor.atualizarPedido(pedido);
     });
     _provedor.listar();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (_ativo &&
-          !_rotaAberta &&
-          _ocupado == null &&
-          !_provedor.carregando &&
-          ModalRoute.of(context)?.isCurrent == true) {
-        _provedor.listar();
-      }
-    });
+    _monitorAtualizacao = MonitorAtualizacaoTela(
+      atualizar: () => _provedor.listar(mostrarCarregamento: false),
+      estaAtiva: () => mounted && _ativo && !_rotaAberta && _ocupado == null &&
+          ModalRoute.of(context)?.isCurrent != false,
+    );
   }
 
   @override
@@ -66,7 +64,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timer?.cancel();
+    _monitorAtualizacao.dispose();
     _debounce?.cancel();
     _atualizacoes?.cancel();
     _busca.dispose();
@@ -179,39 +177,36 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
           config.exigePagamento(conferido, alvo)) {
         throw StateError('O pedido mudou. Confira os dados antes de avançar.');
       }
+      final etapaImprimePreparo = ['1', '4'].contains(alvo.impressao);
+      final imprimirPreparo = etapaImprimePreparo && config.imprimirPreparoSeparado;
+      final imprimirComprovante = ['2', '4'].contains(alvo.impressao) ||
+          (etapaImprimePreparo && config.imprimirPreparoNoComprovanteConsumacao);
+      final mensagens = imprimirPreparo || imprimirComprovante
+          ? await ImpressaoDelivery.prepararMensagens(
+              _provedor.servico, conferido.comEtapa(alvo.id),
+              preparo: imprimirPreparo, ambos: imprimirPreparo && imprimirComprovante, config: config)
+          : <String>[];
+      if (!mounted) return;
+      var preparoPersistido = false;
       if (alvo.impressao == '3' && !conferido.encerrado) {
         await _provedor.servico.concluir(conferido);
       }
       if (destino != null) {
         final res = await _provedor.servico.avancar(conferido, alvo,
-            entregador: entregador, valorEntrega: taxa);
+            entregador: entregador, valorEntrega: taxa, impressoes: mensagens);
         if (res['ativarselecaoentregador'] == 'Sim' && entregador.isEmpty) {
           throw StateError(
               'Esta etapa exige um entregador. Confira a configuração do Delivery.');
         }
+        preparoPersistido = res['impressao_persistida'] == true;
         alterado = true;
         _provedor.moverPedidoParaEtapa(conferido, alvo.id);
         _provedor.servico
             .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
-        final atualizado = await _provedor.servico.pedido(pedido.id);
-        if (atualizado.etapa != alvo.id) {
-          throw StateError('Não foi possível confirmar a etapa de destino.');
-        }
       }
-      final paraImprimir = await _provedor.servico.pedido(pedido.id);
-      final etapaImprimePreparo = ['1', '4'].contains(alvo.impressao);
-      final etapaImprimeComprovante = ['2', '4'].contains(alvo.impressao);
-      if (etapaImprimePreparo && config.imprimirPreparoSeparado) {
-        await ImpressaoDelivery.imprimir(
-            _provedor.servico, Modular.get<Server>(), paraImprimir,
-            preparo: true, config: config);
-      }
-      if (etapaImprimeComprovante ||
-          (etapaImprimePreparo &&
-              config.imprimirPreparoNoComprovanteConsumacao)) {
-        await ImpressaoDelivery.imprimir(
-            _provedor.servico, Modular.get<Server>(), paraImprimir,
-            config: config);
+      if (mensagens.isNotEmpty) {
+        await ImpressaoDelivery.enviarPreparadas(Modular.get<Server>(), mensagens,
+            preparoPersistido: preparoPersistido);
       }
     } catch (e) {
       _mensagem(alterado

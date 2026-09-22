@@ -15,6 +15,21 @@ class ImpressaoDelivery {
       bool ambos = false,
       String? chaveRecorrente,
       ConfigDelivery? config}) async {
+    final mensagens = await prepararMensagens(servico, pedido,
+        preparo: preparo,
+        ambos: ambos,
+        chaveRecorrente: chaveRecorrente,
+        config: config);
+    await server.enviarImpressoes(mensagens);
+  }
+
+  /// Monta todos os destinos antes de alterar a etapa do pedido.
+  static Future<List<String>> prepararMensagens(
+      ServicoDelivery servico, PedidoDelivery pedido,
+      {bool preparo = false,
+      bool ambos = false,
+      String? chaveRecorrente,
+      ConfigDelivery? config}) async {
     final resultados = await Future.wait([
       servico.dadosCardapio(pedido.id),
       servico.detalhesLocais(pedido.id),
@@ -48,9 +63,25 @@ class ImpressaoDelivery {
         ...comprovantes(servico, pedido.comEndereco(dados), produtos,
             config: configuracao),
     ];
-    await server.enviarImpressoes(chaveRecorrente == null
+    return chaveRecorrente == null
         ? mensagens
-        : identificarPreparoRecorrente(mensagens, chaveRecorrente));
+        : identificarPreparoRecorrente(mensagens, chaveRecorrente);
+  }
+
+  static Future<void> enviarPreparadas(Server server, List<String> mensagens,
+      {bool preparoPersistido = false}) async {
+    // A API e o socket nao podem disputar a mesma impressao em duas centrais.
+    final locais = preparoPersistido
+        ? mensagens
+            .where((mensagem) =>
+                (jsonDecode(mensagem) as Map)['tipoImpressao']?.toString() !=
+                '1')
+            .toList()
+        : mensagens;
+    if (preparoPersistido) {
+      server.write(jsonEncode({'tipo': 'PreparoPendente'}));
+    }
+    if (locais.isNotEmpty) await server.enviarImpressoes(locais);
   }
 
   static List<String> identificarPreparoRecorrente(

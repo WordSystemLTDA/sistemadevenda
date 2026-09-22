@@ -1,3 +1,5 @@
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -41,6 +43,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   bool _perguntandoPagamento = false;
 
   bool carregando = true;
+  MonitorAtualizacaoTela? _monitorFormas;
+  void _aoAlterarFormas() => _monitorFormas?.solicitar();
 
   // Bancos padrões
   List<BancoPixModelo> bancos = [
@@ -53,7 +57,40 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   @override
   void initState() {
     super.initState();
+    _monitorFormas = MonitorAtualizacaoTela(
+      intervalo: const Duration(seconds: 10),
+      estaAtiva: () =>
+          mounted && !carregando && ModalRoute.of(context)?.isCurrent != false,
+      atualizar: _atualizarFormas,
+    );
+    EventosCatalogo.pagamentos.addListener(_aoAlterarFormas);
     listarBancos();
+  }
+
+  @override
+  void dispose() {
+    EventosCatalogo.pagamentos.removeListener(_aoAlterarFormas);
+    _monitorFormas?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _atualizarFormas() async {
+    final dados =
+        await context.read<ServicoFinalizarPagamento>().listarBancos();
+    if (!mounted) return;
+    final novas = bancos.take(4).toList();
+    for (final opcao in [
+      ('5', dados.ativoBancoPix, dados.nomeBancoPix),
+      ('6', dados.ativoBancoOpcao2, dados.nomeBancoOpcao2),
+      ('7', dados.ativoBancoOpcao3, dados.nomeBancoOpcao3),
+      ('8', dados.ativoBancoOpcao4, dados.nomeBancoOpcao4),
+      ('9', dados.ativoBancoOpcao5, dados.nomeBancoOpcao5),
+    ]) {
+      if (opcao.$2 == 'Sim') {
+        novas.add(BancoPixModelo(id: opcao.$1, nome: opcao.$3));
+      }
+    }
+    setState(() => bancos = novas);
   }
 
   void listarBancos() async {
@@ -62,33 +99,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       _erro = null;
     });
     try {
-      bancos = bancos.take(4).toList();
-      await context
-          .read<ServicoFinalizarPagamento>()
-          .listarBancos()
-          .then((dadosBancos) {
-        if (mounted) {
-          if (dadosBancos.ativoBancoPix == 'Sim') {
-            bancos.add(BancoPixModelo(id: '5', nome: dadosBancos.nomeBancoPix));
-          }
-          if (dadosBancos.ativoBancoOpcao2 == 'Sim') {
-            bancos.add(
-                BancoPixModelo(id: '6', nome: dadosBancos.nomeBancoOpcao2));
-          }
-          if (dadosBancos.ativoBancoOpcao3 == 'Sim') {
-            bancos.add(
-                BancoPixModelo(id: '7', nome: dadosBancos.nomeBancoOpcao3));
-          }
-          if (dadosBancos.ativoBancoOpcao4 == 'Sim') {
-            bancos.add(
-                BancoPixModelo(id: '8', nome: dadosBancos.nomeBancoOpcao4));
-          }
-          if (dadosBancos.ativoBancoOpcao5 == 'Sim') {
-            bancos.add(
-                BancoPixModelo(id: '9', nome: dadosBancos.nomeBancoOpcao5));
-          }
-        }
-      });
+      await _atualizarFormas();
+      if (!mounted) return;
 
       if (provedorCardapio.tipo == TipoCardapio.delivery) {
         _recorrencia = await Modular.get<ServicoDelivery>()

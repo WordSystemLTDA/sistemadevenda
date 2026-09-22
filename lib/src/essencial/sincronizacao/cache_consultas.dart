@@ -61,38 +61,19 @@ class CacheConsultas extends Interceptor {
 
   static String chave(RequestOptions opcoes) => jsonEncode([
         caminho(opcoes),
-        SplayTreeMap<String, String>.from(opcoes.uri.queryParameters),
+        SplayTreeMap<String, String>.from(opcoes.uri.queryParameters)
+          ..remove('_consulta_atual'),
       ]);
 
-  static const _chavesCategoriaCardapio = [
-    'idCategoriaCardapio',
-    'categoriaCardapio',
-    'id_categoria_cardapio',
-    'categoria_cardapio',
-  ];
-
-  static bool _produtoComMontagem(Object dados) =>
-      dados is Map &&
-      (_chavesCategoriaCardapio.any(
-            (chave) => (int.tryParse('${dados[chave]}') ?? 0) > 0,
-          ) ||
-          (dados['opcoesPacotes'] as List? ?? []).whereType<Map>().any(
-                (grupo) => '${grupo['tipo']}' == '8',
-              ));
-
-  static bool _catalogoSemVinculoCardapio(String rota, Object dados) {
-    if (![
-      'produtos/listar.php',
-      'produtos/listar_por_categoria.php',
-      'produtos/listar_por_id.php',
-    ].contains(rota)) {
-      return false;
-    }
-    final produtos = dados is List ? dados : [dados];
-    return produtos
-        .whereType<Map>()
-        .any((produto) => !_chavesCategoriaCardapio.any(produto.containsKey));
-  }
+  // Catalogo e formas de pagamento precisam refletir o cadastro atual a cada
+  // leitura. O retrato persistido fica reservado para uma falha de conexao.
+  static bool _exigeConsultaAtual(String rota) =>
+      _atendimento(rota) ||
+      rota.startsWith('balcao/') ||
+      rota.startsWith('delivery/') ||
+      rota.startsWith('produtos/') ||
+      rota.startsWith('categorias/') ||
+      rota.startsWith('tela_nfe_saida/');
 
   bool _permitido(RequestOptions opcoes) {
     if (escopo.isEmpty ||
@@ -102,7 +83,8 @@ class CacheConsultas extends Interceptor {
       return false;
     }
     final parametros = opcoes.uri.queryParameters;
-    if (parametros['empresa'] != null && parametros['empresa'] != empresa) {
+    final empresaConsulta = parametros['empresa'] ?? parametros['id_empresa'];
+    if (empresaConsulta != null && empresaConsulta != empresa) {
       return false;
     }
     final rota = caminho(opcoes);
@@ -138,10 +120,7 @@ class CacheConsultas extends Interceptor {
       final falhouRecentemente = _ultimaFalha != null &&
           DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
       if (dados != null &&
-          (falhouRecentemente ||
-              (!(options.extra['atualizarMontagemCardapio'] == true &&
-                      _produtoComMontagem(dados)) &&
-                  !_catalogoSemVinculoCardapio(caminho(options), dados)))) {
+          (falhouRecentemente || !_exigeConsultaAtual(caminho(options)))) {
         final recente = consulta != null &&
             DateTime.now().millisecondsSinceEpoch -
                     (consulta['atualizado'] as int) <

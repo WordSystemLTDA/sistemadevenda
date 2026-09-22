@@ -2,6 +2,8 @@
 import 'dart:developer';
 import 'dart:convert';
 import 'dart:async';
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
 import 'package:app/src/modulos/voz/configuracao_voz.dart';
 
@@ -92,6 +94,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   int indexTabBar = 0;
   bool finalizar = false;
   bool _carregandoDados = false;
+  bool _atualizandoCategorias = false;
+  MonitorAtualizacaoTela? _monitorCatalogo;
+  void _aoAlterarCatalogo() => _monitorCatalogo?.solicitar();
   bool _vozAberta = false;
   bool _gravandoVoz = false;
   Completer<void>? _paradaManualVoz;
@@ -110,6 +115,17 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     _favoritos.carregar();
     unawaited(_carregarDisponibilidadeVoz());
     _sincronizador?.revisaoCatalogo.addListener(_atualizarCategorias);
+    EventosCatalogo.produtos.addListener(_aoAlterarCatalogo);
+    _monitorCatalogo = MonitorAtualizacaoTela(
+      intervalo: const Duration(seconds: 10),
+      estaAtiva: () =>
+          mounted &&
+          // Compatibilidade com o Flutter 3.44 usado na distribuicao.
+          // ignore: deprecated_member_use
+          TickerMode.getNotifier(context).value &&
+          ModalRoute.of(context)?.isCurrent != false,
+      atualizar: _atualizarCategorias,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       listarDados();
@@ -118,6 +134,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
   @override
   void dispose() {
+    EventosCatalogo.produtos.removeListener(_aoAlterarCatalogo);
+    _monitorCatalogo?.dispose();
     final paradaVoz = _paradaManualVoz;
     if (paradaVoz != null && !paradaVoz.isCompleted) paradaVoz.complete();
     WidgetsBinding.instance.removeObserver(this);
@@ -146,7 +164,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   }
 
   Future<void> _atualizarCategorias() async {
-    if (!mounted || _carregandoDados) return;
+    if (!mounted || _carregandoDados || _atualizandoCategorias) return;
+    _atualizandoCategorias = true;
     try {
       final novas = List<ModeloCategoria>.of(await provedor.listarCategorias());
       if (!mounted ||
@@ -170,6 +189,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       WidgetsBinding.instance.addPostFrameCallback((_) => anterior?.dispose());
     } catch (_) {
       // Preserva as categorias e a selecao em andamento durante a reconexao.
+    } finally {
+      _atualizandoCategorias = false;
     }
   }
 
@@ -214,8 +235,6 @@ class _PaginaCardapioState extends State<PaginaCardapio>
           }
         });
       }
-      await carrinhoProvedor.listarComandasPedidos();
-      if (!mounted) return;
       await provedor.listarConfigBigChef();
     } catch (erro, stack) {
       log('Falha ao carregar o cardapio', error: erro, stackTrace: stack);

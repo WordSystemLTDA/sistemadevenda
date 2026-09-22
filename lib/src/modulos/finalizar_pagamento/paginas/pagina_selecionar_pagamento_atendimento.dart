@@ -1,3 +1,5 @@
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/fluxo_finalizacao_atendimento.dart';
@@ -27,11 +29,27 @@ class _PaginaSelecionarPagamentoAtendimentoState
   List<BancoPixModelo> _formas = const [];
   int _selecionado = 1;
   bool _carregando = true;
+  MonitorAtualizacaoTela? _monitorFormas;
+  void _aoAlterarFormas() => _monitorFormas?.solicitar();
 
   @override
   void initState() {
     super.initState();
+    _monitorFormas = MonitorAtualizacaoTela(
+      intervalo: const Duration(seconds: 10),
+      estaAtiva: () =>
+          mounted && !_carregando && ModalRoute.of(context)?.isCurrent != false,
+      atualizar: _carregar,
+    );
+    EventosCatalogo.pagamentos.addListener(_aoAlterarFormas);
     _carregar();
+  }
+
+  @override
+  void dispose() {
+    EventosCatalogo.pagamentos.removeListener(_aoAlterarFormas);
+    _monitorFormas?.dispose();
+    super.dispose();
   }
 
   Future<void> _carregar() async {
@@ -55,6 +73,7 @@ class _PaginaSelecionarPagamentoAtendimentoState
           .map((item) =>
               BancoPixModelo(id: '${item.$1}', nome: item.$3.trim())));
     } catch (_) {
+      if (_formas.isNotEmpty) return;
       // As formas básicas continuam disponíveis mesmo sem esta consulta.
     }
     if (!mounted) return;

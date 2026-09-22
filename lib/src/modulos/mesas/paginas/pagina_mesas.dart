@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'dart:async';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/voz/abertura_falada.dart';
@@ -42,9 +43,18 @@ class _PaginaMesasState extends State<PaginaMesas> {
   bool _vozDisponivel = false;
   ModeloConfigBigchef? configBigchef;
 
+  late final MonitorAtualizacaoTela _monitorAtualizacao;
+
   @override
   void initState() {
     super.initState();
+    _monitorAtualizacao = MonitorAtualizacaoTela(
+      atualizar: () async { await provedor.listarMesas('', mostrarCarregamento: false); },
+      // Compatibilidade com o SDK usado na distribuicao Windows.
+      // ignore: deprecated_member_use
+      estaAtiva: () => mounted && TickerMode.getNotifier(context).value &&
+          ModalRoute.of(context)?.isCurrent != false,
+    );
     listarMesas();
     _carregarConfiguracao();
     unawaited(_carregarDisponibilidadeVoz());
@@ -215,6 +225,7 @@ class _PaginaMesasState extends State<PaginaMesas> {
 
   @override
   void dispose() {
+    _monitorAtualizacao.dispose();
     pesquisaController.dispose();
     super.dispose();
   }

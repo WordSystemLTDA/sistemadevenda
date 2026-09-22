@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
@@ -20,35 +21,41 @@ class ProvedorDelivery extends ChangeNotifier {
   bool _descartado = false;
   final _pedidosRecentes = <String, ({PedidoDelivery pedido, DateTime ate})>{};
 
-  Future<void> listar() async {
+  final _atualizacao = AtualizacaoAgrupada();
+
+  Future<void> listar({bool mostrarCarregamento = true}) async {
     final consulta = ++_consulta;
-    carregando = true;
-    erro = null;
-    notifyListeners();
-    try {
-      final respostas = await Future.wait([
-        servico.listar(
-            inicio: periodo.start,
-            fim: periodo.end,
-            horaInicio: horaInicio,
-            horaFim: horaFim,
-            pesquisa: pesquisa,
-            tipo: tipo),
-        servico.configuracao(),
-      ]);
-      if (_descartado || consulta != _consulta) return;
-      etapas = _mesclarPedidosRecentes(respostas[0] as List<EtapaDelivery>);
-      config = respostas[1] as ConfigDelivery;
-    } catch (_) {
-      if (_descartado || consulta != _consulta) return;
-      erro =
-          'Não foi possível atualizar o Delivery. Verifique a conexão e tente novamente.';
-    } finally {
-      if (!_descartado && consulta == _consulta) {
-        carregando = false;
+    await _atualizacao.executar(() async {
+      if (mostrarCarregamento && etapas.isEmpty) {
+        carregando = true;
         notifyListeners();
       }
-    }
+      erro = null;
+      try {
+        final respostas = await Future.wait([
+          servico.listar(
+              inicio: periodo.start,
+              fim: periodo.end,
+              horaInicio: horaInicio,
+              horaFim: horaFim,
+              pesquisa: pesquisa,
+              tipo: tipo),
+          servico.configuracao(),
+        ]);
+        if (_descartado || consulta != _consulta) return;
+        etapas = _mesclarPedidosRecentes(respostas[0] as List<EtapaDelivery>);
+        config = respostas[1] as ConfigDelivery;
+      } catch (_) {
+        if (_descartado || consulta != _consulta) return;
+        erro =
+            'Não foi possível atualizar o Delivery. Verifique a conexão e tente novamente.';
+      } finally {
+        if (!_descartado && consulta == _consulta) {
+          carregando = false;
+          notifyListeners();
+        }
+      }
+    });
   }
 
   void atualizarPedido(PedidoDelivery pedido,
@@ -66,7 +73,19 @@ class ProvedorDelivery extends ChangeNotifier {
   List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {
     if (_pedidosRecentes.isEmpty || origem.isEmpty) return origem;
     final agora = DateTime.now();
-    _pedidosRecentes.removeWhere((_, item) => item.ate.isBefore(agora));
+    final remotos = {
+      for (final etapa in origem)
+        for (final pedido in etapa.pedidos) pedido.id: pedido
+    };
+    _pedidosRecentes.removeWhere((id, item) {
+      final remoto = remotos[id];
+      final confirmado = remoto != null &&
+          remoto.etapa == item.pedido.etapa &&
+          remoto.quantidade >= item.pedido.quantidade &&
+          remoto.pago >= item.pedido.pago - 0.009 &&
+          remoto.total >= item.pedido.total - 0.009;
+      return item.ate.isBefore(agora) || confirmado;
+    });
     if (_pedidosRecentes.isEmpty) return origem;
     return [for (final etapa in origem) _mesclarPedidosDaEtapa(etapa)];
   }
@@ -107,6 +126,7 @@ class ProvedorDelivery extends ChangeNotifier {
   @override
   void dispose() {
     _descartado = true;
+    _atualizacao.dispose();
     super.dispose();
   }
 }

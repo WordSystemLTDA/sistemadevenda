@@ -796,6 +796,7 @@ class Sincronizador extends ChangeNotifier {
                 'acao': op['acao'],
                 'empresa': dados['empresa'],
                 'id_usuario': dados['id_usuario'],
+                'impressoes': jsonDecode(op['impressoes'] as String),
                 'dados': dados
               }),
               options: _opcoes(url));
@@ -856,6 +857,9 @@ class Sincronizador extends ChangeNotifier {
       final recibo = AtendimentosLocais.recibo(atual);
       final mensagens =
           List<String>.from(jsonDecode(op['impressoes'] as String))
+              .where((mensagem) =>
+                  recibo['impressao_persistida'] != true ||
+                  jsonDecode(mensagem)['tipoImpressao']?.toString() != '1')
               .map((mensagem) {
         final dados = jsonDecode(mensagem) as Map<String, dynamic>;
         if (recibo['numeroPedido'] != null) {
@@ -866,9 +870,13 @@ class Sincronizador extends ChangeNotifier {
         }
         return jsonEncode(dados);
       }).toList();
-      // O comprovante so entra na fila depois do commit confirmado no servidor.
-      await socket.filaImpressao
-          .registrar(mensagens, servidor: op['destino'] as String);
+      // A API atual assume o preparo na mesma transacao. Nao enviar outra via
+      // ao central do socket: ele pode ser diferente daquele que reservou a
+      // outbox. APIs antigas e comprovantes de outros tipos mantem a fila local.
+      if (mensagens.isNotEmpty) {
+        await socket.filaImpressao
+            .registrar(mensagens, servidor: op['destino'] as String);
+      }
       await banco.atualizarOperacao(id, {'estado': 'concluido', 'erro': null});
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
@@ -878,6 +886,9 @@ class Sincronizador extends ChangeNotifier {
                 ? 'Mesa'
                 : 'Comanda'
       }));
+      if (recibo['impressao_persistida'] == true) {
+        socket.write(jsonEncode({'tipo': 'PreparoPendente'}));
+      }
       await socket.processarImpressoesPendentes();
     }
   }

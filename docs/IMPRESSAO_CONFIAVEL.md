@@ -1,5 +1,33 @@
 # Impressao da cozinha
 
+## Revisao de 22/09/2026
+
+Esta revisao substitui o limite de tentativas/consultas do historico abaixo.
+O servidor continua tentando falhas de rede/configuracao com intervalo maximo
+de um minuto. O celular continua consultando o estado, sem repetir a impressao
+por ausencia de resposta. Somente `naoEncontrada` v2 permite reenvio do mesmo ID.
+Pausas antigas exclusivamente por limite de consultas voltam a ser consultadas.
+
+O executor grava uma etapa em andamento antes do driver. Queda durante esse
+envio, timeout ou falha nativa ambigua exige conferencia; vias ja confirmadas
+sao mantidas. O plugin atual nao diferencia abertura recusada de escrita parcial.
+
+Operacoes duraveis do garcom enviam os comprovantes junto ao pedido. A API
+atualizada grava a outbox na mesma transacao; o computador central a consulta
+a cada dois segundos e assume somente apos salvar na propria fila. O socket
+antecipa a consulta com `PreparoPendente`. Quando `impressao_persistida` e true,
+o garcom nao cria um segundo envio de preparo no socket. Consumo/entregador e
+APIs antigas conservam suas filas. A reserva da API pertence a uma identidade
+persistente da instalacao central e nao expira automaticamente; troca de central
+exige recuperar identidade e filas antes de assumir reservas antigas.
+Publicar os dois apps e a API e provisionar o schema oficial para ativar a outbox.
+O Delivery possui fluxos proprios; nao presumir que todo movimento usa a operacao
+duravel de mesas/comandas/balcao.
+
+Falha de leitura nao apaga a fila mobile: os dados ficam preservados para
+recuperacao. Os testes desta revisao simulam transporte/armazenamento/spooler,
+sem enviar pedidos ou imprimir no equipamento real.
+
 ## Instalacao
 
 Esta correcao envolve os projetos `sistemadevenda` e `sistemarestaurante`.

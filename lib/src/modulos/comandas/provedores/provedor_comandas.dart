@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
@@ -34,6 +35,7 @@ class ProvedorComanda extends ChangeNotifier {
       }
     }
     if (finalizada == null) return;
+    ++_consulta;
 
     final agora = DateTime.now().toIso8601String();
     finalizada
@@ -74,28 +76,36 @@ class ProvedorComanda extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ModeloComandas>> listarComandas(String pesquisa) async {
-    final consulta = ++_consulta;
-    listando = true;
-    erro = null;
-    notifyListeners();
+  final _atualizacao = AtualizacaoAgrupada();
 
-    try {
-      final res = await _servico.listar(pesquisa);
-      if (consulta != _consulta) return comandas;
-      comandas = res;
-      return res;
-    } catch (_) {
-      if (consulta == _consulta) {
-        erro = _mensagemFalha;
-      }
-      return comandas;
-    } finally {
-      if (consulta == _consulta) {
-        listando = false;
+  Future<List<ModeloComandas>> listarComandas(String pesquisa,
+      {bool mostrarCarregamento = true}) async {
+    final consulta = ++_consulta;
+    await _atualizacao.executar(() async {
+      if (mostrarCarregamento && comandas.isEmpty) {
+        listando = true;
         notifyListeners();
       }
-    }
+      erro = null;
+
+      try {
+        final res = await _servico.listar(pesquisa);
+        if (consulta != _consulta) return;
+        comandas = res;
+        return;
+      } catch (_) {
+        if (consulta == _consulta) {
+          erro = _mensagemFalha;
+        }
+        return;
+      } finally {
+        if (consulta == _consulta) {
+          listando = false;
+          notifyListeners();
+        }
+      }
+    });
+    return comandas;
   }
 
   Future<void> listarComandasLista(String pesquisa) async {
@@ -238,5 +248,13 @@ class ProvedorComanda extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    ++_consulta;
+    ++_consultaLista;
+    _atualizacao.dispose();
+    super.dispose();
   }
 }

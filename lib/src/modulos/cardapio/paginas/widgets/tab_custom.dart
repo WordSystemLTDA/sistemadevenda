@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
@@ -52,12 +54,24 @@ class _TabCustomState extends State<TabCustom>
   Timer? _debounce;
   bool _somenteFavoritos = false;
   final _sincronizador = Sincronizador.instancia;
+  MonitorAtualizacaoTela? _monitorCatalogo;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_carregarMais);
     _sincronizador?.revisaoCatalogo.addListener(_catalogoAtualizado);
+    EventosCatalogo.produtos.addListener(_catalogoAtualizado);
+    _monitorCatalogo = MonitorAtualizacaoTela(
+      intervalo: const Duration(seconds: 10),
+      estaAtiva: () =>
+          mounted &&
+          // Compatibilidade com o Flutter 3.44 usado na distribuicao.
+          // ignore: deprecated_member_use
+          TickerMode.getNotifier(context).value &&
+          ModalRoute.of(context)?.isCurrent != false,
+      atualizar: () => provedor.atualizarSilenciosamente(widget.category),
+    );
     _atualizar();
     final pesquisaVoz = widget.pesquisaVoz?.trim();
     if (pesquisaVoz?.isNotEmpty == true) {
@@ -92,7 +106,7 @@ class _TabCustomState extends State<TabCustom>
   }
 
   void _catalogoAtualizado() {
-    if (mounted) unawaited(provedor.atualizarSilenciosamente(widget.category));
+    unawaited(_monitorCatalogo?.solicitar());
   }
 
   void _carregarMais() {
@@ -144,6 +158,8 @@ class _TabCustomState extends State<TabCustom>
 
   @override
   void dispose() {
+    EventosCatalogo.produtos.removeListener(_catalogoAtualizado);
+    _monitorCatalogo?.dispose();
     _sincronizador?.revisaoCatalogo.removeListener(_catalogoAtualizado);
     _debounce?.cancel();
     _scrollController.dispose();

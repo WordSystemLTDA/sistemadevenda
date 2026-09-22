@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
@@ -47,6 +48,7 @@ class ProvedorMesas extends ChangeNotifier {
       }
     }
     if (finalizada == null) return;
+    ++_consulta;
 
     MesasModel? grupoLivres;
     for (final grupo in mesas) {
@@ -71,28 +73,36 @@ class ProvedorMesas extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<MesasModel>> listarMesas(String pesquisa) async {
-    final consulta = ++_consulta;
-    listando = true;
-    erro = null;
-    notifyListeners();
+  final _atualizacao = AtualizacaoAgrupada();
 
-    try {
-      final res = await _servico.listar(pesquisa);
-      if (consulta != _consulta) return mesas;
-      mesas = res;
-      return res;
-    } catch (_) {
-      if (consulta == _consulta) {
-        erro = _mensagemFalha;
-      }
-      return mesas;
-    } finally {
-      if (consulta == _consulta) {
-        listando = false;
+  Future<List<MesasModel>> listarMesas(String pesquisa,
+      {bool mostrarCarregamento = true}) async {
+    final consulta = ++_consulta;
+    await _atualizacao.executar(() async {
+      if (mostrarCarregamento && mesas.isEmpty) {
+        listando = true;
         notifyListeners();
       }
-    }
+      erro = null;
+
+      try {
+        final res = await _servico.listar(pesquisa);
+        if (consulta != _consulta) return;
+        mesas = res;
+        return;
+      } catch (_) {
+        if (consulta == _consulta) {
+          erro = _mensagemFalha;
+        }
+        return;
+      } finally {
+        if (consulta == _consulta) {
+          listando = false;
+          notifyListeners();
+        }
+      }
+    });
+    return mesas;
   }
 
   Future<void> listarMesasLista(String pesquisa) async {
@@ -198,5 +208,13 @@ class ProvedorMesas extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    ++_consulta;
+    ++_consultaLista;
+    _atualizacao.dispose();
+    super.dispose();
   }
 }

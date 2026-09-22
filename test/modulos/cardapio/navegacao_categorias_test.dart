@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -92,6 +93,27 @@ void main() {
     expect(controller.index, 4);
     expect(cardapio.tamanhosPizza, isNull);
     expect(cardapio.saboresPizzaSelecionados, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('evento atualiza produto novo sem descartar a pizza em montagem',
+      (tester) async {
+    final produtos = ProdutosTeste();
+    await abrir(tester, produtos: produtos);
+    await tester.pumpAndSettle();
+    final controller = tester.widget<TabBar>(find.byType(TabBar)).controller!;
+    controller.animateTo(1);
+    await tester.pumpAndSettle();
+    cardapio.tamanhosPizza = cardapio.categorias[1].tamanhosPizza!.last;
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+    produtos.produtos.add(sabor('Pizza nova', 'Queijos', '50'));
+    EventosCatalogo.notificar('produtos');
+    await tester.pumpAndSettle();
+    expect(find.text('Pizza nova'), findsOneWidget);
+    expect(controller.index, 1);
+    expect(cardapio.tamanhosPizza?.id, 'G');
+    expect(cardapio.saboresPizzaSelecionados, hasLength(1));
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -129,17 +129,33 @@ class FilaImpressao extends ChangeNotifier {
     if (salvo != null) {
       try {
         final salvos = jsonDecode(salvo);
-        if (salvos is List) {
-          for (final itemSalvo in salvos) {
-            if (itemSalvo is! Map) continue;
-            final item =
-                ImpressaoPendente.fromMap(Map<String, dynamic>.from(itemSalvo));
-            if (item.id.trim().isNotEmpty) itens.add(item);
+        if (salvos is! List) throw const FormatException('Fila invalida');
+        for (final itemSalvo in salvos) {
+          if (itemSalvo is! Map) {
+            throw const FormatException('Registro invalido');
           }
+          var item =
+              ImpressaoPendente.fromMap(Map<String, dynamic>.from(itemSalvo));
+          if (item.id.trim().isEmpty) {
+            throw const FormatException('Impressao sem ID');
+          }
+          if (item.estado == EstadoImpressao.pausada &&
+              item.erro ==
+                  'Recuperação pausada. Confira a cozinha ou limpe a pendência.') {
+            // Reativa apenas consultas; pausas do spooler permanecem manuais.
+            item = ImpressaoPendente(item.mensagem,
+                estado: EstadoImpressao.semConfirmacao,
+                servidor: item.servidor,
+                tentativas: item.tentativas,
+                ultimaTentativa: item.ultimaTentativa);
+          }
+          itens.add(item);
         }
       } catch (_) {
-        await banco?.gravar(chave, '[]');
-        if (banco == null) await prefs.remove(chave);
+        // Nunca apagar comprovantes ao falhar a leitura. Conserve os dados
+        // originais para recuperacao e bloqueie sobrescrita por uma fila vazia.
+        throw StateError(
+            'Nao foi possivel ler a fila de impressao. Os dados foram preservados para recuperacao.');
       }
     }
     final antigas = prefs.getStringList(chaveLegada) ?? [];

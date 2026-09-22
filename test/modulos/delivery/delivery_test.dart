@@ -755,9 +755,11 @@ void main() {
     s.respostaLista = () => velha.future;
     final chamada = p.listar();
     s.respostaLista = () async => etapasTeste();
-    await p.listar();
+    final nova = p.listar();
+    expect(s.consultas, 1);
     velha.complete([]);
-    await chamada;
+    await Future.wait([chamada, nova]);
+    expect(s.consultas, 2);
     expect(p.etapas, hasLength(4));
     expect(p.carregando, isFalse);
   });

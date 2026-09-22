@@ -25,7 +25,6 @@ class Server extends ChangeNotifier {
   Timer? _retentativaImpressao;
   Timer? _proximoLoteImpressao;
   final Map<String, DateTime> _consultasImpressao = {};
-  final Map<String, int> _quantidadeConsultas = {};
   DateTime? _ultimoAvisoImpressao;
   final DateTime Function() _agora;
 
@@ -42,7 +41,6 @@ class Server extends ChangeNotifier {
       _retentativaImpressao?.cancel();
       _retentativaImpressao = null;
       _consultasImpressao.clear();
-      _quantidadeConsultas.clear();
       _fecharAvisoImpressao();
     } else if (!_descartado && !_desconexaoIntencional) {
       _retentativaImpressao ??= Timer.periodic(
@@ -64,7 +62,6 @@ class Server extends ChangeNotifier {
   }
 
   Future<void> reenviarImpressao(String id) async {
-    _quantidadeConsultas.remove(id);
     _consultasImpressao.remove(id);
     final servidorAtual =
         connected && hostname.isNotEmpty && port > 0 ? '$hostname:$port' : '';
@@ -223,7 +220,6 @@ class Server extends ChangeNotifier {
     );
     for (final id in transferidas) {
       _consultasImpressao.remove(id);
-      _quantidadeConsultas.remove(id);
     }
     return transferidas;
   }
@@ -271,13 +267,8 @@ class Server extends ChangeNotifier {
           continue;
         }
         _consultasImpressao[item.id] = _agora();
-        final consultas = _quantidadeConsultas
-            .update(item.id, (valor) => valor + 1, ifAbsent: () => 1);
-        if (consultas > 3) {
-          await filaImpressao.pausar(item.id,
-              'Recuperação pausada. Confira a cozinha ou limpe a pendência.');
-          continue;
-        }
+        // Consulta nao imprime. Continue acompanhando quedas prolongadas ate
+        // receber ACK ou pausa explicita do executor, sem repetir a via.
         // Consulta o mesmo ID antes de repetir: o ACK pode ter se perdido.
         final enviada = _enviarMensagemNoCanal(jsonEncode({
           'tipo': 'ConsultarImpressao',
@@ -438,6 +429,11 @@ class Server extends ChangeNotifier {
       _consultasImpressao.clear();
       _tentativaReconexao = 0;
       notifyListeners();
+
+      for (final tipo in ['Mesa', 'Comanda', 'Balcão', 'Delivery']) {
+        aoAtualizarDados?.call(tipo);
+        AtualizacaoDeTela().call(ModeloRetornoSocket(tipo: tipo));
+      }
 
       try {
         await _adotarImpressoesNaoEnviadasNoServidorAtual();
@@ -950,7 +946,6 @@ class Server extends ChangeNotifier {
             await filaImpressao.confirmar(idRequisicao,
                 cancelada: mensagem['statusResposta'] == 'cancelada');
             _consultasImpressao.remove(idRequisicao);
-            _quantidadeConsultas.remove(idRequisicao);
           } else if (item.estado == EstadoImpressao.cancelamentoPendente) {
             return;
           } else if (mensagem['statusResposta'] == 'pausada') {
@@ -960,7 +955,7 @@ class Server extends ChangeNotifier {
                     'Impressão pausada no servidor.');
           } else if (mensagem['statusResposta'] == 'naoEncontrada' &&
               protocoloConfirmado) {
-            if (item.dados['protocoloImpressao'] == 2 && item.tentativas < 3) {
+            if (item.dados['protocoloImpressao'] == 2) {
               await filaImpressao.autorizarReenvio(idRequisicao);
               unawaited(processarImpressoesPendentes());
             } else {

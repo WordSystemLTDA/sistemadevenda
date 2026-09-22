@@ -29,6 +29,7 @@ import '../utils/impressao_preparo_test.dart' show produto;
 
 class SocketOfflineTeste extends Server {
   final recuperacoes = <bool>[];
+  final mensagens = <Map<String, dynamic>>[];
   Completer<void>? tentativaManual;
 
   @override
@@ -39,7 +40,10 @@ class SocketOfflineTeste extends Server {
   }
 
   @override
-  bool write(String message) => false;
+  bool write(String message) {
+    mensagens.add(Map<String, dynamic>.from(jsonDecode(message) as Map));
+    return false;
+  }
 }
 
 void main() {
@@ -56,6 +60,7 @@ void main() {
   var conflito = false;
   var conflitoAbertura = false;
   var reciboVendaIncompleto = false;
+  var impressaoPersistidaApi = false;
   final aplicados = <String>{};
   final tentativas = <Map<String, dynamic>>[];
   const contexto = ContextoCarrinho(
@@ -67,6 +72,7 @@ void main() {
     conflito = false;
     conflitoAbertura = false;
     reciboVendaIncompleto = false;
+    impressaoPersistidaApi = false;
     aplicados.clear();
     tentativas.clear();
     SharedPreferences.setMockInitialValues({
@@ -93,8 +99,12 @@ void main() {
         tentativas.add(pedido);
       }
       if (!conectado) {
-        handler.reject(DioException(
-            requestOptions: options, type: DioExceptionType.connectionError));
+        // Simula erro do transporte passando pelo onError do cache offline.
+        handler.reject(
+            DioException(
+                requestOptions: options,
+                type: DioExceptionType.connectionError),
+            true);
         return;
       }
       if (pedido != null) {
@@ -129,6 +139,7 @@ void main() {
           'protocolo': 1,
           'sucesso': true,
           'id_operacao': pedido['id_operacao'],
+          if (impressaoPersistidaApi) 'impressao_persistida': true,
           if (pedido['acao'] == 'abertura') ...{
             'id_comanda_pedido': '201',
             'versao_atendimento': 'nova-versao',
@@ -220,6 +231,37 @@ void main() {
         ]);
     await sync.enviarPendentes();
   }
+
+  test('preparo assumido pela API nao cria outra via no socket do garcom',
+      () async {
+    await guardar();
+    conectado = true;
+    impressaoPersistidaApi = true;
+    await sync.tentarNovamente();
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+    expect(socket.mensagens.where((e) => e['tipo'] == 'PreparoPendente'),
+        hasLength(1));
+    await sync.tentarNovamente();
+    expect(aplicados, hasLength(1));
+  });
+
+  test('API assume preparo e conserva comprovante de consumo no envio local',
+      () async {
+    await guardar();
+    final operacao = (await banco.operacoes(sync.escopo)).single;
+    final impressoes =
+        List<String>.from(jsonDecode(operacao['impressoes'] as String));
+    impressoes
+        .add(jsonEncode({'idRequisicao': 'consumo-104', 'tipoImpressao': '2'}));
+    await banco.atualizarOperacao(
+        operacao['id'] as String, {'impressoes': jsonEncode(impressoes)});
+    conectado = true;
+    impressaoPersistidaApi = true;
+    await sync.tentarNovamente();
+    expect(socket.filaImpressao.itens.single.id, 'consumo-104');
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
 
   test('falha na API nao impede recuperacao automatica do canal da cozinha',
       () async {
