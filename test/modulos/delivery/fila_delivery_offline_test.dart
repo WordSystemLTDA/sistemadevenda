@@ -142,9 +142,6 @@ void main() {
         'estado:$escopo', jsonEncode({'offline_delivery': 1, 'caixa_id': '0'}));
     final id = await criar();
     await adicionar(id);
-    await expectLater(
-        fila.pagar(id, pagamento('sem-caixa', 20)), throwsStateError);
-    expect((await fila.pedido(id)).pago, 0);
     await fila.definirAjustes(id, desconto: 5, acrescimo: 2);
     await fila.confirmar(id);
     final dados =
@@ -154,6 +151,55 @@ void main() {
     expect(dados['valor_acrescimo'], '2.00');
     expect(dados['pagamentos'], isEmpty);
     expect((await fila.pedido(id)).total, 51);
+  });
+
+  test('pagamento aceita estado confirmado sem caixa aberto', () async {
+    await banco.gravar(
+        'estado:$escopo', jsonEncode({'offline_delivery': 1, 'caixa_id': '0'}));
+    final id = await criar();
+    await adicionar(id);
+
+    await fila.pagar(id, pagamento('sem-caixa', 20));
+    await fila.confirmar(id);
+
+    expect((await fila.pedido(id)).pago, 20);
+    final dados =
+        jsonDecode((await banco.operacoes(escopo)).single['dados'] as String)
+            as Map;
+    expect(dados['caixa_id'], '0');
+    expect(dados['pagamentos'], hasLength(1));
+  });
+
+  test('primeiro pagamento usa caixa aberto depois de criar o Delivery',
+      () async {
+    await banco.gravar(
+        'estado:$escopo', jsonEncode({'offline_delivery': 1, 'caixa_id': '0'}));
+    final id = await criar();
+    await adicionar(id);
+    await banco.gravar('estado:$escopo',
+        jsonEncode({'offline_delivery': 1, 'caixa_id': '71'}));
+
+    await fila.pagar(id, pagamento('caixa-novo', 54));
+    await fila.confirmar(id);
+
+    final dados =
+        jsonDecode((await banco.operacoes(escopo)).single['dados'] as String)
+            as Map;
+    expect(dados['caixa_id'], '71');
+  });
+
+  test('bloqueia somente quando servidor nunca informou o estado do caixa',
+      () async {
+    await banco.gravar('estado:$escopo', jsonEncode({'offline_delivery': 1}));
+    final id = await criar();
+    await adicionar(id);
+
+    await expectLater(
+      fila.pagar(id, pagamento('sem-estado', 20)),
+      throwsA(isA<StateError>()
+          .having((erro) => erro.message, 'mensagem', contains('Sincronize'))),
+    );
+    expect((await fila.pedido(id)).pago, 0);
   });
 
   test('lista mostra carrinho restaurado e bloqueia pagamento de resumo antigo',

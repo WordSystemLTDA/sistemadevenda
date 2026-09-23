@@ -224,9 +224,23 @@ class FilaDeliveryOffline {
         throw StateError(
             'Há novos produtos no carrinho. Finalize os itens antes de receber o pagamento.');
       }
-      if ((int.tryParse('${r['caixa_id'] ?? ''}') ?? 0) <= 0) {
+      // `0` e um estado valido confirmado pela API: significa que nao existe
+      // caixa aberto para este usuario e preserva o mesmo comportamento do
+      // pagamento online. Antes ele era confundido com "nunca sincronizou".
+      // No primeiro pagamento tambem aproveita um caixa que tenha sido aberto
+      // depois da criacao do rascunho.
+      final estado = jsonDecode(
+          await BancoLocal.lerDocumento(tx, 'estado:$escopo') ?? '{}') as Map;
+      final caixaAtual = estado.containsKey('caixa_id')
+          ? int.tryParse('${estado['caixa_id']}')
+          : null;
+      if (pagamentos.isEmpty && caixaAtual != null && caixaAtual >= 0) {
+        r['caixa_id'] = caixaAtual.toString();
+      }
+      final caixaConfirmado = int.tryParse('${r['caixa_id'] ?? ''}');
+      if (caixaConfirmado == null || caixaConfirmado < 0) {
         throw StateError(
-            'Conecte uma vez para conferir o caixa antes de receber pagamentos offline.');
+            'Sincronize o aplicativo antes de receber este pagamento.');
       }
       final desconto = valorDelivery(dados['valordesconto']);
       final acrescimo = valorDelivery(dados['valoracrescimo']);
