@@ -94,6 +94,25 @@ class _CardProdutoState extends State<CardProduto> {
         _temCategoriaCardapio(item);
   }
 
+  bool _montagemCardapioCompleta(Modelowordprodutos item) {
+    if (widget.modeloRecorrente) return false;
+
+    // A listagem atual da API ja pode trazer toda a montagem do dia. Nesse
+    // caso abrir outra consulta deixa um atraso perceptivel sem acrescentar
+    // informacao. So reutilize quando o grupo de Cardapio estiver claramente
+    // identificado e possuir ingredientes; adicionais comuns nunca entram
+    // neste atalho.
+    return (item.opcoesPacotes ?? const []).any((grupo) {
+      final dados = grupo.dados ?? const [];
+      final grupoCardapio = grupo.tipo == 8 ||
+          grupo.id == 12 ||
+          dados.any(
+            (dado) => _idCardapioValido(dado.idCategoriaCardapio),
+          );
+      return grupoCardapio && dados.isNotEmpty;
+    });
+  }
+
   String _preco(bool pizza) {
     final item = widget.item;
     final selecionado =
@@ -205,6 +224,7 @@ class _CardProdutoState extends State<CardProduto> {
                 return PaginaProduto(
                   produto: item,
                   modeloRecorrente: widget.modeloRecorrente,
+                  detalhesJaCarregados: _montagemCardapioCompleta(item),
                 );
               },
             ));
@@ -325,6 +345,7 @@ class _CardProdutoState extends State<CardProduto> {
             builder: (_) => PaginaProduto(
               produto: item,
               modeloRecorrente: widget.modeloRecorrente,
+              detalhesJaCarregados: _montagemCardapioCompleta(item),
             ),
           ));
         }

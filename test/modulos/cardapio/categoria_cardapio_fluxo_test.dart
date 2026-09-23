@@ -191,8 +191,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'produto de Cardapio revalida a montagem mesmo com opcoes na listagem',
+  testWidgets('montagem completa da listagem abre sem uma segunda consulta',
       (tester) async {
     final produtoCatalogo = Modelowordprodutos.fromMap(
       produtos.produtoCardapio.toMap(),
@@ -228,12 +227,12 @@ void main() {
     await tester.tap(find.byType(CardProduto));
     await tester.pumpAndSettle();
 
-    expect(produtos.consultasPorId.single, ('151', '0'));
+    expect(produtos.consultasPorId, isEmpty);
     expect(find.text('Preparando opções do produto...'), findsNothing);
     expect(find.text('Montagem do produto'), findsOneWidget);
     final montagem = tester
         .widget<EtapaMontagemCardapio>(find.byType(EtapaMontagemCardapio));
-    expect(montagem.ingredientes.map((item) => item.nome), ['Arroz', 'Feijão']);
+    expect(montagem.ingredientes.map((item) => item.nome), ['Arroz']);
     expect(tester.takeException(), isNull);
   });
 
