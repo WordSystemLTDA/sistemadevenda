@@ -1034,6 +1034,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('tela de bordas aguarda configuracao sem acessar valor nulo',
+      (tester) async {
+    produtos = ProdutosComBordasTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    cardapio.tamanhosPizza = tamanho('G');
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(
+        produto: produtos.produtos.first,
+        valorVenda: 50,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cheddar'), findsOneWidget);
+    expect(find.text('Catupiry'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tela de bordas aceita grupo de opcoes com dados ausentes',
+      (tester) async {
+    final incompleto = sabor('Pizza incompleta', 'Queijos', '50')
+      ..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 1,
+          titulo: 'Cortesia',
+          obrigatorio: false,
+          dados: null,
+        ),
+      ];
+    produtos.produtos.add(incompleto);
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaSaborBordas(produto: incompleto, valorVenda: 50),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Pizza incompleta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('controle de aplicacao da borda aparece com padrao inteira',
       (tester) async {
     produtos = ProdutosComBordasTeste();

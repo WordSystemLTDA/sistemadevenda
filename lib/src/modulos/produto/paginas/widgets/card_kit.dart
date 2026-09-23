@@ -60,6 +60,7 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     var item = widget.item;
+    final opcoesDoItem = item.opcoesPacotes ?? const [];
 
     return Card(
       child: Padding(
@@ -126,7 +127,7 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    if (item.opcoesPacotes!.isNotEmpty)
+                    if (opcoesDoItem.isNotEmpty)
                       Positioned(
                         top: 0,
                         right: 10,
@@ -152,9 +153,13 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
             SizeTransition(
               sizeFactor: _sizeTween.animate(_animation),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (item.opcoesPacotes!.isNotEmpty) ...[
+                if (opcoesDoItem.isNotEmpty) ...[
                   const Divider(),
-                  ...item.opcoesPacotes!.map((opcoesPacote) {
+                  ...opcoesDoItem.map((opcoesPacote) {
+                    final dados = opcoesPacote.dados ?? const [];
+                    final produtos = opcoesPacote.produtos ?? const [];
+                    final quantidade =
+                        opcoesPacote.id == 2 ? produtos.length : dados.length;
                     return Container(
                       padding: const EdgeInsets.only(left: 5, right: 5),
                       decoration: BoxDecoration(
@@ -185,7 +190,7 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
                                       Padding(
                                         padding: const EdgeInsets.only(left: 10),
                                         child: Text(
-                                          '${opcoesPacote.titulo} (${opcoesPacote.id != 2 ? opcoesPacote.dados!.length : (opcoesPacote.produtos?.length ?? '0')})',
+                                          '${opcoesPacote.titulo} ($quantidade)',
                                           style: const TextStyle(fontSize: 13),
                                         ),
                                       ),
@@ -195,10 +200,13 @@ class _CardKitState extends State<CardKit> with TickerProviderStateMixin {
                                 ListView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: opcoesPacote.id != 2 ? opcoesPacote.dados!.length : (opcoesPacote.produtos?.length ?? 0),
+                                  itemCount: quantidade,
                                   padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
                                   itemBuilder: (context, index) {
-                                    var itemOpcoes = opcoesPacote.dados![index];
+                                    if (opcoesPacote.id == 2) {
+                                      return CardKit(item: produtos[index]);
+                                    }
+                                    final itemOpcoes = dados[index];
 
                                     return CardOpcoesPacotes(
                                       opcoesPacote: opcoesPacote,

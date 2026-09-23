@@ -32,14 +32,14 @@ class _ListaBordasState extends State<ListaBordas> {
     return ListenableBuilder(
       listenable: provedor,
       builder: (context, snapshot) {
+        final limiteConfigurado = widget.limite ??
+            int.tryParse(provedor.configBigchef?.saborlimitedeborda ?? '') ??
+            0;
         return ListenableBuilder(
           listenable: provedorProduto,
           builder: (context, snapshot) {
             return GradeOpcoesResponsiva(
-              children: List.generate(
-                  widget.limite ??
-                      int.parse(provedor.configBigchef!.saborlimitedeborda),
-                  (index) {
+              children: List.generate(limiteConfigurado, (index) {
                 return Badge(
                   label: (index + 1) == provedor.limiteSaborBordaSelecionado
                       ? const Icon(Icons.check, color: Colors.white, size: 14)
@@ -62,8 +62,9 @@ class _ListaBordasState extends State<ListaBordas> {
                     ),
                     child: InkWell(
                       onTap: () {
-                        if (widget.aoSelecionarLimite != null) {
-                          widget.aoSelecionarLimite!(index + 1);
+                        final aoSelecionarLimite = widget.aoSelecionarLimite;
+                        if (aoSelecionarLimite != null) {
+                          aoSelecionarLimite(index + 1);
                           return;
                         }
                         ScaffoldMessenger.of(context).removeCurrentSnackBar();

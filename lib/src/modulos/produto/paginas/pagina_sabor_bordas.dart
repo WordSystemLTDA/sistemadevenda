@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_bordas.dart';
@@ -5,6 +7,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
+import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -40,6 +43,10 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
   void initState() {
     super.initState();
     _prepararProdutoParaExibicao(widget.produto);
+    // O cardapio pode abrir pelo retrato local antes desta configuracao
+    // terminar. A tela acompanha o provedor e libera os controles assim que a
+    // resposta chegar, sem acessar valores nulos durante esse intervalo.
+    unawaited(provedorCardapio.garantirConfigBigChef().catchError((_) {}));
     listar();
   }
 
@@ -67,7 +74,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
       // se for cortesia
       if (e.id == 1) {
-        e.dados = e.dados!
+        e.dados = (e.dados ?? const [])
             .where((element) => element.estaSelecionado == true)
             .toList();
         return e;
@@ -145,8 +152,9 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
         .firstOrNull;
     final temBordaSelecionada = opcaoBorda?.dados?.isNotEmpty ?? false;
 
-    if (temBordaSelecionada &&
-        _provedorProduto.bordaPrecisaSelecionarQuantidade(opcaoBorda!)) {
+    if (opcaoBorda != null &&
+        temBordaSelecionada &&
+        _provedorProduto.bordaPrecisaSelecionarQuantidade(opcaoBorda)) {
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Selecione a quantidade de sabores da borda primeiro.'),
@@ -189,14 +197,15 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
   @override
   Widget build(BuildContext context) {
-    if (itemProduto == null) {
+    final produto = itemProduto;
+    if (produto == null) {
       return const Scaffold(
         body: Center(child: Text('Produto não existe')),
       );
     }
 
     final opcoesProduto =
-        itemProduto!.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
+        produto.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -217,7 +226,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
             return Scaffold(
               extendBody: true,
               appBar: AppBar(
-                title: Text("${itemProduto!.nome} ${itemProduto!.tamanho}"),
+                title: Text("${produto.nome} ${produto.tamanho}"),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
               ),
               bottomNavigationBar: SafeArea(
@@ -244,6 +253,11 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                     if (carregando) const LinearProgressIndicator(),
                     if (opcoesProduto.isNotEmpty) ...[
                       ...opcoesProduto.map((opcoesPacote) {
+                        final produtos = opcoesPacote.produtos ?? const [];
+                        final dados = opcoesPacote.dados ?? const [];
+                        final quantidade = opcoesPacote.id == 2
+                            ? produtos.length
+                            : dados.length;
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Column(
@@ -258,31 +272,44 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                         child: Padding(
                                       padding: const EdgeInsets.only(left: 12),
                                       child: Text(
-                                        '${opcoesPacote.titulo} (${opcoesPacote.id == 2 ? opcoesPacote.produtos!.length : opcoesPacote.dados!.length})',
+                                        '${opcoesPacote.titulo} ($quantidade)',
                                         style: const TextStyle(fontSize: 16),
                                       ),
                                     )),
                                   ],
                                 ),
                               ),
-                              if (int.parse(provedorCardapio
-                                          .configBigchef!.saborlimitedeborda) >
-                                      0 &&
-                                  opcoesPacote.id == 6) ...[
-                                // SÓ APARECE QUANDO TEM BORDAS
-                                const ListaBordas(),
-                                const ControleMeiaBorda(),
-                              ],
+                              if (opcoesPacote.id == 6)
+                                ListenableBuilder(
+                                  listenable: provedorCardapio,
+                                  builder: (context, _) {
+                                    final limite = int.tryParse(provedorCardapio
+                                                .configBigchef
+                                                ?.saborlimitedeborda ??
+                                            '') ??
+                                        0;
+                                    if (limite <= 0) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Column(
+                                      children: [
+                                        ListaBordas(limite: limite),
+                                        const ControleMeiaBorda(),
+                                      ],
+                                    );
+                                  },
+                                ),
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: opcoesPacote.id == 2
-                                    ? opcoesPacote.produtos!.length
-                                    : opcoesPacote.dados!.length,
+                                itemCount: quantidade,
                                 padding: const EdgeInsets.only(
                                     left: 14, right: 14, top: 20, bottom: 10),
                                 itemBuilder: (context, index) {
-                                  var item = opcoesPacote.dados![index];
+                                  if (opcoesPacote.id == 2) {
+                                    return CardKit(item: produtos[index]);
+                                  }
+                                  final item = dados[index];
 
                                   return CardOpcoesPacotes(
                                     opcoesPacote: opcoesPacote,
