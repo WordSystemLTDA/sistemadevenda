@@ -358,6 +358,37 @@ void main() {
     expect(socket.filaImpressao.itens, hasLength(1));
   });
 
+  test('pedido salvo durante outro envio segue sem aguardar o temporizador',
+      () async {
+    await guardar();
+    final primeiro = (await banco.operacoes(sync.escopo)).single;
+    await banco.atualizarOperacao(primeiro['id'] as String, {'proxima': 0});
+
+    conectado = true;
+    requisicaoPausada = Completer<void>();
+    liberarResposta = Completer<void>();
+    final envio = sync.enviarPendentes();
+    await requisicaoPausada!.future;
+
+    final item =
+        produto(id: '8', nome: 'Suco', codigo: '8', computador: 'Cozinha');
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(contexto, (itens) => itens.add(item));
+    await sync.guardarPedido(
+        contexto: contexto,
+        itens: [item],
+        idMesa: '0',
+        idComanda: '4',
+        idCliente: '0',
+        impressoes: []);
+
+    liberarResposta!.complete();
+    await envio;
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, hasLength(2));
+  });
+
   for (final tipo in ['mesa', 'comanda']) {
     test('servidor antigo ainda permite abertura online de $tipo', () async {
       await banco.gravar('estado:${sync.escopo}', '{}');

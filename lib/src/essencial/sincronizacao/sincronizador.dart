@@ -31,6 +31,7 @@ class Sincronizador extends ChangeNotifier {
   Timer? _timer;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
+  bool _envioSolicitado = false;
   Future<void>? _preparandoDados;
   CancelToken? _cancelamentoPreparacao;
   Future<void> _filaOperacoes = Future.value();
@@ -556,7 +557,18 @@ class Sincronizador extends ChangeNotifier {
     await _preparandoDados;
   }
 
-  Future<void> enviarPendentes() => _enviando ??= () async {
+  Future<void> enviarPendentes() {
+    // Nao perde um pedido salvo enquanto outro envio esta terminando. Antes,
+    // a chamada nova apenas recebia o Future do ciclo antigo e podia aguardar
+    // o temporizador de 15 segundos para ser encontrada.
+    _envioSolicitado = true;
+    return _enviando ??= _processarEnviosSolicitados();
+  }
+
+  Future<void> _processarEnviosSolicitados() async {
+    try {
+      do {
+        _envioSolicitado = false;
         try {
           await configurar();
           if (escopo.isNotEmpty) {
@@ -573,12 +585,17 @@ class Sincronizador extends ChangeNotifier {
           }
         } catch (_) {
           erro = 'O envio ficou pendente. Os pedidos continuam salvos.';
-        } finally {
-          await _recarregarPendencias();
-          _enviando = null;
-          _notificar();
         }
-      }();
+      } while (_envioSolicitado && !_descartado);
+    } finally {
+      await _recarregarPendencias();
+      _enviando = null;
+      _notificar();
+      // Cobre a janela minima entre a ultima verificacao do laco e a limpeza
+      // de _enviando.
+      if (_envioSolicitado && !_descartado) unawaited(enviarPendentes());
+    }
+  }
 
   Future<void> _sincronizar() async {
     String? alvo;

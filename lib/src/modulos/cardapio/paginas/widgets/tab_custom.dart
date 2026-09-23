@@ -89,7 +89,9 @@ class _TabCustomState extends State<TabCustom>
       atualizar: () => provedor.atualizarSilenciosamente(widget.category),
     );
     _iniciouConsulta = widget.provedorInicial != null;
-    if (widget.ativa && !_iniciouConsulta) unawaited(_atualizar());
+    if (widget.ativa && !_iniciouConsulta) {
+      unawaited(_atualizar(cachePrimeiro: true));
+    }
     final pesquisaVoz = widget.pesquisaVoz?.trim();
     if (pesquisaVoz?.isNotEmpty == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -107,7 +109,9 @@ class _TabCustomState extends State<TabCustom>
       if (_iniciouConsulta) {
         unawaited(_monitorCatalogo?.solicitar());
       } else {
-        unawaited(_atualizar());
+        // A primeira exibicao da categoria vem do catalogo completo salvo no
+        // aparelho; a validacao no servidor continua em segundo plano.
+        unawaited(_atualizar(cachePrimeiro: true));
       }
     }
     final pesquisaVoz = widget.pesquisaVoz?.trim();
@@ -193,12 +197,13 @@ class _TabCustomState extends State<TabCustom>
     }
   }
 
-  Future<void> _atualizar() {
+  Future<void> _atualizar({bool cachePrimeiro = false}) {
     _iniciouConsulta = true;
     _debounce?.cancel();
     final pesquisa = _pesquisaController.text.trim();
     if (pesquisa.isEmpty && !_somenteFavoritos) {
-      return provedor.listarProdutosPorCategoria(widget.category);
+      return provedor.listarProdutosPorCategoria(widget.category,
+          cachePrimeiro: cachePrimeiro);
     }
     // A busca completa inclui favoritos alem da primeira pagina do catalogo.
     return provedor.listarProdutosPorNome(pesquisa, widget.category, '0');

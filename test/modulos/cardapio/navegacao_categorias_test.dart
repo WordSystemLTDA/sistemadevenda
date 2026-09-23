@@ -208,6 +208,33 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('primeira abertura de cada categoria usa catalogo local',
+      (tester) async {
+    final produtos = ProdutosPendentes();
+    await abrir(tester, produtos: produtos);
+    for (var i = 0; i < 10 && find.byType(TabBar).evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+
+    final controller = tester.widget<TabBar>(find.byType(TabBar)).controller!;
+    controller.animateTo(1);
+    for (var i = 0;
+        i < 10 && !produtos.consultasPorCategoria.contains(('Queijos', 1));
+        i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(produtos.consultasPorCategoria, contains(('Queijos', 1)));
+    expect(produtos.preferenciasCache, everyElement(isTrue));
+
+    for (final resposta in produtos.respostas.values) {
+      if (!resposta.isCompleted) resposta.complete([]);
+    }
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
       'falha durante conexao inicial aguarda e recupera produtos sem toque',
       (tester) async {
