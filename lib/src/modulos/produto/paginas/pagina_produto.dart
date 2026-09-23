@@ -53,6 +53,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
   Modelowordprodutos? itemProduto;
   bool carregando = false;
+  bool _carregamentoInicialConcluido = false;
   String? erroConsulta;
   TextEditingController obsController = TextEditingController();
   final TextEditingController _pesquisaOpcoesController =
@@ -89,6 +90,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       listar(forcar: true);
     } else {
       itemProduto = widget.produto;
+      _carregamentoInicialConcluido = true;
       _montagemConfirmada = true;
       _montagemJaConfirmada = true;
       _provedorProduto.opcoesPacotesListaFinal =
@@ -270,7 +272,12 @@ class _PaginaProdutoState extends State<PaginaProduto> {
         });
       }
     }).whenComplete(() {
-      if (mounted) setState(() => carregando = false);
+      if (mounted) {
+        setState(() {
+          carregando = false;
+          _carregamentoInicialConcluido = true;
+        });
+      }
     });
   }
 
@@ -774,6 +781,35 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final alturaTeclado = MediaQuery.viewInsetsOf(context).bottom;
+
+    if (!_carregamentoInicialConcluido) {
+      return Scaffold(
+        backgroundColor: VisualAtendimento.fundo(context),
+        appBar: AppBar(
+          backgroundColor: cs.inversePrimary,
+          title: Text(
+            widget.produto.nome,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        body: Center(
+          child: Column(
+            key: const ValueKey('carregando-detalhes-produto'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Preparando opções do produto...',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (itemProduto == null) {
       if (carregando == false) {

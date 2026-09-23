@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,6 +18,7 @@ import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.d
 import 'package:app/src/modulos/produto/paginas/widgets/card_ingredientes_cardapio.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/etapa_montagem_cardapio.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:dio/dio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -35,6 +37,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   bool omitirCategoriaNoDetalhe = false;
   bool semIngredientes = false;
   bool? ultimaConsultaModeloRecorrente;
+  Completer<void>? esperaDetalhe;
   final produtoCardapio = Modelowordprodutos(
     id: '151',
     nome: 'Almoço Livre',
@@ -68,6 +71,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
     if (id != produtoCardapio.id) {
       return super.listarPorId(id, tamanho, modeloRecorrente: modeloRecorrente);
     }
+    await esperaDetalhe?.future;
     return Modelowordprodutos.fromMap(produtoCardapio.toMap())
       ..idCategoriaCardapio =
           omitirCategoriaNoDetalhe ? '0' : produtoCardapio.idCategoriaCardapio
@@ -184,6 +188,31 @@ void main() {
     expect(find.text('Normal'), findsWidgets);
     expect(Modular.get<ProvedorCarrinho>().itensCarrinho.listaComandosPedidos,
         isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('aguarda os detalhes sem exibir a pagina comum antes da montagem',
+      (tester) async {
+    produtos.esperaDetalhe = Completer<void>();
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaProduto(produto: produtos.produtoCardapio),
+    ));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('carregando-detalhes-produto')),
+        findsOneWidget);
+    expect(find.text('Preparando opções do produto...'), findsOneWidget);
+    expect(find.text('Montagem do produto'), findsNothing);
+    expect(find.byKey(const Key('adicionar_produto_carrinho')), findsNothing);
+
+    produtos.esperaDetalhe!.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('carregando-detalhes-produto')),
+        findsNothing);
+    expect(find.text('Montagem do produto'), findsOneWidget);
+    expect(find.byType(EtapaMontagemCardapio), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
