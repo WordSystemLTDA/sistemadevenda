@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
@@ -203,10 +204,16 @@ class _PaginaComandaDesocupadaState extends State<PaginaComandaDesocupada> {
           novoAtendimento = resposta.idcomandapedido;
         }
       }
-      server.write(jsonEncode({
-        'tipo': mesa ? 'Mesa' : 'Comanda',
-        'nomeConexao': usuarioProvedor.usuario?.nome ?? '',
-      }));
+      // Para aberturas duraveis o Sincronizador avisa os outros aparelhos
+      // apenas depois da confirmacao do banco. Avisar antes fazia todos eles
+      // consultarem um atendimento que ainda nao existia no servidor.
+      if (novoAtendimento == null ||
+          !AtendimentosLocais.local(novoAtendimento)) {
+        server.write(jsonEncode({
+          'tipo': mesa ? 'Mesa' : 'Comanda',
+          'nomeConexao': usuarioProvedor.usuario?.nome ?? '',
+        }));
+      }
       if (!mounted) return;
       if (!editando && configBigchef?.abrircomandadireto == 'Sim') {
         Navigator.of(context).pushReplacement(MaterialPageRoute(

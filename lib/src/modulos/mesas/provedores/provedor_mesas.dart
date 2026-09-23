@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
@@ -135,7 +136,7 @@ class ProvedorMesas extends ChangeNotifier {
       String idMesa, String idCliente, String obs) async {
     try {
       final res = await _servico.inserirMesaOcupada(idMesa, idCliente, obs);
-      if (res.sucesso) {
+      if (res.sucesso && !AtendimentosLocais.local(res.idcomandapedido)) {
         listarMesas('');
       }
       return res;

@@ -29,6 +29,7 @@ class Sincronizador extends ChangeNotifier {
   final BancoLocal banco;
   late final _preparacaoDelivery = PreparacaoDeliveryOffline(api);
   Timer? _timer;
+  Timer? _retentativaEnvio;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
   bool _envioSolicitado = false;
@@ -85,6 +86,8 @@ class Sincronizador extends ChangeNotifier {
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
+    _retentativaEnvio?.cancel();
+    _retentativaEnvio = null;
     _cancelamentoPreparacao?.cancel('A conta mudou.');
     api.cache?.escopo = '';
     pendencias = [];
@@ -395,7 +398,10 @@ class Sincronizador extends ChangeNotifier {
     }, destinoOriginal);
     await _recarregarPendencias();
     _notificar();
-    aoAtualizarTelas?.call();
+    // A abertura deve ocupar a primeira vaga da conexao. Atualizar todas as
+    // telas aqui disparava varias consultas antes do POST que confirma a
+    // mesa/comanda. A lista local ja projeta esta abertura imediatamente e o
+    // socket atualiza os outros aparelhos somente depois do commit da API.
     unawaited(enviarPendentes());
     return id;
   }
@@ -561,8 +567,36 @@ class Sincronizador extends ChangeNotifier {
     // Nao perde um pedido salvo enquanto outro envio esta terminando. Antes,
     // a chamada nova apenas recebia o Future do ciclo antigo e podia aguardar
     // o temporizador de 15 segundos para ser encontrada.
+    _retentativaEnvio?.cancel();
+    _retentativaEnvio = null;
     _envioSolicitado = true;
     return _enviando ??= _processarEnviosSolicitados();
+  }
+
+  void _agendarRetentativaEnvio() {
+    _retentativaEnvio?.cancel();
+    _retentativaEnvio = null;
+    if (_descartado || pendencias.isEmpty) return;
+    final agora = DateTime.now().millisecondsSinceEpoch;
+    int? proxima;
+    for (final operacao in pendencias) {
+      if (operacao['estado'] == 'conflito' ||
+          operacao['estado'] == 'arquivado' ||
+          operacao['estado'] == 'concluido') {
+        continue;
+      }
+      final instante = operacao['proxima'] as int? ?? 0;
+      if (instante > agora && (proxima == null || instante < proxima)) {
+        proxima = instante;
+      }
+    }
+    if (proxima == null) return;
+    final restante = proxima - agora;
+    final atraso = Duration(milliseconds: restante > 60000 ? 60000 : restante);
+    _retentativaEnvio = Timer(atraso, () {
+      _retentativaEnvio = null;
+      if (!_descartado) unawaited(enviarPendentes());
+    });
   }
 
   Future<void> _processarEnviosSolicitados() async {
@@ -593,7 +627,13 @@ class Sincronizador extends ChangeNotifier {
       _notificar();
       // Cobre a janela minima entre a ultima verificacao do laco e a limpeza
       // de _enviando.
-      if (_envioSolicitado && !_descartado) unawaited(enviarPendentes());
+      if (_envioSolicitado && !_descartado) {
+        unawaited(enviarPendentes());
+      } else {
+        // Respeita o backoff da falha, mas nao fica dependente do ciclo geral
+        // de 15 segundos. A primeira nova tentativa ocorre no instante exato.
+        _agendarRetentativaEnvio();
+      }
     }
   }
 
@@ -610,6 +650,10 @@ class Sincronizador extends ChangeNotifier {
       final idUsuario = usuario.usuario!.id;
       final chaveCarrinhos = banco.chaveCarrinhos;
       final identidades = await _identidadesRascunhos(alvo, empresa!);
+      // Operacoes salvas antes de fechar o aplicativo saem primeiro. Antes, o
+      // POST aguardava toda a consulta de estado e podia parecer parado ao
+      // reabrir o app em uma rede ou base mais carregada.
+      await enviarPendentes();
       final estado = await api.cliente.get('sincronizacao/estado.php',
           queryParameters: {'empresa': empresa, 'id_usuario': idUsuario},
           options: _opcoes(url));
@@ -638,7 +682,6 @@ class Sincronizador extends ChangeNotifier {
             empresa: empresa,
             usuario: idUsuario!));
       }
-      await enviarPendentes();
       if (alvo != escopo || usuario.usuario == null) return;
       // A preparacao da copia offline nao bloqueia pedidos, estado nem telas.
       _prepararDados();
@@ -1037,10 +1080,20 @@ class Sincronizador extends ChangeNotifier {
             bloqueados.add(atendimento);
             continue;
           }
+          final expoente = tentativas <= 1
+              ? 0
+              : tentativas - 1 > 6
+                  ? 6
+                  : tentativas - 1;
+          final potencia = 1 << expoente;
+          final segundos = potencia > 60 ? 60 : potencia;
+          // Espalha levemente as repeticoes para muitos aparelhos nao
+          // atingirem o servidor no mesmo milissegundo depois de uma queda.
+          final jitter =
+              id.codeUnits.fold<int>(0, (soma, item) => soma + item) % 300;
           await banco.atualizarOperacao(id, {
             'proxima': DateTime.now()
-                .add(Duration(
-                    seconds: (2 * (1 << tentativas.clamp(0, 5))).clamp(2, 60)))
+                .add(Duration(milliseconds: segundos * 1000 + jitter))
                 .millisecondsSinceEpoch,
           });
           rethrow;
@@ -1123,7 +1176,9 @@ class Sincronizador extends ChangeNotifier {
       if (recibo['impressao_persistida'] == true) {
         socket.write(jsonEncode({'tipo': 'PreparoPendente'}));
       }
-      await socket.processarImpressoesPendentes();
+      // Impressao possui fila duravel e processamento proprio. Ela comeca
+      // agora, mas nunca segura o POST da proxima mesa, comanda ou pedido.
+      unawaited(socket.processarImpressoesPendentes());
     }
   }
 
@@ -1325,6 +1380,7 @@ class Sincronizador extends ChangeNotifier {
     _descartado = true;
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();
+    _retentativaEnvio?.cancel();
     usuario.removeListener(_sessaoMudou);
     socket.removeListener(_socketMudou);
     socket.aoAtualizarDados = null;

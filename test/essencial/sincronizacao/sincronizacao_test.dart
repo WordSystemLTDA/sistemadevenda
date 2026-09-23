@@ -31,12 +31,14 @@ class SocketOfflineTeste extends Server {
   final recuperacoes = <bool>[];
   final mensagens = <Map<String, dynamic>>[];
   Completer<void>? tentativaManual;
+  Completer<void>? processamento;
 
   @override
   Future<void> processarImpressoesPendentes(
       {bool reconectarAgora = false}) async {
     recuperacoes.add(reconectarAgora);
     if (reconectarAgora) await tentativaManual?.future;
+    await processamento?.future;
   }
 
   @override
@@ -389,6 +391,21 @@ void main() {
     expect(aplicados, hasLength(2));
   });
 
+  test('queda curta repete o envio sem aguardar o ciclo de 15 segundos',
+      () async {
+    await guardar();
+    expect(await banco.operacoes(sync.escopo), hasLength(1));
+
+    conectado = true;
+    for (var tentativa = 0; tentativa < 50; tentativa++) {
+      if ((await banco.operacoes(sync.escopo)).isEmpty) break;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, hasLength(1));
+  });
+
   for (final tipo in ['mesa', 'comanda']) {
     test('servidor antigo ainda permite abertura online de $tipo', () async {
       await banco.gravar('estado:${sync.escopo}', '{}');
@@ -599,6 +616,46 @@ void main() {
     expect(resultados.whereType<String>(), hasLength(1));
     await sync.enviarPendentes();
     expect(await banco.operacoes(sync.escopo), hasLength(1));
+  });
+
+  test('abertura e pedido nao aguardam recuperacao da impressora', () async {
+    conectado = true;
+    socket.processamento = Completer<void>();
+    final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
+    final item =
+        produto(id: '5', codigo: '5', nome: 'Pizza', computador: 'Cozinha');
+    final contextoLocal = ContextoCarrinho(
+        empresa: '32', tipo: 'comanda', idAtendimento: id, idRecurso: '5');
+    await ArmazenamentoCarrinhos.instancia
+        .alterar(contextoLocal, (itens) => itens.add(item));
+    await sync.guardarPedido(
+      contexto: contextoLocal,
+      itens: [item],
+      idMesa: '0',
+      idComanda: '5',
+      idCliente: '0',
+      impressoes: [],
+    );
+
+    await sync.enviarPendentes().timeout(const Duration(seconds: 2));
+
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, hasLength(2));
+    expect(socket.processamento!.isCompleted, isFalse);
+    socket.processamento!.complete();
+  });
+
+  test('abertura prioritaria nao dispara consultas globais antes do POST',
+      () async {
+    conectado = true;
+    var atualizacoesGlobais = 0;
+    sync.aoAtualizarTelas = () => atualizacoesGlobais++;
+
+    await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
+    await sync.enviarPendentes();
+
+    expect(aplicados, hasLength(1));
+    expect(atualizacoesGlobais, 0);
   });
 
   test(

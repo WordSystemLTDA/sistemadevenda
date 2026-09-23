@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
+import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comanda.dart';
 import 'package:app/src/modulos/comandas/modelos/modelo_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
@@ -150,7 +151,10 @@ class ProvedorComanda extends ChangeNotifier {
       final res =
           await _servico.inserirComandaOcupada(id, idMesa, idCliente, obs);
 
-      if (res.sucesso) {
+      // A abertura local ja e projetada pela sincronizacao. Evita uma consulta
+      // que ainda enxergaria o servidor antes do commit e concorreria com o
+      // POST prioritario da abertura.
+      if (res.sucesso && !AtendimentosLocais.local(res.idcomandapedido ?? '')) {
         listarComandas('');
       }
 
