@@ -170,6 +170,9 @@ class DadosImpressaoPreparo {
       final mapa = item.toMap();
       final montagem = item.alteracaoMontagemCardapio;
       if (montagemCardapio && montagem != null) {
+        // Mantem o texto pronto tambem para centrais de impressao antigas,
+        // sem depender apenas da leitura do bloco estruturado abaixo.
+        mapa['nome'] = montagem.descricao;
         mapa['montagemCardapio'] = montagem.toMap();
       }
       return mapa;

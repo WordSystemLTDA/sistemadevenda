@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -169,6 +170,69 @@ void main() {
     expect(jsonEncode(produto), contains('Feijão'));
     expect(jsonEncode(produto), contains('Frango'));
     expect(jsonEncode(produto), contains('sem'));
+  });
+
+  test('preparo une cardapio local quando API devolve apenas adicionais', () {
+    final produtoApi =
+        imp.produto(id: '436', nome: 'Almoço Livre', computador: 'COZINHA')
+          ..iditensvenda = '900'
+          ..opcoesPacotesListaFinal = [
+            imp.adicionais(['Ovo']),
+          ];
+    final local = almocoComAlteracoes()..iditensvenda = '900';
+    final pedido = pedidoTeste(campos: {
+      'produtos': [produtoApi.toMap()]
+    });
+
+    final resultado = ImpressaoDelivery.produtosComDetalhesDoPedido(
+      pedido,
+      [produtoApi],
+      detalhesLocais: [local],
+    ).single;
+    final ids = resultado.opcoesPacotesListaFinal!.map((grupo) => grupo.id);
+    expect(ids, containsAll(<int>[7, 12]));
+
+    final preparo = DadosImpressaoPreparo.produto(resultado);
+    final json = jsonEncode(preparo);
+    expect(json, contains('SEM Feijão'));
+    expect(json, contains('SEM Frango'));
+    expect(json, contains('Ovo'));
+  });
+
+  test('preparo recompõe tamanho sabores bordas e adicionais da pizza', () {
+    final completa = pizzaDetalhada(item: '901');
+    final produtoApi = Modelowordprodutos.fromMap(completa.toMap())
+      ..opcoesPacotesListaFinal = [
+        completa.opcoesPacotesListaFinal![0],
+      ];
+    final produtoResumo = Modelowordprodutos.fromMap(completa.toMap())
+      ..opcoesPacotesListaFinal = [
+        completa.opcoesPacotesListaFinal![3],
+      ];
+    final pedido = pedidoTeste(campos: {
+      'produtos': [produtoResumo.toMap()]
+    });
+
+    final resultado = ImpressaoDelivery.produtosComDetalhesDoPedido(
+      pedido,
+      [produtoApi],
+      detalhesLocais: [completa],
+    ).single;
+    final grupos = resultado.opcoesPacotesListaFinal!;
+    expect(grupos.map((grupo) => grupo.id).toSet(), <int>{9, 10, 6, 7});
+
+    final preparo = jsonEncode(DadosImpressaoPreparo.produto(resultado));
+    for (final detalhe in [
+      'Tamanho Pizza',
+      'Mussarela',
+      'Catupiry Especial',
+      'Dois Queijos',
+      'Cheddar',
+      'Goiabada',
+      'Milho',
+    ]) {
+      expect(preparo, contains(detalhe));
+    }
   });
 
   test('edicao envia ID do item e versao, sem alterar pagamentos', () async {

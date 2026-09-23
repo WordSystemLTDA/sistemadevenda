@@ -163,11 +163,15 @@ class ImpressaoDelivery {
     for (final campo in [
       'opcoesPacotesListaFinal',
       'opcoesPacotes',
-      'ingredientes',
     ]) {
-      if (!_listaTemItens(mapa[campo]) && _listaTemItens(mapaLocal[campo])) {
-        mapa[campo] = mapaLocal[campo];
-      }
+      mapa[campo] = _mesclarGruposDeOpcoes(
+        mapa[campo],
+        mapaLocal[campo],
+      );
+    }
+    if (!_listaTemItens(mapa['ingredientes']) &&
+        _listaTemItens(mapaLocal['ingredientes'])) {
+      mapa['ingredientes'] = mapaLocal['ingredientes'];
     }
     if (_vazio(mapa['observacao']) && !_vazio(mapaLocal['observacao'])) {
       mapa['observacao'] = mapaLocal['observacao'];
@@ -202,13 +206,16 @@ class ImpressaoDelivery {
     if (_vazio(mapaDetalhado['dataLancado'])) {
       mapa['dataLancado'] = mapaBase['dataLancado'];
     }
-    if (!_listaTemItens(mapaDetalhado['opcoesPacotesListaFinal']) &&
-        _listaTemItens(mapaBase['opcoesPacotesListaFinal'])) {
-      mapa['opcoesPacotesListaFinal'] = mapaBase['opcoesPacotesListaFinal'];
-    }
-    if (!_listaTemItens(mapaDetalhado['opcoesPacotes']) &&
-        _listaTemItens(mapaBase['opcoesPacotes'])) {
-      mapa['opcoesPacotes'] = mapaBase['opcoesPacotes'];
+    for (final campo in [
+      'opcoesPacotesListaFinal',
+      'opcoesPacotes',
+    ]) {
+      // A consulta de cardapio e a fonte mais atual. A lista resumida do card
+      // do Delivery completa somente os grupos que nao vieram nela.
+      mapa[campo] = _mesclarGruposDeOpcoes(
+        mapaBase[campo],
+        mapaDetalhado[campo],
+      );
     }
     if (!_listaTemItens(mapaDetalhado['ingredientes']) &&
         _listaTemItens(mapaBase['ingredientes'])) {
@@ -271,6 +278,193 @@ class ImpressaoDelivery {
 
   static bool _listaTemItens(Object? valor) =>
       valor is List && valor.isNotEmpty;
+
+  /// Une opcoes por grupo, em vez de considerar uma lista parcialmente
+  /// preenchida como se ela estivesse completa. Isso impede que um adicional
+  /// devolvido pela API esconda a montagem do Cardapio e tambem preserva os
+  /// grupos independentes da pizza (tamanho, sabores e bordas).
+  static Object? _mesclarGruposDeOpcoes(
+    Object? principal,
+    Object? complemento,
+  ) {
+    if (!_listaTemItens(principal)) {
+      return _listaTemItens(complemento) ? complemento : principal;
+    }
+    if (!_listaTemItens(complemento)) return principal;
+
+    final resultado = <dynamic>[];
+    final indices = <String, int>{};
+    for (final item in principal as List) {
+      final mapa = _mapaDinamico(item);
+      if (mapa == null) {
+        resultado.add(item);
+        continue;
+      }
+      final indice = resultado.length;
+      resultado.add(mapa);
+      indices.putIfAbsent(_chaveGrupo(mapa), () => indice);
+    }
+
+    for (final item in complemento as List) {
+      final mapa = _mapaDinamico(item);
+      if (mapa == null) {
+        resultado.add(item);
+        continue;
+      }
+      final chave = _chaveGrupo(mapa);
+      final indice = indices[chave];
+      if (indice == null) {
+        indices[chave] = resultado.length;
+        resultado.add(mapa);
+      } else {
+        resultado[indice] = _mesclarGrupo(
+          Map<String, dynamic>.from(resultado[indice] as Map),
+          mapa,
+        );
+      }
+    }
+    return resultado;
+  }
+
+  static Map<String, dynamic> _mesclarGrupo(
+    Map<String, dynamic> principal,
+    Map<String, dynamic> complemento,
+  ) {
+    final resultado = _mesclarMapas(principal, complemento);
+    for (final campo in ['dados', 'produtos']) {
+      resultado[campo] = _mesclarItensDoGrupo(
+        principal[campo],
+        complemento[campo],
+      );
+    }
+    resultado['opcoesPacote'] = _mesclarGruposDeOpcoes(
+      principal['opcoesPacote'],
+      complemento['opcoesPacote'],
+    );
+    return resultado;
+  }
+
+  static Object? _mesclarItensDoGrupo(
+    Object? principal,
+    Object? complemento,
+  ) {
+    if (!_listaTemItens(principal)) {
+      return _listaTemItens(complemento) ? complemento : principal;
+    }
+    if (!_listaTemItens(complemento)) return principal;
+
+    final resultado = <dynamic>[];
+    final indices = <String, int>{};
+    for (final item in principal as List) {
+      final mapa = _mapaDinamico(item);
+      if (mapa == null) {
+        resultado.add(item);
+        continue;
+      }
+      final indice = resultado.length;
+      resultado.add(mapa);
+      indices.putIfAbsent(_chaveItemGrupo(mapa), () => indice);
+    }
+    for (final item in complemento as List) {
+      final mapa = _mapaDinamico(item);
+      if (mapa == null) {
+        resultado.add(item);
+        continue;
+      }
+      final chave = _chaveItemGrupo(mapa);
+      final indice = indices[chave];
+      if (indice == null) {
+        indices[chave] = resultado.length;
+        resultado.add(mapa);
+      } else {
+        resultado[indice] = _mesclarMapas(
+          Map<String, dynamic>.from(resultado[indice] as Map),
+          mapa,
+        );
+      }
+    }
+    return resultado;
+  }
+
+  static Map<String, dynamic> _mesclarMapas(
+    Map<String, dynamic> principal,
+    Map<String, dynamic> complemento,
+  ) {
+    final resultado = <String, dynamic>{...complemento, ...principal};
+    for (final entrada in complemento.entries) {
+      if (_valorAusente(principal[entrada.key]) &&
+          !_valorAusente(entrada.value)) {
+        resultado[entrada.key] = entrada.value;
+      }
+    }
+    return resultado;
+  }
+
+  static Map<String, dynamic>? _mapaDinamico(Object? valor) =>
+      valor is Map ? Map<String, dynamic>.from(valor) : null;
+
+  static String _chaveGrupo(Map<String, dynamic> grupo) {
+    if (_grupoCardapio(grupo)) return 'cardapio';
+    final id = (grupo['id'] ?? '').toString().trim();
+    final tipo = (grupo['tipo'] ?? '').toString().trim();
+    final titulo = _textoNormalizado(grupo['titulo']);
+    if (titulo == 'observacao' || id == '12' || (id == '11' && tipo == '7')) {
+      return 'observacao';
+    }
+    if (id.isNotEmpty && id != '0') return 'id:$id';
+    return 'tipo:$tipo|titulo:$titulo';
+  }
+
+  static String _chaveItemGrupo(Map<String, dynamic> item) {
+    final id = (item['id'] ?? '').toString().trim();
+    final idProduto =
+        (item['idProduto'] ?? item['id_produto'] ?? '').toString().trim();
+    if (id.isNotEmpty && id != '0') return 'id:$id|produto:$idProduto';
+    final codigo = (item['codigo'] ?? '').toString().trim();
+    return 'codigo:$codigo|nome:${_textoNormalizado(item['nome'])}';
+  }
+
+  static bool _grupoCardapio(Map<String, dynamic> grupo) {
+    if ((grupo['tipo'] ?? '').toString() == '8') return true;
+    final titulo = _textoNormalizado(grupo['titulo']);
+    if (titulo.contains('ingredientes do cardapio') || titulo == 'cardapio') {
+      return true;
+    }
+    for (final dado in grupo['dados'] is List
+        ? grupo['dados'] as List
+        : const <dynamic>[]) {
+      final mapa = _mapaDinamico(dado);
+      if (mapa == null) continue;
+      if (mapa['montagemCardapio'] != null ||
+          mapa['montagem_cardapio'] != null ||
+          mapa['montagem_json'] != null ||
+          !_valorAusente(mapa['idCategoriaCardapio']) ||
+          !_valorAusente(mapa['id_categoria_cardapio'])) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static String _textoNormalizado(Object? valor) => (valor ?? '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replaceAll('á', 'a')
+      .replaceAll('à', 'a')
+      .replaceAll('â', 'a')
+      .replaceAll('ã', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('ê', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ô', 'o')
+      .replaceAll('õ', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ç', 'c');
+
+  static bool _valorAusente(Object? valor) =>
+      valor == null || (valor is String && valor.trim().isEmpty);
 
   static bool _vazio(Object? valor) => (valor?.toString().trim() ?? '').isEmpty;
 

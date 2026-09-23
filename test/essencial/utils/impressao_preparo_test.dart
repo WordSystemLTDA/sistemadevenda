@@ -389,7 +389,7 @@ void main() {
     expect((opcoes.last as Map)['titulo'], 'Adicionais');
     final ingredientes = montagem['dados'] as List;
     expect(ingredientes, hasLength(1));
-    expect(ingredientes.single['nome'], 'Feijao');
+    expect(ingredientes.single['nome'], 'POUCO Feijao (SEPARADO)');
     expect(ingredientes.single['montagemCardapio']['acao'], 'pouco');
     expect(ingredientes.single['montagemCardapio']['separado'], isTrue);
     expect(
@@ -401,6 +401,41 @@ void main() {
       isEmpty,
     );
     expect(jsonEncode(dados), isNot(contains('Arroz')));
+  });
+
+  test('preparo escreve sem pouco e mais nos ingredientes do cardapio', () {
+    final almoco = produto(nome: 'Almoco Livre')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            for (final (id, nome, acao) in [
+              ('1', 'Arroz', AcaoIngredienteCardapio.sem),
+              ('2', 'Feijao', AcaoIngredienteCardapio.pouco),
+              ('3', 'Carne', AcaoIngredienteCardapio.mais),
+            ])
+              ModeloDadosOpcoesPacotes(
+                id: id,
+                nome: nome,
+                idCategoriaCardapio: '9',
+                montagemCardapio: MontagemIngredienteCardapio(
+                  nomeOriginal: nome,
+                  acao: acao,
+                ),
+              ),
+          ],
+        ),
+      ];
+
+    final dados = DadosImpressaoPreparo.produto(almoco);
+    final grupo = (dados['opcoesPacotesListaFinal'] as List).single as Map;
+    final nomes =
+        (grupo['dados'] as List).map((item) => (item as Map)['nome']).toList();
+
+    expect(nomes, ['SEM Arroz', 'POUCO Feijao', 'MAIS Carne']);
   });
 
   test('preparo omite grupo de cardapio quando tudo esta normal', () {
