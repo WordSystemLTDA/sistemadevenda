@@ -11,6 +11,7 @@ class EventosCatalogo extends ChangeNotifier {
     'produtos',
     'cardapio',
     'cardápio',
+    'categoria',
     'categorias',
     'cat_categorias',
     'cat_produtos',

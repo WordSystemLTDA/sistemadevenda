@@ -37,8 +37,101 @@ void main() {
       identidadesConsultadas: {'104': '104'},
       atendimentos: {});
 
+  Future<void> conferirStatus(String status) =>
+      armazenamento.conferirRascunhosNoServidor(
+          chaveDocumento: banco.chaveCarrinhos,
+          empresa: '32',
+          identidadesConsultadas: {
+            '104': '104'
+          },
+          atendimentos: {
+            '104': {'status': status}
+          });
+
+  Future<void> impedirEscrita() => banco.db
+      .execute("CREATE TRIGGER impedir_escrita BEFORE INSERT ON documentos "
+          "BEGIN SELECT RAISE(ABORT, 'escrita inesperada'); END");
+
+  for (final status in ['Andamento', 'Fechamento']) {
+    test('snapshot repetido $status nao regrava nem notifica', () async {
+      var notificacoes = 0;
+      void notificar() => notificacoes++;
+      armazenamento.addListener(notificar);
+      addTearDown(() => armazenamento.removeListener(notificar));
+
+      await conferirStatus(status);
+      expect(notificacoes, 1);
+      final antes = await banco.ler(banco.chaveCarrinhos);
+      await impedirEscrita();
+
+      await conferirStatus(status);
+      await conferirStatus(status);
+
+      expect(notificacoes, 1);
+      expect(await banco.ler(banco.chaveCarrinhos), antes);
+      final registro = (jsonDecode(antes!) as Map)[contexto.chave];
+      expect(registro['bloqueado'], status != 'Andamento');
+      expect(registro['itens'], hasLength(1));
+    });
+  }
+
+  test('fechamento repetido nao regrava nem notifica', () async {
+    await fechar();
+    final antes = await banco.ler(banco.chaveCarrinhos);
+    var notificacoes = 0;
+    void notificar() => notificacoes++;
+    armazenamento.addListener(notificar);
+    addTearDown(() => armazenamento.removeListener(notificar));
+    await impedirEscrita();
+
+    await fechar();
+    await fechar();
+
+    expect(notificacoes, 0);
+    expect(await banco.ler(banco.chaveCarrinhos), antes);
+    final registro = (jsonDecode(antes!) as Map)[contexto.chave];
+    expect(registro['encerrado'], true);
+    expect(registro['encerradoConfirmado'], true);
+    expect(registro['itens'], hasLength(1));
+  });
+
+  test('mudanca real de status atualiza bloqueio e notifica uma vez', () async {
+    await conferirStatus('Fechamento');
+    expect(
+        await armazenamento.alterar(contexto, (itens) => itens.clear()), false);
+    var notificacoes = 0;
+    void notificar() => notificacoes++;
+    armazenamento.addListener(notificar);
+    addTearDown(() => armazenamento.removeListener(notificar));
+
+    await conferirStatus('Andamento');
+    await conferirStatus('Andamento');
+
+    expect(notificacoes, 1);
+    final carrinhos = jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}');
+    expect(carrinhos[contexto.chave]['bloqueado'], false);
+    expect(carrinhos[contexto.chave]['itens'], hasLength(1));
+  });
+
+  test('falha ao persistir novo status nao notifica nem altera rascunho',
+      () async {
+    await conferirStatus('Andamento');
+    final antes = await banco.ler(banco.chaveCarrinhos);
+    var notificacoes = 0;
+    void notificar() => notificacoes++;
+    armazenamento.addListener(notificar);
+    addTearDown(() => armazenamento.removeListener(notificar));
+    await impedirEscrita();
+
+    await expectLater(conferirStatus('Fechamento'), throwsA(anything));
+
+    expect(notificacoes, 0);
+    expect(await banco.ler(banco.chaveCarrinhos), antes);
+  });
+
   test('fechamento preserva rascunho e resposta antiga nao o reabre', () async {
     await fechar();
+    await conferirStatus('Andamento');
     await armazenamento.atualizarStatus('32', '104', 'Andamento');
     await armazenamento.sincronizarRecurso(
         empresa: '32',
@@ -51,6 +144,7 @@ void main() {
     final carrinhos = jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}');
     expect(carrinhos[contexto.chave]['itens'], hasLength(1));
     expect(carrinhos[contexto.chave]['encerrado'], true);
+    expect(carrinhos[contexto.chave]['encerradoConfirmado'], true);
   });
 
   test('excluir rascunho bloqueado arquiva copia antes de limpar', () async {
@@ -82,6 +176,11 @@ void main() {
 
   test('snapshot nao encerra carrinho criado depois nem de outra empresa',
       () async {
+    var notificacoes = 0;
+    void notificar() => notificacoes++;
+    armazenamento.addListener(notificar);
+    addTearDown(() => armazenamento.removeListener(notificar));
+    await impedirEscrita();
     await armazenamento.conferirRascunhosNoServidor(
         chaveDocumento: banco.chaveCarrinhos,
         empresa: '32',
@@ -94,5 +193,6 @@ void main() {
         identidadesConsultadas: {'104': '104'},
         atendimentos: {});
     expect(await armazenamento.listar(contexto), hasLength(1));
+    expect(notificacoes, 0);
   });
 }

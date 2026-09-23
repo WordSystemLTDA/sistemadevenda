@@ -10,6 +10,7 @@ class AdaptadorHttpPrioritario implements HttpClientAdapter {
   final HttpClientAdapter transporte;
   final Duration respiro;
   final _fila = Queue<_ConsultaPreparacao>();
+  final _liberacoesAtivas = <void Function()>{};
   int _interativas = 0;
   bool _preparando = false;
   bool _fechado = false;
@@ -36,9 +37,11 @@ class AdaptadorHttpPrioritario implements HttpClientAdapter {
       _retomada = null;
       _interativas++;
     }
-    try {
-      return await transporte.fetch(options, requestStream, cancelFuture);
-    } finally {
+    var liberada = false;
+    void liberar() {
+      if (liberada) return;
+      liberada = true;
+      _liberacoesAtivas.remove(liberar);
       if (preparacao) {
         _preparando = false;
       } else {
@@ -52,6 +55,56 @@ class AdaptadorHttpPrioritario implements HttpClientAdapter {
           _drenar();
         });
       }
+    }
+
+    _liberacoesAtivas.add(liberar);
+    cancelFuture?.then((_) => liberar(),
+        onError: (Object _, StackTrace __) => liberar());
+    try {
+      final resposta =
+          await transporte.fetch(options, requestStream, cancelFuture);
+      if (!options.receiveDataWhenStatusError &&
+          !options.validateStatus(resposta.statusCode)) {
+        // Nesse modo o Dio fecha a resposta sem assinar seu corpo.
+        liberar();
+        return resposta;
+      }
+      // fetch termina nos cabecalhos. A conexao continua ocupada enquanto o
+      // corpo chega; nao consumir antecipadamente nem substituir ResponseBody
+      // (extra, headers e onClose pertencem ao adaptador/Dio).
+      final origem = resposta.stream;
+      StreamSubscription<Uint8List>? assinatura;
+      late final StreamController<Uint8List> corpo;
+      corpo = StreamController<Uint8List>(
+        sync: true,
+        onListen: () {
+          assinatura = origem.listen(
+            corpo.add,
+            onError: (Object erro, StackTrace stack) {
+              liberar();
+              corpo.addError(erro, stack);
+            },
+            onDone: () {
+              liberar();
+              unawaited(corpo.close());
+            },
+          );
+        },
+        onPause: () => assinatura?.pause(),
+        onResume: () => assinatura?.resume(),
+        onCancel: () async {
+          try {
+            await assinatura?.cancel();
+          } finally {
+            liberar();
+          }
+        },
+      );
+      resposta.stream = corpo.stream;
+      return resposta;
+    } catch (_) {
+      liberar();
+      rethrow;
     }
   }
 
@@ -86,6 +139,9 @@ class AdaptadorHttpPrioritario implements HttpClientAdapter {
     _retomada = null;
     for (final consulta in _fila.toList()) {
       _cancelar(consulta);
+    }
+    for (final liberar in _liberacoesAtivas.toList()) {
+      liberar();
     }
     transporte.close(force: force);
   }

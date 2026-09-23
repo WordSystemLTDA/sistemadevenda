@@ -244,7 +244,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
       _executar((_) async {
         final banco = BancoLocal.instancia;
         if (banco == null) return;
-        await banco.db.transaction((tx) async {
+        final mudou = await banco.db.transaction((tx) async {
           final carrinhos = Map<String, dynamic>.from(jsonDecode(
                   await BancoLocal.lerDocumento(tx, chaveDocumento) ?? '{}')
               as Map);
@@ -256,20 +256,27 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
             if (idServidor == null) continue;
             final atendimento = atendimentos[idServidor];
             if (atendimento == null) {
-              registro['encerrado'] = true;
-              registro['encerradoConfirmado'] = true;
-              mudou = true;
+              if (registro['encerrado'] != true ||
+                  registro['encerradoConfirmado'] != true) {
+                registro['encerrado'] = true;
+                registro['encerradoConfirmado'] = true;
+                mudou = true;
+              }
             } else if (atendimento is Map) {
-              registro['bloqueado'] = atendimento['status'] != 'Andamento';
-              mudou = true;
+              final bloqueado = atendimento['status'] != 'Andamento';
+              if (registro['bloqueado'] != bloqueado) {
+                registro['bloqueado'] = bloqueado;
+                mudou = true;
+              }
             }
           }
           if (mudou) {
             await BancoLocal.gravarDocumento(
                 tx, chaveDocumento, jsonEncode(carrinhos));
           }
+          return mudou;
         });
-        notifyListeners();
+        if (mudou) notifyListeners();
       });
 
   Future<bool> substituirItem(

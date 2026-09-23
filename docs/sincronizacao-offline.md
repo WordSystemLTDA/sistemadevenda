@@ -94,6 +94,51 @@ conexao; a copia persistida e usada durante falha de rede. O catalogo completo t
 revisao periodica (intervalo de dois minutos) ou apos aviso de alteracao.
 Imagens ainda nao visitadas podem exibir o placeholder sem rede.
 
+### Prioridade das telas e atualizacao do catalogo
+
+Enquanto conectado, a abertura do cardapio consulta produtos e categorias atuais
+em paralelo. Nao le nem decodifica o catalogo SQLite antes dessas requisicoes;
+o fallback local continua disponivel se a rede falhar. A resposta atual continua
+sendo persistida para a proxima queda de conexao. Nao ha cache de produtos entre
+entradas na tela nem cache permanente do fallback de montagem do desktop.
+
+Somente a aba visivel reconsulta produtos. Avisos de alteracao disparam uma leitura
+e, mesmo sem aviso, ha conferencia 5 segundos depois da consulta anterior, enquanto
+o app/tela estiver ativo. Requisicoes simultaneas da mesma atualizacao sao agrupadas;
+uma resposta identica nao redesenha a lista. Ao voltar a uma aba, ela consulta o
+servidor mantendo rolagem e busca. Itens ja lancados no carrinho nao sao reprecificados
+silenciosamente; a atualizacao reflete o catalogo para novos lancamentos.
+
+O preparo da copia offline roda separado da verificacao de estado e da fila de
+pedidos. O transporte limita a uma consulta de preparo por vez, ate terminar de
+receber o corpo da resposta, e da prioridade a consultas da tela e envios. Nao interrompe um POST
+nem compartilha respostas entre requisicoes. No preparo, listas sao verificadas
+no maximo uma vez por minuto, catalogo a cada dois minutos e formas de pagamento
+a cada cinco minutos; avisos de cadastro invalidam o preparo correspondente.
+Esses intervalos nao sao cache das consultas feitas pela tela online.
+
+Produtos simples marcados pela API com `detalhesCompletos: true` dispensam outra
+consulta individual no preparo offline. APIs antigas e produtos configuraveis
+mantem a leitura completa. Falha no preparo conserva o ultimo catalogo valido;
+seu commit tambem preserva consultas frescas recebidas pela tela durante o preparo.
+Troca de conta e encerramento do sincronizador cancelam consultas auxiliares.
+
+Validacao de desempenho: `tests/catalogo_garcom_performance_test.php` da API usa
+SQLite isolado e confirma 6 consultas para uma pagina de 15 pizzas (antes, 20),
+incluindo preco novo em uma segunda requisicao e isolamento das empresas 32/33.
+Na validacao final desta otimizacao, os 986 testes Flutter passaram; a analise
+dos 23 arquivos Dart alterados/adicionados ficou sem problemas. Passaram tambem
+os cinco scripts PHP de catalogo, contexto, montagem, bordas e conferencia de
+valores. Os testes incluem Dio consumindo corpos lentos, cancelamentos, respostas
+de erro, atualizacao financeira durante preparo e consultas sem leitura local
+antes do HTTP. Nenhuma impressora fisica ou aparelho de producao foi utilizado.
+Isso mede consultas, nao latencia no Wi-Fi/iPhone do estabelecimento.
+No aparelho, conferir alteracao de preco, inclusao e desativacao de produto com
+o cardapio aberto; alternar categorias; suspender/retomar o app; e repetir com a
+rede desligada apos preparar o catalogo. Conferir que uma fila grande de preparo
+nao impede abrir a tela nem enviar um pedido. A duracao do HTTP ainda depende do
+servidor e da rede; o intervalo de 5 segundos nao e garantia de resposta nesse prazo.
+
 Filas/cache sao separados por servidor/empresa/usuario. Sair da conta nao apaga pedidos
 pendentes; entrar novamente na conta original permite retoma-los. Nao limpar os dados
 do aplicativo, desinstalar ou restaurar seu banco a uma copia antiga com pedidos pendentes.
@@ -159,6 +204,17 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
 5. Instalar o app atualizado, entrar conectado e aguardar a preparacao do catalogo.
    Um servidor sem o novo contrato nao recebe lancamentos pela fila.
 6. Homologar no aparelho e impressora reais antes do atendimento em producao.
+
+Para as otimizacoes de catalogo de 22/09, publicar tambem em
+`api_restaurantes_venda/api37/` o novo `funcoes/catalogo_listagem.php`,
+`funcoes/listar_pacotes.php`, `conexao.php` e os endpoints de `produtos/` alterados:
+`listar.php`, `listar_por_categoria.php`, `listar_por_id.php`,
+`listar_opcoes_pacotes_por_id.php`, `listar_acompanhamentos.php`,
+`listar_adicionais.php`, `listar_itens_retirada.php`, `listar_sabores_de_borda.php`
+e `listar_tamanhos_pizza.php`. O helper e os endpoints devem ser publicados juntos.
+Em `conexao.php`, aplicar somente a remocao da consulta DNS desnecessaria,
+preservando as credenciais e configuracoes especificas do servidor de destino.
+Nao ha nova tabela, coluna ou migracao para essa otimizacao.
 
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
 O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando

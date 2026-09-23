@@ -12,6 +12,7 @@ void main() {
       'PRODUTOS',
       'Cardapio',
       'Cardápio',
+      'Categoria',
       'categorias',
       'cat_produtos',
       'categorias_cardapio',

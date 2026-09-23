@@ -50,6 +50,7 @@ class Sincronizador extends ChangeNotifier {
   DateTime? _ultimasListas;
   DateTime? _ultimasFormasPagamento;
   int _geracaoCatalogo = 0;
+  int _geracaoPagamentos = 0;
   String? _estadoNotificado;
   final Map<String, DateTime> _detalhesAtualizados = {};
   List<Map<String, Object?>> pendencias = [];
@@ -104,6 +105,7 @@ class Sincronizador extends ChangeNotifier {
     }
     if (EventosCatalogo.ehPagamento(tipo)) {
       _ultimasFormasPagamento = null;
+      _geracaoPagamentos++;
       if (online) _prepararDados();
       return;
     }
@@ -166,6 +168,7 @@ class Sincronizador extends ChangeNotifier {
     _ultimasFormasPagamento = null;
     _estadoNotificado = null;
     _geracaoCatalogo++;
+    _geracaoPagamentos++;
     _detalhesAtualizados.clear();
     catalogoPronto = await banco.ler('catalogo:$escopo') != null;
     ultimaAtualizacao = DateTime.tryParse(
@@ -692,6 +695,7 @@ class Sincronizador extends ChangeNotifier {
 
   Future<void> _prepararFormasPagamento(
       String alvo, String url, String empresa, String idUsuario) async {
+    final geracao = _geracaoPagamentos;
     for (final rota in [
       'listar_banco_pix',
       'listar_datas_vendas',
@@ -709,7 +713,8 @@ class Sincronizador extends ChangeNotifier {
           alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
     }
     if (alvo == escopo && !_descartado) {
-      _ultimasFormasPagamento = DateTime.now();
+      _ultimasFormasPagamento =
+          geracao == _geracaoPagamentos ? DateTime.now() : null;
     }
   }
 
@@ -1256,7 +1261,7 @@ class Sincronizador extends ChangeNotifier {
     await banco.db.transaction((tx) async {
       await BancoLocal.gravarDocumento(tx, 'catalogo:$alvo', catalogo);
       await tx.delete('consultas',
-          where: 'escopo = ? AND chave LIKE ? AND atualizado <= ?',
+          where: 'escopo = ? AND chave LIKE ? AND atualizado < ?',
           whereArgs: [alvo, '["produtos/%', inicio]);
     });
     if (alvo != escopo || _descartado) return;

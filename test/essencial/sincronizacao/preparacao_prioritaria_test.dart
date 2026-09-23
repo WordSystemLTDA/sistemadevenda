@@ -29,6 +29,9 @@ class _ApiPreparacao implements HttpClientAdapter {
   final chamadas = <RequestOptions>[];
   final detalheIniciado = Completer<void>();
   Completer<void>? liberarDetalhe;
+  final pagamentoIniciado = Completer<void>();
+  Completer<void>? liberarPagamentos;
+  int versaoPagamentos = 1;
   bool falharDetalhe = false;
   List<Map<String, dynamic>> produtos = [
     {'id': '5', 'nome': 'Produto', 'valorVenda': '10.00'},
@@ -42,6 +45,14 @@ class _ApiPreparacao implements HttpClientAdapter {
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
     final rota = CacheConsultas.caminho(options);
+    if (rota == 'tela_nfe_saida/listar_bancos.php') {
+      final versao = versaoPagamentos;
+      if (!pagamentoIniciado.isCompleted) pagamentoIniciado.complete();
+      await liberarPagamentos?.future;
+      return _json([
+        {'id': '1', 'nome': 'Banco $versao'}
+      ]);
+    }
     if (rota == 'sincronizacao/estado.php') {
       return _json({
         'protocolo': 1,
@@ -124,6 +135,9 @@ void main() {
   });
 
   tearDown(() async {
+    if (transporte.liberarPagamentos?.isCompleted == false) {
+      transporte.liberarPagamentos!.complete();
+    }
     if (transporte.liberarDetalhe?.isCompleted == false) {
       transporte.liberarDetalhe!.complete();
     }
@@ -209,6 +223,31 @@ void main() {
     expect(transporte.quantidade('tela_nfe_saida/listar_bancos.php'), 1);
     expect(transporte.quantidade('comandas/listar.php'), 1);
     expect(transporte.quantidade('produtos/listar_por_categoria.php'), 1);
+  });
+
+  test('evento financeiro durante consulta nao perde invalidacao do preparo',
+      () async {
+    transporte.liberarPagamentos = Completer<void>();
+    sync.iniciar();
+    await sync.sincronizar();
+    await transporte.pagamentoIniciado.future
+        .timeout(const Duration(seconds: 3));
+    transporte.versaoPagamentos = 2;
+    socket.aoAtualizarDados?.call('bancos');
+    transporte.liberarPagamentos!.complete();
+    await sync.aguardarPreparacaoOffline();
+    expect(transporte.quantidade('tela_nfe_saida/listar_bancos.php'), 1);
+
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    expect(transporte.quantidade('tela_nfe_saida/listar_bancos.php'), 2);
+    final consulta = transporte.chamadas.lastWhere((options) =>
+        CacheConsultas.caminho(options) == 'tela_nfe_saida/listar_bancos.php');
+    final salvo =
+        await banco.consulta(sync.escopo, CacheConsultas.chave(consulta));
+    expect(jsonDecode(salvo!['valor'] as String), [
+      {'id': '1', 'nome': 'Banco 2'},
+    ]);
   });
 
   test('somente detalhesCompletos booleano dispensa consulta individual',
