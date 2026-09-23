@@ -3,9 +3,32 @@ import 'dart:math' as math;
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../modelos/modelo_recorrente.dart';
 import '../../provedores/provedor_recorrentes.dart';
 import 'campos_recorrencia.dart';
+
+const _chaveOrdenacaoRecorrentes = 'recorrentes_ordenacao_cards_v1';
+
+enum _OrdenacaoRecorrentes {
+  recentes('recentes', 'Mais recentes', Icons.new_releases_outlined),
+  antigos('antigos', 'Mais antigos', Icons.history_outlined),
+  envioProximo(
+      'envio_proximo', 'Envio ao Delivery mais próximo', Icons.send_outlined),
+  envioDistante('envio_distante', 'Envio ao Delivery mais distante',
+      Icons.schedule_send_outlined),
+  entregaCedo(
+      'entrega_cedo', 'Entrega mais cedo', Icons.delivery_dining_outlined),
+  entregaTarde(
+      'entrega_tarde', 'Entrega mais tarde', Icons.nights_stay_outlined),
+  cliente('cliente', 'Cliente de A a Z', Icons.sort_by_alpha_outlined);
+
+  final String codigo;
+  final String titulo;
+  final IconData icone;
+
+  const _OrdenacaoRecorrentes(this.codigo, this.titulo, this.icone);
+}
 
 const _opcoesHorarioAgenda = [
   _OpcaoHorarioAgenda(
@@ -59,6 +82,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   late final TabController _abasHorarios;
   bool _recarregando = false;
   bool _faixaInicialSincronizada = false;
+  bool _ordenacaoAlteradaNestaSessao = false;
+  _OrdenacaoRecorrentes _ordenacao = _OrdenacaoRecorrentes.recentes;
   final Set<String> _itensExpandidos = {};
   late final TextEditingController _busca =
       TextEditingController(text: p.pesquisa);
@@ -70,7 +95,47 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     _agora = widget.agora?.call() ?? DateTime.now();
     _abasHorarios =
         TabController(length: _opcoesHorarioAgenda.length, vsync: this);
+    unawaited(_carregarOrdenacao());
     unawaited(p.listar());
+  }
+
+  Future<void> _carregarOrdenacao() async {
+    try {
+      final preferencias = await SharedPreferences.getInstance();
+      final codigo = preferencias.getString(_chaveOrdenacaoRecorrentes);
+      final ordenacao = _OrdenacaoRecorrentes.values
+          .where((opcao) => opcao.codigo == codigo)
+          .firstOrNull;
+      if (!mounted || _ordenacaoAlteradaNestaSessao || ordenacao == null) {
+        return;
+      }
+      if (ordenacao != _ordenacao) setState(() => _ordenacao = ordenacao);
+    } catch (_) {
+      // A ordenação padrão continua disponível mesmo sem armazenamento local.
+    }
+  }
+
+  void _selecionarOrdenacao(_OrdenacaoRecorrentes ordenacao) {
+    _ordenacaoAlteradaNestaSessao = true;
+    if (_ordenacao != ordenacao) setState(() => _ordenacao = ordenacao);
+    unawaited(_salvarOrdenacao(ordenacao));
+  }
+
+  Future<void> _salvarOrdenacao(_OrdenacaoRecorrentes ordenacao) async {
+    try {
+      final preferencias = await SharedPreferences.getInstance();
+      final salvou = await preferencias.setString(
+          _chaveOrdenacaoRecorrentes, ordenacao.codigo);
+      if (salvou) return;
+    } catch (_) {
+      // A mensagem abaixo informa a falha sem desfazer a escolha da sessão.
+    }
+    if (!mounted || _ordenacao != ordenacao) return;
+    ScaffoldMessenger.of(context)
+      ..removeCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+          content: Text(
+              'A ordenação foi aplicada, mas não foi possível salvá-la no aparelho.')));
   }
 
   Future<void> _recarregar() async {
@@ -323,7 +388,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       builder: (context, _) {
         final tema = Theme.of(context);
         final cs = tema.colorScheme;
-        final itens = p.filtrados;
+        final itens = _ordenarItens(p.filtrados);
         final celular = MediaQuery.sizeOf(context).width < 600;
         if (celular && p.visao != 'cadastros' && !p.carregando) {
           _sincronizarFaixaInicial(itens);
@@ -486,6 +551,77 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       ? item.configuracao.horarioTipo
       : 'livre';
 
+  int? _numeroOrdenacao(String valor) {
+    final direto = int.tryParse(valor.trim());
+    if (direto != null) return direto;
+    final partes = RegExp(r'\d+').allMatches(valor).toList(growable: false);
+    return partes.isEmpty ? null : int.tryParse(partes.last.group(0)!);
+  }
+
+  int _compararNumeroDecrescente(String valorA, String valorB) {
+    final a = _numeroOrdenacao(valorA);
+    final b = _numeroOrdenacao(valorB);
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return b.compareTo(a);
+  }
+
+  int _compararRecencia(ModeloRecorrente a, ModeloRecorrente b) {
+    var resultado = b.data.compareTo(a.data);
+    if (resultado != 0) return resultado;
+    resultado = _compararNumeroDecrescente(a.numeroPedido, b.numeroPedido);
+    if (resultado != 0) return resultado;
+    resultado = _compararNumeroDecrescente(a.idDelivery, b.idDelivery);
+    if (resultado != 0) return resultado;
+    resultado = _compararNumeroDecrescente(a.id, b.id);
+    if (resultado != 0) return resultado;
+    return b.chave.compareTo(a.chave);
+  }
+
+  int _compararMomento(ModeloRecorrente a, ModeloRecorrente b,
+      DateTime? Function(ModeloRecorrente item) momento,
+      {required bool decrescente}) {
+    final momentoA = momento(a);
+    final momentoB = momento(b);
+    if (momentoA == null && momentoB == null) return _compararRecencia(a, b);
+    if (momentoA == null) return 1;
+    if (momentoB == null) return -1;
+    final resultado = momentoA.compareTo(momentoB);
+    if (resultado != 0) return decrescente ? -resultado : resultado;
+    return _compararRecencia(a, b);
+  }
+
+  int _compararItens(ModeloRecorrente a, ModeloRecorrente b) {
+    switch (_ordenacao) {
+      case _OrdenacaoRecorrentes.recentes:
+        return _compararRecencia(a, b);
+      case _OrdenacaoRecorrentes.antigos:
+        return -_compararRecencia(a, b);
+      case _OrdenacaoRecorrentes.envioProximo:
+        return _compararMomento(a, b, (item) => item.dataHoraEnvio,
+            decrescente: false);
+      case _OrdenacaoRecorrentes.envioDistante:
+        return _compararMomento(a, b, (item) => item.dataHoraEnvio,
+            decrescente: true);
+      case _OrdenacaoRecorrentes.entregaCedo:
+        return _compararMomento(a, b, (item) => item.dataHoraEntrega,
+            decrescente: false);
+      case _OrdenacaoRecorrentes.entregaTarde:
+        return _compararMomento(a, b, (item) => item.dataHoraEntrega,
+            decrescente: true);
+      case _OrdenacaoRecorrentes.cliente:
+        final resultado = a.cliente
+            .trim()
+            .toLowerCase()
+            .compareTo(b.cliente.trim().toLowerCase());
+        return resultado == 0 ? _compararRecencia(a, b) : resultado;
+    }
+  }
+
+  List<ModeloRecorrente> _ordenarItens(Iterable<ModeloRecorrente> itens) =>
+      itens.toList(growable: false)..sort(_compararItens);
+
   void _sincronizarFaixaInicial(List<ModeloRecorrente> itens) {
     if (_faixaInicialSincronizada || itens.isEmpty) return;
     final indice = _opcoesHorarioAgenda.indexWhere(
@@ -552,6 +688,48 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                     celular: true, somenteComPedidos: true)));
   }
 
+  Widget _botaoOrdenacao() {
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+        button: true,
+        label: 'Ordenar cartões. Selecionado: ${_ordenacao.titulo}',
+        child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: cs.outline),
+                color: cs.surface),
+            child: PopupMenuButton<_OrdenacaoRecorrentes>(
+                key: const ValueKey('recorrentes-ordenacao'),
+                tooltip: 'Ordenar cartões: ${_ordenacao.titulo}',
+                initialValue: _ordenacao,
+                position: PopupMenuPosition.under,
+                onSelected: _selecionarOrdenacao,
+                icon: Icon(_ordenacao.icone, color: cs.primary),
+                itemBuilder: (context) => [
+                      for (final opcao in _OrdenacaoRecorrentes.values)
+                        PopupMenuItem<_OrdenacaoRecorrentes>(
+                            key: ValueKey(
+                                'recorrentes-ordenacao-${opcao.codigo}'),
+                            value: opcao,
+                            child: Row(children: [
+                              Icon(opcao.icone,
+                                  size: 20,
+                                  color: opcao == _ordenacao
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(opcao.titulo)),
+                              if (opcao == _ordenacao) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.check_rounded,
+                                    size: 20, color: cs.primary),
+                              ],
+                            ])),
+                    ])));
+  }
+
   Widget _cabecalhoCelular(List<ModeloRecorrente> itens) {
     final cs = Theme.of(context).colorScheme;
     final periodo = p.visao == 'cadastros'
@@ -605,11 +783,14 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                       style:
                           TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
               Text(quantidade, style: const TextStyle(fontSize: 12)),
+              const SizedBox(width: 8),
+              _botaoOrdenacao(),
             ]))
       else ...[
         Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: Row(children: [
+            child:
+                Row(key: const ValueKey('recorrentes-linha-data'), children: [
               IconButton.outlined(
                   key: const ValueKey('recorrentes-dia-anterior'),
                   tooltip: 'Dia anterior',
@@ -633,6 +814,8 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                       ? null
                       : () => unawaited(_mudarDia(1)),
                   icon: const Icon(Icons.chevron_right)),
+              const SizedBox(width: 8),
+              _botaoOrdenacao(),
             ])),
         Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
@@ -665,6 +848,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
           onPressed: () =>
               p.listar(dia: DateUtilsRecorrentes.hoje(), modo: 'dia'),
           child: const Text('Hoje')),
+      _botaoOrdenacao(),
     ]);
     final modos = Wrap(spacing: 4, children: [
       for (final modo in const [
@@ -759,7 +943,12 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
               DateTime(p.data.year, p.data.month, p.data.day + indice),
             ...porDia.keys,
           }.toList();
-    dias.sort();
+    final diasDecrescentes = {
+      _OrdenacaoRecorrentes.recentes,
+      _OrdenacaoRecorrentes.envioDistante,
+      _OrdenacaoRecorrentes.entregaTarde,
+    }.contains(_ordenacao);
+    dias.sort((a, b) => diasDecrescentes ? b.compareTo(a) : a.compareTo(b));
     final hoje = DateUtilsRecorrentes.hoje();
     return [
       for (final dia in dias) ...[
@@ -796,16 +985,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
               textAlign: TextAlign.center,
               style: TextStyle(color: cs.onSurfaceVariant)));
     }
-    final ordenados = [...itens]..sort((a, b) {
-        const ordem = {'livre': 0, 'fixo': 1, 'intervalo': 2};
-        final tipo = (ordem[a.configuracao.horarioTipo] ?? 3)
-            .compareTo(ordem[b.configuracao.horarioTipo] ?? 3);
-        if (tipo != 0) return tipo;
-        final horario =
-            a.configuracao.horario.compareTo(b.configuracao.horario);
-        if (horario != 0) return horario;
-        return a.cliente.toLowerCase().compareTo(b.cliente.toLowerCase());
-      });
+    final ordenados = _ordenarItens(itens);
     return Column(children: [
       for (var indice = 0; indice < ordenados.length; indice++) ...[
         _card(ordenados[indice]),
@@ -825,14 +1005,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       porTipo[tipo]!.add(item);
     }
     for (final opcao in _opcoesHorarioAgenda) {
-      porTipo[opcao.tipo]!.sort((a, b) {
-        if (opcao.tipo != 'livre') {
-          final horario =
-              a.configuracao.horario.compareTo(b.configuracao.horario);
-          if (horario != 0) return horario;
-        }
-        return a.cliente.toLowerCase().compareTo(b.cliente.toLowerCase());
-      });
+      porTipo[opcao.tipo]!.sort(_compararItens);
     }
     return _CarrosselHorariosAgenda(
       faixas: [
@@ -903,6 +1076,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final corBorda = item.processoFeito
         ? corSucesso.withValues(alpha: 0.40)
         : cs.outlineVariant;
+    final horarioEntrega = item.horarioEntregaTexto.isEmpty
+        ? item.configuracao.horarioTexto
+        : item.horarioEntregaTexto;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _alturaMinimaCardAgenda),
@@ -954,7 +1130,10 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                         ? Icons.shopping_bag_outlined
                         : Icons.delivery_dining_outlined,
                     item.entregaTexto),
-                _detalhe(Icons.schedule, item.configuracao.horarioTexto),
+                _detalhe(Icons.schedule, 'Entrega: $horarioEntrega'),
+                if (item.possuiEnvioAutomatico)
+                  _detalhe(Icons.send_outlined,
+                      'Envio ao Delivery: ${item.horarioEnvioTexto}'),
               ]),
               Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -1083,6 +1262,9 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
     final corBorda = item.processoFeito
         ? corSucesso.withValues(alpha: 0.40)
         : cs.outlineVariant;
+    final horarioEntrega = item.horarioEntregaTexto.isEmpty
+        ? item.configuracao.horarioTexto
+        : item.horarioEntregaTexto;
 
     return Card(
         margin: EdgeInsets.zero,
@@ -1151,11 +1333,25 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                                child: Text(
-                                    '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · ${item.configuracao.horarioTexto}',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: cs.onSurfaceVariant))),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(
+                                      '${item.itens.length} ${item.itens.length == 1 ? 'item' : 'itens'} · Entrega: $horarioEntrega',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: cs.onSurfaceVariant)),
+                                  if (item.possuiEnvioAutomatico)
+                                    Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                            'Envio ao Delivery: ${item.horarioEnvioTexto}',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: cs.primary,
+                                                fontWeight: FontWeight.w600))),
+                                ])),
                             const SizedBox(width: 8),
                             Text(item.total.obterReal(),
                                 style: const TextStyle(

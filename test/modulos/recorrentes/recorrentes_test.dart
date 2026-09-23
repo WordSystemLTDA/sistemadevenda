@@ -10,6 +10,7 @@ import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
@@ -186,6 +187,7 @@ void main() {
           ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf')))
         .load();
   });
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test('opcoes ficam desativadas por padrao e habilitadas somente por Sim', () {
     final configPadrao = ModeloConfigBigchef.fromMap({});
     expect(configPadrao.recorrentesHabilitados, isFalse);
@@ -507,6 +509,83 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     p.dispose();
   });
+  testWidgets(
+      'ordena os cards, considera o envio ao Delivery e preserva a escolha',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = Api()
+      ..dados = [
+        pedido(
+            idDelivery: '104',
+            status: 'Pendente',
+            numeroPedido: '4',
+            cliente: 'Pedido quatro',
+            horarioTipo: 'fixo',
+            horario: '10:00'),
+        pedido(
+            idDelivery: '105',
+            status: 'Pendente',
+            numeroPedido: '5',
+            cliente: 'Pedido cinco',
+            horarioTipo: 'fixo',
+            horario: '14:00'),
+      ];
+
+    Future<ProvedorRecorrentes> abrirAgenda() async {
+      final provedor = ProvedorRecorrentes(api);
+      await tester.pumpWidget(MaterialApp(
+          home: AgendaRecorrentes(
+              provedor: provedor,
+              novo: () async {},
+              abrirPedido: (id, item) async {})));
+      await tester.pumpAndSettle();
+      return provedor;
+    }
+
+    bool apareceAntes(String primeiro, String segundo) =>
+        tester.getTopLeft(find.text(primeiro)).dy <
+        tester.getTopLeft(find.text(segundo)).dy;
+
+    var provedor = await abrirAgenda();
+    expect(find.byKey(const ValueKey('recorrentes-ordenacao')), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('recorrentes-linha-data')),
+            matching: find.byKey(const ValueKey('recorrentes-ordenacao'))),
+        findsOneWidget);
+    expect(apareceAntes('#5 Processo Feito', '#4 Processo Feito'), isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('recorrentes-ordenacao')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mais antigos'));
+    await tester.pumpAndSettle();
+    expect(apareceAntes('#4 Processo Feito', '#5 Processo Feito'), isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('recorrentes-ordenacao')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Envio ao Delivery mais próximo'));
+    await tester.pumpAndSettle();
+    expect(apareceAntes('#4 Processo Feito', '#5 Processo Feito'), isTrue);
+    expect(find.text('Envio ao Delivery: 09:40'), findsOneWidget);
+    expect(find.text('Envio ao Delivery: 13:40'), findsOneWidget);
+    final preferencias = await SharedPreferences.getInstance();
+    expect(preferencias.getString('recorrentes_ordenacao_cards_v1'),
+        'envio_proximo');
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    provedor.dispose();
+    provedor = await abrirAgenda();
+    expect(find.byTooltip('Ordenar cartões: Envio ao Delivery mais próximo'),
+        findsOneWidget);
+    expect(apareceAntes('#4 Processo Feito', '#5 Processo Feito'), isTrue);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    provedor.dispose();
+  });
   testWidgets('previsao futura nao gera pedido, falha permite tentar novamente',
       (tester) async {
     final api = Api()
@@ -605,6 +684,8 @@ void main() {
             provedor: p, novo: () async {}, abrirPedido: (id, item) async {})));
     await tester.pumpAndSettle();
     expect(find.text('Aguardando Processo'), findsOneWidget);
+    await tester.ensureVisible(find.text('Realizar Processo'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Realizar Processo'));
     await tester.pumpAndSettle();
     expect(api.aberturas, 1);
@@ -638,11 +719,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Entrega'), findsOneWidget);
-    expect(find.text('Às 12:00'), findsOneWidget);
+    expect(find.text('Entrega: 12:00'), findsOneWidget);
+    expect(find.text('Envio ao Delivery: 11:40'), findsOneWidget);
     expect(find.text('Aguardando Processo'), findsOneWidget);
     expect(find.textContaining('Envio automático'), findsNothing);
     expect(find.text('Envio Atrasado'), findsNothing);
 
+    await tester.ensureVisible(find.text('Realizar Processo'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Realizar Processo'));
     await tester.pumpAndSettle();
     expect(api.aberturas, 1);
