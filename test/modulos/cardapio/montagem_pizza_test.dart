@@ -131,7 +131,8 @@ class CategoriasTeste extends Fake implements ServicosCategoria {
   ];
 
   @override
-  Future<List<ModeloCategoria>> listar() async => categorias;
+  Future<List<ModeloCategoria>> listar({bool cachePrimeiro = false}) async =>
+      categorias;
 }
 
 class ProdutosTeste extends Fake implements ServicoProduto {
@@ -147,7 +148,8 @@ class ProdutosTeste extends Fake implements ServicoProduto {
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) async {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) async {
     consultasPorCategoria.add((categoria, pagina));
     if (pagina > 1) return [];
     return produtos

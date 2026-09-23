@@ -38,12 +38,16 @@ class ServicoProduto {
   // late final idUsuario = usuarioProvider['id'];
 
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) async {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
 
     final response = await dio.cliente.get(
-        'produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina');
+        'produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina',
+        options: Options(extra: {
+          if (cachePrimeiro) 'cachePrimeiro': true,
+        }));
     // print(response.realUri);
 
     if (response.statusCode == 200) {

@@ -30,7 +30,8 @@ class CatalogoRapidoTeste extends fixture.ProdutosTeste {
   bool falhar = false;
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) async {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) async {
     if (falhar) throw StateError('Sem conexao e sem cache');
     return produtos
         .where((p) =>

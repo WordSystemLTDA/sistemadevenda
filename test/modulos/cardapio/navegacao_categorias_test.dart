@@ -27,16 +27,20 @@ import 'montagem_pizza_test.dart'
 
 class CategoriasPendentes extends CategoriasTeste {
   final resposta = Completer<List<ModeloCategoria>>();
+  bool? cachePrimeiro;
 
   @override
-  Future<List<ModeloCategoria>> listar() => resposta.future;
+  Future<List<ModeloCategoria>> listar({bool cachePrimeiro = false}) {
+    this.cachePrimeiro = cachePrimeiro;
+    return resposta.future;
+  }
 }
 
 class CategoriasComFalha extends CategoriasTeste {
   var tentativas = 0;
 
   @override
-  Future<List<ModeloCategoria>> listar() async {
+  Future<List<ModeloCategoria>> listar({bool cachePrimeiro = false}) async {
     if (++tentativas == 1) throw TimeoutException('Sem resposta');
     return categorias;
   }
@@ -44,11 +48,14 @@ class CategoriasComFalha extends CategoriasTeste {
 
 class ProdutosPendentes extends ProdutosTeste {
   final respostas = <String, Completer<List<Modelowordprodutos>>>{};
+  final preferenciasCache = <bool>[];
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) {
     consultasPorCategoria.add((categoria, pagina));
+    preferenciasCache.add(cachePrimeiro);
     return respostas
         .putIfAbsent(categoria, Completer<List<Modelowordprodutos>>.new)
         .future;
@@ -99,12 +106,14 @@ class ProdutosAposConexao extends ProdutosTeste {
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) async {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) async {
     tentativas++;
     if (!sincronizador.online) {
       throw TimeoutException('Conexão inicial ainda indisponível');
     }
-    return super.listarPorCategoria(categoria, pagina);
+    return super
+        .listarPorCategoria(categoria, pagina, cachePrimeiro: cachePrimeiro);
   }
 }
 
@@ -186,6 +195,8 @@ void main() {
 
     expect(categorias.resposta.isCompleted, isFalse);
     expect(produtos.consultasPorCategoria, [('0', 1)]);
+    expect(categorias.cachePrimeiro, isTrue);
+    expect(produtos.preferenciasCache, [isTrue]);
     produtos.respostas['0']!.complete([sabor('Mussarela', 'Queijos', '50')]);
     await tester.pump();
     categorias.resposta.complete(categorias.categorias);

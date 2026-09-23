@@ -26,7 +26,8 @@ import '../cardapio/montagem_pizza_test.dart' show DioClienteTeste;
 
 class ServicosCategoriaTeste extends Fake implements ServicosCategoria {
   @override
-  Future<List<ModeloCategoria>> listar() async => [];
+  Future<List<ModeloCategoria>> listar({bool cachePrimeiro = false}) async =>
+      [];
 }
 
 class ApiPaginaItensRecorrentesTeste extends Fake implements DioCliente {

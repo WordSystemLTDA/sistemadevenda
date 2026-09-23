@@ -76,7 +76,7 @@ class ProvedorProdutos extends ChangeNotifier {
   }
 
   Future<void> listarProdutosPorCategoria(String category,
-      {bool carregarMais = false}) async {
+      {bool carregarMais = false, bool cachePrimeiro = false}) async {
     if (carregarMais &&
         (carregando || carregandoMais || !temMais || _pesquisa.isNotEmpty)) {
       return;
@@ -98,7 +98,8 @@ class ProvedorProdutos extends ChangeNotifier {
     }
     notifyListeners();
     try {
-      final res = await _produtoService.listarPorCategoria(category, pagina);
+      final res = await _produtoService.listarPorCategoria(category, pagina,
+          cachePrimeiro: cachePrimeiro && !carregarMais);
       if (requisicao != _requisicao) return;
       _guardarProdutosCompletos(res);
       final ids = carregarMais ? produtos.map((p) => p.id).toSet() : <String>{};

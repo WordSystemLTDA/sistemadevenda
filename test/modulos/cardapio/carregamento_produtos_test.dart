@@ -25,7 +25,8 @@ class ConsultaProdutos extends Fake implements ServicoProduto {
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) {
     final resposta = Completer<List<Modelowordprodutos>>();
     categorias.add((categoria: categoria, pagina: pagina, resposta: resposta));
     return resposta.future;

@@ -124,6 +124,24 @@ class CacheConsultas extends Interceptor {
     final alvo = escopo;
     options.extra['escopoCache'] = alvo;
     options.extra['geracaoAtendimento'] = _geracaoAtendimento;
+    if (options.extra['cachePrimeiro'] == true) {
+      try {
+        final consulta = await banco.consulta(alvo, chave(options));
+        final dados = consulta == null
+            ? await _derivar(options, alvo)
+            : jsonDecode(consulta['valor'] as String);
+        if (dados != null) {
+          _atualizar(options, alvo);
+          return handler.resolve(Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: dados,
+              extra: {'cacheLocal': true, 'atualizandoEmSegundoPlano': true}));
+        }
+      } catch (_) {
+        // Sem retrato local, a consulta online abaixo continua normalmente.
+      }
+    }
     final falhouRecentemente = _ultimaFalha != null &&
         DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
     options.connectTimeout = const Duration(seconds: 3);
@@ -251,6 +269,12 @@ class CacheConsultas extends Interceptor {
   Future<Object?> _derivar(RequestOptions opcoes, String alvo) async {
     final rota = caminho(opcoes);
     final q = opcoes.uri.queryParameters;
+    if (rota == 'categorias/listar.php') {
+      final salvo = await banco.ler('catalogo:$alvo');
+      if (salvo == null) return null;
+      final catalogo = jsonDecode(salvo) as Map<String, dynamic>;
+      return catalogo['categorias'];
+    }
     if (rota.startsWith('produtos/')) {
       final salvo = await banco.ler('catalogo:$alvo');
       if (salvo == null) return null;

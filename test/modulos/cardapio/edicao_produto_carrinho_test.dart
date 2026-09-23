@@ -84,7 +84,8 @@ class ProdutosEdicaoTeste extends ProdutosTeste {
 
   @override
   Future<List<Modelowordprodutos>> listarPorCategoria(
-      String categoria, int pagina) async {
+      String categoria, int pagina,
+      {bool cachePrimeiro = false}) async {
     consultasPorCategoria.add((categoria, pagina));
     await aguardarCatalogo?.future;
     if (falharCatalogo) throw StateError('Catálogo indisponível');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -57,6 +58,7 @@ class _HttpCatalogo implements HttpClientAdapter {
   Object resposta = const [];
   bool offline = false;
   int chamadas = 0;
+  Completer<void>? liberar;
 
   _HttpCatalogo(this.eventos);
 
@@ -65,6 +67,7 @@ class _HttpCatalogo implements HttpClientAdapter {
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas++;
     eventos.add('http');
+    await liberar?.future;
     if (offline) {
       throw DioException(
           requestOptions: options, type: DioExceptionType.connectionError);
@@ -172,6 +175,45 @@ void main() {
     expect(banco.consultas, 0);
     expect(banco.leituras, 0);
     expect(banco.gravacoes, 2);
+  });
+
+  test('abertura usa catalogo local e atualiza categorias em segundo plano',
+      () async {
+    const rota = 'categorias/listar.php';
+    final local = [
+      {'id': '0', 'nome': 'Todos local'},
+    ];
+    final atualizado = [
+      {'id': '0', 'nome': 'Todos atualizado'},
+    ];
+    await banco.gravar(
+        'catalogo:$escopo', jsonEncode({'categorias': local, 'produtos': []}));
+    banco.zerarContagem();
+    http.resposta = atualizado;
+    http.liberar = Completer<void>();
+    final concluiuAtualizacao = Completer<void>();
+    cache.aoAtualizar = () {
+      if (!concluiuAtualizacao.isCompleted) concluiuAtualizacao.complete();
+    };
+
+    final resposta = await dio.get(rota,
+        queryParameters: const {'empresa': '32'},
+        options: Options(extra: {'cachePrimeiro': true}));
+
+    expect(resposta.data, local);
+    expect(resposta.extra['cacheLocal'], isTrue);
+    expect(resposta.extra['atualizandoEmSegundoPlano'], isTrue);
+    for (var i = 0; i < 20 && http.chamadas == 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+    expect(http.chamadas, 1);
+    expect(concluiuAtualizacao.isCompleted, isFalse);
+
+    http.liberar!.complete();
+    await concluiuAtualizacao.future;
+    final salvo = await banco.consulta(
+        escopo, CacheConsultas.chave(resposta.requestOptions));
+    expect(jsonDecode(salvo!['valor'] as String), atualizado);
   });
 
   test('primeira falha consulta retrato so depois de tentar HTTP', () async {

@@ -123,8 +123,9 @@ class ProvedorCardapio extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ModeloCategoria>> listarCategorias() async {
-    final res = await _categoriaService.listar();
+  Future<List<ModeloCategoria>> listarCategorias(
+      {bool cachePrimeiro = false}) async {
+    final res = await _categoriaService.listar(cachePrimeiro: cachePrimeiro);
     final todos = res.where((categoria) => categoria.id == '0').firstOrNull;
     if (todos != null) {
       final tamanhos = <String, ModeloTamanhosPizza>{};

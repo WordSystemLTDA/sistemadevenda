@@ -256,7 +256,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     if (!_iniciouProdutos ||
         (_tabController == null && !_produtosIniciais.carregando)) {
       _iniciouProdutos = true;
-      unawaited(_produtosIniciais.listarProdutosPorCategoria('0'));
+      unawaited(_produtosIniciais.listarProdutosPorCategoria('0',
+          cachePrimeiro: true));
     }
 
     // Inicia junto com as categorias para que a tarifa da embalagem separada
@@ -272,7 +273,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
 
     try {
       if (_tabController == null) {
-        final categorias = await provedor.listarCategorias();
+        final categorias = await provedor.listarCategorias(cachePrimeiro: true);
         if (!mounted) return;
         setState(() {
           _categorias = List.of(categorias);
