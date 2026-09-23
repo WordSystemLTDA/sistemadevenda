@@ -94,18 +94,6 @@ class _CardProdutoState extends State<CardProduto> {
         _temCategoriaCardapio(item);
   }
 
-  bool _detalhesJaCarregados(Modelowordprodutos item) {
-    // Modelos recorrentes recebem a montagem de todos os dias somente no
-    // detalhe especifico; a listagem comum representa apenas o dia atual.
-    // Produtos vinculados a Categoria Cardapio tambem precisam sempre do
-    // detalhe: ele traz a montagem completa, permissoes e ingredientes do dia.
-    if (widget.modeloRecorrente || _temCategoriaCardapio(item)) return false;
-
-    final opcoes = item.opcoesPacotes;
-    if (opcoes == null || opcoes.isEmpty) return false;
-    return true;
-  }
-
   String _preco(bool pizza) {
     final item = widget.item;
     final selecionado =
@@ -217,7 +205,6 @@ class _CardProdutoState extends State<CardProduto> {
                 return PaginaProduto(
                   produto: item,
                   modeloRecorrente: widget.modeloRecorrente,
-                  detalhesJaCarregados: _detalhesJaCarregados(item),
                 );
               },
             ));
@@ -338,7 +325,6 @@ class _CardProdutoState extends State<CardProduto> {
             builder: (_) => PaginaProduto(
               produto: item,
               modeloRecorrente: widget.modeloRecorrente,
-              detalhesJaCarregados: _detalhesJaCarregados(item),
             ),
           ));
         }

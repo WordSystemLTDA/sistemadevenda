@@ -237,6 +237,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+      'adicionais da listagem nao impedem a consulta da Categoria Cardapio',
+      (tester) async {
+    final produtoCatalogo = Modelowordprodutos.fromMap({
+      ...produtos.produtoCardapio.toMap(),
+      // Reproduz a resposta antiga observada no aparelho: o catalogo informa
+      // apenas que o produto e personalizavel e traz os adicionais. O vinculo
+      // e a montagem completos chegam somente em listar_por_id.
+      'idCategoriaCardapio': null,
+      'categoriaCardapio': null,
+      'id_categoria_cardapio': null,
+      'categoria_cardapio': null,
+      'habilTipo': 'Pacote',
+      'opcoesPacotes': [
+        ModeloOpcoesPacotes(
+          id: 7,
+          titulo: 'Selecione os Adicionais',
+          tipo: 3,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '20',
+              nome: 'Ovo',
+              valor: '1.00',
+            ),
+          ],
+        ).toMap(),
+      ],
+    });
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProduto(
+          estaPesquisando: false,
+          item: produtoCatalogo,
+          categoria: null,
+          finalizar: false,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(CardProduto));
+    await tester.pumpAndSettle();
+
+    expect(produtos.consultasPorId.single, ('151', '0'));
+    expect(find.byType(EtapaMontagemCardapio), findsOneWidget);
+    expect(find.text('Montagem do produto'), findsOneWidget);
+    expect(find.byKey(const Key('adicionar_produto_carrinho')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('aguarda os detalhes sem exibir a pagina comum antes da montagem',
       (tester) async {
     produtos.esperaDetalhe = Completer<void>();
