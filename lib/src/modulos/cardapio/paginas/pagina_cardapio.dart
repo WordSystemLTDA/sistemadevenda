@@ -15,6 +15,7 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/botao_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
@@ -90,6 +91,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   final ProvedorCardapio provedor = Modular.get<ProvedorCardapio>();
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
+  final ProvedorProdutos _produtosIniciais = Modular.get<ProvedorProdutos>();
+  bool _iniciouProdutos = false;
 
   TabController? _tabController;
   List<ModeloCategoria> _categorias = [];
@@ -119,7 +122,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     _sincronizador?.revisaoCatalogo.addListener(_atualizarCategorias);
     EventosCatalogo.produtos.addListener(_aoAlterarCatalogo);
     _monitorCatalogo = MonitorAtualizacaoTela(
-      intervalo: const Duration(seconds: 10),
+      intervalo: const Duration(seconds: 5),
       estaAtiva: () =>
           mounted &&
           // Compatibilidade com o Flutter 3.44 usado na distribuicao.
@@ -145,6 +148,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     _sincronizador?.revisaoCatalogo.removeListener(_atualizarCategorias);
     _tabController?.removeListener(_aoTrocarCategoria);
     _tabController?.dispose();
+    _produtosIniciais.dispose();
     super.dispose();
   }
 
@@ -201,7 +205,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     if (!mounted || controller == null || indexTabBar == controller.index) {
       return;
     }
-    indexTabBar = controller.index;
+    setState(() => indexTabBar = controller.index);
     final categoria = _categorias[indexTabBar];
     if ((categoria.tamanhosPizza?.isEmpty ?? true) &&
         provedor.tamanhosPizza != null) {
@@ -216,6 +220,16 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       _erroCarregamento = null;
     });
     setarCampos();
+
+    // "Todos" existe no contrato do catalogo. Sua primeira pagina independe
+    // da resposta de categorias: inicia as duas consultas juntas e entrega o
+    // mesmo provedor para a aba, sem repetir a requisicao nem guardar um cache
+    // de produtos entre entradas nesta tela.
+    if (!_iniciouProdutos ||
+        (_tabController == null && !_produtosIniciais.carregando)) {
+      _iniciouProdutos = true;
+      unawaited(_produtosIniciais.listarProdutosPorCategoria('0'));
+    }
 
     // O carrinho fica no armazenamento local e nao precisa bloquear a consulta
     // atual do catalogo. Em aparelhos com uma fila de gravacoes pendente, esperar
@@ -502,6 +516,13 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                           for (final categoria in _categorias)
                             TabCustom(
                               key: ValueKey(categoria.id),
+                              ativa:
+                                  categoria.id == _categorias[indexTabBar].id,
+                              provedorInicial: categoria.id == '0'
+                                  ? _produtosIniciais
+                                  : null,
+                              onProdutosAtualizados:
+                                  provedor.atualizarSaboresDoCatalogo,
                               category: categoria.id,
                               categoria: categoria,
                               finalizar: finalizar,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +29,7 @@ class ProvedorProdutos extends ChangeNotifier {
   String _pesquisa = '';
   bool _consultaCompleta = false;
   bool _limpouPesquisaAgora = false;
+  Future<void>? _atualizacaoSilenciosa;
   final Map<String, Modelowordprodutos> _produtosCompletosPorId = {};
   final Map<String, List<Modelowordprodutos>> _produtosPorCategoria = {};
   final Map<String, bool> _temMaisPorCategoria = {};
@@ -139,7 +142,10 @@ class ProvedorProdutos extends ChangeNotifier {
           filtro.termo, categoria, idcliente,
           codigoExato: filtro.porCodigoExato);
       if (requisicao != _requisicao) return;
-      var itens = res.map(_completarProdutoPesquisado).toList();
+      // Uma busca nova nao pode completar os precos de pizza com uma consulta
+      // anterior. APIs antigas ainda recebem o fallback, mas consultado agora.
+      _produtosCompletosPorId.clear();
+      var itens = res;
       if (filtro.codigoExato != null) {
         itens = itens
             .where((produto) =>
@@ -199,7 +205,12 @@ class ProvedorProdutos extends ChangeNotifier {
     }
   }
 
-  Future<void> atualizarSilenciosamente(String categoria) async {
+  Future<void> atualizarSilenciosamente(String categoria) {
+    return _atualizacaoSilenciosa ??= _atualizarSilenciosamente(categoria)
+        .whenComplete(() => _atualizacaoSilenciosa = null);
+  }
+
+  Future<void> _atualizarSilenciosamente(String categoria) async {
     if (carregando || carregandoMais) return;
     final consulta = _requisicao;
     try {
@@ -210,23 +221,51 @@ class ProvedorProdutos extends ChangeNotifier {
         novos.addAll(await _produtoService.listarPorNome(
             pesquisa.termo, categoria, '0',
             codigoExato: pesquisa.porCodigoExato));
+        if (consulta != _requisicao) return;
+        _produtosCompletosPorId.clear();
+        await _buscarProdutosCompletosParaPesquisa(novos, consulta);
+        if (consulta != _requisicao) return;
+        for (var i = 0; i < novos.length; i++) {
+          novos[i] = _completarProdutoPesquisado(novos[i]);
+        }
+        if (pesquisa.codigoExato != null) {
+          novos.removeWhere((produto) =>
+              _normalizarCodigo(produto.codigo) != pesquisa.codigoExato);
+        }
       } else {
-        for (var pagina = 1; pagina <= (paginas[categoria] ?? 1); pagina++) {
-          final itens =
-              await _produtoService.listarPorCategoria(categoria, pagina);
-          novos.addAll(itens);
-          ultimaPaginaCompleta = itens.length >= _itensPorPagina;
+        // Revalida todas as paginas visiveis com concorrencia limitada. A
+        // consulta deixa de somar a latencia de cada pagina, sem lotar a API.
+        final totalPaginas = paginas[categoria] ?? 1;
+        for (var inicio = 1; inicio <= totalPaginas; inicio += 3) {
+          final lote = await Future.wait([
+            for (var pagina = inicio;
+                pagina < inicio + 3 && pagina <= totalPaginas;
+                pagina++)
+              _produtoService.listarPorCategoria(categoria, pagina),
+          ]);
+          if (consulta != _requisicao) return;
+          for (final itens in lote) {
+            novos.addAll(itens);
+            ultimaPaginaCompleta = itens.length >= _itensPorPagina;
+          }
         }
       }
       if (consulta != _requisicao) return;
+      final ids = <String>{};
+      novos.removeWhere((produto) => !ids.add(produto.id));
+      final novoTemMais = !_consultaCompleta && ultimaPaginaCompleta;
+      final alterou = erro != null ||
+          temMais != novoTemMais ||
+          jsonEncode(_produtos.map((produto) => produto.toMap()).toList()) !=
+              jsonEncode(novos.map((produto) => produto.toMap()).toList());
       _produtosCompletosPorId.clear();
       _guardarProdutosCompletos(novos);
       _produtos = novos;
       _produtosPorCategoria[categoria] = [...novos];
-      temMais = !_consultaCompleta && ultimaPaginaCompleta;
+      temMais = novoTemMais;
       _temMaisPorCategoria[categoria] = temMais;
       erro = null;
-      notifyListeners();
+      if (alterou) notifyListeners();
     } catch (_) {
       // Mantem a lista atual se a conexao cair durante uma atualizacao.
     }
@@ -279,6 +318,7 @@ class ProvedorProdutos extends ChangeNotifier {
 
         _guardarProdutosCompletos(res);
         pendentes.removeWhere(_produtosCompletosPorId.containsKey);
+        if (res.length < _itensPorPagina) break;
         pagina++;
       }
     }

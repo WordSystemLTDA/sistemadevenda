@@ -36,6 +36,11 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
         .hasMatch(caminho)) {
       return _json(quebrado);
     }
+    if (RegExp(
+            r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_categoria\.php$')
+        .hasMatch(caminho)) {
+      return _json([quebrado]);
+    }
     if (caminho
         .endsWith('/api_desktop/1.0.01/produtos/listar_por_categoria.php')) {
       return _json([desktopAntigo]);
@@ -175,5 +180,58 @@ void main() {
       '/sistema/apis_restaurantes/api_restaurantes_venda/api37/produtos/listar_por_id.php',
       '/sistema/apis_restaurantes/api_desktop/1.0.01/produtos/listar_por_categoria.php',
     ]);
+  });
+
+  test('listar categoria nao duplica leitura no desktop em segundo plano',
+      () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api37/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco);
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    addTearDown(usuario.dispose);
+
+    final produtos =
+        await ServicoProduto(api, usuario).listarPorCategoria('0', 1);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(produtos, hasLength(1));
+    expect(adapter.chamadas, hasLength(1));
+    expect(adapter.chamadas.single.uri.path,
+        endsWith('/api37/produtos/listar_por_categoria.php'));
+  });
+
+  test('fallback desktop nao retém ingredientes de consulta concluida',
+      () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api37/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco);
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    addTearDown(usuario.dispose);
+    final servico = ServicoProduto(api, usuario);
+    final antes = await servico.listarPorId('436', '0');
+    expect(antes!.opcoesPacotes!.first.dados!.first.nome, 'Arroz');
+
+    almoco['opcoesPacotes'][0]['dados'][0]['nome'] = 'Arroz integral';
+    final depois = await servico.listarPorId('436', '0');
+
+    expect(depois!.opcoesPacotes!.first.dados!.first.nome, 'Arroz integral');
+    expect(
+        adapter.chamadas.where((c) => c.uri.path
+            .endsWith('/api_desktop/1.0.01/produtos/listar_por_categoria.php')),
+        hasLength(2));
   });
 }

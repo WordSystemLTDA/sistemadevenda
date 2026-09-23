@@ -122,6 +122,55 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets(
+      'produtos e categorias iniciam juntos sem duplicar primeira pagina',
+      (tester) async {
+    final categorias = CategoriasPendentes();
+    final produtos = ProdutosPendentes();
+    await abrir(tester, categorias: categorias, produtos: produtos);
+
+    expect(categorias.resposta.isCompleted, isFalse);
+    expect(produtos.consultasPorCategoria, [('0', 1)]);
+    produtos.respostas['0']!.complete([sabor('Mussarela', 'Queijos', '50')]);
+    await tester.pump();
+    categorias.resposta.complete(categorias.categorias);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mussarela'), findsOneWidget);
+    expect(produtos.consultasPorCategoria, [('0', 1)]);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('abas ocultas nao consultam no evento nem no ciclo automatico',
+      (tester) async {
+    final produtos = ProdutosTeste();
+    await abrir(tester, produtos: produtos);
+    await tester.pumpAndSettle();
+    final controller = tester.widget<TabBar>(find.byType(TabBar)).controller!;
+    controller.animateTo(1);
+    await tester.pumpAndSettle();
+    controller.animateTo(2);
+    await tester.pumpAndSettle();
+    produtos.consultasPorCategoria.clear();
+
+    EventosCatalogo.notificar('produtos');
+    await tester.pumpAndSettle();
+    expect(produtos.consultasPorCategoria, [('Calabresa', 1)]);
+
+    produtos.consultasPorCategoria.clear();
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(produtos.consultasPorCategoria, [('Calabresa', 1)]);
+
+    produtos.consultasPorCategoria.clear();
+    controller.animateTo(1);
+    await tester.pumpAndSettle();
+    expect(produtos.consultasPorCategoria, [('Queijos', 1)]);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('evento atualiza produto novo sem descartar a pizza em montagem',
       (tester) async {
     final produtos = ProdutosTeste();
@@ -139,6 +188,27 @@ void main() {
     expect(controller.index, 1);
     expect(cardapio.tamanhosPizza?.id, 'G');
     expect(cardapio.saboresPizzaSelecionados, hasLength(1));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('preco novo atualiza sabor em montagem preservando a selecao',
+      (tester) async {
+    final produtos = ProdutosTeste();
+    await abrir(tester, produtos: produtos);
+    await tester.pumpAndSettle();
+    cardapio.tamanhosPizza = cardapio.categorias.first.tamanhosPizza!.last;
+    cardapio.selecionarSaborPizza(produtos.produtos.first);
+    expect(cardapio.calcularPrecoPizza(), 50);
+
+    produtos.produtos[0] = sabor('Mussarela', 'Queijos', '55');
+    EventosCatalogo.notificar('produtos');
+    await tester.pumpAndSettle();
+
+    expect(cardapio.saboresPizzaSelecionados.map((s) => s.id), ['Mussarela']);
+    expect(cardapio.tamanhosPizza?.id, 'G');
+    expect(cardapio.calcularPrecoPizza(), 55);
+    expect(Modular.get<ProvedorCarrinho>().itensCarrinho.quantidadeTotal, 0);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

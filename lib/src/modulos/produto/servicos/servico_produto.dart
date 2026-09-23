@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
@@ -37,16 +35,6 @@ class ServicoProduto {
             List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
-        final baseDesktop = _baseDesktop(response.requestOptions.baseUrl);
-        if (baseDesktop != null) {
-          unawaited(_listarCategoriaDesktop(
-            categoria: categoria,
-            empresa: empresa?.toString() ?? '',
-            idUsuario: idusuario?.toString() ?? '',
-            pagina: pagina,
-            baseDesktop: baseDesktop,
-          ));
-        }
         return produtos;
       } else {
         return [];
@@ -357,8 +345,11 @@ class ServicoProduto {
         );
         return _listaMapas(response.data);
       } catch (_) {
-        _catalogosDesktop.remove(chave);
         return const <Map<String, dynamic>>[];
+      } finally {
+        // Compartilha somente a consulta em andamento. Reter o Future pronto
+        // aqui mantinha ingredientes/precos do desktop por toda a sessao.
+        _catalogosDesktop.remove(chave);
       }
     });
   }

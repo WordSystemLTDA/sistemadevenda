@@ -124,13 +124,20 @@ class CacheConsultas extends Interceptor {
     final alvo = escopo;
     options.extra['escopoCache'] = alvo;
     options.extra['geracaoAtendimento'] = _geracaoAtendimento;
+    final falhouRecentemente = _ultimaFalha != null &&
+        DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
+    options.connectTimeout = const Duration(seconds: 3);
+    options.receiveTimeout = const Duration(seconds: 8);
+    // Online o retrato nao sera usado: nao ler SQLite nem decodificar todo o
+    // catalogo antes de iniciar o HTTP. A falha continua usando onError abaixo.
+    if (!falhouRecentemente && _exigeConsultaAtual(caminho(options))) {
+      return handler.next(options);
+    }
     try {
       final consulta = await banco.consulta(alvo, chave(options));
       Object? dados =
           consulta == null ? null : jsonDecode(consulta['valor'] as String);
       dados ??= await _derivar(options, alvo);
-      final falhouRecentemente = _ultimaFalha != null &&
-          DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
       if (dados != null &&
           (falhouRecentemente || !_exigeConsultaAtual(caminho(options)))) {
         final recente = consulta != null &&
@@ -153,8 +160,6 @@ class CacheConsultas extends Interceptor {
     } catch (erro) {
       return handler.reject(DioException(requestOptions: options, error: erro));
     }
-    options.connectTimeout = const Duration(seconds: 3);
-    options.receiveTimeout = const Duration(seconds: 8);
     handler.next(options);
   }
 

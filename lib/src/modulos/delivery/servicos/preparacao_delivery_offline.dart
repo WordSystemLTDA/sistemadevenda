@@ -32,7 +32,7 @@ class PreparacaoDeliveryOffline {
             'id_usuario': usuario
           },
           options: Options(
-              extra: {'servidorFixo': servidor},
+              extra: {'servidorFixo': servidor, 'preparacaoOffline': true},
               sendTimeout: const Duration(seconds: 5),
               receiveTimeout: const Duration(seconds: 8)));
       if (!ativa()) throw StateError('A conta mudou.');
@@ -75,7 +75,7 @@ class PreparacaoDeliveryOffline {
       final resposta = await api.cliente.get('comandas/listar_clientes.php',
           queryParameters: {'pesquisa': '', 'empresa': empresa},
           options: Options(
-              extra: {'servidorFixo': servidor},
+              extra: {'servidorFixo': servidor, 'preparacaoOffline': true},
               receiveTimeout: const Duration(seconds: 8)));
       final clientes = resposta.data is List ? resposta.data as List : const [];
       for (var inicio = 0; inicio < clientes.length && ativa(); inicio += 4) {

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
@@ -30,6 +31,8 @@ class Sincronizador extends ChangeNotifier {
   Timer? _timer;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
+  Future<void>? _preparandoDados;
+  CancelToken? _cancelamentoPreparacao;
   Future<void> _filaOperacoes = Future.value();
   Future<void>? _retentativaManual;
   final revisaoCatalogo = ValueNotifier<int>(0);
@@ -44,6 +47,10 @@ class Sincronizador extends ChangeNotifier {
   bool _solicitada = false;
   DateTime? ultimaAtualizacao;
   DateTime? _ultimoCatalogo;
+  DateTime? _ultimasListas;
+  DateTime? _ultimasFormasPagamento;
+  int _geracaoCatalogo = 0;
+  String? _estadoNotificado;
   final Map<String, DateTime> _detalhesAtualizados = {};
   List<Map<String, Object?>> pendencias = [];
   int _rascunhosParaConferir = 0;
@@ -76,6 +83,7 @@ class Sincronizador extends ChangeNotifier {
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
+    _cancelamentoPreparacao?.cancel('A conta mudou.');
     api.cache?.escopo = '';
     pendencias = [];
     _rascunhosParaConferir = 0;
@@ -88,12 +96,23 @@ class Sincronizador extends ChangeNotifier {
   }
 
   void _dadosMudaram(String tipo) {
-    if (['Produto', 'Produtos', 'Cardapio', 'Categoria', 'Categorias']
-        .contains(tipo)) {
+    if (EventosCatalogo.ehProduto(tipo)) {
       _ultimoCatalogo = null;
+      _geracaoCatalogo++;
+      if (online) _prepararDados();
+      return;
     }
-    if (['Mesa', 'Comanda'].contains(tipo)) _detalhesAtualizados.clear();
-    solicitar();
+    if (EventosCatalogo.ehPagamento(tipo)) {
+      _ultimasFormasPagamento = null;
+      if (online) _prepararDados();
+      return;
+    }
+    if (const {'mesa', 'comanda', 'balcao', 'balcão', 'delivery'}
+        .contains(tipo.trim().toLowerCase())) {
+      // A tela recebe o aviso diretamente; nao refazer todos os retratos
+      // offline a cada lancamento feito por outro garcom.
+      solicitar();
+    }
   }
 
   bool _socketConectado = false;
@@ -143,6 +162,10 @@ class Sincronizador extends ChangeNotifier {
     api.cache?.servidor = servidor;
     api.cache?.empresa = conta.empresa ?? '';
     _ultimoCatalogo = null;
+    _ultimasListas = null;
+    _ultimasFormasPagamento = null;
+    _estadoNotificado = null;
+    _geracaoCatalogo++;
     _detalhesAtualizados.clear();
     catalogoPronto = await banco.ler('catalogo:$escopo') != null;
     ultimaAtualizacao = DateTime.tryParse(
@@ -505,8 +528,12 @@ class Sincronizador extends ChangeNotifier {
     return execucao;
   }
 
-  Options _opcoes(String url) => Options(
-        extra: {'semCache': true, 'servidorFixo': url},
+  Options _opcoes(String url, {bool preparacao = false}) => Options(
+        extra: {
+          'semCache': true,
+          'servidorFixo': url,
+          if (preparacao) 'preparacaoOffline': true,
+        },
         sendTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
       );
@@ -518,6 +545,12 @@ class Sincronizador extends ChangeNotifier {
     _filaOperacoes =
         resultado.then<void>((_) {}, onError: (Object _, StackTrace __) {});
     return resultado;
+  }
+
+  /// Aguarda somente a preparacao ja iniciada, sem atrasar o envio de pedidos.
+  @visibleForTesting
+  Future<void> aguardarPreparacaoOffline() async {
+    await _preparandoDados;
   }
 
   Future<void> enviarPendentes() => _enviando ??= () async {
@@ -567,7 +600,9 @@ class Sincronizador extends ChangeNotifier {
       online = true;
       erro = null;
       api.cache?.confirmarConexao();
-      await banco.gravar('estado:$alvo', jsonEncode(estado.data));
+      final estadoAtual = jsonEncode(estado.data);
+      final estadoMudou = estadoAtual != _estadoNotificado;
+      await banco.gravar('estado:$alvo', estadoAtual);
       if (estado.data['sucesso'] == true &&
           estado.data['atendimentos'] is Map) {
         await ArmazenamentoCarrinhos.instancia.conferirRascunhosNoServidor(
@@ -585,35 +620,14 @@ class Sincronizador extends ChangeNotifier {
       }
       await enviarPendentes();
       if (alvo != escopo || usuario.usuario == null) return;
-      // Prepara conjuntos independentes em paralelo. Uma falha em uma lista
-      // financeira nao impede que o cardapio seja salvo para uso offline.
-      await Future.wait<void>([
-        _atualizarConsultas(alvo, url, empresa, idUsuario!),
-        if (_ultimoCatalogo == null ||
-            DateTime.now().difference(_ultimoCatalogo!) >
-                const Duration(minutes: 2))
-          _carregarCatalogo(alvo, url, empresa, idUsuario),
-        for (final rota in [
-          'listar_banco_pix',
-          'listar_datas_vendas',
-          'listar_bancos'
-        ])
-          () async {
-            if (alvo != escopo) return;
-            final resposta = await api.cliente.get('tela_nfe_saida/$rota.php',
-                queryParameters: rota == 'listar_bancos'
-                    ? {'id_empresa': empresa, 'id_usuario': idUsuario}
-                    : {'empresa': empresa},
-                options: _opcoes(url));
-            await banco.guardarConsulta(alvo!,
-                CacheConsultas.chave(resposta.requestOptions), resposta.data);
-          }(),
-      ]);
-      if (alvo != escopo) return;
+      // A preparacao da copia offline nao bloqueia pedidos, estado nem telas.
+      _prepararDados();
       ultimaAtualizacao = DateTime.now();
       await banco.gravar(
           'ultima-sincronizacao:$alvo', ultimaAtualizacao!.toIso8601String());
-      aoAtualizarTelas?.call();
+      if (alvo != escopo || _descartado) return;
+      _estadoNotificado = estadoAtual;
+      if (estadoMudou) aoAtualizarTelas?.call();
     } on DioException catch (e) {
       if (alvo != escopo) return;
       if (CacheConsultas.falhaDeConexao(e)) {
@@ -631,6 +645,71 @@ class Sincronizador extends ChangeNotifier {
     } finally {
       await _recarregarPendencias();
       _notificar();
+    }
+  }
+
+  void _prepararDados() {
+    if (_preparandoDados != null ||
+        _descartado ||
+        !online ||
+        escopo.isEmpty ||
+        usuario.usuario == null) {
+      return;
+    }
+    final alvo = escopo;
+    final url = servidor;
+    final empresa = usuario.usuario!.empresa!;
+    final idUsuario = usuario.usuario!.id!;
+    final cancelamento = _cancelamentoPreparacao = CancelToken();
+    final agora = DateTime.now();
+    _preparandoDados = () async {
+      try {
+        await Future.wait<void>([
+          if (_ultimasListas == null ||
+              agora.difference(_ultimasListas!) >= const Duration(minutes: 1))
+            _atualizarConsultas(alvo, url, empresa, idUsuario),
+          if (_ultimoCatalogo == null ||
+              agora.difference(_ultimoCatalogo!) >= const Duration(minutes: 2))
+            _carregarCatalogo(alvo, url, empresa, idUsuario),
+          if (_ultimasFormasPagamento == null ||
+              agora.difference(_ultimasFormasPagamento!) >=
+                  const Duration(minutes: 5))
+            _prepararFormasPagamento(alvo, url, empresa, idUsuario),
+        ]);
+      } catch (_) {
+        // Preserva o retrato anterior; nao interrompe a fila duravel nem
+        // transforma manutencao auxiliar em bloqueio da tela.
+      } finally {
+        if (identical(_cancelamentoPreparacao, cancelamento)) {
+          _cancelamentoPreparacao = null;
+        }
+        _preparandoDados = null;
+        _notificar();
+        if (!_descartado && alvo != escopo) _prepararDados();
+      }
+    }();
+  }
+
+  Future<void> _prepararFormasPagamento(
+      String alvo, String url, String empresa, String idUsuario) async {
+    for (final rota in [
+      'listar_banco_pix',
+      'listar_datas_vendas',
+      'listar_bancos'
+    ]) {
+      if (alvo != escopo || _descartado) return;
+      final resposta = await api.cliente.get('tela_nfe_saida/$rota.php',
+          queryParameters: rota == 'listar_bancos'
+              ? {'id_empresa': empresa, 'id_usuario': idUsuario}
+              : {'empresa': empresa},
+          cancelToken: _cancelamentoPreparacao,
+          options: _opcoes(url, preparacao: true));
+      if (alvo != escopo || _descartado) return;
+      await banco.guardarConsulta(
+          alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
+    }
+    if (alvo == escopo && !_descartado) {
+      _ultimasFormasPagamento = DateTime.now();
     }
   }
 
@@ -1047,7 +1126,7 @@ class Sincronizador extends ChangeNotifier {
       'comandas/listar_clientes.php',
       'comandas/listar_mesas.php'
     ]) {
-      if (alvo != escopo) return;
+      if (alvo != escopo || _descartado) return;
       final resposta = await api.cliente.get(rota,
           queryParameters: {
             'empresa': empresa,
@@ -1055,7 +1134,9 @@ class Sincronizador extends ChangeNotifier {
                 .contains(rota))
               'pesquisa': ''
           },
-          options: _opcoes(url));
+          cancelToken: _cancelamentoPreparacao,
+          options: _opcoes(url, preparacao: true));
+      if (alvo != escopo || _descartado) return;
       if (resposta.data is! List && resposta.data is! Map) {
         throw StateError('Lista invalida recebida do servidor.');
       }
@@ -1085,7 +1166,9 @@ class Sincronizador extends ChangeNotifier {
                         'tipo': tipo,
                         'mostrar_itens': mostrar
                       },
-                      options: _opcoes(url));
+                      cancelToken: _cancelamentoPreparacao,
+                      options: _opcoes(url, preparacao: true));
+              if (alvo != escopo || _descartado) return;
               if (detalhe.data is Map && detalhe.data['id']?.toString() == id) {
                 await banco.guardarConsulta(alvo,
                     CacheConsultas.chave(detalhe.requestOptions), detalhe.data);
@@ -1096,10 +1179,13 @@ class Sincronizador extends ChangeNotifier {
         }
       }
     }
+    if (alvo == escopo && !_descartado) _ultimasListas = DateTime.now();
   }
 
   Future<void> _carregarCatalogo(
       String alvo, String url, String empresa, String idUsuario) async {
+    final inicio = DateTime.now().millisecondsSinceEpoch;
+    final geracao = _geracaoCatalogo;
     final produtos = <Map<String, dynamic>>[];
     for (var pagina = 1;; pagina++) {
       if (alvo != escopo || _descartado) return;
@@ -1111,7 +1197,8 @@ class Sincronizador extends ChangeNotifier {
             'id_usuario': idUsuario,
             'pagina': pagina
           },
-          options: _opcoes(url));
+          cancelToken: _cancelamentoPreparacao,
+          options: _opcoes(url, preparacao: true));
       if (resposta.data is! List) throw StateError('Cardapio invalido.');
       final itens = List<Map<String, dynamic>>.from(resposta.data as List);
       produtos.addAll(itens);
@@ -1119,6 +1206,11 @@ class Sincronizador extends ChangeNotifier {
     }
     final detalhes = <String, dynamic>{};
     for (final produto in produtos) {
+      if (produto['detalhesCompletos'] == true) {
+        detalhes['${produto['id']}:0'] = produto;
+        detalhes['${produto['id']}:'] = produto;
+        continue;
+      }
       final tamanhos = <String>{
         '0',
         ...(produto['tamanhosPizza'] as List? ?? [])
@@ -1133,7 +1225,8 @@ class Sincronizador extends ChangeNotifier {
               'id_usuario': idUsuario,
               'id_tamanhos_pizza': tamanho
             },
-            options: _opcoes(url));
+            cancelToken: _cancelamentoPreparacao,
+            options: _opcoes(url, preparacao: true));
         if (resposta.data is! Map || resposta.data['id'] != produto['id']) {
           throw StateError(
               'Nao foi possivel preparar todas as opcoes do cardapio.');
@@ -1144,7 +1237,9 @@ class Sincronizador extends ChangeNotifier {
     }
     if (alvo != escopo || _descartado) return;
     final categorias = await api.cliente.get('categorias/listar.php',
-        queryParameters: {'empresa': empresa}, options: _opcoes(url));
+        queryParameters: {'empresa': empresa},
+        cancelToken: _cancelamentoPreparacao,
+        options: _opcoes(url, preparacao: true));
     if (alvo != escopo || _descartado) return;
     final especiais = <String, dynamic>{
       for (final categoria in categorias.data as List)
@@ -1161,14 +1256,13 @@ class Sincronizador extends ChangeNotifier {
     await banco.db.transaction((tx) async {
       await BancoLocal.gravarDocumento(tx, 'catalogo:$alvo', catalogo);
       await tx.delete('consultas',
-          where: 'escopo = ? AND chave LIKE ?',
-          whereArgs: [alvo, '["produtos/%']);
+          where: 'escopo = ? AND chave LIKE ? AND atualizado <= ?',
+          whereArgs: [alvo, '["produtos/%', inicio]);
     });
     if (alvo != escopo || _descartado) return;
-    _ultimoCatalogo = DateTime.now();
+    _ultimoCatalogo = geracao == _geracaoCatalogo ? DateTime.now() : null;
     catalogoPronto = true;
     if (mudou) revisaoCatalogo.value++;
-    aoAtualizarTelas?.call();
   }
 
   Future<void> tentarNovamente() {
@@ -1207,6 +1301,7 @@ class Sincronizador extends ChangeNotifier {
   @override
   void dispose() {
     _descartado = true;
+    _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();
     usuario.removeListener(_sessaoMudou);
     socket.removeListener(_socketMudou);

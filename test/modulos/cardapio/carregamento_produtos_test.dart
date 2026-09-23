@@ -225,4 +225,83 @@ void main() {
     await consultaZero;
     expect(provedor.produtos.map((p) => p.codigo), ['005']);
   });
+
+  test('revalidacao agrupa chamadas iguais e consulta paginas em paralelo',
+      () async {
+    provedor.paginas['0'] = 4;
+    final atualizar = provedor.atualizarSilenciosamente('0');
+    final repetida = provedor.atualizarSilenciosamente('0');
+    expect(servico.categorias.map((c) => c.pagina), [1, 2, 3]);
+    expect(identical(atualizar, repetida), isTrue);
+
+    for (final consulta in servico.categorias.toList().reversed) {
+      consulta.resposta
+          .complete(List.generate(15, (i) => produto('${consulta.pagina}-$i')));
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(servico.categorias.map((c) => c.pagina), [1, 2, 3, 4]);
+    servico.categorias.last.resposta.complete([produto('4-0')]);
+    await atualizar;
+    expect(provedor.produtos, hasLength(46));
+    expect(provedor.produtos.first.id, '1-0');
+    expect(provedor.produtos.last.id, '4-0');
+    expect(provedor.temMais, isFalse);
+  });
+
+  test('resposta igual nao redesenha cards e preco novo notifica uma vez',
+      () async {
+    final inicial = provedor.listarProdutosPorCategoria('0');
+    servico.categorias.last.resposta.complete([produto('Agua')]);
+    await inicial;
+    var notificacoes = 0;
+    provedor.addListener(() => notificacoes++);
+
+    final igual = provedor.atualizarSilenciosamente('0');
+    servico.categorias.last.resposta.complete([produto('Agua')]);
+    await igual;
+    expect(notificacoes, 0);
+
+    final alterada = provedor.atualizarSilenciosamente('0');
+    servico.categorias.last.resposta
+        .complete([produto('Agua')..valorVenda = '12.50']);
+    await alterada;
+    expect(notificacoes, 1);
+    expect(provedor.produtos.single.valorVenda, '12.50');
+    expect(servico.categorias, hasLength(3));
+  });
+
+  test(
+      'busca legada consulta preco atual de pizza sem reutilizar tamanho antigo',
+      () async {
+    final inicial = provedor.listarProdutosPorCategoria('Queijos');
+    servico.categorias.last.resposta
+        .complete([sabor('Pizza', 'Queijos', '45')]);
+    await inicial;
+
+    final pesquisa = provedor.listarProdutosPorNome('Pizza', '0', '0');
+    servico.pesquisas.last.resposta.complete([
+      sabor('Pizza', 'Queijos', '45')..tamanhosPizza = [],
+    ]);
+    await Future<void>.delayed(Duration.zero);
+    expect(servico.categorias, hasLength(2));
+    servico.categorias.last.resposta
+        .complete([sabor('Pizza', 'Queijos', '50')]);
+    await pesquisa;
+    expect(provedor.produtos.single.tamanhosPizza!.last.valor, '50');
+  });
+
+  test('revalidacao antiga nao substitui busca iniciada durante o envio',
+      () async {
+    provedor.paginas['0'] = 4;
+    final antiga = provedor.atualizarSilenciosamente('0');
+    final atual = provedor.listarProdutosPorNome('Agua', '0', '0');
+    servico.pesquisas.last.resposta.complete([produto('Agua')]);
+    await atual;
+    for (final consulta in servico.categorias) {
+      consulta.resposta.complete([produto('Antigo')]);
+    }
+    await antiga;
+    expect(provedor.produtos.single.id, 'Agua');
+    expect(servico.categorias.map((c) => c.pagina), [1, 2, 3]);
+  });
 }

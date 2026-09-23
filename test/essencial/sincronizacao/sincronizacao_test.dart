@@ -219,6 +219,7 @@ void main() {
   tearDown(() async {
     await sync.enviarPendentes();
     sync.dispose();
+    await sync.aguardarPreparacaoOffline();
     socket.dispose();
     usuario.dispose();
     api.cliente.close(force: true);
@@ -1349,6 +1350,7 @@ void main() {
         conectado = true;
         conflito = true;
         await sync.tentarNovamente();
+        await sync.aguardarPreparacaoOffline();
       });
       await tester.pumpWidget(MaterialApp(
           home: MediaQuery(

@@ -4,6 +4,7 @@ import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
@@ -23,6 +24,9 @@ class TabCustom extends StatefulWidget {
   final String? pesquisaVoz;
   final int pesquisaVozVersao;
   final bool modeloRecorrente;
+  final bool ativa;
+  final ProvedorProdutos? provedorInicial;
+  final ValueChanged<List<Modelowordprodutos>>? onProdutosAtualizados;
 
   const TabCustom({
     super.key,
@@ -37,6 +41,9 @@ class TabCustom extends StatefulWidget {
     this.pesquisaVoz,
     this.pesquisaVozVersao = 0,
     this.modeloRecorrente = false,
+    this.ativa = true,
+    this.provedorInicial,
+    this.onProdutosAtualizados,
   });
 
   @override
@@ -48,7 +55,9 @@ class _TabCustomState extends State<TabCustom>
   @override
   bool get wantKeepAlive => true;
 
-  final ProvedorProdutos provedor = Modular.get<ProvedorProdutos>();
+  late final ProvedorProdutos provedor =
+      widget.provedorInicial ?? Modular.get<ProvedorProdutos>();
+  bool _iniciouConsulta = false;
   final _scrollController = ScrollController();
   final _pesquisaController = TextEditingController();
   Timer? _debounce;
@@ -60,19 +69,22 @@ class _TabCustomState extends State<TabCustom>
   void initState() {
     super.initState();
     _scrollController.addListener(_carregarMais);
+    provedor.addListener(_atualizarSelecao);
     _sincronizador?.revisaoCatalogo.addListener(_catalogoAtualizado);
     EventosCatalogo.produtos.addListener(_catalogoAtualizado);
     _monitorCatalogo = MonitorAtualizacaoTela(
-      intervalo: const Duration(seconds: 10),
+      intervalo: const Duration(seconds: 5),
       estaAtiva: () =>
           mounted &&
+          widget.ativa &&
           // Compatibilidade com o Flutter 3.44 usado na distribuicao.
           // ignore: deprecated_member_use
           TickerMode.getNotifier(context).value &&
           ModalRoute.of(context)?.isCurrent != false,
       atualizar: () => provedor.atualizarSilenciosamente(widget.category),
     );
-    _atualizar();
+    _iniciouConsulta = widget.provedorInicial != null;
+    if (widget.ativa && !_iniciouConsulta) unawaited(_atualizar());
     final pesquisaVoz = widget.pesquisaVoz?.trim();
     if (pesquisaVoz?.isNotEmpty == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,6 +96,15 @@ class _TabCustomState extends State<TabCustom>
   @override
   void didUpdateWidget(covariant TabCustom oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.ativa && !oldWidget.ativa) {
+      // Abas mantidas vivas nao consultam escondidas. Ao voltar, valida no
+      // servidor preservando a rolagem, a busca e a lista durante a consulta.
+      if (_iniciouConsulta) {
+        unawaited(_monitorCatalogo?.solicitar());
+      } else {
+        unawaited(_atualizar());
+      }
+    }
     final pesquisaVoz = widget.pesquisaVoz?.trim();
     if (pesquisaVoz?.isNotEmpty == true &&
         (oldWidget.pesquisaVozVersao != widget.pesquisaVozVersao ||
@@ -109,8 +130,17 @@ class _TabCustomState extends State<TabCustom>
     unawaited(_monitorCatalogo?.solicitar());
   }
 
+  void _atualizarSelecao() {
+    if (!provedor.carregando &&
+        !provedor.carregandoMais &&
+        provedor.erro == null) {
+      widget.onProdutosAtualizados?.call(provedor.produtos);
+    }
+  }
+
   void _carregarMais() {
-    if (!_somenteFavoritos &&
+    if (widget.ativa &&
+        !_somenteFavoritos &&
         _scrollController.hasClients &&
         _scrollController.position.extentAfter < 240 &&
         _pesquisaController.text.trim().isEmpty &&
@@ -120,6 +150,7 @@ class _TabCustomState extends State<TabCustom>
   }
 
   Future<void> _atualizar() {
+    _iniciouConsulta = true;
     _debounce?.cancel();
     final pesquisa = _pesquisaController.text.trim();
     if (pesquisa.isEmpty && !_somenteFavoritos) {
@@ -164,7 +195,8 @@ class _TabCustomState extends State<TabCustom>
     _debounce?.cancel();
     _scrollController.dispose();
     _pesquisaController.dispose();
-    provedor.dispose();
+    provedor.removeListener(_atualizarSelecao);
+    if (widget.provedorInicial == null) provedor.dispose();
     super.dispose();
   }
 

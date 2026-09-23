@@ -106,4 +106,98 @@ void main() {
     expect(leituras, 1);
     monitor.dispose();
   });
+
+  testWidgets('evento renova intervalo e evita polling logo apos consultar',
+      (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    var leituras = 0;
+    final monitor = MonitorAtualizacaoTela(
+      atualizar: () async => leituras++,
+      estaAtiva: () => true,
+    );
+    await tester.pump(const Duration(milliseconds: 4900));
+    await monitor.solicitar();
+    expect(leituras, 1);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(leituras, 1);
+    await tester.pump(const Duration(milliseconds: 4900));
+    expect(leituras, 2);
+    monitor.dispose();
+  });
+
+  testWidgets('evento recebido durante consulta nao e perdido nem multiplicado',
+      (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final resposta = Completer<void>();
+    var leituras = 0;
+    final monitor = MonitorAtualizacaoTela(
+      atualizar: () async {
+        leituras++;
+        if (leituras == 1) await resposta.future;
+      },
+      estaAtiva: () => true,
+    );
+    final chamadas = <Future<void>>[monitor.solicitar()];
+    for (var i = 0; i < 20; i++) {
+      chamadas.add(monitor.solicitar());
+    }
+    await tester.pump(const Duration(seconds: 30));
+    expect(leituras, 1);
+    resposta.complete();
+    await Future.wait(chamadas);
+    expect(leituras, 2);
+    await tester.pump(const Duration(seconds: 4));
+    expect(leituras, 2);
+    await tester.pump(const Duration(seconds: 1));
+    expect(leituras, 3);
+    monitor.dispose();
+  });
+
+  testWidgets(
+      'consulta pendente nao inicia ao apagar a tela e retoma ao voltar',
+      (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final resposta = Completer<void>();
+    var leituras = 0;
+    final monitor = MonitorAtualizacaoTela(
+      atualizar: () async {
+        leituras++;
+        if (leituras == 1) await resposta.future;
+      },
+      estaAtiva: () => true,
+    );
+    final primeira = monitor.solicitar();
+    final pendente = monitor.solicitar();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    resposta.complete();
+    await Future.wait([primeira, pendente]);
+    await tester.pump(const Duration(seconds: 30));
+    expect(leituras, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(leituras, 2);
+    monitor.dispose();
+  });
+
+  testWidgets('trocar de tela descarta a releitura pendente', (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final resposta = Completer<void>();
+    var leituras = 0;
+    var ativa = true;
+    final monitor = MonitorAtualizacaoTela(
+      atualizar: () async {
+        leituras++;
+        await resposta.future;
+      },
+      estaAtiva: () => ativa,
+    );
+    final primeira = monitor.solicitar();
+    final pendente = monitor.solicitar();
+    ativa = false;
+    resposta.complete();
+    await Future.wait([primeira, pendente]);
+    await tester.pump(const Duration(seconds: 30));
+    expect(leituras, 1);
+    monitor.dispose();
+  });
 }

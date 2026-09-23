@@ -1,12 +1,15 @@
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
 import 'politica_consultas_http.dart';
+import 'adaptador_http_prioritario.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 class DioCliente {
   CacheConsultas? cache;
   DioCliente({String? servidor}) {
+    cliente.httpClientAdapter =
+        AdaptadorHttpPrioritario(cliente.httpClientAdapter);
     configurar(servidor: servidor);
   }
 
@@ -27,7 +30,7 @@ class DioCliente {
     //     baseUrl: servidor ?? (await Apis().getConexao()).servidor,
     //     connectTimeout: const Duration(seconds: 10),
     //   ),
-    // ); 
+    // );
 
     cliente.interceptors.add(
       InterceptorsWrapper(

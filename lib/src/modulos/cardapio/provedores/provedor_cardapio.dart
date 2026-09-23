@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -88,10 +89,15 @@ class ProvedorCardapio extends ChangeNotifier {
   }
 
   List<ModeloCategoria> _categorias = [];
+  String _assinaturaCategorias = '[]';
   List<ModeloCategoria> get categorias => _categorias;
   set categorias(List<ModeloCategoria> value) {
+    final assinatura =
+        jsonEncode(value.map((categoria) => categoria.toMap()).toList());
+    final alterou = assinatura != _assinaturaCategorias;
     _categorias = value;
-    notifyListeners();
+    _assinaturaCategorias = assinatura;
+    if (alterou) notifyListeners();
   }
 
   ModeloConfigBigchef? _configBigchef;
@@ -135,7 +141,6 @@ class ProvedorCardapio extends ChangeNotifier {
       todos.tamanhosPizza = tamanhos.values.toList();
     }
     categorias = res;
-    notifyListeners();
     return res;
   }
 
@@ -184,6 +189,25 @@ class ProvedorCardapio extends ChangeNotifier {
     }
 
     saboresPizzaSelecionados = [..._saboresPizzaSelecionados, produto];
+  }
+
+  void atualizarSaboresDoCatalogo(List<Modelowordprodutos> produtos) {
+    if (_saboresPizzaSelecionados.isEmpty) return;
+    final atuais = {for (final produto in produtos) produto.id: produto};
+    final atualizados = _saboresPizzaSelecionados.map((selecionado) {
+      final atual = atuais[selecionado.id];
+      // Respostas legadas de pesquisa podem vir sem os tamanhos. Nao troca
+      // uma montagem completa por esse resumo nem altera itens ja no carrinho.
+      return atual != null && (atual.tamanhosPizza?.isNotEmpty ?? false)
+          ? atual
+          : selecionado;
+    }).toList();
+    if (jsonEncode(atualizados.map((produto) => produto.toMap()).toList()) !=
+        jsonEncode(_saboresPizzaSelecionados
+            .map((produto) => produto.toMap())
+            .toList())) {
+      saboresPizzaSelecionados = atualizados;
+    }
   }
 
   double calcularPrecoPizza() {
