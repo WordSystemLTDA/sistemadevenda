@@ -17,6 +17,9 @@ class ProvedorFinalizarPagamento extends ChangeNotifier {
 
   bool? _deliveryRecorrenteVinculado;
   bool? get deliveryRecorrenteVinculado => _deliveryRecorrenteVinculado;
+  String get rotaRetornoDelivery => _deliveryRecorrenteVinculado == true
+      ? 'PaginaRecorrentes'
+      : 'PaginaDelivery';
 
   bool _deliveryComPagamentoParcial = false;
   bool get deliveryComPagamentoParcial => _deliveryComPagamentoParcial;

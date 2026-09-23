@@ -138,6 +138,18 @@ class _ModuloDelivery extends ModuloFinalizacaoTeste {
 
 void main() {
   setUpAll(carregarFontesDeTeste);
+
+  test('retorno da finalizacao respeita a origem do Delivery', () {
+    final provedor = ProvedorFinalizarPagamento();
+    expect(provedor.rotaRetornoDelivery, 'PaginaDelivery');
+
+    provedor.definirContextoDelivery(recorrenteVinculado: true);
+    expect(provedor.rotaRetornoDelivery, 'PaginaRecorrentes');
+
+    provedor.definirContextoDelivery(recorrenteVinculado: false);
+    expect(provedor.rotaRetornoDelivery, 'PaginaDelivery');
+  });
+
   Future<_ModuloDelivery> abrir(WidgetTester tester,
       {TipoCardapio tipo = TipoCardapio.delivery}) async {
     SharedPreferences.setMockInitialValues({});

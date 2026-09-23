@@ -149,12 +149,9 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       await servico.confirmar(provedor.idVenda);
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
-      Navigator.popUntil(
-        context,
+      Navigator.of(context, rootNavigator: true).popUntil(
         (rota) =>
-            ['PaginaDelivery', 'PaginaRecorrentes']
-                .contains(rota.settings.name) ||
-            rota.isFirst,
+            rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst,
       );
     } catch (erro) {
       if (!mounted) return;

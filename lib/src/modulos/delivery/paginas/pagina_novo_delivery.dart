@@ -400,11 +400,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                     modeloRecorrente: widget.recorrente,
                     deliveryDireto: !widget.recorrente,
                   )));
-      if (!mounted) return;
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
 
       // Ao voltar manualmente do cardapio, fecha tambem o formulario, como
-      // acontecia no fluxo anterior, e so entao libera a tela de origem para
-      // recarregar os dados completos.
+      // acontecia no fluxo anterior. Quando a finalizacao ja removeu esta
+      // rota, nao execute outro pop: ele fecharia Delivery/Recorrentes e
+      // levaria o usuario indevidamente para a Home.
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {

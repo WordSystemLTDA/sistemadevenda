@@ -188,12 +188,8 @@ class _PaginaFinalizarFormaPagamentoState
       }
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
-      Navigator.popUntil(
-          context,
-          (rota) =>
-              ['PaginaDelivery', 'PaginaRecorrentes']
-                  .contains(rota.settings.name) ||
-              rota.isFirst);
+      Navigator.of(context, rootNavigator: true).popUntil((rota) =>
+          rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst);
       return;
     }
 
@@ -204,8 +200,8 @@ class _PaginaFinalizarFormaPagamentoState
     if (pedido.salvoNoAparelho) {
       // O saldo e o pagamento parcial ja estao duraveis no rascunho. A lista
       // permite retoma-los mesmo depois de reiniciar, com os ajustes originais.
-      Navigator.popUntil(context,
-          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      Navigator.of(context, rootNavigator: true).popUntil((rota) =>
+          rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst);
       return;
     }
     Navigator.popUntil(

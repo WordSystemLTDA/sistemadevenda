@@ -464,10 +464,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         setState(() => isLoading = false);
         await WidgetsBinding.instance.endOfFrame;
         if (!mounted) return;
-        Navigator.popUntil(
-            context,
-            (route) =>
-                route.settings.name == 'PaginaRecorrentes' || route.isFirst);
+        Navigator.of(context, rootNavigator: true).popUntil((route) =>
+            route.settings.name == 'PaginaRecorrentes' || route.isFirst);
         return;
       }
       if (!mounted) return;

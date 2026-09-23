@@ -254,12 +254,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       }
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
-      Navigator.popUntil(
-          context,
-          (rota) =>
-              ['PaginaDelivery', 'PaginaRecorrentes']
-                  .contains(rota.settings.name) ||
-              rota.isFirst);
+      Navigator.of(context, rootNavigator: true).popUntil((rota) =>
+          rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst);
       return;
     }
 
@@ -269,8 +265,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         : totalReceber - widget.valor;
     if (!mounted) return;
     if (pedido.salvoNoAparelho) {
-      Navigator.popUntil(context,
-          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      Navigator.of(context, rootNavigator: true).popUntil((rota) =>
+          rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst);
       return;
     }
     Navigator.popUntil(
