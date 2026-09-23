@@ -222,16 +222,6 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     });
     setarCampos();
 
-    // "Todos" existe no contrato do catalogo. Sua primeira pagina independe
-    // da resposta de categorias: inicia as duas consultas juntas e entrega o
-    // mesmo provedor para a aba, sem repetir a requisicao nem guardar um cache
-    // de produtos entre entradas nesta tela.
-    if (!_iniciouProdutos ||
-        (_tabController == null && !_produtosIniciais.carregando)) {
-      _iniciouProdutos = true;
-      unawaited(_produtosIniciais.listarProdutosPorCategoria('0'));
-    }
-
     // O carrinho fica no armazenamento local e nao precisa bloquear a consulta
     // atual do catalogo. Em aparelhos com uma fila de gravacoes pendente, esperar
     // por ele aqui fazia a tela permanecer vazia antes mesmo de consultar as
@@ -248,6 +238,26 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       log('Falha ao carregar o carrinho do atendimento',
           error: erro, stackTrace: stack);
     }));
+
+    // Associa o cache a empresa e ao usuario antes das primeiras consultas.
+    // Logo apos o login, uma oscilacao de rede podia acontecer enquanto esse
+    // escopo ainda era configurado e impedir o fallback para os dados locais.
+    try {
+      await _sincronizador?.configurar();
+    } catch (erro, stack) {
+      log('Falha ao preparar o cache do cardapio',
+          error: erro, stackTrace: stack);
+    }
+    if (!mounted) return;
+
+    // "Todos" existe no contrato do catalogo. Sua primeira pagina independe
+    // da resposta de categorias: inicia as duas consultas juntas e entrega o
+    // mesmo provedor para a aba, sem repetir a requisicao.
+    if (!_iniciouProdutos ||
+        (_tabController == null && !_produtosIniciais.carregando)) {
+      _iniciouProdutos = true;
+      unawaited(_produtosIniciais.listarProdutosPorCategoria('0'));
+    }
 
     // Inicia junto com as categorias para que a tarifa da embalagem separada
     // esteja disponivel assim que o usuario abrir um produto de Cardapio.

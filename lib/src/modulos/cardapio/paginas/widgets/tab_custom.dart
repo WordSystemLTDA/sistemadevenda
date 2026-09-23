@@ -63,6 +63,9 @@ class _TabCustomState extends State<TabCustom>
   Timer? _debounce;
   bool _somenteFavoritos = false;
   final _sincronizador = Sincronizador.instancia;
+  bool _sincronizadorEstavaOnline = false;
+  bool _retentativaConexaoRealizada = false;
+  bool _retentativaConexaoAgendada = false;
   MonitorAtualizacaoTela? _monitorCatalogo;
 
   @override
@@ -70,6 +73,8 @@ class _TabCustomState extends State<TabCustom>
     super.initState();
     _scrollController.addListener(_carregarMais);
     provedor.addListener(_atualizarSelecao);
+    _sincronizadorEstavaOnline = _sincronizador?.online == true;
+    _sincronizador?.addListener(_sincronizacaoAtualizada);
     _sincronizador?.revisaoCatalogo.addListener(_catalogoAtualizado);
     EventosCatalogo.produtos.addListener(_catalogoAtualizado);
     _monitorCatalogo = MonitorAtualizacaoTela(
@@ -134,8 +139,47 @@ class _TabCustomState extends State<TabCustom>
     if (!provedor.carregando &&
         !provedor.carregandoMais &&
         provedor.erro == null) {
+      _retentativaConexaoRealizada = false;
       widget.onProdutosAtualizados?.call(provedor.produtos);
+    } else if (!provedor.carregando &&
+        provedor.erro != null &&
+        provedor.produtos.isEmpty &&
+        _sincronizador?.online == true) {
+      _agendarRetentativaAposConexao();
     }
+  }
+
+  void _sincronizacaoAtualizada() {
+    final online = _sincronizador?.online == true;
+    final acabouDeConectar = online && !_sincronizadorEstavaOnline;
+    _sincronizadorEstavaOnline = online;
+    if (!online) _retentativaConexaoRealizada = false;
+    if (acabouDeConectar) _agendarRetentativaAposConexao();
+  }
+
+  void _agendarRetentativaAposConexao() {
+    if (_retentativaConexaoRealizada ||
+        _retentativaConexaoAgendada ||
+        !widget.ativa ||
+        provedor.carregando ||
+        provedor.produtos.isNotEmpty ||
+        provedor.erro == null) {
+      return;
+    }
+    _retentativaConexaoAgendada = true;
+    scheduleMicrotask(() {
+      _retentativaConexaoAgendada = false;
+      if (!mounted ||
+          !widget.ativa ||
+          provedor.carregando ||
+          provedor.produtos.isNotEmpty ||
+          provedor.erro == null ||
+          _sincronizador?.online != true) {
+        return;
+      }
+      _retentativaConexaoRealizada = true;
+      unawaited(_atualizar());
+    });
   }
 
   void _carregarMais() {
@@ -191,6 +235,7 @@ class _TabCustomState extends State<TabCustom>
   void dispose() {
     EventosCatalogo.produtos.removeListener(_catalogoAtualizado);
     _monitorCatalogo?.dispose();
+    _sincronizador?.removeListener(_sincronizacaoAtualizada);
     _sincronizador?.revisaoCatalogo.removeListener(_catalogoAtualizado);
     _debounce?.cancel();
     _scrollController.dispose();
@@ -205,14 +250,20 @@ class _TabCustomState extends State<TabCustom>
     super.build(context);
     final cs = Theme.of(context).colorScheme;
     return ListenableBuilder(
-      listenable: Listenable.merge(
-          [provedor, if (widget.favoritos != null) widget.favoritos!]),
+      listenable: Listenable.merge([
+        provedor,
+        if (widget.favoritos != null) widget.favoritos!,
+        if (_sincronizador != null) _sincronizador,
+      ]),
       builder: (context, _) {
         final produtos = _somenteFavoritos
             ? provedor.produtos
                 .where((p) => widget.favoritos?.contem(p.id) ?? false)
                 .toList()
             : provedor.produtos;
+        final aguardandoSincronizacao = produtos.isEmpty &&
+            provedor.erro != null &&
+            _sincronizador?.sincronizando == true;
         return Column(
           children: [
             Padding(
@@ -350,8 +401,20 @@ class _TabCustomState extends State<TabCustom>
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
-                          child: provedor.carregando
-                              ? const CircularProgressIndicator()
+                          child: provedor.carregando || aguardandoSincronizacao
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const CircularProgressIndicator(),
+                                    if (aguardandoSincronizacao) ...[
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Conectando e atualizando o cardápio...',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ],
+                                )
                               : _estadoLista(context, vazio: true),
                         ),
                       )

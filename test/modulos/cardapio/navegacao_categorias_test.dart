@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -54,6 +55,59 @@ class ProdutosPendentes extends ProdutosTeste {
   }
 }
 
+class SincronizadorInicialTeste extends Fake implements Sincronizador {
+  final _alteracoes = ChangeNotifier();
+
+  @override
+  final revisaoCatalogo = ValueNotifier<int>(0);
+
+  @override
+  bool online = false;
+
+  bool conectando = true;
+
+  @override
+  bool get sincronizando => conectando;
+
+  @override
+  Future<void> configurar() async {}
+
+  @override
+  void addListener(VoidCallback listener) => _alteracoes.addListener(listener);
+
+  @override
+  void removeListener(VoidCallback listener) =>
+      _alteracoes.removeListener(listener);
+
+  void conectar() {
+    online = true;
+    conectando = false;
+    _alteracoes.notifyListeners();
+  }
+
+  void fechar() {
+    revisaoCatalogo.dispose();
+    _alteracoes.dispose();
+  }
+}
+
+class ProdutosAposConexao extends ProdutosTeste {
+  final SincronizadorInicialTeste sincronizador;
+  int tentativas = 0;
+
+  ProdutosAposConexao(this.sincronizador);
+
+  @override
+  Future<List<Modelowordprodutos>> listarPorCategoria(
+      String categoria, int pagina) async {
+    tentativas++;
+    if (!sincronizador.online) {
+      throw TimeoutException('Conexão inicial ainda indisponível');
+    }
+    return super.listarPorCategoria(categoria, pagina);
+  }
+}
+
 class CarrinhoPendente extends ProvedorCarrinho {
   CarrinhoPendente(UsuarioProvedor usuario)
       : super(ServicosItensComanda(DioClienteTeste(), usuario));
@@ -81,6 +135,7 @@ void main() {
   });
 
   tearDown(() {
+    Sincronizador.instancia = null;
     Modular.destroy();
     cardapio.dispose();
     usuario.dispose();
@@ -140,6 +195,39 @@ void main() {
     expect(produtos.consultasPorCategoria, [('0', 1)]);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+      'falha durante conexao inicial aguarda e recupera produtos sem toque',
+      (tester) async {
+    final sincronizador = SincronizadorInicialTeste();
+    Sincronizador.instancia = sincronizador;
+    final produtos = ProdutosAposConexao(sincronizador);
+    await abrir(tester, produtos: produtos);
+
+    for (var i = 0;
+        i < 20 &&
+            find
+                .text('Conectando e atualizando o cardápio...')
+                .evaluate()
+                .isEmpty;
+        i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(find.text('Conectando e atualizando o cardápio...'), findsOneWidget);
+    expect(find.text('Não foi possível carregar os produtos.'), findsNothing);
+    expect(produtos.tentativas, 1);
+
+    sincronizador.conectar();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(produtos.tentativas, 2);
+    expect(find.text('Mussarela'), findsOneWidget);
+    expect(find.text('Conectando e atualizando o cardápio...'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    sincronizador.fechar();
   });
 
   testWidgets('abas ocultas nao consultam no evento nem no ciclo automatico',
