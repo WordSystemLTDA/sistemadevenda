@@ -97,22 +97,12 @@ class _CardProdutoState extends State<CardProduto> {
   bool _detalhesJaCarregados(Modelowordprodutos item) {
     // Modelos recorrentes recebem a montagem de todos os dias somente no
     // detalhe especifico; a listagem comum representa apenas o dia atual.
-    if (widget.modeloRecorrente) return false;
+    // Produtos vinculados a Categoria Cardapio tambem precisam sempre do
+    // detalhe: ele traz a montagem completa, permissoes e ingredientes do dia.
+    if (widget.modeloRecorrente || _temCategoriaCardapio(item)) return false;
 
     final opcoes = item.opcoesPacotes;
     if (opcoes == null || opcoes.isEmpty) return false;
-
-    if (_temCategoriaCardapio(item)) {
-      return opcoes.any((grupo) {
-        final dados = grupo.dados ?? const [];
-        return dados.isNotEmpty &&
-            (grupo.tipo == 8 ||
-                dados.any(
-                  (dado) => _idCardapioValido(dado.idCategoriaCardapio),
-                ));
-      });
-    }
-
     return true;
   }
 
