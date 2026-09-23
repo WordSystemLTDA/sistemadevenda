@@ -50,6 +50,13 @@ const _opcoesHorarioAgenda = [
 
 const _alturaMinimaCardAgenda = 260.0;
 
+// Mantem a agenda em uma unica coluna tambem nos tablets em modo retrato.
+// A partir desta largura ha espaco suficiente para o painel de desktop.
+const _larguraMinimaLayoutDesktop = 900.0;
+
+bool _usarLayoutCelular(BuildContext context) =>
+    MediaQuery.sizeOf(context).width < _larguraMinimaLayoutDesktop;
+
 class AgendaRecorrentes extends StatefulWidget {
   final ProvedorRecorrentes provedor;
   final Future<void> Function() novo;
@@ -242,7 +249,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
           if (widget.formulario != null) {
             return widget.formulario!(context, item.cliente, conteudo, salvar);
           }
-          if (MediaQuery.sizeOf(context).width < 600) {
+          if (_usarLayoutCelular(context)) {
             return Scaffold(
               appBar: AppBar(title: const Text('Editar Recorrência')),
               body: SingleChildScrollView(
@@ -282,7 +289,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
                 FilledButton(onPressed: salvar, child: const Text('Salvar'))
               ]);
         });
-    final salvar = MediaQuery.sizeOf(context).width < 600
+    final salvar = _usarLayoutCelular(context)
         ? await Navigator.push<bool>(
             context, MaterialPageRoute(builder: editor))
         : await showDialog<bool>(context: context, builder: editor);
@@ -389,7 +396,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         final tema = Theme.of(context);
         final cs = tema.colorScheme;
         final itens = _ordenarItens(p.filtrados);
-        final celular = MediaQuery.sizeOf(context).width < 600;
+        final celular = _usarLayoutCelular(context);
         if (celular && p.visao != 'cadastros' && !p.carregando) {
           _sincronizarFaixaInicial(itens);
         }
@@ -875,7 +882,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
         tooltip: 'Atualizar',
         onPressed: p.carregando ? null : _recarregar,
         icon: const Icon(Icons.refresh));
-    if (largura < 600) {
+    if (largura < _larguraMinimaLayoutDesktop) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           IconButton(
@@ -1018,7 +1025,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
 
   Widget _card(ModeloRecorrente item) {
     final cadastros = p.visao == 'cadastros';
-    final celular = MediaQuery.sizeOf(context).width < 600;
+    final celular = _usarLayoutCelular(context);
     if (cadastros) {
       return celular ? _cardCadastroCelular(item) : _cardCadastro(item);
     }
@@ -1435,7 +1442,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
   }
 
   Widget _secaoItens(ModeloRecorrente item, Color corSucesso) {
-    if (MediaQuery.sizeOf(context).width < 600) {
+    if (_usarLayoutCelular(context)) {
       return _secaoItensCelular(item);
     }
     final tema = Theme.of(context);
@@ -1770,7 +1777,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)));
 
   Widget _menuCard(ModeloRecorrente item, bool futuro) {
-    final celular = MediaQuery.sizeOf(context).width < 600;
+    final celular = _usarLayoutCelular(context);
     return SizedBox.square(
         dimension: celular ? 48 : 30,
         child: PopupMenuButton<String>(

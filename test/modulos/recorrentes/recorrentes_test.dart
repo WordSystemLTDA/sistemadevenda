@@ -370,6 +370,7 @@ void main() {
     (const Size(320, 640), 1.0, false),
     (const Size(360, 640), 1.7, false),
     (const Size(600, 480), 1.0, false),
+    (const Size(800, 1280), 1.0, false),
     (const Size(1366, 768), 1.0, false),
     (const Size(900, 380), 1.0, true)
   ]) {
@@ -397,7 +398,7 @@ void main() {
                   abrirPedido: (id, item) async {}))));
       await tester.pumpAndSettle();
       expect(find.text('Ana Maria · Empresa Centro'), findsOneWidget);
-      if (caso.$1.width < 600) {
+      if (caso.$1.width < 900) {
         expect(find.byKey(const ValueKey('novo-recorrente')), findsOneWidget);
         expect(find.byType(FloatingActionButton), findsNothing);
         expect(find.text('Deslize para ver os horários'), findsNothing);
@@ -624,7 +625,7 @@ void main() {
               aberto = id;
             })));
     await tester.pumpAndSettle();
-    final ver = find.byTooltip('Ver o Pedido');
+    final ver = find.widgetWithText(OutlinedButton, 'Ver pedido');
     await tester.ensureVisible(ver);
     await tester.pumpAndSettle();
     await tester.tap(ver);

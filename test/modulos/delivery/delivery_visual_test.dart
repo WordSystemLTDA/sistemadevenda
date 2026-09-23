@@ -85,8 +85,15 @@ void main() {
         closeTo(size.width / 2, 0.1),
       );
       expect(tester.getRect(impressora).left, lessThan(40));
-      expect(tester.getRect(impressora).bottom,
-          lessThan(tester.getRect(novoDelivery).top));
+      if (size.width >= 600) {
+        expect(tester.getCenter(impressora).dy,
+            closeTo(tester.getCenter(novoDelivery).dy, 3));
+        expect(tester.getRect(impressora).right,
+            lessThan(tester.getRect(novoDelivery).left));
+      } else {
+        expect(tester.getRect(impressora).bottom,
+            lessThan(tester.getRect(novoDelivery).top));
+      }
       expect(find.text('Bruno Masson'), findsWidgets);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_$nome');

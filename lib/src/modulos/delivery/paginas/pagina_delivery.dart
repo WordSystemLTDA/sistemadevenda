@@ -961,12 +961,17 @@ String _formatarQuantidade(double? valor) {
 class _BotaoNovoPedido extends StatelessWidget {
   final bool habilitado;
   final VoidCallback onPressed;
-  const _BotaoNovoPedido({required this.habilitado, required this.onPressed});
+  final double? largura;
+  const _BotaoNovoPedido({
+    required this.habilitado,
+    required this.onPressed,
+    this.largura,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final largura =
+    final larguraBotao = largura ??
         (MediaQuery.sizeOf(context).width - 32).clamp(0.0, 560.0).toDouble();
     return Tooltip(
       message: 'Novo Delivery',
@@ -979,7 +984,7 @@ class _BotaoNovoPedido extends StatelessWidget {
           opacity: habilitado ? 1 : .55,
           child: Container(
             key: const ValueKey('novo-delivery'),
-            width: largura,
+            width: larguraBotao,
             constraints: const BoxConstraints(minHeight: 64),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -1041,8 +1046,30 @@ class _AcoesFlutuantesDelivery extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final largura =
-        (MediaQuery.sizeOf(context).width - 32).clamp(0.0, double.infinity);
+    final larguraTela = MediaQuery.sizeOf(context).width;
+    final largura = (larguraTela - 32).clamp(0.0, double.infinity);
+    if (larguraTela >= 600) {
+      final larguraNovoPedido = (largura - 140).clamp(0.0, 560.0).toDouble();
+      return SizedBox(
+        width: largura,
+        height: 64,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Positioned(
+              left: 0,
+              top: 3,
+              child: BotaoFlutuantePendenciasImpressao(tag: 'delivery'),
+            ),
+            _BotaoNovoPedido(
+              habilitado: habilitado,
+              onPressed: onNovoPedido,
+              largura: larguraNovoPedido,
+            ),
+          ],
+        ),
+      );
+    }
     return SizedBox(
       width: largura,
       height: 134,
