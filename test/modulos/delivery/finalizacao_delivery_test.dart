@@ -434,12 +434,22 @@ void main() {
       (tester) async {
     final m = await abrir(tester);
     m.delivery.pago = '5.00';
+    m.carrinho.itensCarrinho.listaComandosPedidos.single
+      ..idCategoriaCardapio = '9'
+      ..observacao = 'Conferência após voltar do pagamento';
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
     expect(Modular.get<ProvedorFinalizarPagamento>().valor, 9);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.byType(CardCarrinho), findsOneWidget);
+    expect(
+        tester.widget<CardCarrinho>(find.byType(CardCarrinho)).somenteLeitura,
+        isTrue);
+    await tester.tap(find.byTooltip('Mostrar detalhes'));
+    await tester.pumpAndSettle();
+    expect(find.text('Conferência após voltar do pagamento'), findsOneWidget);
+    expect(find.text('Editar Produto'), findsNothing);
     expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
         contains('9,00'));
     await tester.tap(find.text('Finalizar'));

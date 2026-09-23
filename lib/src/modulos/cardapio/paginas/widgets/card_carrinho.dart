@@ -51,6 +51,7 @@ class CardCarrinho extends StatefulWidget {
   final dynamic value;
   final Future<bool> Function(bool increase) setarQuantidade;
   final VoidCallback aoExcluirItem;
+  final bool somenteLeitura;
 
   const CardCarrinho({
     super.key,
@@ -61,6 +62,7 @@ class CardCarrinho extends StatefulWidget {
     required this.value,
     required this.setarQuantidade,
     required this.aoExcluirItem,
+    this.somenteLeitura = false,
   });
 
   @override
@@ -113,7 +115,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
   }
 
   Future<void> _confirmarAlteracaoQuantidade(bool aumentar) async {
-    if (_processandoAcao) return;
+    if (widget.somenteLeitura || _processandoAcao) return;
 
     final quantidadeAtual = (widget.item.quantidade ?? 1).toInt();
     final novaQuantidade = quantidadeAtual + (aumentar ? 1 : -1);
@@ -147,7 +149,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
   }
 
   Future<void> _confirmarExclusaoItem() async {
-    if (_processandoAcao) return;
+    if (widget.somenteLeitura || _processandoAcao) return;
 
     final confirmado = await _mostrarConfirmacaoItem(
       tipo: _TipoConfirmacaoCarrinho.excluir,
@@ -412,18 +414,20 @@ class _CardCarrinhoState extends State<CardCarrinho>
                       children: [
                         TextButton.icon(
                           icon: const Icon(Icons.edit_note_rounded, size: 20),
-                          onPressed: () {
-                            showModalBottomSheet(
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              context: context,
-                              builder: (context) => ModalEditarObservacao(
-                                index: widget.index,
-                                idProduto: item.id,
-                                observacao: item.observacao ?? '',
-                              ),
-                            );
-                          },
+                          onPressed: widget.somenteLeitura
+                              ? null
+                              : () {
+                                  showModalBottomSheet(
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    context: context,
+                                    builder: (context) => ModalEditarObservacao(
+                                      index: widget.index,
+                                      idProduto: item.id,
+                                      observacao: item.observacao ?? '',
+                                    ),
+                                  );
+                                },
                           label: const Text('Observação'),
                         ),
                         Row(
@@ -442,7 +446,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                                   : Icon(vendidoPorPeso || item.quantidade! <= 1
                                       ? Icons.delete_outline_outlined
                                       : Icons.remove_circle_outline_outlined),
-                              onPressed: _processandoAcao
+                              onPressed: widget.somenteLeitura ||
+                                      _processandoAcao
                                   ? null
                                   : () {
                                       if (vendidoPorPeso ||
@@ -467,7 +472,8 @@ class _CardCarrinhoState extends State<CardCarrinho>
                                 tooltip: 'Aumentar quantidade',
                                 icon: const Icon(
                                     Icons.add_circle_outline_outlined),
-                                onPressed: _processandoAcao
+                                onPressed: widget.somenteLeitura ||
+                                        _processandoAcao
                                     ? null
                                     : () => _confirmarAlteracaoQuantidade(true),
                               ),
@@ -490,12 +496,13 @@ class _CardCarrinhoState extends State<CardCarrinho>
               ),
             ),
           ),
-          AcoesProdutoCarrinho(
-            item: item,
-            index: widget.index,
-            aoConferir: (conferido) => carrinhoProvedor.definirConferencia(
-                item, widget.index, conferido),
-          ),
+          if (!widget.somenteLeitura)
+            AcoesProdutoCarrinho(
+              item: item,
+              index: widget.index,
+              aoConferir: (conferido) => carrinhoProvedor.definirConferencia(
+                  item, widget.index, conferido),
+            ),
           SizeTransition(
             sizeFactor: _sizeTween.animate(_animation),
             child: Column(

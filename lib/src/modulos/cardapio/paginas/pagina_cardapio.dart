@@ -19,6 +19,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 
 import 'package:flutter/material.dart';
@@ -433,6 +434,12 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                             onPressed: () {
                               if (!context.mounted) return;
                               final item = provedor.saboresPizzaSelecionados[0];
+                              Modular.get<ServicoProduto>()
+                                  .anteciparDetalhesPorId(
+                                item.id,
+                                provedor.tamanhosPizza!.id,
+                                modeloRecorrente: widget.modeloRecorrente,
+                              );
                               Navigator.of(context).push(MaterialPageRoute(
                                 builder: (context) => PaginaSaborBordas(
                                   produto: item,

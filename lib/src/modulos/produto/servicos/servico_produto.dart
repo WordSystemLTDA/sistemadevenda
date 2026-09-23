@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
@@ -8,12 +11,26 @@ import 'package:app/src/modulos/produto/modelos/adicionais_modelo.dart';
 import 'package:app/src/modulos/produto/modelos/tamanhos_modelo.dart';
 import 'package:dio/dio.dart';
 
+class _DetalheAntecipado {
+  final DateTime criadoEm;
+  final String assinatura;
+  final Future<Modelowordprodutos?> consulta;
+
+  const _DetalheAntecipado({
+    required this.criadoEm,
+    required this.assinatura,
+    required this.consulta,
+  });
+}
+
 class ServicoProduto {
   final DioCliente dio;
   final UsuarioProvedor usuarioProvedor;
   ServicoProduto(this.dio, this.usuarioProvedor);
   static final Map<String, Future<List<Map<String, dynamic>>>>
       _catalogosDesktop = {};
+  final Map<String, _DetalheAntecipado> _detalhesAntecipados = {};
+  static const _validadeDetalheAntecipado = Duration(seconds: 20);
   // final sharedPrefs = SharedPrefsConfig();
 
   // var usuarioProvider = usuarioProvider.getUsuario();
@@ -35,6 +52,7 @@ class ServicoProduto {
             List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
+        _anteciparMontagensDoCatalogo(produtos);
         return produtos;
       } else {
         return [];
@@ -61,9 +79,12 @@ class ServicoProduto {
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        return List<Modelowordprodutos>.from(response.data.map((elemento) {
+        final produtos =
+            List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
+        _anteciparMontagensDoCatalogo(produtos);
+        return produtos;
       } else {
         return [];
       }
@@ -76,6 +97,79 @@ class ServicoProduto {
     String id,
     String idtamanhospizza, {
     bool modeloRecorrente = false,
+  }) async {
+    final chave = _chaveDetalhe(id, idtamanhospizza, modeloRecorrente);
+    final antecipado = _detalhesAntecipados[chave];
+    if (antecipado != null &&
+        DateTime.now().difference(antecipado.criadoEm) <=
+            _validadeDetalheAntecipado) {
+      final produto = await antecipado.consulta;
+      if (produto != null) {
+        return Modelowordprodutos.fromMap(produto.toMap());
+      }
+    } else if (antecipado != null) {
+      _detalhesAntecipados.remove(chave);
+    }
+
+    return _consultarPorId(
+      id,
+      idtamanhospizza,
+      modeloRecorrente: modeloRecorrente,
+    );
+  }
+
+  /// Inicia a mesma consulta usada pela tela do produto sem bloquear o toque.
+  ///
+  /// O resultado fica somente na memoria por poucos segundos e e consumido
+  /// por [listarPorId]. Isso permite preparar bordas e adicionais enquanto o
+  /// usuario ainda escolhe os sabores, sem persistir precos ou configuracoes
+  /// que podem mudar no servidor.
+  void anteciparDetalhesPorId(
+    String id,
+    String idtamanhospizza, {
+    bool modeloRecorrente = false,
+  }) {
+    final chave = _chaveDetalhe(id, idtamanhospizza, modeloRecorrente);
+    final agora = DateTime.now();
+    final existente = _detalhesAntecipados[chave];
+    if (existente != null &&
+        agora.difference(existente.criadoEm) <= _validadeDetalheAntecipado) {
+      return;
+    }
+
+    late final Future<Modelowordprodutos?> consulta;
+    consulta = _consultarPorId(
+      id,
+      idtamanhospizza,
+      modeloRecorrente: modeloRecorrente,
+    ).then<Modelowordprodutos?>((produto) => produto,
+        onError: (Object _, StackTrace __) {
+      final atual = _detalhesAntecipados[chave];
+      if (atual != null && identical(atual.consulta, consulta)) {
+        _detalhesAntecipados.remove(chave);
+      }
+      return null;
+    });
+
+    _detalhesAntecipados[chave] = _DetalheAntecipado(
+      criadoEm: agora,
+      assinatura: 'produto:$id:$idtamanhospizza:$modeloRecorrente',
+      consulta: consulta,
+    );
+    unawaited(consulta);
+
+    Timer(_validadeDetalheAntecipado, () {
+      final atual = _detalhesAntecipados[chave];
+      if (atual != null && identical(atual.consulta, consulta)) {
+        _detalhesAntecipados.remove(chave);
+      }
+    });
+  }
+
+  Future<Modelowordprodutos?> _consultarPorId(
+    String id,
+    String idtamanhospizza, {
+    required bool modeloRecorrente,
   }) async {
     final empresa = usuarioProvedor.usuario!.empresa ?? '';
     final idUsuario = usuarioProvedor.usuario!.id ?? '';
@@ -107,6 +201,102 @@ class ServicoProduto {
       idUsuario: idUsuario,
       baseGarcom: response.requestOptions.baseUrl,
     );
+  }
+
+  void _anteciparMontagensDoCatalogo(List<Modelowordprodutos> produtos) {
+    final porCategoria = <String, List<Modelowordprodutos>>{};
+    for (final produto in produtos) {
+      final categoria = produto.idCategoriaCardapio?.trim() ?? '';
+      if (!_idCardapioValido(categoria) || _grupoMontagemCardapio(produto)) {
+        continue;
+      }
+      porCategoria.putIfAbsent(categoria, () => []).add(produto);
+    }
+
+    // Uma montagem e compartilhada pelos produtos vinculados a mesma
+    // Categoria Cardapio. Antecipar somente o primeiro de cada categoria
+    // evita uma requisicao por card e deixa o toque pronto na maioria dos
+    // casos. O limite cobre os cards visiveis sem sobrecarregar a API.
+    for (final produtosCategoria in porCategoria.values.take(4)) {
+      final produto = produtosCategoria.first;
+      final chave = _chaveDetalhe(produto.id, '0', false);
+      final assinatura = jsonEncode({
+        'categoria': produto.idCategoriaCardapio,
+        'valor': produto.valorVenda,
+        'opcoes': produto.opcoesPacotes?.map((e) => e.toMap()).toList(),
+      });
+      final existente = _detalhesAntecipados[chave];
+      if (existente != null &&
+          existente.assinatura == assinatura &&
+          DateTime.now().difference(existente.criadoEm) <
+              const Duration(seconds: 5)) {
+        continue;
+      }
+
+      late final Future<Modelowordprodutos?> consulta;
+      consulta = _consultarPorId(
+        produto.id,
+        '0',
+        modeloRecorrente: false,
+      ).then<Modelowordprodutos?>((detalhe) {
+        if (detalhe != null) {
+          _aplicarMontagemAntecipada(produtosCategoria, detalhe);
+        }
+        return detalhe;
+      }, onError: (Object _, StackTrace __) {
+        final atual = _detalhesAntecipados[chave];
+        if (atual != null && identical(atual.consulta, consulta)) {
+          _detalhesAntecipados.remove(chave);
+        }
+        return null;
+      });
+      _detalhesAntecipados[chave] = _DetalheAntecipado(
+        criadoEm: DateTime.now(),
+        assinatura: assinatura,
+        consulta: consulta,
+      );
+      unawaited(consulta);
+
+      Timer(_validadeDetalheAntecipado, () {
+        final atual = _detalhesAntecipados[chave];
+        if (atual != null && identical(atual.consulta, consulta)) {
+          _detalhesAntecipados.remove(chave);
+        }
+      });
+    }
+  }
+
+  void _aplicarMontagemAntecipada(
+    List<Modelowordprodutos> produtos,
+    Modelowordprodutos detalhe,
+  ) {
+    final montagem = (detalhe.opcoesPacotes ?? [])
+        .where(_grupoEhMontagemCardapio)
+        .firstOrNull;
+    if (montagem == null || (montagem.dados?.isEmpty ?? true)) return;
+
+    for (final produto in produtos) {
+      final atuais = (produto.opcoesPacotes ?? [])
+          .where((grupo) => !_grupoEhMontagemCardapio(grupo))
+          .map((grupo) => ModeloOpcoesPacotes.fromMap(grupo.toMap()))
+          .toList();
+      produto
+        ..habilTipo = 'Pacote'
+        ..opcoesPacotes = [
+          ModeloOpcoesPacotes.fromMap(montagem.toMap()),
+          ...atuais,
+        ];
+    }
+  }
+
+  String _chaveDetalhe(
+    String id,
+    String tamanho,
+    bool modeloRecorrente,
+  ) {
+    final empresa = usuarioProvedor.usuario?.empresa ?? '';
+    final usuario = usuarioProvedor.usuario?.id ?? '';
+    return '$empresa|$usuario|$id|$tamanho|$modeloRecorrente';
   }
 
   bool _idCardapioValido(String? id) =>

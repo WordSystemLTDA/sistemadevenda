@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -15,6 +16,9 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
 
   final Map<String, dynamic> almoco;
   final chamadas = <RequestOptions>[];
+  bool manterVinculoNoCatalogo = false;
+  Completer<void>? bloquearDetalhe;
+  final detalheIniciado = Completer<void>();
 
   @override
   Future<ResponseBody> fetch(RequestOptions options,
@@ -34,12 +38,22 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
     if (RegExp(
             r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_id\.php$')
         .hasMatch(caminho)) {
+      if (!detalheIniciado.isCompleted) detalheIniciado.complete();
+      await bloquearDetalhe?.future;
       return _json(quebrado);
     }
     if (RegExp(
             r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_categoria\.php$')
         .hasMatch(caminho)) {
-      return _json([quebrado]);
+      final produtoCatalogo = Map<String, dynamic>.from(quebrado);
+      if (manterVinculoNoCatalogo) {
+        produtoCatalogo
+          ..['idCategoriaCardapio'] =
+              almoco['idCategoriaCardapio'] ?? almoco['id_categoria_cardapio']
+          ..['id_categoria_cardapio'] =
+              almoco['id_categoria_cardapio'] ?? almoco['idCategoriaCardapio'];
+      }
+      return _json([produtoCatalogo]);
     }
     if (caminho
         .endsWith('/api_desktop/1.0.01/produtos/listar_por_categoria.php')) {
@@ -205,6 +219,87 @@ void main() {
     expect(adapter.chamadas, hasLength(1));
     expect(adapter.chamadas.single.uri.path,
         endsWith('/api37/produtos/listar_por_categoria.php'));
+  });
+
+  test('antecipa montagem vinculada e reutiliza a consulta ao abrir', () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api37/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco)
+      ..manterVinculoNoCatalogo = true
+      ..bloquearDetalhe = Completer<void>();
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    addTearDown(usuario.dispose);
+    final servico = ServicoProduto(api, usuario);
+
+    final catalogo = await servico.listarPorCategoria('0', 1);
+    await adapter.detalheIniciado.future.timeout(const Duration(seconds: 1));
+    final detalhe = servico.listarPorId(almoco['id'].toString(), '0');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      adapter.chamadas.where((chamada) =>
+          chamada.uri.path.endsWith('/produtos/listar_por_id.php')),
+      hasLength(1),
+    );
+
+    adapter.bloquearDetalhe!.complete();
+    final produto = await detalhe;
+
+    expect(produto!.opcoesPacotes!.first.tipo, 8);
+    expect(
+      catalogo.single.opcoesPacotes!.any((grupo) => grupo.tipo == 8),
+      isTrue,
+    );
+    expect(
+      adapter.chamadas.where((chamada) =>
+          chamada.uri.path.endsWith('/produtos/listar_por_id.php')),
+      hasLength(1),
+    );
+  });
+
+  test('antecipa detalhes da pizza e reutiliza a consulta ao abrir bordas',
+      () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final api = DioCliente(
+        servidor:
+            'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api37/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco)
+      ..bloquearDetalhe = Completer<void>();
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    addTearDown(usuario.dispose);
+    final servico = ServicoProduto(api, usuario);
+
+    servico.anteciparDetalhesPorId('436', 'G');
+    await adapter.detalheIniciado.future.timeout(const Duration(seconds: 1));
+
+    final detalhe = servico.listarPorId('436', 'G');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      adapter.chamadas.where((chamada) =>
+          chamada.uri.path.endsWith('/produtos/listar_por_id.php')),
+      hasLength(1),
+    );
+
+    adapter.bloquearDetalhe!.complete();
+    expect(await detalhe, isNotNull);
+    expect(
+      adapter.chamadas.where((chamada) =>
+          chamada.uri.path.endsWith('/produtos/listar_por_id.php')),
+      hasLength(1),
+    );
   });
 
   test('fallback desktop nao retém ingredientes de consulta concluida',

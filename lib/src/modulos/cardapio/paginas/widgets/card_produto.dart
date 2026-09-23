@@ -11,6 +11,7 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/uteis/produto_vendido_por_peso.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -197,6 +198,13 @@ class _CardProdutoState extends State<CardProduto> {
             provedorCardapio.selecionarSaborPizza(item);
             final ficouSelecionado = provedorCardapio.saboresPizzaSelecionados
                 .any((sabor) => sabor.id == item.id);
+            if (ficouSelecionado) {
+              Modular.get<ServicoProduto>().anteciparDetalhesPorId(
+                item.id,
+                tamanhoSelecionado.id,
+                modeloRecorrente: widget.modeloRecorrente,
+              );
+            }
             if (estavaSelecionado != ficouSelecionado) {
               FeedbackUsuario.selecaoAlterada();
             }

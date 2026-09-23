@@ -136,6 +136,7 @@ class CategoriasTeste extends Fake implements ServicosCategoria {
 
 class ProdutosTeste extends Fake implements ServicoProduto {
   final consultasPorId = <(String, String)>[];
+  final detalhesAntecipados = <(String, String)>[];
   final consultasPorNome = <String>[];
   final consultasPorCategoria = <(String, int)>[];
   final produtos = [
@@ -177,6 +178,12 @@ class ProdutosTeste extends Fake implements ServicoProduto {
     return Modelowordprodutos.fromMap(
         produtos.firstWhere((p) => p.id == id).toMap())
       ..opcoesPacotes = [];
+  }
+
+  @override
+  void anteciparDetalhesPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) {
+    detalhesAntecipados.add((id, tamanho));
   }
 }
 
@@ -642,6 +649,7 @@ void main() {
       expect(cardapio.categorias.first.tamanhosPizza, hasLength(2));
       await tocarTamanho(tester, 'G');
       await tocarProduto(tester, 'Mussarela');
+      expect(produtos.detalhesAntecipados, contains(('Mussarela', 'G')));
       await trocarCategoria(tester, 'Calabresa');
       await tocarProduto(tester, 'Calabresa especial');
       await trocarCategoria(tester, 'Todos');

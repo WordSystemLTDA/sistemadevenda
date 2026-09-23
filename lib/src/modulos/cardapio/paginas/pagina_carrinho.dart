@@ -624,7 +624,9 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                       ),
                     )),
             body: IgnorePointer(
-              ignoring: isLoading || _finalizacao.pedidoRegistrado,
+              // O Delivery já registrado permanece disponível para
+              // conferência. As ações de edição são bloqueadas pelo card.
+              ignoring: isLoading,
               child: carregando
                   ? const Center(child: CircularProgressIndicator())
                   : itens.isEmpty
@@ -671,6 +673,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                               idMesa: _idMesa,
                               index: index,
                               value: resumo,
+                              somenteLeitura: _finalizacao.pedidoRegistrado,
                               aoExcluirItem: () => setState(() {}),
                               setarQuantidade: (increase) async {
                                 final quantidadeAnterior = item.quantidade ?? 1;
