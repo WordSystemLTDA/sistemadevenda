@@ -1131,6 +1131,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PaginaProduto), findsOneWidget);
     expect(find.text('Selecione os Adicionais'), findsOneWidget);
+    expect(produtos.consultasPorId, hasLength(1));
 
     await tester.tap(find.text('Milho'));
     await tester.pumpAndSettle();

@@ -191,6 +191,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('produto completo da listagem abre montagem sem repetir consulta',
+      (tester) async {
+    final produtoCatalogo = Modelowordprodutos.fromMap(
+      produtos.produtoCardapio.toMap(),
+    )..opcoesPacotes = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Arroz',
+              valor: '0',
+              idCategoriaCardapio: '9',
+            ),
+          ],
+        ),
+      ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProduto(
+          estaPesquisando: false,
+          item: produtoCatalogo,
+          categoria: null,
+          finalizar: false,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(CardProduto));
+    await tester.pumpAndSettle();
+
+    expect(produtos.consultasPorId, isEmpty);
+    expect(find.text('Preparando opções do produto...'), findsNothing);
+    expect(find.text('Montagem do produto'), findsOneWidget);
+    expect(find.byType(EtapaMontagemCardapio), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('aguarda os detalhes sem exibir a pagina comum antes da montagem',
       (tester) async {
     produtos.esperaDetalhe = Completer<void>();

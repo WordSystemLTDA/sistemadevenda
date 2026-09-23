@@ -94,6 +94,28 @@ class _CardProdutoState extends State<CardProduto> {
         _temCategoriaCardapio(item);
   }
 
+  bool _detalhesJaCarregados(Modelowordprodutos item) {
+    // Modelos recorrentes recebem a montagem de todos os dias somente no
+    // detalhe especifico; a listagem comum representa apenas o dia atual.
+    if (widget.modeloRecorrente) return false;
+
+    final opcoes = item.opcoesPacotes;
+    if (opcoes == null || opcoes.isEmpty) return false;
+
+    if (_temCategoriaCardapio(item)) {
+      return opcoes.any((grupo) {
+        final dados = grupo.dados ?? const [];
+        return dados.isNotEmpty &&
+            (grupo.tipo == 8 ||
+                dados.any(
+                  (dado) => _idCardapioValido(dado.idCategoriaCardapio),
+                ));
+      });
+    }
+
+    return true;
+  }
+
   String _preco(bool pizza) {
     final item = widget.item;
     final selecionado =
@@ -205,6 +227,7 @@ class _CardProdutoState extends State<CardProduto> {
                 return PaginaProduto(
                   produto: item,
                   modeloRecorrente: widget.modeloRecorrente,
+                  detalhesJaCarregados: _detalhesJaCarregados(item),
                 );
               },
             ));
@@ -325,6 +348,7 @@ class _CardProdutoState extends State<CardProduto> {
             builder: (_) => PaginaProduto(
               produto: item,
               modeloRecorrente: widget.modeloRecorrente,
+              detalhesJaCarregados: _detalhesJaCarregados(item),
             ),
           ));
         }

@@ -33,6 +33,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
 
   Modelowordprodutos? itemProduto;
   bool carregando = false;
+  bool _detalhesCarregados = false;
   TextEditingController obsController = TextEditingController();
 
   @override
@@ -117,6 +118,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
       if (!mounted) return;
       itemProduto = value;
       if (value != null) {
+        _detalhesCarregados = true;
         final bordasSelecionadas = _grupoBordasSelecionadas();
         final opcoesIniciais = _opcoesIniciais(value.opcoesPacotes ?? []);
         _preservarBordasSelecionadas(opcoesIniciais, bordasSelecionadas);
@@ -170,6 +172,7 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
           produto: produtoDestino,
           valorVenda: widget.valorVenda,
           montagemPizza: true,
+          detalhesJaCarregados: _detalhesCarregados,
         );
       },
     ));

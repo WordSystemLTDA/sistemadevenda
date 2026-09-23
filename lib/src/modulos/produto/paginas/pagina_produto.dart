@@ -27,6 +27,7 @@ class PaginaProduto extends StatefulWidget {
   final double? valorVenda;
   final bool editar;
   final bool montagemPizza;
+  final bool detalhesJaCarregados;
   final int? indexProduto;
   final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
   final bool modeloRecorrente;
@@ -37,6 +38,7 @@ class PaginaProduto extends StatefulWidget {
     this.valorVenda,
     this.editar = false,
     this.montagemPizza = false,
+    this.detalhesJaCarregados = false,
     this.indexProduto,
     this.inserirEmItensRecorrentes,
     this.modeloRecorrente = false,
@@ -87,7 +89,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
     if (widget.editar == false) {
       itemProduto = widget.produto;
       _prepararProdutoParaExibicao(widget.produto);
-      listar(forcar: true);
+      if (widget.detalhesJaCarregados) {
+        _carregamentoInicialConcluido = true;
+      } else {
+        listar(forcar: true);
+      }
     } else {
       itemProduto = widget.produto;
       _carregamentoInicialConcluido = true;
