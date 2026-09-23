@@ -247,13 +247,18 @@ class Server extends ChangeNotifier {
           continue;
         }
         _consultasImpressao[item.id] = _agora();
-        _enviarMensagemNoCanal(jsonEncode({
+        final enviada = _enviarMensagemNoCanal(jsonEncode({
           'tipo': 'CancelarImpressao',
           'protocoloImpressao': 2,
           'idRequisicao': item.id,
           'idEmpresa': item.dados['idEmpresa'],
           'nomedopc': item.dados['nomedopc'],
         }));
+        if (!enviada) {
+          _consultasImpressao.remove(item.id);
+          _processarQuedaConexao();
+          break;
+        }
         enviados++;
         continue;
       }
@@ -284,7 +289,15 @@ class Server extends ChangeNotifier {
         enviados++;
         continue;
       }
+      final canalEnvio = channel;
       if (!await filaImpressao.iniciarEnvio(item.id, agora: _agora())) continue;
+      if (!connected ||
+          !identical(channel, canalEnvio) ||
+          !_pertenceAConexao(item)) {
+        await filaImpressao.registrarErro(item.id,
+            'Conexao interrompida. Aguardando recuperacao automatica.');
+        break;
+      }
       enviados++;
       if (!_enviarMensagemNoCanal(
           jsonEncode({...item.dados, 'protocoloImpressao': 2}))) {
@@ -324,6 +337,30 @@ class Server extends ChangeNotifier {
   static const int _maximoMensagensPendentes = 200;
   static const String _chaveMensagensPendentes =
       'fila_mensagens_socket_pendentes';
+
+  /// Ao voltar do segundo plano ou trocar de rede, o socket antigo pode ainda
+  /// parecer conectado, embora o SO ja tenha encerrado a conexao. Renova o
+  /// canal imediatamente; a fila consulta os mesmos IDs antes de reimprimir.
+  Future<bool> retomarConexao(String ip, String porta,
+      {bool renovarCanal = false}) async {
+    if (!renovarCanal) return connect(ip, porta);
+    final numeroPorta = int.tryParse(porta.trim());
+    if (_descartado ||
+        ip.trim().isEmpty ||
+        numeroPorta == null ||
+        numeroPorta <= 0 ||
+        numeroPorta > 65535) {
+      return false;
+    }
+    _cancelarTentativaConexao();
+    final geracao = _geracaoConexao;
+    _tentativaReconexao = 0;
+    _temporizadorReconexao?.cancel();
+    _temporizadorReconexao = null;
+    await _encerrarCanalAtual();
+    if (_descartado || geracao != _geracaoConexao) return false;
+    return connect(ip, porta);
+  }
 
   Future<bool> connect(String ip, String porta) async {
     if (_descartado) return false;

@@ -10,6 +10,7 @@ import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
+import 'package:app/src/modulos/delivery/servicos/preparacao_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -17,6 +18,7 @@ import 'banco_local.dart';
 import 'atendimentos_locais.dart';
 import 'cache_consultas.dart';
 import 'execucao_segundo_plano.dart';
+import 'seguranca_pendencias.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
@@ -24,9 +26,11 @@ class Sincronizador extends ChangeNotifier {
   final UsuarioProvedor usuario;
   final Server socket;
   final BancoLocal banco;
+  late final _preparacaoDelivery = PreparacaoDeliveryOffline(api);
   Timer? _timer;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
+  Future<void> _filaOperacoes = Future.value();
   Future<void>? _retentativaManual;
   final revisaoCatalogo = ValueNotifier<int>(0);
   Future<void>? _configurando;
@@ -42,6 +46,7 @@ class Sincronizador extends ChangeNotifier {
   DateTime? _ultimoCatalogo;
   final Map<String, DateTime> _detalhesAtualizados = {};
   List<Map<String, Object?>> pendencias = [];
+  int _rascunhosParaConferir = 0;
   void Function()? aoAtualizarTelas;
 
   Sincronizador(this.api, this.usuario, this.socket, {BancoLocal? banco})
@@ -50,6 +55,7 @@ class Sincronizador extends ChangeNotifier {
   bool get sincronizando =>
       _emAndamento != null || _enviando != null || _retentativaManual != null;
   int get conflitos =>
+      _rascunhosParaConferir +
       pendencias.where((e) => e['estado'] == 'conflito').length;
   int get impressoesPendentes => socket.filaImpressao.itens
       .where((p) =>
@@ -72,6 +78,7 @@ class Sincronizador extends ChangeNotifier {
     escopo = '';
     api.cache?.escopo = '';
     pendencias = [];
+    _rascunhosParaConferir = 0;
     online = false;
     erro = null;
     catalogoPronto = false;
@@ -98,7 +105,13 @@ class Sincronizador extends ChangeNotifier {
   void solicitar() {
     if (_descartado) return;
     _solicitada = true;
-    if (_emAndamento == null) unawaited(sincronizar());
+    if (_emAndamento == null) {
+      unawaited(sincronizar());
+    } else if (escopo.isNotEmpty) {
+      // Uma preparacao extensa de catalogo nao pode atrasar pedidos prontos
+      // quando a rede volta. A fila de envio tem exclusao mutua propria.
+      unawaited(enviarPendentes());
+    }
   }
 
   Future<void> configurar() => _configurando ??= _configurar().whenComplete(() {
@@ -132,6 +145,8 @@ class Sincronizador extends ChangeNotifier {
     _ultimoCatalogo = null;
     _detalhesAtualizados.clear();
     catalogoPronto = await banco.ler('catalogo:$escopo') != null;
+    ultimaAtualizacao = DateTime.tryParse(
+        await banco.ler('ultima-sincronizacao:$escopo') ?? '');
     pendencias = await banco.operacoes(escopo);
     _notificar();
   }
@@ -496,12 +511,23 @@ class Sincronizador extends ChangeNotifier {
         receiveTimeout: const Duration(seconds: 15),
       );
 
+  // O envio automatico e as acoes de recuperacao compartilham a mesma fila.
+  // Assim nao arquivamos/devolvemos um pedido enquanto o HTTP esta em voo.
+  Future<T> _operacaoExclusiva<T>(Future<T> Function() acao) {
+    final resultado = _filaOperacoes.then((_) => acao());
+    _filaOperacoes =
+        resultado.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return resultado;
+  }
+
   Future<void> enviarPendentes() => _enviando ??= () async {
         try {
           await configurar();
           if (escopo.isNotEmpty) {
-            await ExecucaoSegundoPlano.executar(
-                () => _enviarPendentes(escopo, servidor));
+            final alvo = escopo;
+            final url = servidor;
+            await _operacaoExclusiva(() => ExecucaoSegundoPlano.executar(
+                () => _enviarPendentes(alvo, url)));
           }
         } on DioException catch (e) {
           if (CacheConsultas.falhaDeConexao(e)) {
@@ -529,6 +555,8 @@ class Sincronizador extends ChangeNotifier {
       final url = servidor;
       final empresa = usuario.usuario!.empresa;
       final idUsuario = usuario.usuario!.id;
+      final chaveCarrinhos = banco.chaveCarrinhos;
+      final identidades = await _identidadesRascunhos(alvo, empresa!);
       final estado = await api.cliente.get('sincronizacao/estado.php',
           queryParameters: {'empresa': empresa, 'id_usuario': idUsuario},
           options: _opcoes(url));
@@ -540,35 +568,57 @@ class Sincronizador extends ChangeNotifier {
       erro = null;
       api.cache?.confirmarConexao();
       await banco.gravar('estado:$alvo', jsonEncode(estado.data));
+      if (estado.data['sucesso'] == true &&
+          estado.data['atendimentos'] is Map) {
+        await ArmazenamentoCarrinhos.instancia.conferirRascunhosNoServidor(
+            chaveDocumento: chaveCarrinhos,
+            empresa: empresa,
+            identidadesConsultadas: identidades,
+            atendimentos: estado.data['atendimentos'] as Map);
+      }
+      if (estado.data['offline_delivery'] == 1) {
+        unawaited(_preparacaoDelivery.preparar(
+            escopo: alvo,
+            servidor: url,
+            empresa: empresa,
+            usuario: idUsuario!));
+      }
       await enviarPendentes();
       if (alvo != escopo || usuario.usuario == null) return;
-      await _atualizarConsultas(alvo, url, empresa!, idUsuario!);
-      for (final rota in [
-        'listar_banco_pix',
-        'listar_datas_vendas',
-        'listar_bancos'
-      ]) {
-        if (alvo != escopo) return;
-        final resposta = await api.cliente.get('tela_nfe_saida/$rota.php',
-            queryParameters: rota == 'listar_bancos'
-                ? {'id_empresa': empresa, 'id_usuario': idUsuario}
-                : {'empresa': empresa},
-            options: _opcoes(url));
-        await banco.guardarConsulta(
-            alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
-      }
+      // Prepara conjuntos independentes em paralelo. Uma falha em uma lista
+      // financeira nao impede que o cardapio seja salvo para uso offline.
+      await Future.wait<void>([
+        _atualizarConsultas(alvo, url, empresa, idUsuario!),
+        if (_ultimoCatalogo == null ||
+            DateTime.now().difference(_ultimoCatalogo!) >
+                const Duration(minutes: 2))
+          _carregarCatalogo(alvo, url, empresa, idUsuario),
+        for (final rota in [
+          'listar_banco_pix',
+          'listar_datas_vendas',
+          'listar_bancos'
+        ])
+          () async {
+            if (alvo != escopo) return;
+            final resposta = await api.cliente.get('tela_nfe_saida/$rota.php',
+                queryParameters: rota == 'listar_bancos'
+                    ? {'id_empresa': empresa, 'id_usuario': idUsuario}
+                    : {'empresa': empresa},
+                options: _opcoes(url));
+            await banco.guardarConsulta(alvo!,
+                CacheConsultas.chave(resposta.requestOptions), resposta.data);
+          }(),
+      ]);
       if (alvo != escopo) return;
       ultimaAtualizacao = DateTime.now();
+      await banco.gravar(
+          'ultima-sincronizacao:$alvo', ultimaAtualizacao!.toIso8601String());
       aoAtualizarTelas?.call();
-      if (_ultimoCatalogo == null ||
-          DateTime.now().difference(_ultimoCatalogo!) >
-              const Duration(minutes: 2)) {
-        await _carregarCatalogo(alvo, url, empresa, idUsuario);
-      }
     } on DioException catch (e) {
       if (alvo != escopo) return;
-      online = false;
-      if (!CacheConsultas.falhaDeConexao(e)) {
+      if (CacheConsultas.falhaDeConexao(e)) {
+        online = false;
+      } else {
         erro = e.response?.statusCode == 401 || e.response?.statusCode == 403
             ? 'Acesso nao autorizado. Entre novamente.'
             : 'Nao foi possivel sincronizar. Verifique a atualizacao do servidor.';
@@ -589,34 +639,67 @@ class Sincronizador extends ChangeNotifier {
     if (alvo.isEmpty || _descartado) return;
     try {
       final itens = await banco.operacoes(alvo);
-      if (alvo == escopo && !_descartado) pendencias = itens;
+      final rascunhos = await rascunhosBloqueados();
+      if (alvo == escopo && !_descartado) {
+        pendencias = itens;
+        _rascunhosParaConferir = rascunhos.length;
+      }
     } catch (_) {
       erro =
           'Nao foi possivel acessar os pedidos salvos. Verifique o armazenamento do aparelho.';
     }
   }
 
-  Future<void> arquivarConflito(String id) async {
-    await banco.db.transaction((tx) async {
-      final operacao = (await tx.query('operacoes',
-              where: 'id = ? AND escopo = ? AND estado = ?',
-              whereArgs: [id, escopo, 'conflito']))
-          .firstOrNull;
-      if (operacao == null) return;
-      await tx.update('operacoes', {'estado': 'arquivado'},
-          where: 'id = ?', whereArgs: [id]);
-      if (operacao['acao'] == 'abertura') {
-        await tx.update(
-            'operacoes',
-            {
-              'estado': 'conflito',
-              'erro':
-                  'A abertura original foi arquivada. Confira os produtos antes de arquivar.'
-            },
-            where: "escopo = ? AND atendimento = ? AND estado = 'pendente'",
-            whereArgs: [escopo, operacao['atendimento']]);
+  Future<Map<String, String>> _identidadesRascunhos(
+      String alvo, String empresa) async {
+    final carrinhos =
+        jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}') as Map;
+    final identidades = <String, String>{};
+    for (final carrinho in carrinhos.values.whereType<Map>()) {
+      if (carrinho['empresa'] != empresa ||
+          !['mesa', 'comanda'].contains(carrinho['tipo'])) {
+        continue;
       }
-    });
+      final id = '${carrinho['idAtendimento'] ?? ''}';
+      if (AtendimentosLocais.local(id)) {
+        final abertura = await AtendimentosLocais(banco, alvo).abertura(id);
+        final real = abertura == null
+            ? null
+            : AtendimentosLocais.recibo(abertura)['id_comanda_pedido'];
+        if (real != null) identidades[id] = '$real';
+      } else if ((int.tryParse(id) ?? 0) > 0) {
+        identidades[id] = id;
+      }
+    }
+    return identidades;
+  }
+
+  Future<void> arquivarConflito(String id) async {
+    await configurar();
+    final alvo = escopo;
+    await _operacaoExclusiva(() => banco.db.transaction((tx) async {
+          if (alvo.isEmpty || alvo != escopo) return;
+          final operacao = (await tx.query('operacoes',
+                  where: 'id = ? AND escopo = ? AND estado = ?',
+                  whereArgs: [id, alvo, 'conflito']))
+              .firstOrNull;
+          if (operacao == null) return;
+          await tx.update('operacoes', {'estado': 'arquivado'},
+              where: 'id = ?', whereArgs: [id]);
+          if (operacao['acao'] == 'abertura' ||
+              SegurancaPendencias.conflitoDefinitivo(operacao)) {
+            await tx.update(
+                'operacoes',
+                {
+                  'estado': 'conflito',
+                  'codigo_erro': 'origem_nao_confirmada',
+                  'erro':
+                      'O atendimento original foi encerrado ou descartado. Confira os produtos antes de excluir a sincronizacao.'
+                },
+                where: "escopo = ? AND atendimento = ? AND estado = 'pendente'",
+                whereArgs: [alvo, operacao['atendimento']]);
+          }
+        }));
     await _recarregarPendencias();
     _notificar();
   }
@@ -625,30 +708,41 @@ class Sincronizador extends ChangeNotifier {
     if (_descartado) return;
     await configurar();
     if (escopo.isEmpty || _descartado) return;
-    final operacao = (await banco.db.query(
-      'operacoes',
-      where:
-          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
-      whereArgs: [id, escopo],
-      limit: 1,
-    ))
-        .firstOrNull;
-    if (operacao == null) return;
-    final dados = _normalizarDadosOperacao(AtendimentosLocais.dados(operacao));
-    final atualizadas = await banco.db.update(
-      'operacoes',
-      {
-        'estado': 'pendente',
-        'dados': jsonEncode(dados),
-        'erro': null,
-        'proxima': 0,
-        'tentativas': 0,
-      },
-      where:
-          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
-      whereArgs: [id, escopo],
-    );
-    if (atualizadas == 0) return;
+    final alvo = escopo;
+    await _operacaoExclusiva(() async {
+      if (alvo != escopo || _descartado) return;
+      final operacao = (await banco.db.query(
+        'operacoes',
+        where:
+            "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+        whereArgs: [id, alvo],
+        limit: 1,
+      ))
+          .firstOrNull;
+      if (operacao == null) return;
+      if (SegurancaPendencias.conflitoDefinitivo(operacao)) {
+        throw StateError('Este atendimento nao pode mais receber este pedido.');
+      }
+      final recusada = operacao['estado'] == 'conflito';
+      final atualizadas = await banco.db.update(
+        'operacoes',
+        {
+          if (recusada) ...{
+            'estado': 'pendente',
+            'dados': jsonEncode(
+                _normalizarDadosOperacao(AtendimentosLocais.dados(operacao))),
+            'tentativas': 0,
+          },
+          'erro': null,
+          'codigo_erro': null,
+          'proxima': 0,
+        },
+        where:
+            "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+        whereArgs: [id, alvo],
+      );
+      if (atualizadas == 0) return;
+    });
     await _recarregarPendencias();
     _notificar();
     await enviarPendentes();
@@ -658,57 +752,81 @@ class Sincronizador extends ChangeNotifier {
     if (_descartado) return;
     await configurar();
     if (escopo.isEmpty || _descartado) return;
-    final operacao = (await banco.db.query(
-      'operacoes',
-      where:
-          "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
-      whereArgs: [id, escopo],
-      limit: 1,
-    ))
-        .firstOrNull;
-    if (operacao == null) {
-      throw StateError('Pedido nao encontrado na fila do aparelho.');
+    final alvo = escopo;
+    final chaveDocumento = banco.chaveCarrinhos;
+    final empresa = usuario.usuario!.empresa!;
+    await _operacaoExclusiva(() async {
+      if (alvo != escopo || _descartado) return;
+      final operacao = (await banco.db.query(
+        'operacoes',
+        where:
+            "id = ? AND escopo = ? AND estado NOT IN ('concluido', 'arquivado')",
+        whereArgs: [id, alvo],
+        limit: 1,
+      ))
+          .firstOrNull;
+      if (operacao == null) {
+        throw StateError('Pedido nao encontrado na fila do aparelho.');
+      }
+      if (!SegurancaPendencias.podeRecuperar(operacao)) {
+        throw StateError(
+            'Este envio pode ja ter sido recebido, ou o atendimento foi encerrado. Confira a sincronizacao.');
+      }
+      final dados = AtendimentosLocais.dados(operacao);
+      final produtos = normalizarProdutosParaEnvio(dados['produtos'])
+          .map(Modelowordprodutos.fromMap)
+          .map((produto) => produto..conferidoNoCarrinho = false)
+          .toList();
+      if (produtos.isEmpty) {
+        throw StateError('Nao foi possivel recuperar os itens desse pedido.');
+      }
+      final acao = operacao['acao']?.toString() ?? '';
+      final tipo =
+          (dados['tipo'] ?? (acao == 'venda' ? 'balcao' : '')).toString();
+      if (!['mesa', 'comanda', 'balcao'].contains(tipo)) {
+        throw StateError('Esse tipo de pedido nao pode voltar ao carrinho.');
+      }
+      final idAtendimento = tipo == 'balcao'
+          ? '0'
+          : (dados['id_comanda_pedido'] ?? operacao['atendimento'] ?? '')
+              .toString();
+      final idRecurso = tipo == 'mesa'
+          ? (dados['id_mesa'] ?? '').toString()
+          : tipo == 'comanda'
+              ? (dados['id_comanda'] ?? '').toString()
+              : '';
+      final contexto = ContextoCarrinho(
+        empresa: empresa,
+        tipo: tipo,
+        idAtendimento: idAtendimento,
+        idRecurso: idRecurso,
+      );
+      await ArmazenamentoCarrinhos.instancia.recuperarOperacao(
+        id: id,
+        escopo: alvo,
+        chaveDocumento: chaveDocumento,
+        contexto: contexto,
+        produtos: produtos,
+      );
+    });
+    await _recarregarPendencias();
+    aoAtualizarTelas?.call();
+    _notificar();
+  }
+
+  Future<void> arquivarRascunho(Map<String, dynamic> rascunho) async {
+    await configurar();
+    if (escopo.isEmpty || rascunho['empresa'] != usuario.usuario?.empresa) {
+      return;
     }
-    final dados = AtendimentosLocais.dados(operacao);
-    final produtos = normalizarProdutosParaEnvio(dados['produtos'])
-        .map(Modelowordprodutos.fromMap)
-        .map((produto) => produto..conferidoNoCarrinho = false)
-        .toList();
-    if (produtos.isEmpty) {
-      throw StateError('Nao foi possivel recuperar os itens desse pedido.');
-    }
-    final acao = operacao['acao']?.toString() ?? '';
-    final tipo =
-        (dados['tipo'] ?? (acao == 'venda' ? 'balcao' : '')).toString();
-    if (!['mesa', 'comanda', 'balcao'].contains(tipo)) {
-      throw StateError('Esse tipo de pedido nao pode voltar ao carrinho.');
-    }
-    final idAtendimento = tipo == 'balcao'
-        ? '0'
-        : (dados['id_comanda_pedido'] ?? operacao['atendimento'] ?? '')
-            .toString();
-    final idRecurso = tipo == 'mesa'
-        ? (dados['id_mesa'] ?? '').toString()
-        : tipo == 'comanda'
-            ? (dados['id_comanda'] ?? '').toString()
-            : '';
-    final contexto = ContextoCarrinho(
-      empresa: usuario.usuario?.empresa ?? dados['empresa']?.toString() ?? '',
-      tipo: tipo,
-      idAtendimento: idAtendimento,
-      idRecurso: idRecurso,
-    );
-    final salvo = await ArmazenamentoCarrinhos.instancia.alterar(
-      contexto,
-      (itens) => itens.addAll(produtos),
-    );
-    if (!salvo) {
-      throw StateError('Nao foi possivel devolver esse pedido ao carrinho.');
-    }
-    await banco.atualizarOperacao(id, {
-      'estado': 'arquivado',
-      'erro': 'Pedido voltou para o carrinho para edicao.',
-      'proxima': 0,
+    final alvo = escopo;
+    final chaveDocumento = banco.chaveCarrinhos;
+    await _operacaoExclusiva(() async {
+      if (alvo != escopo) return;
+      await ArmazenamentoCarrinhos.instancia.arquivarRascunhoBloqueado(
+        contexto: ContextoCarrinho.fromMap(rascunho),
+        chaveDocumento: chaveDocumento,
+      );
     });
     await _recarregarPendencias();
     aoAtualizarTelas?.call();
@@ -745,6 +863,7 @@ class Sincronizador extends ChangeNotifier {
             ['conflito', 'arquivado'].contains(origem['estado'])) {
           await banco.atualizarOperacao(id, {
             'estado': 'conflito',
+            'codigo_erro': 'origem_nao_confirmada',
             'erro':
                 'A venda original nao foi confirmada. Confira este pagamento.'
           });
@@ -760,6 +879,7 @@ class Sincronizador extends ChangeNotifier {
             ['conflito', 'arquivado'].contains(abertura['estado'])) {
           await banco.atualizarOperacao(id, {
             'estado': 'conflito',
+            'codigo_erro': 'origem_nao_confirmada',
             'erro':
                 'A abertura original nao foi confirmada. Confira este pedido.'
           });
@@ -801,13 +921,17 @@ class Sincronizador extends ChangeNotifier {
               }),
               options: _opcoes(url));
         } on DioException catch (e) {
-          if (e.response?.statusCode == 409 || e.response?.statusCode == 422) {
-            final mensagem = e.response?.data;
+          final mensagem = e.response?.data;
+          if ((e.response?.statusCode == 409 ||
+                  e.response?.statusCode == 422) &&
+              mensagem is Map &&
+              mensagem['protocolo'] == 1 &&
+              mensagem['sucesso'] == false) {
             await banco.atualizarOperacao(id, {
               'estado': 'conflito',
-              'erro': mensagem is Map
-                  ? mensagem['mensagem']?.toString()
-                  : 'O atendimento mudou. Confira este pedido com o responsavel.'
+              'codigo_erro': mensagem['codigo']?.toString(),
+              'erro': mensagem['mensagem']?.toString() ??
+                  'O atendimento mudou. Confira este pedido com o responsavel.'
             });
             bloqueados.add(atendimento);
             continue;
@@ -839,6 +963,12 @@ class Sincronizador extends ChangeNotifier {
                 '${resultado['numeroPedido'] ?? ''}'.isEmpty)) {
           throw StateError('O servidor nao confirmou a identidade da venda.');
         }
+        if (op['acao'] == 'delivery' &&
+            ((int.tryParse('${resultado['idDelivery']}') ?? 0) <= 0 ||
+                '${resultado['numeroPedido'] ?? ''}'.isEmpty)) {
+          throw StateError(
+              'O servidor nao confirmou a identidade do Delivery.');
+        }
         if (op['acao'] == 'editar_item' &&
             (int.tryParse('${resultado['id_itens_venda']}') ?? 0) <= 0) {
           throw StateError('O servidor nao confirmou a edicao do produto.');
@@ -847,6 +977,7 @@ class Sincronizador extends ChangeNotifier {
           'estado': 'registrado',
           'resposta': jsonEncode(resultado),
           'erro': null,
+          'codigo_erro': null,
           'proxima': 0
         });
       }
@@ -880,11 +1011,13 @@ class Sincronizador extends ChangeNotifier {
       await banco.atualizarOperacao(id, {'estado': 'concluido', 'erro': null});
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
-        'tipo': op['acao'] == 'venda'
-            ? 'Balcão'
-            : jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
-                ? 'Mesa'
-                : 'Comanda'
+        'tipo': op['acao'] == 'delivery'
+            ? 'Delivery'
+            : op['acao'] == 'venda'
+                ? 'Balcão'
+                : jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
+                    ? 'Mesa'
+                    : 'Comanda'
       }));
       if (recibo['impressao_persistida'] == true) {
         socket.write(jsonEncode({'tipo': 'PreparoPendente'}));
@@ -1031,6 +1164,7 @@ class Sincronizador extends ChangeNotifier {
           where: 'escopo = ? AND chave LIKE ?',
           whereArgs: [alvo, '["produtos/%']);
     });
+    if (alvo != escopo || _descartado) return;
     _ultimoCatalogo = DateTime.now();
     catalogoPronto = true;
     if (mudou) revisaoCatalogo.value++;

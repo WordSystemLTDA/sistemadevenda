@@ -22,11 +22,14 @@ class CacheConsultas extends Interceptor {
 
   CacheConsultas(this.cliente, this.banco);
 
+  static const _rotaClientes = 'comandas/listar_clientes.php';
+
   static bool _atendimento(String rota) =>
-      rota.startsWith('mesas/') ||
-      rota.startsWith('comandas/') ||
-      rota.startsWith('cardapio/') ||
-      rota.startsWith('itens_recorrentes/');
+      rota != _rotaClientes &&
+      (rota.startsWith('mesas/') ||
+          rota.startsWith('comandas/') ||
+          rota.startsWith('cardapio/') ||
+          rota.startsWith('itens_recorrentes/'));
 
   Future<void> invalidarAtendimentos() async {
     _geracaoAtendimento++;
@@ -62,15 +65,20 @@ class CacheConsultas extends Interceptor {
   static String chave(RequestOptions opcoes) => jsonEncode([
         caminho(opcoes),
         SplayTreeMap<String, String>.from(opcoes.uri.queryParameters)
-          ..remove('_consulta_atual'),
+          ..remove('_consulta_atual')
+          ..remove('_atualizacao'),
       ]);
 
   // Catalogo e formas de pagamento precisam refletir o cadastro atual a cada
   // leitura. O retrato persistido fica reservado para uma falha de conexao.
   static bool _exigeConsultaAtual(String rota) =>
       _atendimento(rota) ||
+      rota == _rotaClientes ||
       rota.startsWith('balcao/') ||
       rota.startsWith('delivery/') ||
+      rota.startsWith('recorrentes/') ||
+      rota.startsWith('enderecos_clientes/') ||
+      rota.startsWith('permissoes_bigchef/') ||
       rota.startsWith('produtos/') ||
       rota.startsWith('categorias/') ||
       rota.startsWith('tela_nfe_saida/');
@@ -92,7 +100,11 @@ class CacheConsultas extends Interceptor {
       'tela_nfe_saida/listar_banco_pix.php',
       'tela_nfe_saida/listar_datas_vendas.php',
       'tela_nfe_saida/listar_bancos.php',
-      'balcao/listar.php'
+      'balcao/listar.php',
+      'delivery/listar_opcoes.php',
+      'permissoes_bigchef/listar_permissoes_bigchef.php',
+      'enderecos_clientes/listar_por_cliente.php',
+      'recorrentes/listar.php',
     ].contains(rota)) {
       return true;
     }
@@ -280,6 +292,27 @@ class CacheConsultas extends Interceptor {
       if (base == null) return null;
       final dados = jsonDecode(base['valor'] as String);
       final termo = q['pesquisa']!.toLowerCase();
+      if (rota == _rotaClientes && dados is List) {
+        final texto = termo.trim();
+        final numeros = texto.replaceAll(RegExp(r'\D'), '');
+        // Mesmo contrato da busca de clientes da API: nome/razao, ID e
+        // celular com ou sem mascara. Nao ampliar a busca de atendimentos.
+        return dados.whereType<Map>().where((cliente) {
+          final correspondeTexto = [
+            'id',
+            'nome',
+            'nome_puro',
+            'razao_social',
+            'celular'
+          ].any((campo) =>
+              (cliente[campo] ?? '').toString().toLowerCase().contains(texto));
+          final celular = (cliente['celular'] ?? '')
+              .toString()
+              .replaceAll(RegExp(r'\D'), '');
+          return correspondeTexto ||
+              (numeros.isNotEmpty && celular.contains(numeros));
+        }).toList();
+      }
       bool corresponde(Map item) =>
           ['nome', 'codigo', 'nomeCliente', 'obs'].any((key) =>
               (item[key] ?? '').toString().toLowerCase().contains(termo));

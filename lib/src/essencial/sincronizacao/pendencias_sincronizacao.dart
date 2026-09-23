@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
 import 'package:intl/intl.dart';
 import 'sincronizador.dart';
+import 'seguranca_pendencias.dart';
 
 class EstadoSincronizacao extends StatelessWidget {
   static const double espacoNoCabecalho = 52;
@@ -198,6 +199,18 @@ class PendenciasSincronizacao extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(sincronizador.erro!,
                         style: TextStyle(color: cs.error))),
+              if (sincronizador.conflitos > 0)
+                Card(
+                  color: cs.errorContainer,
+                  child: const ListTile(
+                    leading: Icon(Icons.warning_amber_rounded),
+                    title: Text('Existem pedidos que precisam de conferencia'),
+                    subtitle: Text(
+                        'Pedidos recusados nao serao enviados automaticamente. '
+                        'Confira antes de excluir da sincronizacao. '
+                        'Os demais atendimentos continuam sendo enviados.'),
+                  ),
+                ),
               for (final op in sincronizador.pendencias) _pedido(context, op),
               ListTile(
                 leading: Icon(sincronizador.online
@@ -266,6 +279,7 @@ class PendenciasSincronizacao extends StatelessWidget {
                     _pedido(context, {
                       'atendimento': rascunho['idAtendimento'],
                       'estado': 'rascunho',
+                      'rascunho': rascunho,
                       'impressoes': '[]',
                       'erro':
                           'Rascunho preservado. O atendimento foi fechado ou bloqueado no servidor.',
@@ -297,15 +311,16 @@ class PendenciasSincronizacao extends StatelessWidget {
         .toList();
     final idOperacao = op['id']?.toString() ?? '';
     final erroOperacao = (op['erro'] ?? '').toString().trim().isNotEmpty;
-    final acao = op['acao']?.toString() ?? '';
-    final podeReenviar =
-        idOperacao.isNotEmpty && !rascunho && (conflito || erroOperacao);
+    final definitivo = SegurancaPendencias.conflitoDefinitivo(op);
+    final podeReenviar = idOperacao.isNotEmpty &&
+        !rascunho &&
+        !definitivo &&
+        (conflito || erroOperacao);
     final podeVoltarCarrinho = idOperacao.isNotEmpty &&
         !rascunho &&
         produtos.isNotEmpty &&
-        ['produtos', 'venda'].contains(acao) &&
-        (conflito || erroOperacao);
-    final podeArquivar = conflito && idOperacao.isNotEmpty;
+        SegurancaPendencias.podeRecuperar(op);
+    final podeArquivar = conflito && idOperacao.isNotEmpty || rascunho;
     return Card(
       color: conflito || rascunho ? cs.errorContainer : cs.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -326,6 +341,13 @@ class PendenciasSincronizacao extends StatelessWidget {
                   ? (op['erro']?.toString() ??
                       'Confira este pedido com o responsavel.')
                   : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
+              if (definitivo)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                      'Envio bloqueado: este pedido nao pode ser aplicado ao atendimento atual. '
+                      'Nenhum novo atendimento sera aberto automaticamente para recebe-lo.'),
+                ),
               const Divider(),
               if (op['acao'] == 'abertura') ...[
                 Text('Cliente: ${dados['detalhe']?['nomeCliente'] ?? ''}'),
@@ -452,30 +474,51 @@ class PendenciasSincronizacao extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
                           icon: const Icon(Icons.archive_outlined),
-                          label: const Text('Arquivar apos conferir'),
-                          onPressed: () async {
-                            final confirmado = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                      title: const Text(
-                                          'Pedido conferido com o responsavel?'),
-                                      content: const Text(
-                                          'Este pedido nao sera enviado nem impresso. Os dados ficam guardados no aparelho para consulta tecnica. Caso necessario, lance um novo pedido no atendimento correto.'),
-                                      actions: [
-                                        TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                            child: const Text('Voltar')),
-                                        FilledButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                            child: const Text('Arquivar')),
-                                      ],
-                                    ));
-                            if (confirmado == true) {
-                              await sincronizador.arquivarConflito(idOperacao);
-                            }
-                          },
+                          label: const Text('Excluir da sincronizacao'),
+                          onPressed: sincronizador.sincronizando
+                              ? null
+                              : () async {
+                                  final confirmado = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                            title: const Text(
+                                                'Excluir esta pendencia?'),
+                                            content: const Text(
+                                                'Confira os itens com o responsavel antes de continuar. '
+                                                'Esta pendencia sai do envio automatico; nao altera pedidos ou pagamentos no servidor. '
+                                                'Uma copia fica arquivada neste aparelho para conferencia tecnica.'),
+                                            actions: [
+                                              TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, false),
+                                                  child: const Text('Voltar')),
+                                              FilledButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, true),
+                                                  child: const Text(
+                                                      'Excluir pendencia')),
+                                            ],
+                                          ));
+                                  if (confirmado == true) {
+                                    try {
+                                      if (rascunho) {
+                                        await sincronizador.arquivarRascunho(
+                                            _mapa(op['rascunho']));
+                                      } else {
+                                        await sincronizador
+                                            .arquivarConflito(idOperacao);
+                                      }
+                                    } catch (_) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(const SnackBar(
+                                              content: Text(
+                                                  'Nao foi possivel excluir. Os dados continuam salvos.')));
+                                    }
+                                  }
+                                },
                         ),
                       ),
                   ],

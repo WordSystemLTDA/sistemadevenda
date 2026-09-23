@@ -25,7 +25,10 @@ class ServicosRecorrentes {
       if (leitura) '_atualizacao': DateTime.now().microsecondsSinceEpoch,
     };
     try {
-      final opcoes = Options(extra: {'semCache': true});
+      // Somente a agenda pode usar uma copia offline. Geracao, alteracoes e
+      // consultas financeiras continuam exigindo confirmacao do servidor.
+      final opcoes =
+          Options(extra: {'semCache': !(leitura && acao == 'listar')});
       final resposta = leitura
           ? await dio.cliente.get('recorrentes/$acao.php',
               queryParameters: dados, options: opcoes)

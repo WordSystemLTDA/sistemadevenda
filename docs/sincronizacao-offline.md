@@ -15,8 +15,13 @@
   cliente, observacao e produtos ficam salvos no aparelho e aparecem nas listas locais.
 - Novas vendas de balcao, seus produtos e pagamentos podem ser registrados offline.
   Pagamentos seguintes permanecem vinculados a identidade local da venda original.
-- Edicao cadastral, fechamento, exclusoes, cancelamentos, delivery e pagamentos de
-  atendimentos preexistentes continuam online. Abrir offline nao reserva o recurso
+- Novos pedidos de Delivery direto usam rascunho duravel no aparelho quando a API
+  anuncia `offline_delivery: 1`. Produtos, endereco e pagamentos seguem juntos na
+  operacao; a lista permite retomar pedidos identificados como `No aparelho`.
+- Edicao cadastral, agendas de Recorrentes, fechamento, exclusoes, cancelamentos e
+  alteracoes/pagamentos de atendimentos preexistentes continuam online. Esses fluxos
+  precisam consultar o estado atual para nao sobrescrever outro atendimento ou cobrar
+  um pagamento ja recebido. Abrir offline nao reserva o recurso
   nos outros aparelhos: a confirmacao depende da verificacao no servidor.
 
 ## Aberturas e vendas offline
@@ -42,6 +47,18 @@ comparado com o atual: troca de caixa gera conflito. Pagamentos de uma venda
 cancelada ou com abertura em conflito tambem exigem conferencia. Nao se deve
 registrar manualmente a mesma venda no servidor enquanto ela estiver pendente.
 
+O Delivery direto usa identidade `delivery-local:` e recebe numero definitivo somente
+depois do recibo. A transferencia do carrinho para o rascunho e a confirmacao para a
+fila sao transacoes SQLite; o snapshot permanece para consulta depois de enfileirado.
+Uma vez enfileirado, o pedido nao e editado silenciosamente. Reenviar o mesmo ID
+recupera o recibo, inclusive quando a resposta do primeiro envio se perdeu.
+Clientes, enderecos e formas de pagamento precisam ter sido preparados enquanto
+conectado. Dados novos de outro aparelho nao podem ser consultados durante uma queda.
+O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
+o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
+carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
+com ou sem mascara. Cadastrar um cliente/endereco novo continua exigindo conexao.
+
 ## Seguranca e sincronizacao
 
 Cada operacao recebe um identificador aleatorio persistente. A API grava o recibo
@@ -57,13 +74,24 @@ ativo no recurso. Um pedido antigo nunca e redirecionado para a comanda nova.
 Atendimento encerrado, transferido ou produto/opcao removidos geram conflito.
 Os dados ficam no aparelho, sem impressao automatica. A tela de pendencias permite
 conferir e arquivar explicitamente; arquivar nao apaga o registro nem relanca os itens.
+O botao **Excluir da sincronizacao** retira somente a pendencia local recusada e
+preserva uma copia tecnica. Nao cancela um pedido nem estorna pagamentos no servidor.
+Conflitos de conta encerrada, transferida ou recurso reutilizado nao oferecem reenvio
+ou retorno ao mesmo carrinho. Os outros atendimentos continuam sincronizando.
+Resposta perdida e recusa explicita sao estados diferentes: sem confirmacao segura
+da API, a operacao conserva ID, payload e tentativas e nao pode ser copiada ao carrinho.
+A recuperacao de uma recusa editavel e o arquivamento original fazem parte do mesmo
+commit, serializado com o envio automatico, evitando duas copias enviaveis.
 Rascunhos de carrinhos bloqueados/encerrados tambem ficam disponiveis nessa tela.
 Antes de fechar um atendimento pelo app, seus pedidos pendentes devem ser resolvidos.
 
 O transporte verifica o IP da API, nao exige internet publica. Ha retomada periodica
 (15 segundos enquanto o processo executa), ao mudar a rede, ao reconectar o socket e
-ao retornar ao app. Consultas usam a ultima copia valida com atualizacao em segundo
-plano; o catalogo completo e revisto em ate dois minutos ou apos aviso de alteracao.
+ao retornar ao app. Ao retomar apos suspensao ou mudar de rede, o canal antigo e
+renovado sem esperar seu timeout. Pedidos prontos nao aguardam o preparo completo do
+catalogo para iniciar envio. Consultas de produtos consultam o servidor quando ha
+conexao; a copia persistida e usada durante falha de rede. O catalogo completo tem
+revisao periodica (intervalo de dois minutos) ou apos aviso de alteracao.
 Imagens ainda nao visitadas podem exibir o placeholder sem rede.
 
 Filas/cache sao separados por servidor/empresa/usuario. Sair da conta nao apaga pedidos
@@ -75,7 +103,9 @@ do aplicativo, desinstalar ou restaurar seu banco a uma copia antiga com pedidos
 Comprovantes somente entram na fila de impressao depois do commit confirmado pela API.
 Usam o destino e o ID de requisicao originais. O socket consulta comprovantes sem ACK
 antes de reenviar e exige o protocolo de impressao 2 ja existente no servidor desktop.
-Confirmacoes ficam registradas no SQLite para impedir recriacao apos reinicio.
+Confirmacoes ficam registradas no SQLite (ou no fallback legado) para impedir
+recriacao apos reinicio. Quando a API devolve `impressao_persistida: true`, o preparo
+ja esta na outbox do servidor, gravada junto do pedido; o celular nao envia outra via.
 
 O app diferencia pendencia de pedido de pendencia de impressao. Uma impressora fisica
 sem papel ou sem energia ainda exige intervencao; ACK nao garante papel entregue.
@@ -84,7 +114,8 @@ Nao enviar manualmente o mesmo pedido pela bancada sem antes conferir sua penden
 O indicador do cabecalho observa tanto a API quanto o socket: API online com o canal
 da cozinha desconectado nao aparece como sucesso completo. A tela de envio informa
 separadamente servidor de dados, canal da cozinha, disponibilidade do cardapio offline
-e horario da ultima atualizacao desta sessao. Conflitos aparecem antes do diagnostico.
+e horario da ultima atualizacao, preservado entre reinicios. Conflitos aparecem antes
+do diagnostico; rascunhos bloqueados tambem sinalizam atencao no cabecalho.
 
 `Sincronizar agora` tenta recuperar o canal da cozinha imediatamente, sem aguardar
 as consultas da API e sem criar uma segunda via. Toques repetidos compartilham a mesma
@@ -103,15 +134,22 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
 
 ## Implantacao coordenada
 
-1. Fazer backup e provisionar **somente a estrutura nova `garcom_operacoes`** definida
-   no `schema.sql` da API, usando o processo controlado de atualizacao do servidor.
+1. Fazer backup e verificar as estruturas de sincronizacao/impressao ja definidas
+   no `schema.sql` da API, incluindo `garcom_operacoes`. Se a instalacao ainda nao
+   as possui, provisionar somente essas estruturas pelo processo controlado.
    Nao executar o schema completo sobre um banco existente. Nenhum endpoint faz DDL.
-2. Publicar `sincronizacao/{estado,operacao,operacoes}.php` e os arquivos alterados:
+2. Publicar `sincronizacao/{estado,operacao,operacoes,recibo,delivery}.php` e os arquivos alterados:
    `comandas/inserir_produtos.php`, `mesas/inserir_produtos.php`,
    `funcoes/sabores/inserir.php`, `cardapio/listar_por_id_comanda.php` e
-   `categorias/listar.php`, todos em `api_restaurantes_venda/api1/`.
+   `categorias/listar.php`, todos em `api_restaurantes_venda/api37/`.
    Para abertura e venda offline, incluir tambem
    `sincronizacao/{aberturas,vendas}.php` e `balcao/pagar_pedido.php`.
+   Para Delivery offline, incluir `delivery/inserir_produtos.php` e
+   `impressao/fila_transacional.php` (raiz da API), preservando a fila transacional
+   ja provisionada. Publicar tambem os dois recebimentos
+   `api_desktop/1.0.01/{mesas,comandas}/pagar_pedido.php` com seu helper
+   `funcoes/pedidos/recebimento_transacional.php`: eles adquirem o mesmo bloqueio
+   do envio de itens antes de calcular os totais, protegendo fechamento simultaneo.
    Essa extensao reutiliza `garcom_operacoes`; nao exige nova alteracao de schema.
    Na instalacao local atual, a API fica em um repositorio Git separado do aplicativo:
    atualizar somente o repositorio Flutter nao atualiza o servidor PHP.
@@ -123,6 +161,8 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
 6. Homologar no aparelho e impressora reais antes do atendimento em producao.
 
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
+O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando
+o codigo do conflito as operacoes ja existentes; carrinhos, recibos e filas sao mantidos.
 
 ## Verificacao
 
@@ -170,3 +210,25 @@ fisicos. Antes de liberar a versao para atendimento, executar a homologacao manu
 acima com uma comanda de teste e conferir papel, quantidade, sabores, bordas,
 adicionais, mesa, observacoes e ausencia de lancamentos/comprovantes duplicados.
 Nao desinstalar o aplicativo para atualizar enquanto houver pedidos pendentes.
+
+## Auditoria de 22/09/2026
+
+- Suite completa do aplicativo: 936 testes aprovados, incluindo busca e preservacao
+  de clientes offline, retomada de pagamentos parciais e protecao de contas encerradas.
+- API em MariaDB descartavel: 22 cenarios aprovados, incluindo fechamento,
+  reutilizacao de mesa/comanda, duplicidade e recebimento concorrente.
+- Delivery offline em SQLite descartavel: 7 grupos aprovados, com rollback de
+  itens/recibo, pagamento dividido, troco, parcelas, caixa e isolamento de empresa.
+- Fila PHP de impressao: rollback, reenvio, recuperacao e ACK duravel aprovados.
+- Analise estatica dos 39 arquivos Dart alterados/adicionados: sem problemas.
+- Compilacao iOS debug sem assinatura concluida. Nao instalada no aparelho.
+
+Tambem homologar novo Delivery: preparar cliente/endereco conectado, cortar a rede,
+montar pedido com adicionais/peso, registrar pagamento parcial, fechar/reabrir o app
+e retomar em `No aparelho`. Conferir saldo, desconto/acrescimo e troco; confirmar,
+reconectar e conferir um unico pedido, seus pagamentos e a impressao. Repetir com
+resposta perdida e com caixa fechado/trocado: os dados devem permanecer salvos para
+conferencia, sem gerar recebimento em caixa diferente automaticamente.
+
+Esses testes usam fixtures e nao substituem validacao com impressora, servidor e
+aparelho reais. Nao foram publicadas APIs nem modificados dados de producao.

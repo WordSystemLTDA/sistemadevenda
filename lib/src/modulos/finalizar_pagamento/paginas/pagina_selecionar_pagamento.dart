@@ -138,7 +138,15 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _confirmandoPedido = true);
     try {
-      await Modular.get<ServicoDelivery>().confirmar(provedor.idVenda);
+      final servico = Modular.get<ServicoDelivery>();
+      if (provedor.idVenda.startsWith('delivery-local:')) {
+        await servico.definirAjustesLocais(provedor.idVenda,
+            desconto: widget.desconto > 0 ? widget.desconto : 0,
+            acrescimo: widget.desconto < 0
+                ? widget.desconto.abs()
+                : double.tryParse(widget.acrescimo) ?? 0);
+      }
+      await servico.confirmar(provedor.idVenda);
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
       Navigator.popUntil(
@@ -166,7 +174,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
         provedorCardapio.tipo != TipoCardapio.delivery) {
       return;
     }
-    if ((int.tryParse(provedor.idVenda) ?? 0) <= 0) {
+    if ((int.tryParse(provedor.idVenda) ?? 0) <= 0 &&
+        !provedor.idVenda.startsWith('delivery-local:')) {
       _mostrarRetornoMensagem(
           'Não foi possível identificar o Delivery.', false);
       return;

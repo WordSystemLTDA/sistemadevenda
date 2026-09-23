@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/seguranca_pendencias.dart';
 
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -36,6 +37,15 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         : await banco.ler(banco.chaveCarrinhos);
     return Map<String, dynamic>.from(jsonDecode(valor ?? '{}') as Map);
   }
+
+  /// Integra transferencias atomicas do carrinho para outras filas SQLite.
+  /// A acao deve persistir antes de retornar e nao chamar outro metodo desta fila.
+  Future<T> executarComCarrinhosBloqueados<T>(Future<T> Function() acao) =>
+      _executar((_) async {
+        final resultado = await acao();
+        notifyListeners();
+        return resultado;
+      });
 
   Future<void> _salvar(
       SharedPreferences prefs, Map<String, dynamic> dados) async {
@@ -143,6 +153,125 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         return id;
       });
 
+  /// Recuperacao e retirada da fila fazem parte do mesmo commit. Uma falha de
+  /// disco ou encerramento do aplicativo nunca deixa duas copias enviaveis.
+  Future<void> recuperarOperacao({
+    required String id,
+    required String escopo,
+    required String chaveDocumento,
+    required ContextoCarrinho contexto,
+    required List<Modelowordprodutos> produtos,
+  }) =>
+      _executar((_) async {
+        final banco = BancoLocal.instancia;
+        if (banco == null || !contexto.valido) {
+          throw StateError('Banco local ou atendimento indisponivel.');
+        }
+        await banco.db.transaction((tx) async {
+          final op = (await tx.query('operacoes',
+                  where: 'id = ? AND escopo = ?', whereArgs: [id, escopo]))
+              .firstOrNull;
+          if (op == null || !SegurancaPendencias.podeRecuperar(op)) {
+            throw StateError(
+                'O envio precisa ser confirmado pelo servidor antes de editar.');
+          }
+          final carrinhos = Map<String, dynamic>.from(jsonDecode(
+                  await BancoLocal.lerDocumento(tx, chaveDocumento) ?? '{}')
+              as Map);
+          final registro = Map<String, dynamic>.from(
+              carrinhos[contexto.chave] ?? contexto.toMap());
+          if (registro['encerrado'] == true || registro['bloqueado'] == true) {
+            throw StateError('O atendimento ja foi encerrado ou bloqueado.');
+          }
+          registro['itens'] = [
+            ...registro['itens'] as List? ?? [],
+            ...produtos.map((p) => p.toMap()),
+          ];
+          carrinhos[contexto.chave] = registro;
+          await BancoLocal.gravarDocumento(
+              tx, chaveDocumento, jsonEncode(carrinhos));
+          await tx.update(
+              'operacoes',
+              {
+                'estado': 'arquivado',
+                'erro': 'Pedido voltou para o carrinho para edicao.',
+                'proxima': 0,
+              },
+              where: 'id = ? AND escopo = ?',
+              whereArgs: [id, escopo]);
+        });
+        notifyListeners();
+      });
+
+  Future<void> arquivarRascunhoBloqueado({
+    required ContextoCarrinho contexto,
+    required String chaveDocumento,
+  }) =>
+      _executar((_) async {
+        final banco = BancoLocal.instancia;
+        if (banco == null) throw StateError('Banco local indisponivel.');
+        await banco.db.transaction((tx) async {
+          final carrinhos = Map<String, dynamic>.from(jsonDecode(
+                  await BancoLocal.lerDocumento(tx, chaveDocumento) ?? '{}')
+              as Map);
+          final registro = carrinhos[contexto.chave];
+          if (registro == null) return;
+          if (registro['encerrado'] != true && registro['bloqueado'] != true) {
+            throw StateError('Este atendimento nao esta bloqueado.');
+          }
+          await BancoLocal.gravarDocumento(
+              tx,
+              'rascunho-arquivado:${BancoLocal.novoId()}',
+              jsonEncode({
+                'origem': chaveDocumento,
+                'arquivado_em': DateTime.now().toIso8601String(),
+                'carrinho': registro,
+              }));
+          registro['itens'] = [];
+          registro['recorrentes'] = [];
+          await BancoLocal.gravarDocumento(
+              tx, chaveDocumento, jsonEncode(carrinhos));
+        });
+        notifyListeners();
+      });
+
+  Future<void> conferirRascunhosNoServidor({
+    required String chaveDocumento,
+    required String empresa,
+    required Map<String, String> identidadesConsultadas,
+    required Map atendimentos,
+  }) =>
+      _executar((_) async {
+        final banco = BancoLocal.instancia;
+        if (banco == null) return;
+        await banco.db.transaction((tx) async {
+          final carrinhos = Map<String, dynamic>.from(jsonDecode(
+                  await BancoLocal.lerDocumento(tx, chaveDocumento) ?? '{}')
+              as Map);
+          var mudou = false;
+          for (final registro in carrinhos.values.whereType<Map>()) {
+            if (registro['empresa'] != empresa) continue;
+            final idServidor =
+                identidadesConsultadas[registro['idAtendimento']];
+            if (idServidor == null) continue;
+            final atendimento = atendimentos[idServidor];
+            if (atendimento == null) {
+              registro['encerrado'] = true;
+              registro['encerradoConfirmado'] = true;
+              mudou = true;
+            } else if (atendimento is Map) {
+              registro['bloqueado'] = atendimento['status'] != 'Andamento';
+              mudou = true;
+            }
+          }
+          if (mudou) {
+            await BancoLocal.gravarDocumento(
+                tx, chaveDocumento, jsonEncode(carrinhos));
+          }
+        });
+        notifyListeners();
+      });
+
   Future<bool> substituirItem(
     ContextoCarrinho contexto,
     int index,
@@ -244,7 +373,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
             registro['encerrado'] = true;
             registro['recorrentesImportados'] = true;
             mudou = true;
-          } else if (!encerrar) {
+          } else if (!encerrar && registro['encerradoConfirmado'] != true) {
             if (registro['encerrado'] == true ||
                 registro['bloqueado'] != bloqueado) {
               registro['encerrado'] = false;
@@ -296,6 +425,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
         }
         for (final registro in dados.values) {
           if (registro['empresa'] == empresa &&
+              registro['encerradoConfirmado'] != true &&
               registro['idAtendimento'] == idAtendimento &&
               (registro['tipo'] == 'comanda' || registro['tipo'] == 'mesa')) {
             final bloqueado = status == 'Fechamento';

@@ -23,7 +23,10 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   late final Server server;
   late final Sincronizador sincronizador;
   StreamSubscription<List<ConnectivityResult>>? _rede;
-  Future<void>? _conectando;
+  Set<ConnectivityResult>? _redeAnterior;
+  int _geracaoRetomada = 0;
+  bool _voltandoDoSegundoPlano = false;
+  bool _renovarCanalPendente = false;
 
   @override
   void initState() {
@@ -34,8 +37,15 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
     sincronizador.iniciar();
     WidgetsBinding.instance.addObserver(this);
     // Wi-Fi sem internet ainda pode alcancar o servidor local pelo IP.
-    _rede = Connectivity().onConnectivityChanged.listen((_) => _retomar(),
-        onError: (Object erro, StackTrace stack) {
+    _rede = Connectivity().onConnectivityChanged.listen((resultados) {
+      final redeAtual = resultados.toSet();
+      final anterior = _redeAnterior;
+      _redeAnterior = redeAtual;
+      final mudou = anterior != null &&
+          (anterior.length != redeAtual.length ||
+              !anterior.containsAll(redeAtual));
+      unawaited(_retomar(renovarCanal: mudou));
+    }, onError: (Object erro, StackTrace stack) {
       log('Falha ao observar a rede', error: erro, stackTrace: stack);
       _retomar();
     });
@@ -49,25 +59,37 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
     }
   }
 
-  Future<void> _retomar() => _conectando ??= () async {
-        sincronizador.solicitar();
-        try {
-          final conexao = await ConfigSharedPreferences().getConexao();
-          if (!mounted) return;
-          if (conexao != null &&
-              conexao.servidor.isNotEmpty &&
-              conexao.porta.isNotEmpty) {
-            await server.connect(conexao.servidor, conexao.porta);
-          }
-        } catch (erro, stack) {
-          log('Falha ao retomar a conexao', error: erro, stackTrace: stack);
-        }
-      }()
-          .whenComplete(() => _conectando = null);
+  Future<void> _retomar({bool renovarCanal = false}) async {
+    final geracao = ++_geracaoRetomada;
+    _renovarCanalPendente = _renovarCanalPendente || renovarCanal;
+    sincronizador.solicitar();
+    try {
+      final conexao = await ConfigSharedPreferences().getConexao();
+      if (!mounted || geracao != _geracaoRetomada) return;
+      if (conexao != null &&
+          conexao.servidor.isNotEmpty &&
+          conexao.porta.isNotEmpty) {
+        final renovar = _renovarCanalPendente;
+        _renovarCanalPendente = false;
+        // Server ja compartilha tentativas concorrentes. Uma mudanca de rede
+        // precisa cancelar a tentativa antiga, sem esperar seu timeout.
+        await server.retomarConexao(conexao.servidor, conexao.porta,
+            renovarCanal: renovar);
+      }
+    } catch (erro, stack) {
+      log('Falha ao retomar a conexao', error: erro, stackTrace: stack);
+    }
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _retomar();
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _voltandoDoSegundoPlano = true;
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(_retomar(renovarCanal: _voltandoDoSegundoPlano));
+      _voltandoDoSegundoPlano = false;
+    }
     // Nao encerra o socket ao apagar a tela. O SO pode suspender a execucao;
     // as filas duraveis retomam automaticamente quando o app volta a executar.
   }

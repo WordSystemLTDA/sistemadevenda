@@ -149,6 +149,7 @@ void main() {
     final local = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final sockets = <WebSocket>[];
     final reconectou = Completer<void>();
+    final canalPronto = Completer<void>();
     final atualizou = Completer<String>();
     local.listen((request) async {
       final socket = await WebSocketTransformer.upgrade(request);
@@ -156,10 +157,12 @@ void main() {
       socket.listen((_) {});
       if (sockets.length == 2) reconectou.complete();
     });
-    final server = Server()
-      ..aoAtualizarDados = (tipo) {
-        if (!atualizou.isCompleted) atualizou.complete(tipo);
-      };
+    final server = Server();
+    server.addListener(() {
+      if (sockets.length == 2 && server.connected && !canalPronto.isCompleted) {
+        canalPronto.complete();
+      }
+    });
     addTearDown(() async {
       server.dispose();
       for (final socket in sockets) {
@@ -170,6 +173,12 @@ void main() {
     expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
     await sockets.first.close();
     await reconectou.future.timeout(const Duration(seconds: 6));
+    await canalPronto.future.timeout(const Duration(seconds: 2));
+    // A reconexao ja publica uma reconciliacao de todas as telas. Este teste
+    // verifica a mensagem recebida depois, nao o primeiro evento sintetico.
+    server.aoAtualizarDados = (tipo) {
+      if (!atualizou.isCompleted) atualizou.complete(tipo);
+    };
     sockets.last.add(jsonEncode({'tipo': 'Comanda'}));
     expect(
         await atualizou.future.timeout(const Duration(seconds: 2)), 'Comanda');

@@ -308,7 +308,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byTooltip('Editar pedido'), findsOneWidget);
     expect(find.text('Editar Produto'), findsOneWidget);
-    expect(find.text('Pizza de Queijos'), findsOneWidget);
+    expect(
+        find.text(
+            '(1/3) Mussarela\n(1/3) Catupiry Especial\n(1/3) Dois Queijos'),
+        findsOneWidget);
     await tester.ensureVisible(find.byTooltip('Ver detalhes'));
     await tester.tap(find.byTooltip('Ver detalhes'));
     await tester.pumpAndSettle();

@@ -358,7 +358,17 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
           cliente: _cliente,
           endereco: '${_endereco?['id'] ?? '0'}',
           tipo: _tipo,
-          observacao: _observacao.text.trim());
+          observacao: _observacao.text.trim(),
+          taxa: _taxa,
+          exibicao: {
+            'nomeCliente': _nome,
+            'celularCliente': _telefone,
+            'enderecoCliente': _endereco?['endereco'] ?? '',
+            'numeroCliente': _endereco?['numero'] ?? '',
+            'complementoCliente': _endereco?['complemento'] ?? '',
+            'bairroCliente': _endereco?['bairro'] ?? '',
+            'cidadeCliente': _endereco?['cidade'] ?? '',
+          });
       final id = _idCriado!;
       await widget.servico
           .salvar('cardapio/editar_tipo_de_entrega_cliente.php', {

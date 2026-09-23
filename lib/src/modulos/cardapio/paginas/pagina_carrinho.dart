@@ -440,6 +440,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         },
         enviarImpressao: (_) async {},
         limparCarrinho: () async {
+          if (contexto.idAtendimento.startsWith('delivery-local:')) {
+            // A transferencia ao rascunho Delivery ja limpou o snapshot na
+            // mesma transacao. Nao apague itens adicionados depois dela.
+            await carrinhoProvedor.listarComandasPedidos();
+            return;
+          }
           // Os itens enviados deixam o rascunho persistido. O resumo permanece
           // visivel se a consulta do pagamento falhar, sem permitir reenvio.
           if (!await carrinhoProvedor.removerComandasPedidos(

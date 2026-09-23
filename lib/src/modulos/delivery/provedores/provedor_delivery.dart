@@ -32,19 +32,28 @@ class ProvedorDelivery extends ChangeNotifier {
       }
       erro = null;
       try {
-        final respostas = await Future.wait([
-          servico.listar(
-              inicio: periodo.start,
-              fim: periodo.end,
-              horaInicio: horaInicio,
-              horaFim: horaFim,
-              pesquisa: pesquisa,
-              tipo: tipo),
-          servico.configuracao(),
-        ]);
+        final configuracaoFutura = servico.configuracao().then<ConfigDelivery?>(
+            (valor) => valor,
+            onError: (Object _, StackTrace __) => null);
+        final lista = await servico.listar(
+            inicio: periodo.start,
+            fim: periodo.end,
+            horaInicio: horaInicio,
+            horaFim: horaFim,
+            pesquisa: pesquisa,
+            tipo: tipo);
         if (_descartado || consulta != _consulta) return;
-        etapas = _mesclarPedidosRecentes(respostas[0] as List<EtapaDelivery>);
-        config = respostas[1] as ConfigDelivery;
+        etapas = _mesclarPedidosRecentes(lista);
+        // Os rascunhos precisam continuar acessiveis mesmo se a configuracao
+        // ainda nao foi preparada. Operacoes remotas consultam-na antes de agir.
+        final configuracao = await configuracaoFutura;
+        if (_descartado || consulta != _consulta) return;
+        if (configuracao != null) {
+          config = configuracao;
+        } else if (!lista.any((etapa) => etapa.id == 'local')) {
+          throw StateError(
+              'Não foi possível consultar a configuração do Delivery.');
+        }
       } catch (_) {
         if (_descartado || consulta != _consulta) return;
         erro =

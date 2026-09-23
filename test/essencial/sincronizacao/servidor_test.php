@@ -1,6 +1,10 @@
 <?php
 // Executar somente contra a instancia descartavel provisionada com schema.sql.
-require_once $argv[1] . '/api_restaurantes_venda/api1/sincronizacao/operacoes.php';
+require_once $argv[1] . '/api_restaurantes_venda/api37/sincronizacao/operacoes.php';
+require_once $argv[1] . '/api_desktop/1.0.01/funcoes/pedidos/recebimento_transacional.php';
+if (!function_exists('gerarHash')) {
+    function gerarHash() { return bin2hex(random_bytes(20)); }
+}
 
 class PdoTeste extends PDO {
     public $falharNoSegundo = false;
@@ -51,7 +55,8 @@ function esperarConflito($pdo, $entrada) {
 
 $pdo = conectarTeste();
 foreach (['garcom_operacoes', 'itens_venda_sabores_de_bordas', 'itens_venda_pizza',
-    'itens_venda', 'comandas_pedidos', 'comandas', 'mesa', 'usuarios', 'produtos', 'permissoes_empresa', 'empresas', 'sabores_de_bordas'] as $tabela) {
+    'itens_venda', 'comandas_pedidos', 'comandas', 'mesa', 'usuarios', 'produtos', 'permissoes_empresa', 'empresas', 'sabores_de_bordas',
+    'clientes', 'enderecos_clientes', 'opcoes_carrossel', 'delivery'] as $tabela) {
     $pdo->exec("DELETE FROM `$tabela`");
 }
 fixture($pdo, 'usuarios', ['id' => 1, 'empresa' => 32, 'ativo' => 'Sim']);
@@ -63,7 +68,7 @@ fixture($pdo, 'produtos', ['id' => 5, 'empresa' => 32, 'nome' => 'Pizza', 'ativo
     'ncm' => 0, 'cfop' => 0, 'csosn' => 0, 'valor_venda' => 60, 'valor_compra' => 10]);
 fixture($pdo, 'comandas_pedidos', ['id' => 104, 'empresa' => 32, 'id_comanda' => 4,
     'id_mesa' => 0, 'status' => 'Andamento', 'data_abertura' => '2026-09-12',
-    'hora_abertura' => '12:00:00', 'hash' => 'sessao-original']);
+    'hora_abertura' => '12:00:00', 'hash' => 'sessao-original', 'data_fechamento' => null]);
 $atendimento = $pdo->query('SELECT * FROM comandas_pedidos WHERE id = 104')->fetch(PDO::FETCH_ASSOC);
 $produto = ['id' => '5', 'quantidade' => 2, 'valorVenda' => 72,
     'observacao' => "Sem cebola e borda d'agua", 'opcoesPacotesListaFinal' => [
@@ -267,3 +272,113 @@ $venda['id_operacao'] = str_repeat('0', 48);
 esperarConflito($pdo, $venda);
 verificar($pdo->query('SELECT COUNT(*) FROM vendas')->fetchColumn() == 1, 'Venda foi registrada no caixa errado');
 echo "OK: mudanca de caixa impede lancamento financeiro em sessao diferente\n";
+
+// O fechamento desktop e a sincronizacao agora disputam a mesma linha InnoDB.
+fixture($pdo, 'comandas_pedidos', ['id' => 300, 'empresa' => 32, 'id_comanda' => 30,
+    'id_mesa' => 0, 'status' => 'Andamento', 'data_abertura' => '2026-09-22',
+    'hora_abertura' => '12:00:00', 'hash' => 'fechamento-concorrente', 'pago' => 'Não']);
+$concorrente = $entrada;
+$concorrente['id_operacao'] = bin2hex(random_bytes(24));
+$concorrente['dados']['id_comanda_pedido'] = '300';
+$concorrente['dados']['id_comanda'] = '30';
+$concorrente['dados']['versao_atendimento'] = garcomVersao(
+    $pdo->query('SELECT * FROM comandas_pedidos WHERE id = 300')->fetch(PDO::FETCH_ASSOC));
+$sinais = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+$filho = pcntl_fork();
+if ($filho === 0) {
+    fclose($sinais[0]);
+    fgets($sinais[1]);
+    esperarConflito(conectarTeste(), $concorrente);
+    exit(0);
+}
+fclose($sinais[1]);
+$fechamento = conectarTeste();
+iniciarRecebimentoAtendimentoDesktop($fechamento, ['empresa' => '32', 'id' => '300', 'id_comanda' => '30'], 'comanda');
+fwrite($sinais[0], "bloqueado\n");
+usleep(150000);
+$fechamento->exec("UPDATE comandas_pedidos SET status = 'Finalizada', data_fechamento = CURDATE() WHERE id = 300");
+$fechamento->commit();
+pcntl_waitpid($filho, $status);
+verificar(pcntl_wexitstatus($status) === 0, 'Sincronizacao concorrente nao respeitou fechamento');
+$pdo = conectarTeste();
+verificar($pdo->query('SELECT COUNT(*) FROM itens_venda WHERE id_comanda_pedido = 300')->fetchColumn() == 0,
+    'Conta encerrada recebeu item durante o pagamento');
+echo "OK: fechamento desktop concorrente impede insercao atrasada pelo app\n";
+
+// Delivery direto offline usa o mesmo recibo: nunca confirma apenas metade do pedido.
+fixture($pdo, 'clientes', ['id' => 8, 'empresa' => 32, 'nome' => "Cliente D'Agua", 'razao_social' => "Cliente D'Agua"]);
+fixture($pdo, 'enderecos_clientes', ['id' => 9, 'id_cliente' => 8, 'id_empresa' => 32]);
+fixture($pdo, 'opcoes_carrossel', ['id' => 1, 'empresa' => 32, 'ativo' => 'Sim', 'sequencia' => 1]);
+$direto = ['empresa' => '32', 'id_usuario' => '1', 'id_operacao' => bin2hex(random_bytes(24)), 'acao' => 'delivery',
+    'dados' => ['cliente' => '8', 'endereco' => '9', 'tipoentrega' => '1', 'concluido' => true,
+        'obs' => "Pedido d'agua, sem cebola", 'valor_da_entrega' => '4', 'valor_desconto' => '0',
+        'valor_acrescimo' => '0', 'caixa_id' => '9',
+        'produtos' => [['id' => '5', 'quantidade' => 1, 'valorVenda' => 45,
+            'observacao' => "Sem cebola, d'agua", 'opcoesPacotesListaFinal' => []]],
+        'pagamentos' => [
+            ['pagamentoSelecionado' => '1', 'valor_lancamento' => '20', 'valortroco' => '0', 'dataLancamento' => date('Y-m-d')],
+            ['pagamentoSelecionado' => '1', 'valor_lancamento' => '30', 'valortroco' => '1', 'dataLancamento' => date('Y-m-d')],
+        ]]];
+$reciboDelivery = garcomOperacao($pdo, $direto);
+verificar($reciboDelivery['saldo'] === '0.00' && (int)$reciboDelivery['idVenda'] > 0, 'Delivery quitado nao gerou venda');
+verificar(garcomOperacao($pdo, $direto) === $reciboDelivery, 'Delivery perdeu recibo no reenvio');
+$idDelivery = (int)$reciboDelivery['idDelivery'];
+verificar($pdo->query("SELECT COUNT(*) FROM movimentacoes WHERE id_mov = $idDelivery AND tipo_de_finalizarcao = 'Delivery'")->fetchColumn() == 2,
+    'Delivery duplicou pagamento');
+verificar($pdo->query("SELECT SUM(valor) FROM movimentacoes WHERE id_mov = $idDelivery AND tipo_de_finalizarcao = 'Delivery'")->fetchColumn() == 49,
+    'Pagamento com troco incorreto');
+verificar($pdo->query("SELECT COUNT(*) FROM itens_venda WHERE id_delivery = $idDelivery")->fetchColumn() == 1, 'Delivery duplicou itens');
+echo "OK: Delivery direto com pagamentos parciais, troco e venda idempotentes\n";
+
+$aPrazo = $direto;
+$aPrazo['id_operacao'] = bin2hex(random_bytes(24));
+$aPrazo['dados']['pagamentos'] = [['pagamentoSelecionado' => '2', 'valor_lancamento' => '49',
+    'valortroco' => '0', 'dataLancamento' => date('Y-m-d'), 'parcelas' => 2,
+    'parcelasLista' => [json_encode(['valor' => '24.50', 'vencimento' => '2026-10-01']),
+        json_encode(['valor' => '24.50', 'vencimento' => '2026-11-01'])]]];
+$reciboPrazo = garcomOperacao($pdo, $aPrazo);
+garcomOperacao($pdo, $aPrazo);
+$idPrazo = (int)$reciboPrazo['idDelivery'];
+verificar($pdo->query("SELECT COUNT(*) FROM contas_receber WHERE id_venda = $idPrazo AND tipo_de_finalizarcao = 'Delivery'")->fetchColumn() == 2,
+    'Conta parcelada duplicada');
+echo "OK: Delivery em conta conserva parcelas e reenvio unico\n";
+
+$falhaDelivery = $direto;
+$falhaDelivery['id_operacao'] = bin2hex(random_bytes(24));
+$falhaDelivery['dados']['produtos'][] = $falhaDelivery['dados']['produtos'][0];
+$qtdDelivery = $pdo->query('SELECT COUNT(*) FROM delivery')->fetchColumn();
+$qtdPagamentos = $pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn();
+$pdoFalha = conectarTeste();
+$pdoFalha->falharNoSegundo = true;
+try {
+    garcomOperacao($pdoFalha, $falhaDelivery);
+    throw new LogicException('Falha do Delivery nao ocorreu');
+} catch (RuntimeException $e) {
+    verificar(!($e instanceof LogicException), $e->getMessage());
+}
+verificar($pdo->query('SELECT COUNT(*) FROM delivery')->fetchColumn() == $qtdDelivery, 'Delivery parcial permaneceu no servidor');
+verificar($pdo->query('SELECT COUNT(*) FROM movimentacoes')->fetchColumn() == $qtdPagamentos, 'Delivery incompleto gerou pagamento');
+echo "OK: falha em item reverte Delivery, pagamentos e recibo\n";
+
+// Uma comanda mantem a identidade mas sua mesa foi assumida por outra comanda.
+$idSecundario = (int)$pdo->query('SELECT MAX(id) FROM comandas_pedidos')->fetchColumn() + 1;
+$idOcupante = $idSecundario + 1;
+fixture($pdo, 'comandas_pedidos', ['id' => $idSecundario, 'empresa' => 32, 'id_comanda' => 31,
+    'id_mesa' => 31, 'status' => 'Andamento', 'data_abertura' => '2026-09-22',
+    'data_fechamento' => null, 'hora_abertura' => '12:00:00', 'hash' => 'mesa-secundaria']);
+fixture($pdo, 'comandas_pedidos', ['id' => $idOcupante, 'empresa' => 32, 'id_comanda' => 32,
+    'id_mesa' => 31, 'status' => 'Andamento', 'data_abertura' => '2026-09-22',
+    'data_fechamento' => null, 'hora_abertura' => '12:01:00', 'hash' => 'mesa-ocupada']);
+$secundaria = $entrada;
+$secundaria['id_operacao'] = bin2hex(random_bytes(24));
+$secundaria['dados']['id_comanda_pedido'] = (string)$idSecundario;
+$secundaria['dados']['id_comanda'] = '31';
+$secundaria['dados']['id_mesa'] = '31';
+$secundaria['dados']['versao_atendimento'] = garcomVersao(
+    $pdo->query('SELECT * FROM comandas_pedidos WHERE id = ' . $idSecundario)->fetch(PDO::FETCH_ASSOC));
+esperarConflito($pdo, $secundaria);
+verificar($pdo->query('SELECT COUNT(*) FROM itens_venda WHERE id_comanda_pedido = ' . $idSecundario)->fetchColumn() == 0,
+    'Comanda recebeu itens mesmo com mesa vinculada reutilizada');
+$pdo->exec('UPDATE comandas_pedidos SET id_comanda = 0 WHERE id = ' . $idOcupante);
+garcomOperacao($pdo, $secundaria);
+echo "OK: recurso secundario protege comanda sem impedir vinculo ao registro proprio da mesa\n";

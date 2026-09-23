@@ -16,6 +16,11 @@ import 'package:app/src/modulos/delivery/paginas/widgets/acoes_menu_delivery.dar
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
+import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -30,8 +35,7 @@ class PaginaDelivery extends StatefulWidget {
 
 class _PaginaDeliveryState extends State<PaginaDelivery>
     with WidgetsBindingObserver {
-  late final _provedor =
-      widget.provedor ?? Modular.get<ProvedorDelivery>();
+  late final _provedor = widget.provedor ?? Modular.get<ProvedorDelivery>();
   final _busca = TextEditingController();
   Timer? _debounce;
   late final MonitorAtualizacaoTela _monitorAtualizacao;
@@ -49,7 +53,11 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     _provedor.listar();
     _monitorAtualizacao = MonitorAtualizacaoTela(
       atualizar: () => _provedor.listar(mostrarCarregamento: false),
-      estaAtiva: () => mounted && _ativo && !_rotaAberta && _ocupado == null &&
+      estaAtiva: () =>
+          mounted &&
+          _ativo &&
+          !_rotaAberta &&
+          _ocupado == null &&
           ModalRoute.of(context)?.isCurrent != false,
     );
   }
@@ -89,13 +97,67 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         idCliente: pedido.cliente,
         tipodeentrega: pedido.tipoEntrega,
         nomeAtendimento: 'Delivery #${pedido.numero}',
+        deliveryDireto: pedido.salvoNoAparelho,
       ));
+
+  Future<void> _retomarLocal(PedidoDelivery pedido) async {
+    if (_ocupado != null || _rotaAberta) return;
+    if (pedido.aguardandoSincronizacao) {
+      final sync = Sincronizador.instancia;
+      if (sync != null) {
+        await _abrir(PendenciasSincronizacao(sincronizador: sync));
+      }
+      return;
+    }
+    if (!pedido.produtosConfirmadosLocal || pedido.possuiRascunhoLocal) {
+      await _cardapio(pedido);
+      return;
+    }
+    if (pedido.restante <= .009) {
+      setState(() => _ocupado = pedido.id);
+      try {
+        await _provedor.servico.concluir(pedido);
+        await _provedor.servico.confirmar(pedido.id);
+        _mensagem(
+            'Pedido salvo no aparelho. A sincronização será feita ao conectar.');
+      } catch (erro) {
+        _mensagem(erro is StateError
+            ? erro.message.toString()
+            : 'Não foi possível confirmar o pedido salvo.');
+      } finally {
+        if (mounted) {
+          setState(() => _ocupado = null);
+          await _provedor.listar();
+        }
+      }
+      return;
+    }
+    final cardapio = Modular.get<ProvedorCardapio>();
+    cardapio.tipo = TipoCardapio.delivery;
+    cardapio.id = pedido.id;
+    cardapio.idCliente = pedido.cliente;
+    cardapio.tipodeentrega = pedido.tipoEntrega;
+    final pagamento = Modular.get<ProvedorFinalizarPagamento>();
+    pagamento.idVenda = pedido.id;
+    pagamento.valor = pedido.restante;
+    pagamento.definirContextoDelivery(
+        recorrenteVinculado: false,
+        pagamentoParcial: pedido.possuiPagamentoRegistrado);
+    await _abrir(PaginaSelecionarPagamento(
+        totalReceber: pedido.restante,
+        desconto: valorDelivery(pedido.dados['valorDesconto']),
+        acrescimo: pedido.texto('valorAcrescimo', '0'),
+        descontoPercentual: '0',
+        totalPedido: pedido.total.toStringAsFixed(2)));
+  }
+
   void _mensagem(String texto) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
 
   Future<void> _menu(PedidoDelivery pedido, EtapaDelivery etapa) async {
+    if (pedido.salvoNoAparelho) return _retomarLocal(pedido);
     if (_ocupado != null || _rotaAberta) return;
     _rotaAberta = true;
     try {
@@ -120,6 +182,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
 
   Future<void> _avancar(PedidoDelivery pedido, EtapaDelivery origem,
       EtapaDelivery? destino) async {
+    if (pedido.salvoNoAparelho) return _retomarLocal(pedido);
     if (_ocupado != null) return;
     if (pedido.quantidade == 0) {
       await _cardapio(pedido);
@@ -179,13 +242,17 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         throw StateError('O pedido mudou. Confira os dados antes de avançar.');
       }
       final etapaImprimePreparo = ['1', '4'].contains(alvo.impressao);
-      final imprimirPreparo = etapaImprimePreparo && config.imprimirPreparoSeparado;
+      final imprimirPreparo =
+          etapaImprimePreparo && config.imprimirPreparoSeparado;
       final imprimirComprovante = ['2', '4'].contains(alvo.impressao) ||
-          (etapaImprimePreparo && config.imprimirPreparoNoComprovanteConsumacao);
+          (etapaImprimePreparo &&
+              config.imprimirPreparoNoComprovanteConsumacao);
       final mensagens = imprimirPreparo || imprimirComprovante
           ? await ImpressaoDelivery.prepararMensagens(
               _provedor.servico, conferido.comEtapa(alvo.id),
-              preparo: imprimirPreparo, ambos: imprimirPreparo && imprimirComprovante, config: config)
+              preparo: imprimirPreparo,
+              ambos: imprimirPreparo && imprimirComprovante,
+              config: config)
           : <String>[];
       if (!mounted) return;
       var preparoPersistido = false;
@@ -206,7 +273,8 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
       }
       if (mensagens.isNotEmpty) {
-        await ImpressaoDelivery.enviarPreparadas(Modular.get<Server>(), mensagens,
+        await ImpressaoDelivery.enviarPreparadas(
+            Modular.get<Server>(), mensagens,
             preparoPersistido: preparoPersistido);
       }
     } catch (e) {
@@ -343,8 +411,10 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               filtros: filtros,
               atualizar: _provedor.listar,
               ocupado: _ocupado,
-              abrir: (p) => _abrir(
-                  PaginaDetalhesDelivery(servico: _provedor.servico, id: p.id)),
+              abrir: (p) => p.salvoNoAparelho
+                  ? _retomarLocal(p)
+                  : _abrir(PaginaDetalhesDelivery(
+                      servico: _provedor.servico, id: p.id)),
               avancar: _avancar,
               opcoes: _menu,
               config: _provedor.config,
@@ -459,16 +529,20 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final idade = p.abertura == null
                                 ? ''
                                 : '${DateTime.now().difference(p.abertura!).inMinutes.clamp(0, 99999)} min';
-                            final label = p.quantidade == 0
-                                ? 'Adicionar produtos'
-                                : widget.config?.exigePagamento(
-                                            p, destino ?? etapa) ==
-                                        true
-                                    ? 'Receber ${p.restante.obterReal()}'
-                                    : etapa.impressao == '3'
-                                        ? 'Concluir pedido'
-                                        : etapa.botao;
-                            final podeAvancar =
+                            final label = p.salvoNoAparelho
+                                ? p.aguardandoSincronizacao
+                                    ? 'Ver sincronização'
+                                    : 'Continuar pedido'
+                                : p.quantidade == 0
+                                    ? 'Adicionar produtos'
+                                    : widget.config?.exigePagamento(
+                                                p, destino ?? etapa) ==
+                                            true
+                                        ? 'Receber ${p.restante.obterReal()}'
+                                        : etapa.impressao == '3'
+                                            ? 'Concluir pedido'
+                                            : etapa.botao;
+                            final podeAvancar = p.salvoNoAparelho ||
                                 p.podeAvancar(etapa) && destino != null;
                             final produtos = p.produtos;
                             final podeMostrarProdutos =
@@ -528,6 +602,24 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                         size: 20)),
                                               ]),
                                               const SizedBox(height: 10),
+                                              if (p.salvoNoAparelho)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 8),
+                                                  child: Text(
+                                                    p.texto('estadoSincronizacao') ==
+                                                            'conflito'
+                                                        ? 'Sincronização precisa de conferência'
+                                                        : p.aguardandoSincronizacao
+                                                            ? 'Salvo no aparelho · aguardando sincronização'
+                                                            : 'Rascunho salvo no aparelho',
+                                                    style: TextStyle(
+                                                        color: cs.primary,
+                                                        fontWeight:
+                                                            FontWeight.w600),
+                                                  ),
+                                                ),
                                               if (etapa.impressao == '3')
                                                 Text('Concluído',
                                                     style: TextStyle(

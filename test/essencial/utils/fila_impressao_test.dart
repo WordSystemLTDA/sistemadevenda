@@ -12,10 +12,11 @@ class ArmazenamentoFalhando extends InMemorySharedPreferencesStore {
   ArmazenamentoFalhando(this.lancarExcecao) : super.empty();
   final bool lancarExcecao;
   bool falhar = false;
+  String? chaveFalha;
 
   @override
   Future<bool> setValue(String valueType, String key, Object value) async {
-    if (falhar) {
+    if (falhar && (chaveFalha == null || key == chaveFalha)) {
       if (lancarExcecao) throw StateError('Disco indisponivel');
       return false;
     }
@@ -298,6 +299,53 @@ void main() {
     await fila.registrarErro('pizza', 'Erro atrasado');
     await fila.confirmar('desconhecida');
     expect(fila.itens.map((e) => e.id), ['bebida']);
+  });
+
+  test('reinicio nao registra novamente impressao com ACK ja salvo', () async {
+    final fila = FilaImpressao();
+    await fila.registrar([mensagem('confirmada')]);
+    await fila.iniciarEnvio('confirmada');
+    await fila.confirmar('confirmada');
+    fila.dispose();
+
+    final restaurada = FilaImpressao();
+    addTearDown(restaurada.dispose);
+    await restaurada.registrar([mensagem('confirmada'), mensagem('nova')]);
+    expect(restaurada.itens.map((item) => item.id), ['nova']);
+  });
+
+  test('ACK duravel impede repeticao se falhar a remocao da fila', () async {
+    final armazenamento = ArmazenamentoFalhando(false);
+    SharedPreferencesStorePlatform.instance = armazenamento;
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([mensagem('confirmada')]);
+    await fila.iniciarEnvio('confirmada');
+    armazenamento
+      ..chaveFalha = 'flutter.${FilaImpressao.chave}'
+      ..falhar = true;
+    await expectLater(fila.confirmar('confirmada'), throwsStateError);
+    armazenamento.falhar = false;
+
+    final restaurada = FilaImpressao();
+    addTearDown(restaurada.dispose);
+    await restaurada.carregar();
+    expect(restaurada.itens, isEmpty);
+    await restaurada.registrar([mensagem('confirmada')]);
+    expect(restaurada.itens, isEmpty);
+  });
+
+  test('migracao legada nao recupera impressao finalizada anteriormente',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      FilaImpressao.chaveConfirmadas: ['confirmada'],
+      FilaImpressao.chaveLegada: [mensagem('confirmada'), mensagem('pendente')],
+    });
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.carregar();
+    expect(fila.itens.map((item) => item.id), ['pendente']);
+    expect(fila.itens.single.estado, EstadoImpressao.semConfirmacao);
   });
 
   test('falha de impressao nao prende finalizacao nem repete pedido', () async {

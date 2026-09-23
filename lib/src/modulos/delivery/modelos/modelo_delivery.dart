@@ -16,6 +16,33 @@ double valorDelivery(Object? valor) {
   return numero.isFinite ? numero : 0;
 }
 
+({DateTime inicio, DateTime fim}) periodoOperacionalDelivery({
+  required DateTime inicio,
+  required DateTime fim,
+  required String horaInicio,
+  required String horaFim,
+  DateTime? agora,
+}) {
+  DateTime horario(DateTime dia, String valor) {
+    final partes = valor.split(':');
+    int parte(int indice) =>
+        partes.length > indice ? int.tryParse(partes[indice]) ?? 0 : 0;
+    return DateTime(dia.year, dia.month, dia.day, parte(0), parte(1), parte(2));
+  }
+
+  final atual = agora ?? DateTime.now();
+  final antesDoInicio = !atual.isAfter(horario(atual, horaInicio));
+  return (
+    inicio: horario(
+        DateTime(
+            inicio.year, inicio.month, inicio.day - (antesDoInicio ? 1 : 0)),
+        horaInicio),
+    fim: horario(
+        DateTime(fim.year, fim.month, fim.day + (antesDoInicio ? 0 : 1)),
+        horaFim),
+  );
+}
+
 bool _pedidoOperacional(dynamic pedido) {
   if (pedido is! Map) return true;
   final status = (pedido['status'] ?? '').toString().trim().toLowerCase();
@@ -69,6 +96,12 @@ class PedidoDelivery {
   String texto(String chave, [String padrao = '']) =>
       dados[chave]?.toString() ?? padrao;
   String get id => texto('id');
+  bool get salvoNoAparelho => id.startsWith('delivery-local:');
+  bool get aguardandoSincronizacao =>
+      salvoNoAparelho && texto('faseLocal') == 'enfileirado';
+  bool get produtosConfirmadosLocal =>
+      dados['produtosConfirmadosLocal'] == true;
+  bool get possuiRascunhoLocal => dados['possuiRascunhoLocal'] == true;
   String get numero =>
       texto('numeroPedido').isEmpty ? id : texto('numeroPedido');
   String get etapa => texto('idopcoescarrossel');

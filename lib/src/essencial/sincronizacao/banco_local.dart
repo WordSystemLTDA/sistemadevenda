@@ -18,7 +18,7 @@ class BancoLocal {
     final banco = await fabrica.openDatabase(
       path ?? '${await fabrica.getDatabasesPath()}/garcom_offline.db',
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onConfigure: (db) async {
           await db.execute('PRAGMA synchronous = FULL');
         },
@@ -34,9 +34,16 @@ class BancoLocal {
               'estado TEXT NOT NULL, dados TEXT NOT NULL, '
               'impressoes TEXT NOT NULL, destino TEXT NOT NULL, '
               'criado INTEGER NOT NULL, tentativas INTEGER NOT NULL DEFAULT 0, '
-              'proxima INTEGER NOT NULL DEFAULT 0, erro TEXT, resposta TEXT)');
+              'proxima INTEGER NOT NULL DEFAULT 0, erro TEXT, resposta TEXT, '
+              'codigo_erro TEXT)');
           await db.execute('CREATE INDEX fila_por_escopo '
               'ON operacoes (escopo, estado, criado)');
+        },
+        onUpgrade: (db, anterior, _) async {
+          if (anterior < 2) {
+            await db
+                .execute('ALTER TABLE operacoes ADD COLUMN codigo_erro TEXT');
+          }
         },
       ),
     );

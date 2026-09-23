@@ -180,7 +180,12 @@ class _PaginaFinalizarFormaPagamentoState
       await servico.confirmar(provedor.idVenda);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, provedor.idVenda);
       provedorBalcao.observacaoDoPedido = '';
-      await carrinhoProvedor.removerComandasPedidos();
+      final contexto = carrinhoProvedor.contexto;
+      if (!pedido.salvoNoAparelho &&
+          contexto?.tipo == 'delivery' &&
+          contexto?.idAtendimento == pedido.id) {
+        await carrinhoProvedor.removerComandasPedidos(contexto: contexto);
+      }
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
       Navigator.popUntil(
@@ -196,6 +201,13 @@ class _PaginaFinalizarFormaPagamentoState
         ? atualizado.restante
         : widget.totalReceber - valorRecebido;
     if (!mounted) return;
+    if (pedido.salvoNoAparelho) {
+      // O saldo e o pagamento parcial ja estao duraveis no rascunho. A lista
+      // permite retoma-los mesmo depois de reiniciar, com os ajustes originais.
+      Navigator.popUntil(context,
+          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      return;
+    }
     Navigator.popUntil(
         context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
   }

@@ -187,6 +187,16 @@ class AdaptadorDelivery extends Fake implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class ServicoRascunhoMensagem extends ServicoDelivery {
+  ServicoRascunhoMensagem(super.dio, super.usuario);
+  @override
+  Future<PedidoDelivery> pedido(String id) async => pedidoTeste(campos: {
+        'id': id,
+        'idCliente': '4',
+        'idendereco': '17',
+      });
+}
+
 void main() {
   test('configuracao geral interpreta a unificacao do preparo', () {
     final config = ModeloConfigBigchef.fromMap({
@@ -198,6 +208,49 @@ void main() {
   });
 
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('periodo dos pedidos locais acompanha o dia operacional da API', () {
+    final madrugada = periodoOperacionalDelivery(
+        inicio: DateTime(2026, 9, 23),
+        fim: DateTime(2026, 9, 23),
+        horaInicio: '05:00:00',
+        horaFim: '05:00:00',
+        agora: DateTime(2026, 9, 23, 2));
+    expect(madrugada.inicio, DateTime(2026, 9, 22, 5));
+    expect(madrugada.fim, DateTime(2026, 9, 23, 5));
+    final noite = periodoOperacionalDelivery(
+        inicio: DateTime(2026, 9, 23),
+        fim: DateTime(2026, 9, 23),
+        horaInicio: '05:00:00',
+        horaFim: '05:00:00',
+        agora: DateTime(2026, 9, 23, 22));
+    expect(noite.inicio, DateTime(2026, 9, 23, 5));
+    expect(noite.fim, DateTime(2026, 9, 24, 5));
+  });
+
+  test('mensagem de pagamento usa cliente do rascunho sem criar pedido remoto',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+    await ServicoRascunhoMensagem(dio, usuario).notificarCliente(
+        MensagemClienteDelivery.formaPagamento,
+        idDelivery: 'delivery-local:teste');
+    final chamada = adapter.chamadas.single;
+    expect(chamada.path, 'delivery/notificar_cliente.php');
+    final dados = jsonDecode(chamada.data as String) as Map;
+    expect(dados['cliente'], '4');
+    expect(dados['endereco'], '17');
+    expect(dados['id_delivery'], '0');
+    expect(dados['acao'], 'forma');
+  });
   test('le valores brasileiros e do PHP sem perder milhares', () {
     expect(valorDelivery('1.234,56'), 1234.56);
     expect(valorDelivery('1,234.56'), 1234.56);
@@ -301,7 +354,7 @@ void main() {
     expect(dados['empresa'], '3');
     expect(dados['id_usuario'], '2');
   });
-  test('consulta envia empresa e usuario e nunca usa cache de outro modulo',
+  test('lista permite copia offline isolada pela empresa e pelo usuario',
       () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode(
@@ -324,7 +377,7 @@ void main() {
     expect(r.uri.path, contains('/api_restaurantes_venda/'));
     expect(r.queryParameters['empresa'], '3');
     expect(r.queryParameters['id_usuario'], '2');
-    expect(r.extra['semCache'], isTrue);
+    expect(r.extra['semCache'], isFalse);
   });
   test('pagamento calcula troco sem limpar pagamentos ou alterar produtos',
       () async {

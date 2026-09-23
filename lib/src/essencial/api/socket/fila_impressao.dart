@@ -75,6 +75,8 @@ class ImpressaoPendente {
 class FilaImpressao extends ChangeNotifier {
   static const chave = 'fila_impressao_confirmada_v1';
   static const chaveLegada = 'fila_mensagens_socket_pendentes';
+  static const chaveConfirmadas = 'impressoes_confirmadas_v1';
+  static const _chaveCanceladas = 'impressoes_canceladas_v1';
   Future<void> _operacao = Future.value();
   bool _carregada = false;
   bool _descartada = false;
@@ -125,6 +127,13 @@ class FilaImpressao extends ChangeNotifier {
     if (banco != null) await banco.migrarPreferencia(chave, chave);
     final salvo =
         banco == null ? prefs.getString(chave) : await banco.ler(chave);
+    final finalizadas = {
+      ...?prefs.getStringList(chaveConfirmadas),
+      ...?prefs.getStringList(_chaveCanceladas),
+    };
+    Future<bool> jaFinalizada(String id) async =>
+        finalizadas.contains(id) ||
+        await banco?.ler('impressaoConfirmada:$id') != null;
     final itens = <ImpressaoPendente>[];
     if (salvo != null) {
       try {
@@ -139,6 +148,7 @@ class FilaImpressao extends ChangeNotifier {
           if (item.id.trim().isEmpty) {
             throw const FormatException('Impressao sem ID');
           }
+          if (await jaFinalizada(item.id)) continue;
           if (item.estado == EstadoImpressao.pausada &&
               item.erro ==
                   'Recuperação pausada. Confira a cozinha ou limpe a pendência.') {
@@ -171,6 +181,7 @@ class FilaImpressao extends ChangeNotifier {
       if (dados['tipoImpressao'] == null || dados['idRequisicao'] == null) {
         outras.add(mensagem);
       } else if (!itens.any((e) => e.id == dados!['idRequisicao'].toString())) {
+        if (await jaFinalizada(dados['idRequisicao'].toString())) continue;
         // A fila antiga nao distinguia mensagens enviadas das ainda nao enviadas.
         itens.add(ImpressaoPendente(mensagem,
             estado: EstadoImpressao.semConfirmacao));
@@ -196,16 +207,17 @@ class FilaImpressao extends ChangeNotifier {
         await _carregar();
         final proximos = [..._itens];
         final prefs = await SharedPreferences.getInstance();
-        final canceladas =
-            prefs.getStringList('impressoes_canceladas_v1')?.toSet() ??
-                <String>{};
+        final finalizadas = {
+          ...?prefs.getStringList(chaveConfirmadas),
+          ...?prefs.getStringList(_chaveCanceladas),
+        };
         for (final mensagem in mensagens) {
           final item =
               ImpressaoPendente(mensagem, servidor: servidor, estado: estado);
           if (item.dados['idRequisicao'] == null || item.id.trim().isEmpty) {
             throw ArgumentError('Impressao sem identificador.');
           }
-          if (canceladas.contains(item.id)) continue;
+          if (finalizadas.contains(item.id)) continue;
           if (await BancoLocal.instancia
                   ?.ler('impressaoConfirmada:${item.id}') !=
               null) {
@@ -275,19 +287,22 @@ class FilaImpressao extends ChangeNotifier {
           _notificar();
           return;
         }
-        if (cancelada ||
-            _itens.any((item) =>
-                item.id == id &&
-                item.estado == EstadoImpressao.cancelamentoPendente)) {
-          final prefs = await SharedPreferences.getInstance();
-          final canceladas =
-              prefs.getStringList('impressoes_canceladas_v1')?.toSet() ??
-                  <String>{};
-          canceladas.add(id);
-          if (!await prefs.setStringList(
-              'impressoes_canceladas_v1', canceladas.toList())) {
-            throw StateError('Não foi possível salvar o cancelamento.');
-          }
+        // O fallback tambem conserva o recibo do ACK. Se o app fechar entre
+        // gravar o recibo e remover a fila, a proxima leitura ignora esse ID.
+        final prefs = await SharedPreferences.getInstance();
+        final confirmadas =
+            prefs.getStringList(chaveConfirmadas)?.toSet() ?? <String>{};
+        confirmadas.add(id);
+        var salvo = false;
+        try {
+          salvo =
+              await prefs.setStringList(chaveConfirmadas, confirmadas.toList());
+        } finally {
+          if (!salvo) await prefs.reload();
+        }
+        if (!salvo) {
+          throw StateError(
+              'Não foi possível salvar a confirmação da impressão.');
         }
         await _salvar(_itens.where((e) => e.id != id).toList());
       });

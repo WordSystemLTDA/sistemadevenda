@@ -14,6 +14,7 @@ import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/inicio/paginas/pagina_inicio.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -144,7 +145,7 @@ void main() {
       app.navigatorKey = GlobalKey<NavigatorState>();
       await tester.pumpWidget(const app.AppWidget());
       await tester.pumpAndSettle();
-      expect(find.text('Início'), findsOneWidget);
+      expect(find.byType(PaginaInicio), findsOneWidget);
       expect(find.text('Entrar'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -208,7 +209,7 @@ void main() {
       await tester.tap(find.text('Entrar'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('Início'), findsOneWidget);
+      expect(find.byType(PaginaInicio), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
       final indicador = find.byTooltip('Pedidos sincronizados');
@@ -244,7 +245,7 @@ void main() {
           lessThanOrEqualTo(tester.getRect(indicador).left));
       app.navigatorKey!.currentState!.pop();
       await tester.pumpAndSettle();
-      expect(find.text('Início'), findsOneWidget);
+      expect(find.byType(PaginaInicio), findsOneWidget);
 
       for (final pagina in ['Comandas', 'Mesas']) {
         await tester.tap(find.text(pagina));
@@ -273,7 +274,7 @@ void main() {
       modulo.tema.value = ThemeMode.dark;
       await tester.pumpAndSettle();
       expect(find.byTooltip('Sem conexao com o servidor'), findsOneWidget);
-      expect(find.text('Início'), findsOneWidget);
+      expect(find.byType(PaginaInicio), findsOneWidget);
       await tester.tap(find.text('Comandas'));
       await tester.pumpAndSettle();
       expect(

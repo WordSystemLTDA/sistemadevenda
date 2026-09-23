@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app/src/app_widget.dart' as app;
@@ -22,6 +23,19 @@ class SaidaTeste extends Fake implements WebSocketSink {
   SaidaTeste(this.aoEnviar);
   @override
   void add(dynamic data) => aoEnviar(data);
+}
+
+class FilaComGravacaoDemorada extends FilaImpressao {
+  final iniciada = Completer<void>();
+  final liberar = Completer<void>();
+
+  @override
+  Future<bool> iniciarEnvio(String id, {DateTime? agora}) async {
+    final salvo = await super.iniciarEnvio(id, agora: agora);
+    if (!iniciada.isCompleted) iniciada.complete();
+    await liberar.future;
+    return salvo;
+  }
 }
 
 void main() {
@@ -229,6 +243,29 @@ void main() {
     expect(server.filaImpressao.itens.single.estado, EstadoImpressao.erro);
   });
 
+  test('troca de canal durante gravacao nao envia para a conexao substituta',
+      () async {
+    final fila = FilaComGravacaoDemorada();
+    final server = Server(filaImpressao: fila)
+      ..connected = true
+      ..hostname = 'cozinha-original'
+      ..port = 9980;
+    addTearDown(server.dispose);
+    final enviados = <dynamic>[];
+    server.channel = CanalTeste(SaidaTeste(enviados.add));
+    final envio = server.enviarImpressoes([mensagem('durante-reconexao')]);
+    await fila.iniciada.future;
+    server
+      ..hostname = 'cozinha-substituta'
+      ..channel = CanalTeste(SaidaTeste(enviados.add));
+    fila.liberar.complete();
+    await envio;
+    expect(enviados, isEmpty);
+    expect(fila.itens.single.id, 'durante-reconexao');
+    expect(fila.itens.single.servidor, 'cozinha-original:9980');
+    expect(fila.itens.single.estado, EstadoImpressao.erro);
+  });
+
   test('falha na consulta da impressao inicia reconexao sem perder a fila',
       () async {
     var agora = DateTime(2026, 9, 11);
@@ -284,6 +321,31 @@ void main() {
     expect(recebidos, ['empresa-atual']);
     expect(server.filaImpressao.itens.first.estado,
         EstadoImpressao.aguardandoEnvio);
+  });
+
+  test('falha ao enviar cancelamento derruba canal e preserva a pendencia',
+      () async {
+    final server = Server()..connected = true;
+    addTearDown(server.dispose);
+    await server.filaImpressao.registrar([mensagem('cancelamento-sem-rede')]);
+    await server.filaImpressao.cancelar('cancelamento-sem-rede');
+    server.channel = CanalTeste(SaidaTeste((_) {
+      throw StateError('Rede interrompida');
+    }));
+    await server.processarImpressoesPendentes();
+    expect(server.connected, isFalse);
+    expect(server.filaImpressao.itens.single.estado,
+        EstadoImpressao.cancelamentoPendente);
+
+    final enviados = <Map<String, dynamic>>[];
+    server
+      ..connected = true
+      ..channel = CanalTeste(SaidaTeste((data) => enviados.add(
+          Map<String, dynamic>.from(
+              jsonDecode(data as String)['data']['customData']))));
+    await server.processarImpressoesPendentes();
+    expect(enviados.single['tipo'], 'CancelarImpressao');
+    expect(enviados.single['idRequisicao'], 'cancelamento-sem-rede');
   });
 
   test('mudanca de servidor nao envia pendencia para outra cozinha', () async {

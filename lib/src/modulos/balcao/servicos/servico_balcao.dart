@@ -219,7 +219,6 @@ class ServicoBalcao {
       final response = await dio.cliente.get(
         'comandas/listar_clientes.php',
         queryParameters: {'pesquisa': termo, 'empresa': empresa},
-        options: Options(extra: {'semCache': true}),
       );
       final dados = response.data is List ? response.data as List : const [];
       for (final cliente in dados) {

@@ -338,8 +338,9 @@ void main() {
       expect(impresso['observacao'], 'Sem cebola');
       final opcoes = impresso['opcoesPacotesListaFinal'] as List;
       expect(opcoes.first['dados'], hasLength(2));
-      expect(opcoes.last['id'], 12);
-      expect(opcoes.last['dados'].single['nome'], 'Sem cebola');
+      // Observacao livre segue no campo proprio, nao como opcao comercial.
+      expect(opcoes, hasLength(1));
+      expect(opcoes.single['id'], 10);
       await tester.pumpWidget(const SizedBox.shrink());
     });
 

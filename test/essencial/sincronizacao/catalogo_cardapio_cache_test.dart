@@ -184,4 +184,110 @@ void main() {
     expect(CacheConsultas.chave(consulta('1')),
         CacheConsultas.chave(consulta('2')));
   });
+
+  test('clientes offline permitem celular sem mascara, ID e razao social',
+      () async {
+    await guardar('comandas/listar_clientes.php', {
+      'empresa': '32',
+      'pesquisa': '',
+    }, [
+      {
+        'id': '209',
+        'nome': 'Ana - (44) 99921-3336',
+        'nome_puro': 'Ana',
+        'razao_social': 'Restaurante Exemplo',
+        'celular': '(44) 99921-3336',
+      },
+      {
+        'id': '310',
+        'nome': 'Bruno - 41988882222',
+        'nome_puro': 'Bruno',
+        'razao_social': 'Outra empresa',
+        'celular': '41988882222',
+      },
+    ]);
+    adapter.offline = true;
+    for (final (termo, id) in [
+      ('44999213336', '209'),
+      ('99921-3336', '209'),
+      ('(41) 98888-2222', '310'),
+      ('209', '209'),
+      ('restaurante exemplo', '209'),
+      ('ANA', '209'),
+    ]) {
+      final resposta = await api.cliente.get('comandas/listar_clientes.php',
+          queryParameters: {'empresa': '32', 'pesquisa': termo});
+      expect((resposta.data as List).single['id'], id, reason: termo);
+      expect(resposta.extra['cacheLocal'], isTrue);
+    }
+    final nenhuma = await api.cliente.get('comandas/listar_clientes.php',
+        queryParameters: {'empresa': '32', 'pesquisa': '55999999999'});
+    expect(nenhuma.data, isEmpty);
+  });
+
+  test('clientes continuam consultando inclusoes online apos preservar cache',
+      () async {
+    await guardar('comandas/listar_clientes.php', {
+      'empresa': '32',
+      'pesquisa': ''
+    }, [
+      {'id': '1', 'nome': 'Antigo'}
+    ]);
+    adapter.resposta = [
+      {'id': '1', 'nome': 'Antigo'},
+      {'id': '2', 'nome': 'Novo'},
+    ];
+    final resposta = await api.cliente.get('comandas/listar_clientes.php',
+        queryParameters: {'empresa': '32', 'pesquisa': ''});
+    expect(resposta.data, hasLength(2));
+    expect(adapter.consultas, 1);
+    expect(resposta.extra['cacheLocal'], isNot(true));
+  });
+
+  test('transferir atendimento nao apaga clientes preparados no aparelho',
+      () async {
+    const parametros = {'empresa': '32', 'pesquisa': ''};
+    for (final rota in [
+      'comandas/listar_clientes.php',
+      'comandas/listar.php',
+      'mesas/listar.php',
+      'cardapio/listar_por_id.php',
+    ]) {
+      await guardar(rota, parametros, [
+        {'id': '1', 'nome': 'Preparado'}
+      ]);
+    }
+    await api.cache!.invalidarAtendimentos();
+    for (final rota in [
+      'comandas/listar_clientes.php',
+      'comandas/listar.php',
+      'mesas/listar.php',
+      'cardapio/listar_por_id.php',
+    ]) {
+      final salvo = await banco.consulta(
+          'teste-cardapio',
+          CacheConsultas.chave(
+              RequestOptions(path: rota, queryParameters: parametros)));
+      expect(salvo, rota == 'comandas/listar_clientes.php' ? isNotNull : isNull,
+          reason: rota);
+    }
+    adapter.offline = true;
+    final resposta = await api.cliente
+        .get('comandas/listar_clientes.php', queryParameters: parametros);
+    expect((resposta.data as List).single['nome'], 'Preparado');
+  });
+
+  test('busca de celular de clientes nao muda filtro de outras consultas',
+      () async {
+    await guardar('comandas/listar.php', {
+      'empresa': '32',
+      'pesquisa': ''
+    }, [
+      {'id': '1', 'nome': 'Ana', 'celular': '44999213336'}
+    ]);
+    adapter.offline = true;
+    final resposta = await api.cliente.get('comandas/listar.php',
+        queryParameters: {'empresa': '32', 'pesquisa': '44999213336'});
+    expect(resposta.data, isEmpty);
+  });
 }

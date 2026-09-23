@@ -58,7 +58,12 @@ void main() {
   var conectado = false;
   var perderResposta = false;
   var conflito = false;
+  var codigoConflito = 'atendimento_encerrado';
+  var mensagemConflito = 'Atendimento encerrado';
+  var contratoConflito = true;
   var conflitoAbertura = false;
+  Completer<void>? requisicaoPausada;
+  Completer<void>? liberarResposta;
   var reciboVendaIncompleto = false;
   var impressaoPersistidaApi = false;
   final aplicados = <String>{};
@@ -70,7 +75,12 @@ void main() {
     conectado = false;
     perderResposta = false;
     conflito = false;
+    codigoConflito = 'atendimento_encerrado';
+    mensagemConflito = 'Atendimento encerrado';
+    contratoConflito = true;
     conflitoAbertura = false;
+    requisicaoPausada = null;
+    liberarResposta = null;
     reciboVendaIncompleto = false;
     impressaoPersistidaApi = false;
     aplicados.clear();
@@ -89,7 +99,7 @@ void main() {
     socket = SocketOfflineTeste();
     sync = Sincronizador(api, usuario, socket, banco: banco);
     api.cliente.interceptors
-        .add(InterceptorsWrapper(onRequest: (options, handler) {
+        .add(InterceptorsWrapper(onRequest: (options, handler) async {
       final rota = CacheConsultas.caminho(options);
       Map<String, dynamic>? pedido;
       if (options.method == 'POST') {
@@ -121,13 +131,24 @@ void main() {
           handler.reject(DioException(
               requestOptions: options,
               type: DioExceptionType.badResponse,
-              response: Response(
-                  requestOptions: options,
-                  statusCode: 409,
-                  data: {'mensagem': 'Atendimento encerrado'})));
+              response:
+                  Response(requestOptions: options, statusCode: 409, data: {
+                if (contratoConflito) ...{
+                  'protocolo': 1,
+                  'sucesso': false,
+                  'codigo': codigoConflito,
+                },
+                'mensagem': mensagemConflito,
+              })));
           return;
         }
         aplicados.add(pedido['id_operacao'] as String);
+        if (liberarResposta != null) {
+          if (requisicaoPausada?.isCompleted == false) {
+            requisicaoPausada!.complete();
+          }
+          await liberarResposta!.future;
+        }
         if (perderResposta) {
           perderResposta = false;
           handler.reject(DioException(
@@ -700,10 +721,12 @@ void main() {
     expect(tentativas.length, envios);
   });
 
-  test('reenviar para servidor libera conflito manualmente', () async {
+  test('reenviar para servidor libera recusa de produto manualmente', () async {
     await guardar();
     conectado = true;
     conflito = true;
+    codigoConflito = 'produto_invalido';
+    mensagemConflito = 'Uma opcao do produto foi removida ou alterada.';
     await sync.tentarNovamente();
     final pendente = (await banco.operacoes(sync.escopo)).single;
     expect(pendente['estado'], 'conflito');
@@ -718,9 +741,13 @@ void main() {
     expect(socket.filaImpressao.itens, hasLength(1));
   });
 
-  test('voltar pedido para carrinho restaura itens e arquiva pendencia',
-      () async {
+  test('voltar pedido recusado restaura itens e arquiva pendencia', () async {
     await guardar();
+    conectado = true;
+    conflito = true;
+    codigoConflito = 'produto_invalido';
+    mensagemConflito = 'Uma opcao do produto foi removida ou alterada.';
+    await sync.tentarNovamente();
     final pendente = (await banco.operacoes(sync.escopo)).single;
     expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
 
@@ -734,6 +761,200 @@ void main() {
     expect(historico.single['estado'], 'arquivado');
     expect(aplicados, isEmpty);
     expect(socket.filaImpressao.itens, isEmpty);
+  });
+
+  test('resposta perdida impede voltar ao carrinho e conserva recibo incerto',
+      () async {
+    conectado = true;
+    perderResposta = true;
+    await guardar();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(aplicados, {pendente['id']});
+    expect(pendente['tentativas'], 1);
+
+    await expectLater(sync.voltarPedidoParaCarrinho(pendente['id'] as String),
+        throwsStateError);
+
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+    expect((await banco.operacoes(sync.escopo)).single, pendente);
+    expect(socket.filaImpressao.itens, isEmpty);
+    await sync.reenviarParaServidor(pendente['id'] as String);
+    expect(aplicados, hasLength(1));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
+
+  test('pedido registrado aguardando impressao nao volta ao carrinho',
+      () async {
+    await guardar();
+    final original = (await banco.operacoes(sync.escopo)).single;
+    await banco.atualizarOperacao(original['id'] as String, {
+      'estado': 'registrado',
+      'resposta': jsonEncode({
+        'protocolo': 1,
+        'sucesso': true,
+        'id_operacao': original['id'],
+      }),
+    });
+    final registrado = (await banco.operacoes(sync.escopo)).single;
+    final requisicoesAntes = tentativas.length;
+
+    await expectLater(sync.voltarPedidoParaCarrinho(original['id'] as String),
+        throwsStateError);
+
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+    expect((await banco.operacoes(sync.escopo)).single, registrado);
+    expect(tentativas.length, requisicoesAntes);
+  });
+
+  test('reenvio incerto conserva payload e contador ja utilizado', () async {
+    await guardar();
+    final op = (await banco.operacoes(sync.escopo)).single;
+    final dados = Map<String, dynamic>.from(jsonDecode(op['dados'] as String));
+    final itens = dados['produtos'] as List;
+    (itens.single as Map)['observacao'] = 'Observacao\nantiga';
+    final payloadOriginal = jsonEncode(dados);
+    await banco.atualizarOperacao(op['id'] as String, {
+      'dados': payloadOriginal,
+      'tentativas': 3,
+      'proxima': 9999999999999,
+    });
+
+    await sync.reenviarParaServidor(op['id'] as String);
+
+    final depois = (await banco.operacoes(sync.escopo)).single;
+    expect(depois['id'], op['id']);
+    expect(depois['dados'], payloadOriginal);
+    expect(depois['tentativas'], 4);
+    expect(depois['estado'], 'pendente');
+    expect(tentativas.last['id_operacao'], op['id']);
+    expect(tentativas.last['dados'], dados);
+    await expectLater(
+        sync.voltarPedidoParaCarrinho(op['id'] as String), throwsStateError);
+  });
+
+  test('erro HTTP sem contrato nao libera edicao de envio incerto', () async {
+    await guardar();
+    conectado = true;
+    conflito = true;
+    contratoConflito = false;
+    codigoConflito = 'produto_invalido';
+    mensagemConflito = 'Falha intermediaria ao consultar o pedido';
+    await sync.tentarNovamente();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(pendente['estado'], 'pendente');
+    expect(pendente['tentativas'], greaterThan(0));
+    await expectLater(sync.voltarPedidoParaCarrinho(pendente['id'] as String),
+        throwsStateError);
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+  });
+
+  test('recuperacao espera HTTP em voo e nao copia pedido ja confirmado',
+      () async {
+    conectado = true;
+    requisicaoPausada = Completer<void>();
+    liberarResposta = Completer<void>();
+    addTearDown(() {
+      if (!liberarResposta!.isCompleted) liberarResposta!.complete();
+    });
+    final envio = guardar();
+    await requisicaoPausada!.future;
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    var recuperacaoTerminou = false;
+    final recuperacao = expectLater(
+        sync
+            .voltarPedidoParaCarrinho(pendente['id'] as String)
+            .whenComplete(() => recuperacaoTerminou = true),
+        throwsStateError);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(recuperacaoTerminou, isFalse);
+    liberarResposta!.complete();
+    await envio;
+    await recuperacao;
+    expect(aplicados, hasLength(1));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+  });
+
+  test(
+      'falha ao arquivar recuperacao reverte carrinho e permite uma unica copia',
+      () async {
+    await guardar();
+    conectado = true;
+    conflito = true;
+    codigoConflito = 'produto_invalido';
+    mensagemConflito = 'Produto precisa de revisao';
+    await sync.tentarNovamente();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    final id = pendente['id'] as String;
+    await banco.db.execute(
+        "CREATE TEMP TRIGGER simular_falha_recuperacao BEFORE UPDATE ON operacoes "
+        "WHEN NEW.estado = 'arquivado' BEGIN SELECT RAISE(ABORT, 'disco cheio'); END");
+
+    await expectLater(
+        sync.voltarPedidoParaCarrinho(id), throwsA(isA<DatabaseException>()));
+    expect((await banco.operacoes(sync.escopo)).single, pendente);
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+    await banco.db.execute('DROP TRIGGER simular_falha_recuperacao');
+
+    final resultados = await Future.wait(List.generate(2, (_) async {
+      try {
+        await sync.voltarPedidoParaCarrinho(id);
+        return true;
+      } on StateError {
+        return false;
+      }
+    }));
+    expect(resultados.where((sucesso) => sucesso), hasLength(1));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    final itens = await ArmazenamentoCarrinhos.instancia.listar(contexto);
+    expect(itens, hasLength(1));
+    expect(itens.single.quantidade, 2);
+    expect(aplicados, isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+  });
+
+  test(
+      'conta encerrada bloqueia reenvio e recuperacao mas libera outras comandas',
+      () async {
+    await guardar();
+    await guardar();
+    await guardar(
+        alvo: const ContextoCarrinho(
+            empresa: '32',
+            tipo: 'comanda',
+            idAtendimento: '106',
+            idRecurso: '6'));
+    conectado = true;
+    conflito = true;
+    await sync.tentarNovamente();
+    final pendentes = await banco.operacoes(sync.escopo);
+    expect(pendentes, hasLength(2));
+    final encerrado = pendentes.firstWhere((op) => op['estado'] == 'conflito');
+    expect(encerrado['codigo_erro'], 'atendimento_encerrado');
+    final requisicoesAntes = tentativas.length;
+    final id = encerrado['id'] as String;
+
+    await expectLater(sync.reenviarParaServidor(id), throwsStateError);
+    await expectLater(sync.voltarPedidoParaCarrinho(id), throwsStateError);
+    expect(tentativas.length, requisicoesAntes);
+    expect(await ArmazenamentoCarrinhos.instancia.listar(contexto), isEmpty);
+    expect(aplicados, hasLength(1));
+    expect(socket.filaImpressao.itens.single.id, 'impressao-106');
+
+    await sync.arquivarConflito(id);
+    final restante = (await banco.operacoes(sync.escopo)).single;
+    expect(restante['estado'], 'conflito');
+    expect(restante['codigo_erro'], 'origem_nao_confirmada');
+    await expectLater(
+        sync.reenviarParaServidor(restante['id'] as String), throwsStateError);
+    await sync.arquivarConflito(restante['id'] as String);
+    await sync.tentarNovamente();
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(tentativas.length, requisicoesAntes);
+    expect(
+        (await banco.db.query('operacoes')).where(
+            (op) => op['atendimento'] == '104' && op['estado'] == 'arquivado'),
+        hasLength(2));
   });
 
   test('observacao livre nao e enviada como opcao comercial', () async {
@@ -903,7 +1124,7 @@ void main() {
         find.widgetWithText(
             OutlinedButton, 'Voltar esse Pedido para o Carrinho'),
         findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Arquivar apos conferir'),
+    expect(find.widgetWithText(TextButton, 'Excluir da sincronizacao'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -924,6 +1145,45 @@ void main() {
     await sync.tentarNovamente();
     expect(aplicados, hasLength(1));
     expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
+
+  test('atualizar banco v1 preserva pedido e adiciona codigo do conflito',
+      () async {
+    await guardar();
+    final pedido =
+        Map<String, Object?>.from((await banco.operacoes(sync.escopo)).single)
+          ..remove('codigo_erro');
+    final caminho = '${pasta.path}/versao-anterior.db';
+    final anterior = await databaseFactoryFfi.openDatabase(caminho,
+        options: OpenDatabaseOptions(
+            version: 1,
+            onCreate: (db, _) async {
+              await db.execute('CREATE TABLE operacoes ('
+                  'id TEXT PRIMARY KEY, escopo TEXT NOT NULL, '
+                  'atendimento TEXT NOT NULL, acao TEXT NOT NULL, '
+                  'estado TEXT NOT NULL, dados TEXT NOT NULL, '
+                  'impressoes TEXT NOT NULL, destino TEXT NOT NULL, '
+                  'criado INTEGER NOT NULL, tentativas INTEGER NOT NULL DEFAULT 0, '
+                  'proxima INTEGER NOT NULL DEFAULT 0, erro TEXT, resposta TEXT)');
+            }));
+    await anterior.insert('operacoes', pedido);
+    await anterior.close();
+
+    final atualizado =
+        await BancoLocal.abrir(factory: databaseFactoryFfi, path: caminho);
+    try {
+      expect(await atualizado.db.getVersion(), 2);
+      final preservado = (await atualizado.operacoes(sync.escopo)).single;
+      expect(preservado, {...pedido, 'codigo_erro': null});
+      await atualizado.atualizarOperacao(pedido['id'] as String, {
+        'estado': 'conflito',
+        'codigo_erro': 'atendimento_encerrado',
+      });
+      expect((await atualizado.operacoes(sync.escopo)).single['codigo_erro'],
+          'atendimento_encerrado');
+    } finally {
+      await atualizado.db.close();
+    }
   });
 
   test('erro ao gravar o carrinho reverte a inclusao na fila', () async {
@@ -1099,6 +1359,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Atendimento encerrado'), findsOneWidget);
       expect(find.text('Sem cebola'), findsOneWidget);
+      expect(find.text('Reenviar para o Servidor'), findsNothing);
+      expect(find.text('Voltar esse Pedido para o Carrinho'), findsNothing);
+      expect(find.text('Excluir da sincronizacao'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

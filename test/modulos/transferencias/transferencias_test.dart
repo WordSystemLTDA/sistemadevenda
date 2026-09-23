@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -240,7 +241,7 @@ void main() {
         await banco.db.close();
       });
       final escopo = BancoLocal.escopo(
-          'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api1/',
+          (await Apis().getConexao()).servidor,
           '32',
           '1');
       await banco.db.insert('operacoes', {

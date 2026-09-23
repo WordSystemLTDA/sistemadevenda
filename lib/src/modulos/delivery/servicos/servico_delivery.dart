@@ -6,6 +6,8 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/notificador_atualizacao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
@@ -15,6 +17,7 @@ import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
+import 'fila_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +42,40 @@ class ServicoDelivery {
   ServicoDelivery(this.dio, this.usuario);
 
   Future<PagamentoRecorrente?> pagamentoRecorrente(String id) =>
-      ServicosRecorrentes(dio, usuario).pagamento(id);
+      FilaDeliveryOffline.local(id)
+          ? Future.value(null)
+          : ServicosRecorrentes(dio, usuario).pagamento(id);
+
+  Future<FilaDeliveryOffline?> _filaLocal() async {
+    final sync = Sincronizador.instancia;
+    if (sync == null) return null;
+    await sync.configurar();
+    final conta = usuario.usuario;
+    if (conta == null ||
+        sync.escopo.isEmpty ||
+        conta.empresa != sync.usuario.usuario?.empresa ||
+        conta.id != sync.usuario.usuario?.id) {
+      return null;
+    }
+    return FilaDeliveryOffline(sync.banco,
+        escopo: sync.escopo,
+        empresa: conta.empresa!,
+        usuario: conta.id!,
+        destino: sync.destino);
+  }
+
+  Future<FilaDeliveryOffline> _exigirFilaLocal() async =>
+      await _filaLocal() ??
+      (throw StateError(
+          'Entre na conta original para recuperar este Delivery salvo no aparelho.'));
+
+  Future<List<PedidoDelivery>> pedidosLocais() async =>
+      await (await _filaLocal())?.listar() ?? [];
+
+  Future<void> definirAjustesLocais(String id,
+          {required double desconto, required double acrescimo}) async =>
+      (await _exigirFilaLocal())
+          .definirAjustes(id, desconto: desconto, acrescimo: acrescimo);
 
   // O Delivery usa a mesma API de venda configurada no aplicativo.
   static Uri enderecoApi(String servidor) => Uri.parse(servidor);
@@ -58,6 +94,18 @@ class ServicoDelivery {
 
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
+    final id = '${campos['id_delivery'] ?? campos['id'] ?? ''}';
+    if (FilaDeliveryOffline.local(id)) {
+      if (rota == 'cardapio/editar_tipo_de_entrega_cliente.php') {
+        await (await _exigirFilaLocal()).definirTaxa(
+            id,
+            '${campos['tipo_de_entrega']}',
+            valorDelivery(campos['novo_valor_entrega']));
+        return {'sucesso': true, 'salvo_no_aparelho': true};
+      }
+      throw StateError(
+          'Este Delivery está salvo no aparelho. Conclua sua sincronização antes desta ação.');
+    }
     final resposta = await _requisicao(rota, campos, true);
     if (resposta is! Map || resposta['sucesso'] != true) {
       throw StateError(resposta is Map
@@ -93,7 +141,17 @@ class ServicoDelivery {
       'id_usuario': idUsuario,
       if (!post) '_atualizacao': DateTime.now().microsecondsSinceEpoch,
     };
-    final opcoes = Options(extra: {'servidorFixo': servidor, 'semCache': true});
+    final consultaOffline = !post &&
+        {
+          'delivery/listar_opcoes.php',
+          'permissoes_bigchef/listar_permissoes_bigchef.php',
+          'config_bigchef/listar.php',
+          'enderecos_clientes/listar_por_cliente.php',
+        }.contains(rota);
+    final opcoes = Options(extra: {
+      'servidorFixo': servidor,
+      'semCache': !consultaOffline,
+    });
     final resposta = post
         ? await dio.cliente.post(rota, data: jsonEncode(dados), options: opcoes)
         : await dio.cliente.get(rota, queryParameters: dados, options: opcoes);
@@ -113,19 +171,51 @@ class ServicoDelivery {
       required String horaFim,
       String pesquisa = '',
       String tipo = '0'}) async {
-    final json = await consultar('delivery/listar_opcoes.php', {
-      'dataInicio': DateFormat('yyyy-MM-dd').format(inicio),
-      'dataFim': DateFormat('yyyy-MM-dd').format(fim),
-      'horaSelecionada': horaInicio,
-      'horaFimSelecionada': horaFim,
-      'pesquisa': pesquisa,
-      'tipoentrega': tipo,
-    });
+    dynamic json;
+    try {
+      json = await consultar('delivery/listar_opcoes.php', {
+        'dataInicio': DateFormat('yyyy-MM-dd').format(inicio),
+        'dataFim': DateFormat('yyyy-MM-dd').format(fim),
+        'horaSelecionada': horaInicio,
+        'horaFimSelecionada': horaFim,
+        'pesquisa': pesquisa,
+        'tipoentrega': tipo,
+      });
+    } on DioException catch (erro) {
+      if (!CacheConsultas.falhaDeConexao(erro)) rethrow;
+      final locais = await pedidosLocais();
+      if (locais.isEmpty) rethrow;
+      json = {'sucesso': true, 'dados': []};
+    }
     if (json is! Map) throw StateError('Resposta inválida do Delivery.');
     if (json['sucesso'] != true && json['mensagem'] != null) {
       throw StateError(json['mensagem'].toString());
     }
+    final periodo = periodoOperacionalDelivery(
+        inicio: inicio, fim: fim, horaInicio: horaInicio, horaFim: horaFim);
+    final locais = (await pedidosLocais()).where((p) {
+      final data = p.abertura;
+      if (data == null) return false;
+      final de = periodo.inicio;
+      final ate = periodo.fim;
+      final termo = pesquisa.toLowerCase().trim();
+      return !data.isBefore(de) &&
+          !data.isAfter(ate) &&
+          (tipo == '0' || tipo == p.tipoEntrega) &&
+          (termo.isEmpty ||
+              '${p.nome} ${p.numero} ${p.texto('celularCliente')}'
+                  .toLowerCase()
+                  .contains(termo));
+    }).toList();
     return [
+      if (locais.isNotEmpty)
+        EtapaDelivery.fromMap({
+          'id': 'local',
+          'nomeOpcao': 'No aparelho',
+          'nomeBotao': 'Continuar pedido',
+          'tipodeimpressao': '0',
+          'vendas': locais.map((p) => p.dados).toList(),
+        }),
       for (final e in json['dados'] as List? ?? [])
         EtapaDelivery.fromMap(Map<String, dynamic>.from(e as Map))
     ];
@@ -137,6 +227,9 @@ class ServicoDelivery {
               as Map));
 
   Future<PedidoDelivery> pedido(String id) async {
+    if (FilaDeliveryOffline.local(id)) {
+      return (await _exigirFilaLocal()).pedido(id);
+    }
     final json = await consultar(
         'delivery/listar_opcoes_por_id.php', {'id': id, 'nomedopcLocal': ''});
     if (json is! Map || json['sucesso'] != true || json['dados'] is! Map) {
@@ -149,6 +242,14 @@ class ServicoDelivery {
   }
 
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async {
+    if (FilaDeliveryOffline.local(id)) {
+      final local = await pedido(id);
+      return Modeloworddadoscardapio.fromMap({
+        ...local.dados,
+        'nomeEmpresa': usuario.usuario?.nomeEmpresa ?? '',
+        'idDelivery': id,
+      });
+    }
     final json = await consultar('cardapio/listar_por_id.php', {
       'id': id,
       'codigoQrcode': '',
@@ -167,7 +268,9 @@ class ServicoDelivery {
       {required String cliente,
       required String endereco,
       required String tipo,
-      required String observacao}) async {
+      required String observacao,
+      double taxa = 0,
+      Map<String, dynamic> exibicao = const {}}) async {
     if (!['1', '2', '3'].contains(tipo)) {
       throw StateError('Selecione um tipo de entrega válido.');
     }
@@ -176,6 +279,18 @@ class ServicoDelivery {
             (int.tryParse(endereco) ?? 0) <= 0)) {
       throw StateError('Selecione o cliente e o endereço da entrega.');
     }
+    final fila = await _filaLocal();
+    if (fila != null && await fila.habilitada()) {
+      return fila.criar(
+          cliente: cliente,
+          endereco: tipo == '1' ? endereco : '0',
+          tipo: tipo,
+          observacao: observacao,
+          taxa: taxa,
+          exibicao: exibicao);
+    }
+    // Nunca criar um pedido local em resposta a timeout desta API antiga:
+    // o servidor pode ter inserido o pedido e perdido somente a resposta.
     final res = await salvar('delivery/inserir.php', {
       'cliente': cliente,
       'endereco': tipo == '1' ? endereco : '0',
@@ -193,6 +308,10 @@ class ServicoDelivery {
   Future<void> inserirProdutos(
       String id, List<Modelowordprodutos> produtos) async {
     if (produtos.isEmpty) throw StateError('Adicione produtos ao carrinho.');
+    if (FilaDeliveryOffline.local(id)) {
+      await (await _exigirFilaLocal()).inserirProdutos(id, produtos);
+      return;
+    }
     final atual = await pedido(id);
     if (atual.encerrado) throw StateError('Este pedido já está encerrado.');
     await salvar('delivery/inserir_produtos.php', {
@@ -352,11 +471,22 @@ class ServicoDelivery {
         'valor_da_entrega': valorEntrega,
       });
 
-  Future<void> concluir(PedidoDelivery pedido) => salvar(
-      'delivery/finalizar_pedido_delivery.php',
-      {'id_delivery': pedido.id, 'cliente': pedido.cliente});
+  Future<void> concluir(PedidoDelivery pedido) async {
+    if (FilaDeliveryOffline.local(pedido.id)) {
+      await (await _exigirFilaLocal()).concluir(pedido.id);
+      return;
+    }
+    await salvar('delivery/finalizar_pedido_delivery.php',
+        {'id_delivery': pedido.id, 'cliente': pedido.cliente});
+  }
 
   Future<void> confirmar(String id) async {
+    if (FilaDeliveryOffline.local(id)) {
+      await (await _exigirFilaLocal()).confirmar(id);
+      Sincronizador.instancia?.solicitar();
+      NotificadorAtualizacao.atendimento('Delivery');
+      return;
+    }
     if ((int.tryParse(id) ?? 0) <= 0) {
       throw StateError('Pedido invÃ¡lido para confirmaÃ§Ã£o.');
     }
@@ -378,6 +508,12 @@ class ServicoDelivery {
     String endereco = '0',
     String idDelivery = '0',
   }) async {
+    if (FilaDeliveryOffline.local(idDelivery)) {
+      final rascunho = await pedido(idDelivery);
+      cliente = rascunho.cliente;
+      endereco = rascunho.texto('idendereco', '0');
+      idDelivery = '0';
+    }
     if ((int.tryParse(cliente) ?? 0) <= 0 &&
         (int.tryParse(idDelivery) ?? 0) <= 0) {
       throw StateError('Selecione um cliente para enviar a mensagem.');
@@ -504,7 +640,7 @@ class ServicoDelivery {
         : const <String>[];
     final troco =
         forma == 1 && recebido > totalAPagar ? recebido - totalAPagar : 0.0;
-    return salvar('delivery/pagar_pedido.php', {
+    final dados = <String, dynamic>{
       'id': pedido.id,
       if (chavePagamento != null) 'chavePagamento': chavePagamento,
       if (confirmarRecorrente) 'confirmarRecorrente': true,
@@ -537,6 +673,10 @@ class ServicoDelivery {
           (acrescimo ?? valorDelivery(pedido.dados['valorAcrescimo']))
               .toStringAsFixed(2),
       'produtosParaFinalizar': [],
-    });
+    };
+    if (FilaDeliveryOffline.local(pedido.id)) {
+      return (await _exigirFilaLocal()).pagar(pedido.id, dados);
+    }
+    return salvar('delivery/pagar_pedido.php', dados);
   }
 }

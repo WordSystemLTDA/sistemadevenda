@@ -246,7 +246,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       await servico.confirmar(widget.idVenda);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, widget.idVenda);
       provedorBalcao.observacaoDoPedido = '';
-      await carrinhoProvedor.removerComandasPedidos();
+      final contexto = carrinhoProvedor.contexto;
+      if (!pedido.salvoNoAparelho &&
+          contexto?.tipo == 'delivery' &&
+          contexto?.idAtendimento == pedido.id) {
+        await carrinhoProvedor.removerComandasPedidos(contexto: contexto);
+      }
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
       Navigator.popUntil(
@@ -263,6 +268,11 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         ? atualizado.restante
         : totalReceber - widget.valor;
     if (!mounted) return;
+    if (pedido.salvoNoAparelho) {
+      Navigator.popUntil(context,
+          (rota) => rota.settings.name == 'PaginaDelivery' || rota.isFirst);
+      return;
+    }
     Navigator.popUntil(
         context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
   }

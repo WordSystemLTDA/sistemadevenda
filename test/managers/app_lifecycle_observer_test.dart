@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
@@ -17,9 +18,20 @@ class BancoCiclo extends Fake implements Database {}
 
 class ServidorCiclo extends Server {
   int conexoes = 0;
+  Completer<bool>? tentativaBloqueada;
+  final renovacoes = <bool>[];
+
+  @override
+  Future<bool> retomarConexao(String ip, String porta,
+      {bool renovarCanal = false}) {
+    renovacoes.add(renovarCanal);
+    return super.retomarConexao(ip, porta, renovarCanal: renovarCanal);
+  }
+
   @override
   Future<bool> connect(String ip, String porta) async {
     conexoes++;
+    if (tentativaBloqueada != null) return tentativaBloqueada!.future;
     connected = true;
     return true;
   }
@@ -89,7 +101,49 @@ void main() {
     binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(modulo.servidor.conexoes, 2);
+    expect(modulo.servidor.renovacoes, [false, true]);
     expect(modulo.sync.retomadas, 2);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('voltar ao app renova conexao sem aguardar tentativa travada',
+      (tester) async {
+    final tentativa = Completer<bool>();
+    modulo.servidor.tentativaBloqueada = tentativa;
+    await tester.pumpWidget(const AppLifecycleObserver(child: SizedBox()));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 1);
+    modulo.servidor.tentativaBloqueada = null;
+
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 2);
+    expect(modulo.servidor.renovacoes, [false, true]);
+    expect(modulo.servidor.connected, isTrue);
+    tentativa.complete(false);
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.connected, isTrue);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('volta do Wi-Fi renova canal mesmo marcado como conectado',
+      (tester) async {
+    await tester.pumpWidget(const AppLifecycleObserver(child: SizedBox()));
+    await tester.pumpAndSettle();
+    Future<void> rede(List<String> tipos) async {
+      await binding.defaultBinaryMessenger.handlePlatformMessage(canal.name,
+          const StandardMethodCodec().encodeSuccessEnvelope(tipos), (_) {});
+      await tester.pumpAndSettle();
+    }
+
+    await rede(['wifi']);
+    await rede(['none']);
+    await rede(['wifi']);
+    expect(modulo.servidor.renovacoes, [false, false, true, true]);
+    expect(modulo.servidor.connected, isTrue);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

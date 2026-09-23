@@ -561,16 +561,17 @@ void main() {
     await capturarTela(tester, 'venda_balcao_320_fonte_ampliada');
   });
 
-  test('balcao aceita nova busca durante carregamento e ignora resposta antiga',
+  test('balcao agrupa nova busca durante carregamento e ignora resposta antiga',
       () async {
     modulo.balcao.controlarRespostas = true;
     final antiga = modulo.provedorBalcao.listar(pesquisa: 'Jo');
     final atual = modulo.provedorBalcao.listar(pesquisa: 'Joao');
+    expect(modulo.balcao.pendentes, hasLength(1));
+    modulo.balcao.pendentes.first.completeError(Exception('Conexao antiga'));
+    await Future<void>.delayed(Duration.zero);
     expect(modulo.balcao.pendentes, hasLength(2));
     modulo.balcao.pendentes.last.complete([]);
-    await atual;
-    modulo.balcao.pendentes.first.completeError(Exception('Conexao antiga'));
-    await antiga;
+    await Future.wait([antiga, atual]);
     expect(modulo.provedorBalcao.erro, isNull);
     expect(modulo.provedorBalcao.listando, isFalse);
     expect(modulo.provedorBalcao.pesquisaAtual, 'Joao');
@@ -705,13 +706,14 @@ void main() {
     modulo.comandas.controlarRespostas = true;
     final antiga = modulo.provedorComandas.listarComandas('Bruno');
     final atual = modulo.provedorComandas.listarComandas('Bruno Masson');
+    expect(modulo.comandas.pendentes, hasLength(1));
+    modulo.comandas.pendentes.first
+        .completeError(TimeoutException('Future not completed'));
+    await Future<void>.delayed(Duration.zero);
     expect(modulo.comandas.pendentes, hasLength(2));
 
     modulo.comandas.pendentes.last.complete([]);
-    await atual;
-    modulo.comandas.pendentes.first
-        .completeError(TimeoutException('Future not completed'));
-    await antiga;
+    await Future.wait([antiga, atual]);
 
     expect(modulo.provedorComandas.erro, isNull);
     expect(modulo.provedorComandas.listando, isFalse);
