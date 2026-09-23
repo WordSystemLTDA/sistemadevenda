@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
+import 'widgets/painel_desempenho.dart';
+import 'widgets/editor_metas_indicadores.dart';
 
 import 'modelo_indicadores.dart';
 import 'servico_indicadores.dart';
@@ -26,6 +27,7 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
   late DateTime fim;
   int periodo = 1;
   CanalIndicadores canal = CanalIndicadores.todos;
+  String escopo = 'empresa';
   ModeloIndicadores? dados;
   String? erro;
   bool carregando = false;
@@ -101,8 +103,8 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
       if (dados?.inicio != inicio || dados?.fim != fim) dados = null;
     });
     try {
-      final resultado =
-          await servico.consultar(inicio, fim, cancelToken: cancelamento);
+      final resultado = await servico.consultar(inicio, fim,
+          cancelToken: cancelamento, escopo: escopo);
       if (mounted && atual == consulta) setState(() => dados = resultado);
     } catch (falha) {
       if (mounted && atual == consulta) {
@@ -164,376 +166,331 @@ class _PaginaIndicadoresState extends State<PaginaIndicadores>
     super.dispose();
   }
 
+  Future<void> _editarMetas() async {
+    final atuais = dados;
+    if (atuais == null || !atuais.suporteMetas || atuais.offline) return;
+    final salvo = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (context) => EditorMetasIndicadores(
+        servico: servico,
+        escopo: escopo,
+        metas: atuais.metas ?? const MetasIndicadores(),
+      ),
+    );
+    if (salvo == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Metas salvas. Vamos acompanhar sua evolução!')));
+      await _carregar();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final escuro = theme.brightness == Brightness.dark;
+    final tinta = escuro ? const Color(0xFFB7DCE6) : const Color(0xFF103F50);
     return Scaffold(
+      backgroundColor:
+          escuro ? const Color(0xFF15212A) : const Color(0xFFF3F7F9),
       appBar: AppBar(
-          title: const Text('Indicadores'),
-          backgroundColor: cs.inversePrimary,
-          actions: [
-            IconButton(
-                tooltip: 'Atualizar indicadores',
-                onPressed: carregando ? null : _carregar,
-                icon: const Icon(Icons.refresh))
-          ]),
+        title: const Text('Indicadores',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        backgroundColor:
+            escuro ? const Color(0xFF15212A) : const Color(0xFFF3F7F9),
+        foregroundColor: tinta,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          IconButton(
+              tooltip: 'Atualizar indicadores',
+              onPressed: carregando ? null : _carregar,
+              icon: const Icon(Icons.refresh_rounded)),
+        ],
+      ),
       body: SafeArea(
           top: false,
           child: RefreshIndicator(
-              onRefresh: _carregar,
-              child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Center(
-                        child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1000),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+            onRefresh: _carregar,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                Center(
+                    child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1160),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('Cada atendimento conta.',
+                            style: TextStyle(
+                                fontSize: 26,
+                                height: 1.2,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -.6,
+                                color: tinta)),
+                        const SizedBox(height: 8),
+                        Text(
+                            'Acompanhe seus resultados e dê o próximo passo nas suas metas.',
+                            style: TextStyle(
+                                fontSize: 13,
+                                height: 1.5,
+                                color: cs.onSurfaceVariant)),
+                        const SizedBox(height: 20),
+                        Container(
+                          decoration: BoxDecoration(
+                              color: escuro
+                                  ? const Color(0xFF202C36)
+                                  : const Color(0xFFE7EEF2),
+                              borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.all(4),
+                          child: LayoutBuilder(builder: (context, limites) {
+                            final empilhar = limites.maxWidth < 320 ||
+                                MediaQuery.textScalerOf(context).scale(14) > 20;
+                            final botoes = [
+                              _botaoEscopo('empresa', 'Visão da empresa',
+                                  Icons.storefront_outlined),
+                              _botaoEscopo('pessoal', 'Meus atendimentos',
+                                  Icons.person_outline_rounded),
+                            ];
+                            return empilhar
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: botoes)
+                                : Row(
+                                    children: botoes
+                                        .map((b) => Expanded(child: b))
+                                        .toList());
+                          }),
+                        ),
+                        Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
+                            child: Text(
+                                escopo == 'pessoal'
+                                    ? 'Atendimentos registrados pelo seu usuário.'
+                                    : 'Mesas, comandas e balcão de toda a empresa.',
+                                style: TextStyle(
+                                    fontSize: 11, color: cs.onSurfaceVariant))),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                              color: escuro
+                                  ? const Color(0xFF202C36)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                  color:
+                                      cs.outlineVariant.withValues(alpha: .5))),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(children: [
-                                  Expanded(
-                                      child: InputDecorator(
-                                          decoration: const InputDecoration(
-                                              labelText: 'Período',
-                                              border: OutlineInputBorder()),
-                                          child: DropdownButtonHideUnderline(
-                                              child: DropdownButton<int>(
-                                                  value: periodo,
-                                                  isExpanded: true,
-                                                  isDense: true,
-                                                  items: const [
-                                                    DropdownMenuItem(
-                                                        value: 1,
-                                                        child: Text('Hoje')),
-                                                    DropdownMenuItem(
-                                                        value: -1,
-                                                        child: Text('Ontem')),
-                                                    DropdownMenuItem(
-                                                        value: 7,
-                                                        child: Text(
-                                                            'Últimos 7 dias')),
-                                                    DropdownMenuItem(
-                                                        value: 30,
-                                                        child: Text(
-                                                            'Últimos 30 dias')),
-                                                    DropdownMenuItem(
-                                                        value: 0,
-                                                        child: Text(
-                                                            'Personalizado'))
-                                                  ],
-                                                  onChanged: (valor) {
-                                                    if (valor == null) return;
-                                                    if (valor == 0) {
-                                                      _escolherDatas();
-                                                      return;
-                                                    }
-                                                    setState(() {
-                                                      _definirPeriodoSelecionado(
-                                                          valor);
-                                                      dados = null;
-                                                    });
-                                                    _carregar();
-                                                  })))),
-                                  IconButton(
-                                      tooltip: 'Selecionar datas',
-                                      onPressed: _escolherDatas,
-                                      icon: const Icon(
-                                          Icons.date_range_outlined)),
-                                ]),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<CanalIndicadores>(
-                                    initialValue: canal,
-                                    isExpanded: true,
-                                    decoration: const InputDecoration(
-                                        labelText: 'Atendimento',
-                                        border: OutlineInputBorder()),
-                                    items: CanalIndicadores.values
-                                        .map((c) => DropdownMenuItem(
-                                            value: c, child: Text(c.rotulo)))
-                                        .toList(),
-                                    onChanged: (valor) {
-                                      if (valor != null) {
-                                        setState(() => canal = valor);
-                                      }
-                                    }),
+                                LayoutBuilder(builder: (context, limites) {
+                                  final filtros = [
+                                    Row(children: [
+                                      Expanded(
+                                          child: InputDecorator(
+                                              decoration: _decoracao(
+                                                  'Período',
+                                                  Icons
+                                                      .calendar_today_outlined),
+                                              child:
+                                                  DropdownButtonHideUnderline(
+                                                      child:
+                                                          DropdownButton<int>(
+                                                value: periodo,
+                                                isExpanded: true,
+                                                isDense: true,
+                                                items: const [
+                                                  DropdownMenuItem(
+                                                      value: 1,
+                                                      child: Text('Hoje')),
+                                                  DropdownMenuItem(
+                                                      value: -1,
+                                                      child: Text('Ontem')),
+                                                  DropdownMenuItem(
+                                                      value: 7,
+                                                      child: Text(
+                                                          'Últimos 7 dias')),
+                                                  DropdownMenuItem(
+                                                      value: 30,
+                                                      child: Text(
+                                                          'Últimos 30 dias')),
+                                                  DropdownMenuItem(
+                                                      value: 0,
+                                                      child: Text(
+                                                          'Personalizado')),
+                                                ],
+                                                onChanged: (valor) {
+                                                  if (valor == null) return;
+                                                  if (valor == 0) {
+                                                    _escolherDatas();
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _definirPeriodoSelecionado(
+                                                        valor);
+                                                    dados = null;
+                                                  });
+                                                  _carregar();
+                                                },
+                                              )))),
+                                      IconButton(
+                                          tooltip: 'Selecionar datas',
+                                          onPressed: _escolherDatas,
+                                          icon: const Icon(
+                                              Icons.date_range_outlined)),
+                                    ]),
+                                    DropdownButtonFormField<CanalIndicadores>(
+                                      initialValue: canal,
+                                      isExpanded: true,
+                                      decoration: _decoracao('Atendimento',
+                                          Icons.room_service_outlined),
+                                      items: CanalIndicadores.values
+                                          .map((c) => DropdownMenuItem(
+                                              value: c, child: Text(c.rotulo)))
+                                          .toList(),
+                                      onChanged: (valor) {
+                                        if (valor != null) {
+                                          setState(() => canal = valor);
+                                        }
+                                      },
+                                    ),
+                                  ];
+                                  return limites.maxWidth > 620
+                                      ? Row(children: [
+                                          Expanded(child: filtros[0]),
+                                          const SizedBox(width: 16),
+                                          Expanded(child: filtros[1])
+                                        ])
+                                      : Column(children: [
+                                          filtros[0],
+                                          const SizedBox(height: 12),
+                                          filtros[1]
+                                        ]);
+                                }),
                                 const SizedBox(height: 12),
                                 Text(
                                     '${DateFormat('dd/MM/yyyy').format(inicio)} a ${DateFormat('dd/MM/yyyy').format(fim)}',
-                                    style:
-                                        TextStyle(color: cs.onSurfaceVariant)),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: cs.onSurfaceVariant)),
                                 const SizedBox(height: 4),
                                 Text('Dia operacional: 05:00 às 04:59',
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11,
                                         color: cs.onSurfaceVariant)),
-                                SizedBox(
-                                    height: 12,
-                                    child: carregando
-                                        ? const Center(
-                                            child: LinearProgressIndicator(
-                                                minHeight: 2))
-                                        : null),
-                                if (erro != null)
-                                  Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 24),
-                                      child: Column(children: [
-                                        Icon(Icons.cloud_off_outlined,
-                                            color: cs.onSurfaceVariant,
-                                            size: 32),
-                                        const SizedBox(height: 12),
-                                        Text(erro!,
-                                            textAlign: TextAlign.center),
-                                        const SizedBox(height: 12),
-                                        OutlinedButton.icon(
-                                            onPressed: _carregar,
-                                            icon: const Icon(Icons.refresh),
-                                            label:
-                                                const Text('Tentar novamente')),
-                                      ])),
-                                if (dados != null)
-                                  _ConteudoIndicadores(
-                                      dados: dados!, canal: canal),
-                              ],
-                            ))),
-                  ]))),
+                              ]),
+                        ),
+                        SizedBox(
+                            height: 20,
+                            child: carregando
+                                ? const Center(
+                                    child:
+                                        LinearProgressIndicator(minHeight: 2))
+                                : null),
+                        if (erro != null)
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                                color: cs.errorContainer.withValues(alpha: .35),
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Column(children: [
+                              Icon(Icons.cloud_off_outlined,
+                                  color: cs.onSurfaceVariant, size: 32),
+                              const SizedBox(height: 12),
+                              Text(erro!, textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                  onPressed: _carregar,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Tentar novamente')),
+                            ]),
+                          ),
+                        if (dados != null)
+                          PainelDesempenho(
+                              dados: dados!,
+                              canal: canal,
+                              onEditarMetas:
+                                  dados!.offline ? null : _editarMetas),
+                        if (carregando && dados == null)
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 48),
+                              child: Column(children: [
+                                Icon(Icons.insights_rounded,
+                                    size: 40, color: Color(0xFF347DB5)),
+                                SizedBox(height: 12),
+                                Text('Preparando seu desempenho...',
+                                    textAlign: TextAlign.center),
+                              ])),
+                      ]),
+                )),
+              ],
+            ),
+          )),
     );
   }
-}
 
-class _ConteudoIndicadores extends StatelessWidget {
-  const _ConteudoIndicadores({required this.dados, required this.canal});
-  final ModeloIndicadores dados;
-  final CanalIndicadores canal;
+  InputDecoration _decoracao(String rotulo, IconData icone) => InputDecoration(
+        labelText: rotulo,
+        labelStyle: const TextStyle(fontSize: 13),
+        prefixIcon: Icon(icone, size: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant)),
+      );
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final resumo = dados.resumir(canal);
-    final pico = resumo.pico;
-    final moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
-    final azul = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF85B7ED)
-        : const Color(0xFF2869A8);
-    final verde = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF77CEB7)
-        : const Color(0xFF16755C);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(
-            dados.offline
-                ? Icons.cloud_off_outlined
-                : Icons.cloud_done_outlined,
-            size: 18,
-            color: dados.offline ? cs.error : verde),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(
-                '${dados.offline ? 'Sem conexão • Última consulta' : 'Atualizado'} ${DateFormat('dd/MM HH:mm').format(dados.atualizadoEm.toLocal())}',
-                style: TextStyle(
-                    color: dados.offline ? cs.error : cs.onSurfaceVariant))),
-      ]),
-      const SizedBox(height: 16),
-      LayoutBuilder(builder: (context, tamanho) {
-        final colunas = tamanho.maxWidth >= 720
-            ? 3
-            : tamanho.maxWidth >= 340 &&
-                    MediaQuery.textScalerOf(context).scale(14) <= 20
-                ? 2
-                : 1;
-        final largura = (tamanho.maxWidth - 12 * (colunas - 1)) / colunas;
-        return Wrap(spacing: 12, runSpacing: 12, children: [
-          _Metrica(
-              largura: largura,
-              nome: 'Atendimentos',
-              valor: '${resumo.quantidade}',
-              icone: Icons.receipt_long_outlined,
-              cor: azul),
-          _Metrica(
-              largura: largura,
-              nome: 'Consumo registrado',
-              valor: moeda.format(resumo.consumoCentavos / 100),
-              icone: Icons.account_balance_wallet_outlined,
-              cor: verde,
-              detalhe:
-                  'Consumo dos atendimentos iniciados no período, sem cancelados. Inclui contas abertas; não é valor recebido no caixa.'),
-          _Metrica(
-              largura: largura,
-              nome: 'Horário de pico',
-              valor: pico == null
-                  ? 'Sem movimento'
-                  : '${pico.posicao.toString().padLeft(2, '0')}h • ${pico.quantidade}',
-              icone: Icons.schedule,
-              cor: azul,
-              detalhe:
-                  'Aberturas por hora, sem cancelamentos. Em empate, mostra o primeiro horário. Horário local do servidor.'),
-          _Metrica(
-              largura: largura,
-              nome: 'Cancelados',
-              valor: '${resumo.cancelados}',
-              icone: Icons.cancel_outlined,
-              cor: cs.error),
-          if (canal != CanalIndicadores.balcao) ...[
-            _Metrica(
-                largura: largura,
-                nome: 'Em andamento',
-                valor: '${resumo.emAndamento}',
-                icone: Icons.table_restaurant_outlined,
-                cor: verde,
-                detalhe:
-                    'Mesas e comandas iniciadas no período e ainda em andamento.'),
-            _Metrica(
-                largura: largura,
-                nome: 'Em fechamento',
-                valor: '${resumo.emFechamento}',
-                icone: Icons.point_of_sale_outlined,
-                cor: cs.onSurfaceVariant,
-                detalhe:
-                    'Mesas e comandas iniciadas no período e atualmente em fechamento.'),
-          ],
-        ]);
-      }),
-      if (resumo.quantidade == 0)
-        const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Text('Nenhum atendimento válido neste período.',
-                textAlign: TextAlign.center)),
-      _Grafico(
-          titulo: 'Movimento por horário',
-          pontos: resumo.porHora,
-          cor: azul,
-          porHora: true,
-          inicio: dados.inicio),
-      if (dados.inicio != dados.fim)
-        _Grafico(
-            titulo: 'Movimento por dia',
-            pontos: resumo.porDia,
-            cor: verde,
-            porHora: false,
-            inicio: dados.inicio),
-      const Divider(height: 32),
-      Text('Por atendimento', style: Theme.of(context).textTheme.titleMedium),
-      for (final c in CanalIndicadores.values.where((c) =>
-          c != CanalIndicadores.todos &&
-          (canal == CanalIndicadores.todos || c == canal)))
-        Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(children: [
-              Expanded(child: Text(c.rotulo)),
-              Text('${dados.resumir(c).quantidade}',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(width: 16),
-              Flexible(
-                  child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                          moeda.format(dados.resumir(c).consumoCentavos / 100),
-                          textAlign: TextAlign.end))),
-            ])),
-    ]);
+  Widget _botaoEscopo(String valor, String texto, IconData icone) {
+    final selecionado = escopo == valor;
+    final escuro = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: selecionado
+          ? (escuro ? const Color(0xFF354C5B) : Colors.white)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(11),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(11),
+        onTap: () {
+          if (escopo == valor) return;
+          setState(() {
+            escopo = valor;
+            dados = null;
+          });
+          _carregar();
+        },
+        child: Semantics(
+          selected: selecionado,
+          button: true,
+          child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icone,
+                    size: 18,
+                    color: selecionado
+                        ? (escuro
+                            ? const Color(0xFFB7DCE6)
+                            : const Color(0xFF103F50))
+                        : Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Flexible(
+                    child: Text(texto,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selecionado
+                                ? FontWeight.w700
+                                : FontWeight.w500))),
+              ])),
+        ),
+      ),
+    );
   }
-}
-
-class _Metrica extends StatelessWidget {
-  const _Metrica(
-      {required this.largura,
-      required this.nome,
-      required this.valor,
-      required this.icone,
-      required this.cor,
-      this.detalhe});
-  final double largura;
-  final String nome;
-  final String valor;
-  final IconData icone;
-  final Color cor;
-  final String? detalhe;
-  @override
-  Widget build(BuildContext context) => Container(
-      width: largura,
-      padding: const EdgeInsets.all(12),
-      constraints: const BoxConstraints(minHeight: 124),
-      decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          border:
-              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(8)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-            height: 44,
-            child: Row(children: [
-              Icon(icone, size: 20, color: cor),
-              const Spacer(),
-              if (detalhe != null)
-                Tooltip(
-                    message: detalhe!,
-                    triggerMode: TooltipTriggerMode.tap,
-                    child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Icon(Icons.info_outline, size: 18)))
-            ])),
-        const SizedBox(height: 4),
-        Text(nome, style: const TextStyle(fontSize: 14)),
-        const SizedBox(height: 8),
-        Text(valor,
-            style: TextStyle(
-                fontSize: 22, color: cor, fontWeight: FontWeight.w600)),
-      ]));
-}
-
-class _Grafico extends StatelessWidget {
-  const _Grafico(
-      {required this.titulo,
-      required this.pontos,
-      required this.cor,
-      required this.porHora,
-      required this.inicio});
-  final String titulo;
-  final List<PontoIndicadores> pontos;
-  final Color cor;
-  final bool porHora;
-  final DateTime inicio;
-  String rotulo(int posicao) => porHora
-      ? '${posicao.toString().padLeft(2, '0')}h'
-      : DateFormat('dd/MM')
-          .format(DateTime(inicio.year, inicio.month, inicio.day + posicao));
-  double get intervalo {
-    final maximo = pontos.fold<int>(
-        0, (maior, p) => p.quantidade > maior ? p.quantidade : maior);
-    return maximo == 0 ? 1 : (maximo / 4).ceilToDouble();
-  }
-
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(titulo, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
-        SizedBox(
-            height: 230,
-            child: SfCartesianChart(
-              plotAreaBorderWidth: 0,
-              tooltipBehavior: TooltipBehavior(
-                  enable: true, header: '', format: 'point.x: point.y'),
-              primaryXAxis: CategoryAxis(
-                  majorGridLines: const MajorGridLines(width: 0),
-                  labelIntersectAction: AxisLabelIntersectAction.hide),
-              primaryYAxis: NumericAxis(
-                  minimum: 0,
-                  maximum: intervalo * 4,
-                  interval: intervalo,
-                  decimalPlaces: 0,
-                  axisLine: const AxisLine(width: 0)),
-              series: <CartesianSeries<PontoIndicadores, String>>[
-                ColumnSeries<PontoIndicadores, String>(
-                    dataSource: pontos,
-                    xValueMapper: (ponto, _) => rotulo(ponto.posicao),
-                    yValueMapper: (ponto, _) => ponto.quantidade,
-                    color: cor,
-                    animationDuration: 0,
-                    width: 0.7),
-              ],
-            )),
-      ]));
 }

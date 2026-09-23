@@ -37,8 +37,9 @@ class ServicoIndicadores {
       throw const FalhaIndicadores('Acesso restrito aos administradores.');
     }
     final servidor = await obterServidor();
-    final chave =
-        'indicadores:${BancoLocal.escopo(servidor, usuario!.empresa ?? '', usuario.id ?? '')}${escopo == 'pessoal' ? ':pessoal' : ''}';
+    final chaveBase =
+        'indicadores:${BancoLocal.escopo(servidor, usuario!.empresa ?? '', usuario.id ?? '')}';
+    final chave = '$chaveBase${escopo == 'pessoal' ? ':pessoal' : ''}';
     final armazenamento = banco ?? BancoLocal.instancia;
     final formato = DateFormat('yyyy-MM-dd');
     final de = formato.format(inicio);
@@ -99,7 +100,8 @@ class ServicoIndicadores {
       if (erro.response?.statusCode == 401 ||
           erro.response?.statusCode == 403) {
         try {
-          await armazenamento?.gravar(chave, '');
+          await armazenamento?.gravar(chaveBase, '');
+          await armazenamento?.gravar('$chaveBase:pessoal', '');
         } catch (_) {}
         throw FalhaIndicadores(erro.response?.statusCode == 401
             ? 'Sessão inválida. Entre novamente.'
@@ -119,7 +121,8 @@ class ServicoIndicadores {
               final modelo = ModeloIndicadores.fromMap(dados, offline: true);
               final idade = DateTime.now().difference(modelo.atualizadoEm);
               if (modelo.escopo == escopo &&
-                  !idade.isNegative && idade < const Duration(hours: 24)) {
+                  !idade.isNegative &&
+                  idade < const Duration(hours: 24)) {
                 salvo = modelo;
               }
             }
@@ -138,8 +141,10 @@ class ServicoIndicadores {
   Future<void> salvarMetas(MetasIndicadores metas,
       {required String escopo}) async {
     final usuario = usuarios.usuario;
-    if (!podeVerIndicadores(usuario) || !['empresa', 'pessoal'].contains(escopo)) {
-      throw const FalhaIndicadores('Não foi possível salvar as metas nesta sessão.');
+    if (!podeVerIndicadores(usuario) ||
+        !['empresa', 'pessoal'].contains(escopo)) {
+      throw const FalhaIndicadores(
+          'Não foi possível salvar as metas nesta sessão.');
     }
     final servidor = await obterServidor();
     try {
@@ -159,20 +164,29 @@ class ServicoIndicadores {
       if (usuarios.usuario != usuario || servidor != await obterServidor()) {
         throw const FalhaIndicadores('A sessão mudou. Consulte novamente.');
       }
-      final body = resposta.data is String ? jsonDecode(resposta.data) : resposta.data;
+      final body =
+          resposta.data is String ? jsonDecode(resposta.data) : resposta.data;
       if (body is! Map || body['sucesso'] != true) {
-        throw const FalhaIndicadores('Não foi possível salvar as metas. Tente novamente.');
+        throw const FalhaIndicadores(
+            'Não foi possível salvar as metas. Tente novamente.');
       }
       // Uma consulta offline posterior não deve recuperar metas anteriores.
-      final chave = 'indicadores:${BancoLocal.escopo(servidor, usuario.empresa ?? '', usuario.id ?? '')}${escopo == 'pessoal' ? ':pessoal' : ''}';
+      final chave =
+          'indicadores:${BancoLocal.escopo(servidor, usuario.empresa ?? '', usuario.id ?? '')}${escopo == 'pessoal' ? ':pessoal' : ''}';
       try {
         await (banco ?? BancoLocal.instancia)?.gravar(chave, '');
       } catch (_) {}
     } on DioException catch (erro) {
-      if (erro.response?.statusCode == 404 || erro.response?.statusCode == 503) {
-        throw const FalhaIndicadores('As metas ainda não estão disponíveis neste servidor.');
+      if (erro.response?.statusCode == 404 ||
+          erro.response?.statusCode == 503) {
+        throw const FalhaIndicadores(
+            'As metas ainda não estão disponíveis neste servidor.');
       }
-      throw const FalhaIndicadores('Não foi possível salvar as metas. Verifique a conexão e tente novamente.');
+      throw const FalhaIndicadores(
+          'Não foi possível salvar as metas. Verifique a conexão e tente novamente.');
+    } on FormatException {
+      throw const FalhaIndicadores(
+          'O servidor retornou uma resposta inválida ao salvar as metas. Tente novamente.');
     }
   }
 }

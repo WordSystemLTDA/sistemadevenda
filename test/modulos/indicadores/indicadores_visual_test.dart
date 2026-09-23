@@ -24,7 +24,7 @@ class IndicadoresTeste extends Fake implements ServicoIndicadores {
 
   @override
   Future<ModeloIndicadores> consultar(DateTime inicio, DateTime fim,
-      {CancelToken? cancelToken}) async {
+      {CancelToken? cancelToken, String escopo = 'empresa'}) async {
     chamadas++;
     periodos.add(DateTimeRange(start: inicio, end: fim));
     if (aguardar) {
