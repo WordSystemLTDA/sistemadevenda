@@ -1,16 +1,13 @@
 {
 	"folders": [
 		{
-			"path": "C:/Projetos/sistemarestaurante"
+			"path": "."
 		},
 		{
-			"path": "C:/xampp/htdocs/sistema/apis_restaurantes"
+			"path": "../../sistema/apis_restaurantes"
 		},
 		{
-			"path": "C:/Projetos/sistemadevenda"
-		},
-		{
-			"path": "C:/Projetos/Servidor"
+			"path": "../sistemarestaurante"
 		}
 	],
 	"settings": {
