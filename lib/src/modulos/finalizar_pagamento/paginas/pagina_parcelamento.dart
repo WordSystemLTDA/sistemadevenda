@@ -13,6 +13,7 @@ import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/widgets/bottom_editar_parcelamento.dart';
@@ -40,6 +41,7 @@ class PaginaParcelamento extends StatefulWidget {
   final String valorFalta;
   final String valorTroco;
   final String pagamentoselecionado;
+  final bool confirmacaoPedidoHabilitada;
   final DateTime? vencimentoRecorrente;
 
   const PaginaParcelamento({
@@ -58,6 +60,7 @@ class PaginaParcelamento extends StatefulWidget {
     required this.valorFalta,
     required this.valorTroco,
     required this.pagamentoselecionado,
+    this.confirmacaoPedidoHabilitada = false,
     this.vencimentoRecorrente,
   });
 
@@ -211,6 +214,19 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     }());
   }
 
+  void _enviarConfirmacaoPedidoEmSegundoPlano(
+      ServicoDelivery servico, PedidoDelivery pedido) {
+    if (!widget.confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) return;
+    unawaited(() async {
+      try {
+        await servico.notificarConfirmacaoPedido(pedido);
+      } catch (erro, pilha) {
+        debugPrint(
+            '[Delivery] Pedido finalizado, mas a confirmação no WhatsApp falhou: $erro\n$pilha');
+      }
+    }());
+  }
+
   Future<void> _finalizarDelivery() async {
     final servico = Modular.get<ServicoDelivery>();
     final totalReceber =
@@ -244,6 +260,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     if (quitado) {
       await servico.concluir(atualizado);
       await servico.confirmar(widget.idVenda);
+      _enviarConfirmacaoPedidoEmSegundoPlano(servico, atualizado);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, widget.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       final contexto = carrinhoProvedor.contexto;

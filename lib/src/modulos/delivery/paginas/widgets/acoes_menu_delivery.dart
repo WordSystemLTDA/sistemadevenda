@@ -80,18 +80,11 @@ Future<String?> executarAcaoDelivery(
           'Enviar')) {
         return null;
       }
-      await servico.acao(acao.name, pedido, {
-        if (acao == AcaoPedidoDelivery.confirmar) ...{
-          'id_empresa': servico.usuario.usuario?.empresa,
-          'id_cliente': pedido.cliente,
-          'idEndereco': pedido.texto('idendereco', '0'),
-          'tipo': 'Delivery',
-          'produtos': pedido.produtos.map((p) => p.toMap()).toList(),
-          'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
-          'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
-          'valorTotalPedido': pedido.total.toStringAsFixed(2),
-        },
-      });
+      if (acao == AcaoPedidoDelivery.confirmar) {
+        await servico.notificarConfirmacaoPedido(pedido);
+      } else {
+        await servico.acao(acao.name, pedido);
+      }
       return null;
     case AcaoPedidoDelivery.receber:
       final recebeu = pedido.restante <= .009 ||

@@ -15,10 +15,12 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_parcelamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
+import 'package:app/src/modulos/delivery/servicos/preferencia_confirmacao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +72,7 @@ class _PaginaFinalizarFormaPagamentoState
 
   final _dinheiroController = TextEditingController();
   final _chavePagamento = ServicosRecorrentes.novaChave();
+  final _preferenciaConfirmacao = PreferenciaConfirmacaoDelivery();
 
   String dataOriginal = DateFormat('yyyy-MM-dd')
       .format(DateTime.now().add(const Duration(days: 30)));
@@ -77,6 +80,10 @@ class _PaginaFinalizarFormaPagamentoState
   double _totalRegistrado = 0;
   double _desconto = 0;
   bool _carregando = true;
+  bool _confirmacaoPedidoHabilitada = false;
+  bool _preferenciaConfirmacaoCarregada = false;
+  bool _salvandoPreferenciaConfirmacao = false;
+  bool _perguntandoTroco = false;
   bool trocoEmCredito = false;
   FocusNode? focusNode;
 
@@ -91,6 +98,92 @@ class _PaginaFinalizarFormaPagamentoState
     _dinheiroController.selection = TextSelection(
         baseOffset: 0, extentOffset: _dinheiroController.text.length);
     listarBancoPix();
+    _carregarPreferenciaConfirmacao();
+  }
+
+  Future<void> _carregarPreferenciaConfirmacao() async {
+    final habilitada = await _preferenciaConfirmacao.carregar();
+    if (!mounted) return;
+    setState(() {
+      _confirmacaoPedidoHabilitada = habilitada;
+      _preferenciaConfirmacaoCarregada = true;
+    });
+  }
+
+  Future<void> _alterarPreferenciaConfirmacao(bool habilitada) async {
+    if (_salvandoPreferenciaConfirmacao) return;
+    final anterior = _confirmacaoPedidoHabilitada;
+    setState(() {
+      _confirmacaoPedidoHabilitada = habilitada;
+      _salvandoPreferenciaConfirmacao = true;
+    });
+    try {
+      await _preferenciaConfirmacao.salvar(habilitada);
+    } catch (erro) {
+      if (!mounted) return;
+      setState(() => _confirmacaoPedidoHabilitada = anterior);
+      _mostrarRetornoMensagem(
+        erro is StateError
+            ? erro.message.toString()
+            : 'Não foi possível salvar a preferência no aparelho.',
+        false,
+      );
+    } finally {
+      if (mounted) setState(() => _salvandoPreferenciaConfirmacao = false);
+    }
+  }
+
+  Future<void> _perguntarSePrecisaTroco() async {
+    if (_perguntandoTroco ||
+        provedorCardapio.tipo != TipoCardapio.delivery ||
+        widget.pagamentoselecionado != '1') {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _perguntandoTroco = true);
+    try {
+      final retorno = await Modular.get<ServicoDelivery>().notificarCliente(
+        MensagemClienteDelivery.perguntarTroco,
+        idDelivery: provedor.idVenda,
+        valorPedido: widget.totalReceber.toStringAsFixed(2),
+      );
+      if (mounted) _mostrarRetornoMensagem(retorno, true);
+    } catch (erro) {
+      if (mounted) {
+        _mostrarRetornoMensagem(
+          erro is StateError
+              ? erro.message.toString()
+              : 'Não foi possível perguntar sobre o troco.',
+          false,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _perguntandoTroco = false);
+    }
+  }
+
+  void _mostrarRetornoMensagem(String texto, bool sucesso) {
+    final cs = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(texto),
+        backgroundColor: sucesso ? cs.primary : cs.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+  }
+
+  void _enviarConfirmacaoPedidoEmSegundoPlano(
+      ServicoDelivery servico, PedidoDelivery pedido) {
+    if (!_confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) return;
+    unawaited(() async {
+      try {
+        await servico.notificarConfirmacaoPedido(pedido);
+      } catch (erro, pilha) {
+        debugPrint(
+            '[Delivery] Pedido finalizado, mas a confirmação no WhatsApp falhou: $erro\n$pilha');
+      }
+    }());
   }
 
   void listarBancoPix() async {
@@ -178,6 +271,7 @@ class _PaginaFinalizarFormaPagamentoState
     if (quitado) {
       await servico.concluir(atualizado);
       await servico.confirmar(provedor.idVenda);
+      _enviarConfirmacaoPedidoEmSegundoPlano(servico, atualizado);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, provedor.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       final contexto = carrinhoProvedor.contexto;
@@ -208,11 +302,86 @@ class _PaginaFinalizarFormaPagamentoState
         context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
   }
 
+  Widget _acoesWhatsappDelivery({
+    required ColorScheme cores,
+    required bool temaEscuro,
+    required bool dinheiro,
+  }) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: finalizando,
+      builder: (context, estaFinalizando, _) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (dinheiro) ...[
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                key: const ValueKey('perguntar-troco-delivery'),
+                onPressed: estaFinalizando || _perguntandoTroco
+                    ? null
+                    : _perguntarSePrecisaTroco,
+                icon: _perguntandoTroco
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chat_outlined, size: 20),
+                label: const Text(
+                  'Perguntar se precisa de Troco',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: cores.primaryContainer.withValues(alpha: .3),
+                  foregroundColor: cores.primary,
+                  side: BorderSide(color: cores.primary.withValues(alpha: .55)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          Material(
+            color: temaEscuro ? const Color(0xFF1F2937) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: cores.primary.withValues(alpha: .35)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SwitchListTile.adaptive(
+              key: const ValueKey('habilitar-confirmacao-pedido-delivery'),
+              value: _confirmacaoPedidoHabilitada,
+              onChanged: !_preferenciaConfirmacaoCarregada ||
+                      _salvandoPreferenciaConfirmacao ||
+                      estaFinalizando
+                  ? null
+                  : _alterarPreferenciaConfirmacao,
+              secondary: Icon(Icons.task_alt_outlined, color: cores.primary),
+              title: const Text(
+                'Habilitar Confirmação de Pedido',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'Enviar no WhatsApp após finalizar',
+                style: TextStyle(fontSize: 11),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final ehDelivery = provedorCardapio.tipo == TipoCardapio.delivery;
+    final ehDinheiroDelivery = ehDelivery && widget.pagamentoselecionado == '1';
 
     return Scaffold(
       backgroundColor:
@@ -296,6 +465,8 @@ class _PaginaFinalizarFormaPagamentoState
                               totalReceber:
                                   widget.totalReceber.toStringAsFixed(2),
                               pagamentoselecionado: widget.pagamentoselecionado,
+                              confirmacaoPedidoHabilitada:
+                                  _confirmacaoPedidoHabilitada,
                               vencimentoRecorrente:
                                   widget.recorrencia?.vencimento,
                             ),
@@ -558,7 +729,11 @@ class _PaginaFinalizarFormaPagamentoState
             : Stack(
                 children: [
                   Positioned(
-                    bottom: 115,
+                    bottom: ehDinheiroDelivery
+                        ? 251
+                        : ehDelivery
+                            ? 195
+                            : 115,
                     left: 14,
                     right: 14,
                     child: Container(
@@ -601,7 +776,15 @@ class _PaginaFinalizarFormaPagamentoState
                     ),
                   ),
                   ListView(
-                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 200),
+                    padding: EdgeInsets.fromLTRB(
+                        12,
+                        14,
+                        12,
+                        ehDinheiroDelivery
+                            ? 335
+                            : ehDelivery
+                                ? 275
+                                : 200),
                     children: [
                       // Hero "A pagar"
                       Container(
@@ -1020,6 +1203,17 @@ class _PaginaFinalizarFormaPagamentoState
                       // ],
                     ],
                   ),
+                  if (ehDelivery)
+                    Positioned(
+                      left: 14,
+                      right: 14,
+                      bottom: 82,
+                      child: _acoesWhatsappDelivery(
+                        cores: cs,
+                        temaEscuro: isDark,
+                        dinheiro: ehDinheiroDelivery,
+                      ),
+                    ),
                 ],
               ),
       ),

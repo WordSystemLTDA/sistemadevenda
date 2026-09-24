@@ -26,6 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum MensagemClienteDelivery {
   confirmarEndereco('endereco'),
   formaPagamento('forma'),
+  perguntarTroco('troco'),
   oferecerBebida('bebida'),
   algoMais('mais');
 
@@ -502,11 +503,25 @@ class ServicoDelivery {
         'statusOrigem': pedido.etapa,
       });
 
+  Future<Map<String, dynamic>> notificarConfirmacaoPedido(
+          PedidoDelivery pedido) =>
+      acao('confirmar', pedido, {
+        'id_empresa': usuario.usuario?.empresa,
+        'id_cliente': pedido.cliente,
+        'idEndereco': pedido.texto('idendereco', '0'),
+        'tipo': 'Delivery',
+        'produtos': pedido.produtos.map((produto) => produto.toMap()).toList(),
+        'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
+        'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
+        'valorTotalPedido': pedido.total.toStringAsFixed(2),
+      });
+
   Future<String> notificarCliente(
     MensagemClienteDelivery mensagem, {
     String cliente = '0',
     String endereco = '0',
     String idDelivery = '0',
+    String valorPedido = '',
   }) async {
     if (FilaDeliveryOffline.local(idDelivery)) {
       final rascunho = await pedido(idDelivery);
@@ -531,6 +546,8 @@ class ServicoDelivery {
         'cliente': cliente,
         'endereco': endereco,
         'id_delivery': idDelivery,
+        if (mensagem == MensagemClienteDelivery.perguntarTroco)
+          'valor_pedido': valorPedido,
       },
       true,
     );

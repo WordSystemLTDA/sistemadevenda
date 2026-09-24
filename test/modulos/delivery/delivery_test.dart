@@ -81,6 +81,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
     String cliente,
     String endereco,
     String idDelivery,
+    String valorPedido,
   })>[];
   PedidoDelivery atual = pedidoTeste();
   bool falhar = false;
@@ -160,12 +161,14 @@ class ServicoDeliveryTeste extends ServicoDelivery {
     String cliente = '0',
     String endereco = '0',
     String idDelivery = '0',
+    String valorPedido = '',
   }) async {
     notificacoes.add((
       mensagem: mensagem,
       cliente: cliente,
       endereco: endereco,
       idDelivery: idDelivery,
+      valorPedido: valorPedido,
     ));
     return 'Enviado com sucesso!';
   }
@@ -353,6 +356,50 @@ void main() {
     expect(dados['id_delivery'], '25');
     expect(dados['empresa'], '3');
     expect(dados['id_usuario'], '2');
+  });
+  test('pergunta de troco envia a acao e o valor total do pedido', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'})
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    final servico = ServicoDelivery(dio, usuario);
+
+    await servico.notificarCliente(
+      MensagemClienteDelivery.perguntarTroco,
+      idDelivery: '25',
+      valorPedido: '76.00',
+    );
+
+    final requisicao = adapter.chamadas.single;
+    final dados = jsonDecode(requisicao.data as String) as Map;
+    expect(dados['acao'], 'troco');
+    expect(dados['id_delivery'], '25');
+    expect(dados['valor_pedido'], '76.00');
+  });
+  test('confirmacao do pedido reutiliza os dados da acao do menu', () async {
+    final servico = ServicoDeliveryTeste();
+    final pedido = pedidoTeste(campos: {
+      'idendereco': '17',
+      'valordaentrega': '6.00',
+    });
+
+    await servico.notificarConfirmacaoPedido(pedido);
+
+    final gravacao = servico.gravacoes.single;
+    expect(gravacao.$1, 'delivery/acoes_pedido.php');
+    expect(gravacao.$2['acao'], 'confirmar');
+    expect(gravacao.$2['id'], '25');
+    expect(gravacao.$2['id_cliente'], '4');
+    expect(gravacao.$2['idEndereco'], '17');
+    expect(gravacao.$2['valorPedido'], '80.00');
+    expect(gravacao.$2['valorEntrega'], '6.00');
+    expect(gravacao.$2['valorTotalPedido'], '86.00');
   });
   test('lista permite copia offline isolada pela empresa e pelo usuario',
       () async {

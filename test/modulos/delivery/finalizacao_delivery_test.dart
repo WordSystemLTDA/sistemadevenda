@@ -6,6 +6,8 @@ import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_carrinho.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/preferencia_confirmacao_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
@@ -41,14 +43,18 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int pagamentos = 0;
   int conclusoes = 0;
   int confirmacoes = 0;
+  int confirmacoesWhatsApp = 0;
   int notificacoes = 0;
   int consultasRecorrencia = 0;
   MensagemClienteDelivery? ultimaMensagem;
   String? deliveryNotificado;
+  String? valorPedidoNotificado;
+  final operacoesFinalizacao = <String>[];
   String pago = '0';
   bool falharConsultaAposSalvar = false;
   bool falharEnvio = false;
   bool falharRecorrencia = false;
+  bool falharConfirmacaoWhatsApp = false;
   bool recorrenteVinculado = false;
   Completer<void>? esperaEnvio;
   Completer<void>? consultaFinalBloqueada;
@@ -93,17 +99,20 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     if (rota == 'delivery/pagar_pedido.php') {
       expect(campos['id'], '10118');
       pagamentos++;
+      operacoesFinalizacao.add('pagamento');
       pago = campos['valor_lancamento']?.toString() ?? pago;
       return {'sucesso': true};
     }
     if (rota == 'delivery/finalizar_pedido_delivery.php') {
       expect(campos['id_delivery'], '10118');
       conclusoes++;
+      operacoesFinalizacao.add('conclusao');
       return {'sucesso': true};
     }
     if (rota == 'delivery/confirmar_pedido.php') {
       expect(campos['id'], '10118');
       confirmacoes++;
+      operacoesFinalizacao.add('confirmacao-delivery');
       return {'sucesso': true};
     }
     fail('Rota inesperada no delivery: $rota');
@@ -115,11 +124,24 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     String cliente = '0',
     String endereco = '0',
     String idDelivery = '0',
+    String valorPedido = '',
   }) async {
     notificacoes++;
     ultimaMensagem = mensagem;
     deliveryNotificado = idDelivery;
+    valorPedidoNotificado = valorPedido;
     return 'Enviado com sucesso!';
+  }
+
+  @override
+  Future<Map<String, dynamic>> notificarConfirmacaoPedido(
+      PedidoDelivery pedido) async {
+    confirmacoesWhatsApp++;
+    operacoesFinalizacao.add('whatsapp');
+    if (falharConfirmacaoWhatsApp) {
+      throw StateError('WhatsApp indisponível');
+    }
+    return {'sucesso': true};
   }
 }
 
@@ -324,6 +346,151 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('somente delivery em dinheiro pode perguntar sobre o troco',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    final perguntar = find.byKey(const ValueKey('perguntar-troco-delivery'));
+    expect(perguntar, findsOneWidget);
+    await tester.tap(perguntar);
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.notificacoes, 1);
+    expect(m.delivery.ultimaMensagem, MensagemClienteDelivery.perguntarTroco);
+    expect(m.delivery.deliveryNotificado, '10118');
+    expect(m.delivery.valorPedidoNotificado, '14.00');
+    expect(m.delivery.pagamentos, 0);
+    expect(find.text('Enviado com sucesso!'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('outras formas nao mostram a pergunta de troco no delivery',
+      (tester) async {
+    await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Débito'));
+    await tester.pump();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('perguntar-troco-delivery')), findsNothing);
+    expect(find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery')),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'confirmacao automatica fica salva e ocorre depois de finalizar delivery',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    final preferencia =
+        find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery'));
+    expect(tester.widget<SwitchListTile>(preferencia).value, isFalse);
+    await tester.tap(preferencia);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool(PreferenciaConfirmacaoDelivery.chave), isTrue);
+
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(m.delivery.operacoesFinalizacao, [
+      'pagamento',
+      'conclusao',
+      'confirmacao-delivery',
+      'whatsapp',
+    ]);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('falha do WhatsApp nao desfaz a finalizacao do delivery',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+        find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery')));
+    await tester.pumpAndSettle();
+    m.delivery.falharConfirmacaoWhatsApp = true;
+
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.pagamentos, 1);
+    expect(m.delivery.conclusoes, 1);
+    expect(m.delivery.confirmacoes, 1);
+    expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desabilitar confirmacao salva a opcao e para os envios',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    final preferencia =
+        find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery'));
+
+    await tester.tap(preferencia);
+    await tester.pumpAndSettle();
+    await tester.tap(preferencia);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool(PreferenciaConfirmacaoDelivery.chave), isFalse);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    expect(m.delivery.confirmacoesWhatsApp, 0);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('controles de WhatsApp nao aparecem fora do delivery',
+      (tester) async {
+    await abrir(tester, tipo: TipoCardapio.balcao);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('perguntar-troco-delivery')), findsNothing);
+    expect(find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery')),
+        findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('pagamento integral do delivery nao espera consulta final lenta',
       (tester) async {
     final m = await abrir(tester);
@@ -344,6 +511,7 @@ void main() {
     expect(m.delivery.pagamentos, 1);
     expect(m.delivery.conclusoes, 1);
     expect(m.delivery.confirmacoes, 1);
+    expect(m.delivery.confirmacoesWhatsApp, 0);
     expect(m.delivery.consultas, consultasAntesDoPagamento + 2);
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);

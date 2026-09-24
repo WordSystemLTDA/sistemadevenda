@@ -35,6 +35,7 @@ class _DeliveryContaTeste extends ServicoDelivery {
   int pagamentos = 0;
   int conclusoes = 0;
   int confirmacoes = 0;
+  int confirmacoesWhatsApp = 0;
 
   final pedidoTeste = PedidoDelivery.fromMap({
     'id': '10118',
@@ -79,6 +80,14 @@ class _DeliveryContaTeste extends ServicoDelivery {
   Future<void> confirmar(String id) async {
     expect(id, '10118');
     confirmacoes++;
+  }
+
+  @override
+  Future<Map<String, dynamic>> notificarConfirmacaoPedido(
+      PedidoDelivery pedido) async {
+    expect(confirmacoes, 1);
+    confirmacoesWhatsApp++;
+    return {'sucesso': true};
   }
 }
 
@@ -256,6 +265,7 @@ void main() {
         valorFalta: '0',
         valorTroco: '0',
         pagamentoselecionado: '2',
+        confirmacaoPedidoHabilitada: true,
       ),
     ));
     await tester.pumpAndSettle();
@@ -293,6 +303,7 @@ void main() {
     expect(modulo.delivery.pagamentos, 1);
     expect(modulo.delivery.conclusoes, 1);
     expect(modulo.delivery.confirmacoes, 1);
+    expect(modulo.delivery.confirmacoesWhatsApp, 1);
     expect(
       modulo.delivery.vencimento,
       DateFormat('yyyy-MM-dd').format(vencimentoEm45Dias),
