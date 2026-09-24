@@ -44,6 +44,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       _ativo = true,
       _processandoLote = false,
       _modoSelecao = false;
+  int _progressoLote = 0, _totalLote = 0;
   String? _ocupado, _excluindo;
   @override
   void initState() {
@@ -245,11 +246,63 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     }
   }
 
+  Future<Map<String, dynamic>?> _selecionarEntregador(
+      {int quantidade = 1}) async {
+    List<Map<String, dynamic>> iniciais;
+    try {
+      iniciais = await _provedor.servico.entregadores();
+    } catch (_) {
+      _mensagem('Não foi possível consultar os entregadores. Tente novamente.');
+      return null;
+    }
+    if (!mounted) return null;
+    if (iniciais.isEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.delivery_dining_outlined),
+          title: const Text('Nenhum entregador ativo'),
+          content: const Text(
+            'A etapa de destino está configurada para exigir um entregador, mas não existe entregador ativo disponível. Ative ou cadastre um entregador, ou desative essa exigência na configuração da etapa.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Entendi'),
+            ),
+          ],
+        ),
+      );
+      return null;
+    }
+    var usarIniciais = true;
+    return buscarDelivery(
+      context,
+      titulo: quantidade == 1
+          ? 'Selecionar entregador'
+          : 'Entregador para $quantidade pedidos',
+      buscar: (termo) async {
+        if (usarIniciais && termo.trim().isEmpty) {
+          usarIniciais = false;
+          return iniciais;
+        }
+        return _provedor.servico.entregadores(termo);
+      },
+      nome: (e) => '${e['nomecompleto'] ?? e['nome']}',
+      detalhe: (e) => '${e['telefone'] ?? ''}',
+    );
+  }
+
   Future<bool> _avancar(
     PedidoDelivery pedido,
     EtapaDelivery origem,
     EtapaDelivery? destino, {
     bool atualizarAoFinal = true,
+    bool gerenciarOcupado = true,
+    bool atualizarProvedor = true,
+    bool exibirFalha = true,
+    ConfigDelivery? configuracao,
+    String entregadorSelecionado = '',
   }) async {
     if (pedido.salvoNoAparelho) {
       await _retomarLocal(pedido);
@@ -260,7 +313,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       await _cardapio(pedido);
       return false;
     }
-    setState(() => _ocupado = pedido.id);
+    if (gerenciarOcupado) setState(() => _ocupado = pedido.id);
     bool alterado = false;
     try {
       var atual = await _provedor.servico.pedido(pedido.id);
@@ -270,16 +323,19 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             'O pedido foi atualizado em outro aparelho. Confira a etapa atual.');
       }
       final alvo = destino ?? origem;
-      final config = await _provedor.servico.configuracao();
+      final config = configuracao ?? await _provedor.servico.configuracao();
       if (!mounted) return false;
+      var precisaRevalidar = false;
       if (config.exigePagamento(atual, alvo)) {
         final recebeu =
             await receberDelivery(context, _provedor.servico, atual.id);
         if (recebeu != true || !mounted) return false;
         atual = await _provedor.servico.pedido(pedido.id);
         if (atual.restante > .009) {
-          _mensagem(
-              'Pagamento parcial registrado. Falta ${atual.restante.obterReal()}.');
+          if (exibirFalha) {
+            _mensagem(
+                'Pagamento parcial registrado. Falta ${atual.restante.obterReal()}.');
+          }
           return false;
         }
         if (atual.etapa != origem.id || !atual.podeAvancar(origem)) {
@@ -287,26 +343,22 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         }
       }
       if (!mounted) return false;
-      String entregador = config.entregadorFixo,
+      String entregador = config.entregadorFixo.isNotEmpty
+              ? config.entregadorFixo
+              : entregadorSelecionado,
           taxa = atual.texto('valordaentrega', '0');
       if (atual.tipoEntrega == '1' &&
           alvo.selecionarEntregador &&
           entregador.isEmpty) {
-        final res = await buscarDelivery(context,
-            titulo: 'Selecionar entregador',
-            buscar: (termo) async => [
-                  for (final e in await _provedor.servico.consultar(
-                      'entregador/listar_por_nome.php',
-                      {'pesquisa': termo, 'cliente': '0'}) as List)
-                    Map<String, dynamic>.from(e as Map)
-                ],
-            nome: (e) => '${e['nomecompleto'] ?? e['nome']}',
-            detalhe: (e) => '${e['telefone'] ?? ''}');
+        final res = await _selecionarEntregador();
         if (res == null || !mounted) return false;
         entregador = '${res['id']}';
+        precisaRevalidar = true;
       }
-      // Revalida depois dos diálogos, antes de efetivar a mudança de etapa.
-      final conferido = await _provedor.servico.pedido(pedido.id);
+      // O servidor também revalida a etapa e o total na gravação. Uma nova
+      // consulta aqui só é necessária quando houve espera em outro diálogo.
+      final conferido =
+          precisaRevalidar ? await _provedor.servico.pedido(pedido.id) : atual;
       if (!conferido.podeAvancar(origem) ||
           conferido.etapa != origem.id ||
           (conferido.total - atual.total).abs() > .009 ||
@@ -334,15 +386,18 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       if (destino != null) {
         final res = await _provedor.servico.avancar(conferido, alvo,
             entregador: entregador, valorEntrega: taxa, impressoes: mensagens);
-        if (res['ativarselecaoentregador'] == 'Sim' && entregador.isEmpty) {
+        if (valorDeliverySim(res['ativarselecaoentregador']) &&
+            entregador.isEmpty) {
           throw StateError(
               'Esta etapa exige um entregador. Confira a configuração do Delivery.');
         }
         preparoPersistido = res['impressao_persistida'] == true;
         alterado = true;
-        _provedor.moverPedidoParaEtapa(conferido, alvo.id);
-        _provedor.servico
-            .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
+        if (atualizarProvedor) {
+          _provedor.moverPedidoParaEtapa(conferido, alvo.id);
+          _provedor.servico
+              .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
+        }
       }
       if (mensagens.isNotEmpty) {
         await ImpressaoDelivery.enviarPreparadas(
@@ -351,89 +406,255 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       }
       return destino != null || alvo.impressao == '3';
     } catch (e) {
-      _mensagem(alterado
-          ? 'Etapa atualizada, mas há uma pendência. Confira o pedido e a fila de impressão.'
-          : e is StateError
-              ? e.message.toString()
-              : 'Não foi possível confirmar a alteração. Atualize o Delivery.');
+      if (exibirFalha) {
+        _mensagem(alterado
+            ? 'Etapa atualizada, mas há uma pendência. Confira o pedido e a fila de impressão.'
+            : e is StateError
+                ? e.message.toString()
+                : 'Não foi possível confirmar a alteração. Atualize o Delivery.');
+      }
       return alterado;
     } finally {
-      if (mounted) {
+      if (mounted && gerenciarOcupado) {
         setState(() => _ocupado = null);
         if (atualizarAoFinal) await _provedor.listar();
       }
     }
   }
 
-  Future<Set<String>> _avancarLote(
+  Future<EtapaDelivery?> _selecionarDestinoLote(
     List<PedidoDelivery> pedidos,
     EtapaDelivery origem,
-    EtapaDelivery? destino,
+    EtapaDelivery proxima,
+    List<EtapaDelivery> etapas,
+    ConfigDelivery config,
   ) async {
-    if (_ocupado != null ||
-        _rotaAberta ||
-        _processandoLote ||
-        pedidos.isEmpty) {
-      return const {};
+    final indiceOrigem = etapas.indexWhere((etapa) => etapa.id == origem.id);
+    if (indiceOrigem < 0) return null;
+    final destinos = etapas.skip(indiceOrigem + 1).toList(growable: false);
+    if (destinos.isEmpty) return null;
+
+    String? bloqueio(EtapaDelivery etapa) {
+      if (etapa.impressao == '3' &&
+          pedidos.any((pedido) => config.exigePagamento(pedido, etapa))) {
+        return 'Há pedidos sem pagamento completo. Receba esses pedidos antes de concluir.';
+      }
+      return null;
     }
-    final confirmou = await showDialog<bool>(
+
+    Widget opcao(BuildContext dialogContext, EtapaDelivery etapa,
+        {required String titulo, String? subtitulo, required IconData icone}) {
+      final motivo = bloqueio(etapa);
+      return ListTile(
+        key: ValueKey('destino-lote-${etapa.id}'),
+        enabled: motivo == null,
+        leading: Icon(icone),
+        title: Text(titulo),
+        subtitle: Text(motivo ?? subtitulo ?? etapa.nome),
+        trailing: Icon(motivo == null
+            ? Icons.chevron_right_rounded
+            : Icons.lock_outline_rounded),
+        onTap:
+            motivo == null ? () => Navigator.pop(dialogContext, etapa) : null,
+      );
+    }
+
+    return showDialog<EtapaDelivery>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        icon: const Icon(Icons.playlist_add_check_circle_outlined),
+        scrollable: true,
         title: Text(pedidos.length == 1
-            ? 'Avançar 1 pedido?'
-            : 'Avançar ${pedidos.length} pedidos?'),
-        content: const Text(
-          'Cada pedido seguirá todas as regras da etapa. Pagamento, entregador e outras confirmações serão solicitados individualmente quando forem obrigatórios. Se uma confirmação for cancelada, somente aquele pedido permanecerá na etapa.',
+            ? 'Mover 1 pedido'
+            : 'Mover ${pedidos.length} pedidos'),
+        contentPadding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        content: SizedBox(
+          width: 440,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              opcao(
+                dialogContext,
+                proxima,
+                titulo: 'Avançar',
+                subtitulo: 'Próxima etapa: ${proxima.nome}',
+                icone: Icons.arrow_forward_rounded,
+              ),
+              if (destinos.length > 1) ...[
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Text(
+                    'Ou escolha uma etapa mais adiante',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                for (final etapa in destinos.skip(1))
+                  opcao(
+                    dialogContext,
+                    etapa,
+                    titulo: etapa.nome,
+                    icone: Icons.view_kanban_outlined,
+                  ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancelar'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            label: const Text('Continuar'),
           ),
         ],
       ),
     );
-    if (confirmou != true || !mounted) return const {};
+  }
 
+  Future<Set<String>> _avancarLote(
+    List<PedidoDelivery> pedidos,
+    EtapaDelivery origem,
+    EtapaDelivery? proxima,
+    List<EtapaDelivery> etapas,
+  ) async {
+    if (_ocupado != null ||
+        _rotaAberta ||
+        _processandoLote ||
+        pedidos.isEmpty ||
+        proxima == null) {
+      return const {};
+    }
     setState(() => _processandoLote = true);
-    final avancados = <String>{};
+    var iniciouMovimento = false;
+    final movidosDaOrigem = <String>{};
+    final chegaramAoDestino = <String>{};
     try {
-      for (final pedido in pedidos) {
-        if (!mounted) break;
-        final avancou = await _avancar(
-          pedido,
-          origem,
-          destino,
-          atualizarAoFinal: false,
-        );
-        if (avancou) avancados.add(pedido.id);
+      final config = await _provedor.servico.configuracao();
+      if (!mounted) return const {};
+      final destino = await _selecionarDestinoLote(
+          pedidos, origem, proxima, etapas, config);
+      if (destino == null || !mounted) return const {};
+
+      final confirmou = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.playlist_add_check_circle_outlined),
+          title: const Text('Confirmar movimentação'),
+          content: Text(
+            'Mover ${pedidos.length} ${pedidos.length == 1 ? 'pedido' : 'pedidos'} de ${origem.nome} para ${destino.nome}?\n\nO aplicativo passará pelas etapas intermediárias e manterá todas as regras de pagamento, entregador e impressão.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Mover pedidos'),
+            ),
+          ],
+        ),
+      );
+      if (confirmou != true || !mounted) return const {};
+
+      final indiceOrigem = etapas.indexWhere((etapa) => etapa.id == origem.id);
+      final indiceDestino =
+          etapas.indexWhere((etapa) => etapa.id == destino.id);
+      if (indiceOrigem < 0 || indiceDestino <= indiceOrigem) {
+        throw StateError('A etapa de destino não está mais disponível.');
       }
+      final caminho = etapas.sublist(indiceOrigem + 1, indiceDestino + 1);
+
+      String entregadorLote = config.entregadorFixo;
+      final quantidadeEntregas =
+          pedidos.where((pedido) => pedido.tipoEntrega == '1').length;
+      final exigeEntregador = entregadorLote.isEmpty &&
+          quantidadeEntregas > 0 &&
+          caminho.any((etapa) => etapa.selecionarEntregador);
+      if (exigeEntregador) {
+        final entregador =
+            await _selecionarEntregador(quantidade: quantidadeEntregas);
+        if (entregador == null || !mounted) return const {};
+        entregadorLote = '${entregador['id']}';
+      }
+
+      iniciouMovimento = true;
+      setState(() {
+        _progressoLote = 0;
+        _totalLote = pedidos.length;
+      });
+      for (var indicePedido = 0;
+          indicePedido < pedidos.length;
+          indicePedido++) {
+        if (!mounted) break;
+        final pedido = pedidos[indicePedido];
+        var atual = pedido;
+        var etapaAtual = origem;
+        var chegou = true;
+        for (final etapaDestino in caminho) {
+          var avancou = await _avancar(
+            atual,
+            etapaAtual,
+            etapaDestino,
+            atualizarAoFinal: false,
+            gerenciarOcupado: false,
+            atualizarProvedor: false,
+            exibirFalha: false,
+            configuracao: config,
+            entregadorSelecionado: entregadorLote,
+          );
+          PedidoDelivery? confirmadoNoServidor;
+          if (!avancou) {
+            // Se a conexão caiu depois da gravação, a resposta pode ter sido
+            // perdida mesmo com o pedido já movido. Confere antes de tratá-lo
+            // como falha para não deixar cards para trás indevidamente.
+            try {
+              confirmadoNoServidor = await _provedor.servico.pedido(pedido.id);
+              avancou = confirmadoNoServidor.etapa == etapaDestino.id;
+            } catch (_) {
+              avancou = false;
+            }
+          }
+          if (!avancou) {
+            chegou = false;
+            break;
+          }
+          movidosDaOrigem.add(pedido.id);
+          atual = confirmadoNoServidor ?? atual.comEtapa(etapaDestino.id);
+          etapaAtual = etapaDestino;
+        }
+        if (chegou) chegaramAoDestino.add(pedido.id);
+        if (mounted) {
+          setState(() => _progressoLote = indicePedido + 1);
+        }
+        await Future<void>.delayed(Duration.zero);
+      }
+      if (mounted) {
+        final pendentes = pedidos.length - chegaramAoDestino.length;
+        _mensagem(pendentes == 0
+            ? '${chegaramAoDestino.length} ${chegaramAoDestino.length == 1 ? 'pedido movido' : 'pedidos movidos'} para ${destino.nome}.'
+            : '${chegaramAoDestino.length} chegaram a ${destino.nome}. $pendentes não chegaram ao destino; confira os pedidos que permaneceram selecionados.');
+      }
+      return movidosDaOrigem;
+    } catch (erro) {
+      _mensagem(erro is StateError
+          ? erro.message.toString()
+          : 'Não foi possível mover os pedidos. Atualize o Delivery e tente novamente.');
+      return movidosDaOrigem;
     } finally {
       if (mounted) {
         try {
-          await _provedor.listar();
+          if (iniciouMovimento) await _provedor.listar();
         } finally {
-          if (mounted) setState(() => _processandoLote = false);
+          if (mounted) {
+            setState(() {
+              _processandoLote = false;
+              _progressoLote = 0;
+              _totalLote = 0;
+            });
+          }
         }
       }
     }
-    if (mounted) {
-      final restantes = pedidos.length - avancados.length;
-      _mensagem(avancados.isEmpty
-          ? 'Nenhum pedido foi avançado.'
-          : restantes == 0
-              ? avancados.length == 1
-                  ? '1 pedido avançado com sucesso.'
-                  : '${avancados.length} pedidos avançados com sucesso.'
-              : '${avancados.length} ${avancados.length == 1 ? 'pedido avançado' : 'pedidos avançados'}. $restantes ${restantes == 1 ? 'permaneceu' : 'permaneceram'} nesta etapa.');
-    }
-    return avancados;
   }
 
   @override
@@ -584,6 +805,8 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                       servico: _provedor.servico, id: p.id)),
               avancar: _avancar,
               avancarLote: _avancarLote,
+              progressoLote: _progressoLote,
+              totalLote: _totalLote,
               modoSelecao: _modoSelecao,
               encerrarSelecao: () {
                 if (mounted) setState(() => _modoSelecao = false);
@@ -602,6 +825,7 @@ class _CarrosselDelivery extends StatefulWidget {
   final Widget filtros;
   final String? ocupado, excluindo;
   final bool modoSelecao;
+  final int progressoLote, totalLote;
   final ConfigDelivery? config;
   final VoidCallback encerrarSelecao;
   final Future<void> Function() atualizar;
@@ -614,6 +838,7 @@ class _CarrosselDelivery extends StatefulWidget {
     List<PedidoDelivery>,
     EtapaDelivery,
     EtapaDelivery?,
+    List<EtapaDelivery>,
   ) avancarLote;
   const _CarrosselDelivery(
       {required this.etapas,
@@ -622,6 +847,8 @@ class _CarrosselDelivery extends StatefulWidget {
       required this.abrir,
       required this.avancar,
       required this.avancarLote,
+      required this.progressoLote,
+      required this.totalLote,
       required this.modoSelecao,
       required this.encerrarSelecao,
       required this.excluir,
@@ -738,6 +965,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                   quantidadeDisponivel: selecionaveis.length,
                   todosSelecionados: todosSelecionados,
                   ocupado: widget.ocupado != null,
+                  progresso: widget.progressoLote,
+                  totalProgresso: widget.totalLote,
                   aoSelecionarTodos: () => setState(() {
                     if (todosSelecionados) {
                       _selecionados.removeAll(idsSelecionaveis);
@@ -756,6 +985,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             escolhidos,
                             etapa,
                             destino,
+                            widget.etapas,
                           );
                           if (mounted && avancados.isNotEmpty) {
                             _selecionados.removeAll(avancados);
@@ -1141,6 +1371,7 @@ class _BarraSelecaoDelivery extends StatelessWidget {
   final int quantidadeDisponivel;
   final bool todosSelecionados;
   final bool ocupado;
+  final int progresso, totalProgresso;
   final VoidCallback aoSelecionarTodos;
   final Future<void> Function()? aoAvancar;
 
@@ -1150,6 +1381,8 @@ class _BarraSelecaoDelivery extends StatelessWidget {
     required this.quantidadeDisponivel,
     required this.todosSelecionados,
     required this.ocupado,
+    required this.progresso,
+    required this.totalProgresso,
     required this.aoSelecionarTodos,
     required this.aoAvancar,
   });
@@ -1199,17 +1432,22 @@ class _BarraSelecaoDelivery extends StatelessWidget {
                     key: ValueKey('avancar-selecionados-delivery-${etapa.id}'),
                     onPressed: podeAvancar ? () => aoAvancar!.call() : null,
                     icon: ocupado
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? totalProgresso > 0
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.hourglass_top_rounded, size: 19)
                         : const Icon(Icons.arrow_forward_rounded, size: 19),
                     label: Text(
                       ocupado
-                          ? 'Avançando...'
+                          ? totalProgresso > 0
+                              ? 'Movendo $progresso/$totalProgresso'
+                              : 'Preparando...'
                           : compacto
-                              ? 'Avançar ($quantidadeSelecionada)'
-                              : 'Avançar selecionados ($quantidadeSelecionada)',
+                              ? 'Mover ($quantidadeSelecionada)'
+                              : 'Mover selecionados ($quantidadeSelecionada)',
                     ),
                   ),
                 ),

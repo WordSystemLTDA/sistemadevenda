@@ -408,6 +408,21 @@ void main() {
 
     expect(etapa.pedidos.map((pedido) => pedido.id), ['11']);
   });
+  test('regra de entregador da etapa aceita variacoes da API', () {
+    for (final valor in ['Sim', ' sim ', 'TRUE', '1']) {
+      final etapa = EtapaDelivery.fromMap({
+        'id': '1',
+        'ativarselecaoentregador': valor,
+      });
+      expect(etapa.selecionarEntregador, isTrue, reason: valor);
+    }
+    expect(
+        EtapaDelivery.fromMap({
+          'id': '1',
+          'ativarselecaoentregador': 'Não',
+        }).selecionarEntregador,
+        isFalse);
+  });
   test('mensagem de cliente usa a rota do Delivery sem alterar pagamento',
       () async {
     SharedPreferences.setMockInitialValues({

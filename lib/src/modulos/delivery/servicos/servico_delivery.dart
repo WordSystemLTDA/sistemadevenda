@@ -228,6 +228,23 @@ class ServicoDelivery {
           await consultar('permissoes_bigchef/listar_permissoes_bigchef.php')
               as Map));
 
+  Future<List<Map<String, dynamic>>> entregadores(
+      [String pesquisa = '']) async {
+    final resposta = await consultar('entregador/listar_por_nome.php', {
+      'pesquisa': pesquisa.trim(),
+      'cliente': '0',
+    });
+    final dados = resposta is List
+        ? resposta
+        : resposta is Map && resposta['dados'] is List
+            ? resposta['dados'] as List
+            : const [];
+    return [
+      for (final item in dados)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  }
+
   Future<Map<String, dynamic>> cliente(String id) async {
     if ((int.tryParse(id) ?? 0) <= 0) {
       throw StateError('Selecione um cliente para editar.');

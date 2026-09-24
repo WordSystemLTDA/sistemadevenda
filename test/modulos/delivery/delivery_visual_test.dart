@@ -9,6 +9,18 @@ import '../../suporte/captura_tela.dart';
 import 'delivery_test.dart';
 
 class _ServicoLoteDelivery extends ServicoDeliveryTeste {
+  final bool exigirEntregador;
+  final bool incluirTerceiraEtapa;
+  final bool possuiEntregador;
+  int consultasEntregadores = 0;
+  final Set<String> perderRespostaPara = {};
+
+  _ServicoLoteDelivery({
+    this.exigirEntregador = false,
+    this.incluirTerceiraEtapa = false,
+    this.possuiEntregador = true,
+  });
+
   final Map<String, PedidoDelivery> pedidos = {
     for (final pedido in [
       pedidoTeste(campos: {
@@ -64,15 +76,45 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
           'nomeOpcao': 'Em preparo',
           'nomeBotao': 'Pronto',
           'tipodeimpressao': '0',
+          'ativarselecaoentregador': exigirEntregador ? ' sim ' : 'Não',
           'vendas': [
             for (final pedido in pedidos.values)
               if (pedido.etapa == '2') pedido.dados,
           ],
         }),
+        if (incluirTerceiraEtapa)
+          EtapaDelivery.fromMap({
+            'id': '3',
+            'nomeOpcao': 'Aguardando entrega',
+            'nomeBotao': 'Despachar',
+            'tipodeimpressao': '0',
+            'vendas': [
+              for (final pedido in pedidos.values)
+                if (pedido.etapa == '3') pedido.dados,
+            ],
+          }),
       ];
 
   @override
   Future<PedidoDelivery> pedido(String id) async => pedidos[id]!;
+
+  @override
+  Future<dynamic> consultar(String rota,
+      [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'entregador/listar_por_nome.php') {
+      consultasEntregadores++;
+      return possuiEntregador
+          ? [
+              {
+                'id': '77',
+                'nomecompleto': 'Entregador Teste',
+                'telefone': '(44) 99999-0000',
+              }
+            ]
+          : [];
+    }
+    return super.consultar(rota, campos);
+  }
 
   @override
   Future<Map<String, dynamic>> salvar(
@@ -81,6 +123,9 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
     if (rota == 'delivery/mudar_status_delivery.php') {
       final id = '${campos['id']}';
       pedidos[id] = pedidos[id]!.comEtapa('${campos['status']}');
+      if (perderRespostaPara.remove(id)) {
+        throw StateError('Resposta perdida depois da gravação.');
+      }
     }
     return {
       'sucesso': true,
@@ -124,13 +169,15 @@ void main() {
     expect(find.text('Selecionar todos (2)'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('selecionar-delivery-101')));
     await tester.pump();
-    expect(find.text('Avançar selecionados (1)'), findsOneWidget);
+    expect(find.text('Mover selecionados (1)'), findsOneWidget);
 
     await tester
         .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
     await tester.pumpAndSettle();
-    expect(find.text('Avançar 1 pedido?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+    await tester.tap(find.byKey(const ValueKey('destino-lote-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('Confirmar movimentação'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Mover pedidos'));
     await tester.pumpAndSettle();
 
     final mudancas = s.gravacoes
@@ -158,7 +205,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('selecionar-todos-delivery-1')));
     await tester.pump();
-    expect(find.text('Avançar selecionados (2)'), findsOneWidget);
+    expect(find.text('Mover selecionados (2)'), findsOneWidget);
     expect(
         tester
             .widget<Checkbox>(
@@ -168,7 +215,9 @@ void main() {
     await tester
         .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+    await tester.tap(find.byKey(const ValueKey('destino-lote-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Mover pedidos'));
     await tester.pumpAndSettle();
 
     final mudancas = s.gravacoes
@@ -180,6 +229,125 @@ void main() {
         mudancas.map((registro) => registro.$2['id']).toSet(), {'101', '102'});
     expect(s.pedidos['103']!.etapa, '1');
     expect(s.pedidos['delivery-local:104']!.etapa, '1');
+    expect(s.consultasEntregadores, 0);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('lote seleciona entregador uma vez quando a etapa exige',
+      (tester) async {
+    final s = _ServicoLoteDelivery(exigirEntregador: true);
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('modo-selecao-delivery')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selecionar-todos-delivery-1')));
+    await tester.pump();
+    await tester
+        .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('destino-lote-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Mover pedidos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entregador para 2 pedidos'), findsOneWidget);
+    await tester.tap(find.text('Entregador Teste'));
+    await tester.pumpAndSettle();
+
+    final mudancas = s.gravacoes
+        .where(
+            (registro) => registro.$1 == 'delivery/mudar_status_delivery.php')
+        .toList();
+    expect(mudancas, hasLength(2));
+    expect(mudancas.every((registro) => registro.$2['idEntregador'] == '77'),
+        isTrue);
+    expect(s.consultasEntregadores, 1);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('lote pode escolher etapa futura sem pular etapas intermediarias',
+      (tester) async {
+    final s = _ServicoLoteDelivery(incluirTerceiraEtapa: true);
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('modo-selecao-delivery')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selecionar-delivery-101')));
+    await tester.pump();
+    await tester
+        .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ou escolha uma etapa mais adiante'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('destino-lote-3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Mover pedidos'));
+    await tester.pumpAndSettle();
+
+    final mudancas = s.gravacoes
+        .where(
+            (registro) => registro.$1 == 'delivery/mudar_status_delivery.php')
+        .toList();
+    expect(mudancas, hasLength(2));
+    expect(mudancas.map((registro) => registro.$2['status']), ['2', '3']);
+    expect(mudancas.map((registro) => registro.$2['statusOrigem']), ['1', '2']);
+    expect(s.pedidos['101']!.etapa, '3');
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('lote reconhece pedido gravado mesmo se a resposta for perdida',
+      (tester) async {
+    final s = _ServicoLoteDelivery()..perderRespostaPara.add('101');
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('modo-selecao-delivery')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selecionar-delivery-101')));
+    await tester.pump();
+    await tester
+        .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('destino-lote-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Mover pedidos'));
+    await tester.pumpAndSettle();
+
+    expect(s.pedidos['101']!.etapa, '2');
+    expect(
+        s.gravacoes
+            .where((registro) =>
+                registro.$1 == 'delivery/mudar_status_delivery.php')
+            .length,
+        1);
+    expect(find.textContaining('Selecionar todos'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('explica quando etapa exige entregador mas nenhum esta ativo',
+      (tester) async {
+    final s = _ServicoLoteDelivery(
+      exigirEntregador: true,
+      possuiEntregador: false,
+    );
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    final iniciar = find.text('Iniciar preparo').first;
+    await tester.ensureVisible(iniciar);
+    await tester.tap(iniciar);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Nenhum entregador ativo'), findsOneWidget);
+    expect(s.gravacoes, isEmpty);
+    await tester.tap(find.widgetWithText(FilledButton, 'Entendi'));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
   testWidgets('cancelar pagamento nao avanca o pedido', (tester) async {

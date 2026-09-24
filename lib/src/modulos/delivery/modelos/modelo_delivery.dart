@@ -16,6 +16,9 @@ double valorDelivery(Object? valor) {
   return numero.isFinite ? numero : 0;
 }
 
+bool valorDeliverySim(Object? valor) =>
+    {'sim', '1', 'true'}.contains(valor?.toString().trim().toLowerCase());
+
 bool celularDeliveryValido(Object? celular) {
   final tamanho = celular?.toString().replaceAll(RegExp(r'\D'), '').length ?? 0;
   return tamanho >= 10 && tamanho <= 15;
@@ -85,7 +88,7 @@ class EtapaDelivery {
         botao = '${map['nomeBotao'] ?? 'Avançar'}',
         impressao = '${map['tipodeimpressao'] ?? '0'}',
         cor = '${map['cor'] ?? ''}',
-        selecionarEntregador = map['ativarselecaoentregador'] == 'Sim',
+        selecionarEntregador = valorDeliverySim(map['ativarselecaoentregador']),
         pedidos = [
           for (final p in (map['vendas'] as List? ?? []))
             if (_pedidoOperacional(p))
