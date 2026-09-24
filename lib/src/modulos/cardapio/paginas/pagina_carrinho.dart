@@ -525,14 +525,14 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       final novosItens = _finalizacao.pedidoRegistrado
           ? const <Modelowordprodutos>[]
           : await carrinhoProvedor.obterItensParaFinalizar(contexto);
-      final produtos = _finalizacao.pedidoRegistrado
+      final produtos = pedido.salvoNoAparelho || _finalizacao.pedidoRegistrado
           ? pedido.produtos
           : <Modelowordprodutos>[...pedido.produtos, ...novosItens];
       if (produtos.isEmpty) {
         throw StateError('O pedido não tem produtos para enviar.');
       }
 
-      final total = _finalizacao.pedidoRegistrado
+      final total = pedido.salvoNoAparelho || _finalizacao.pedidoRegistrado
           ? pedido.total
           : pedido.total + resumo.precoTotal;
       final pedidoParaMensagem = PedidoDelivery.fromMap({
@@ -596,6 +596,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 ? _resumoDelivery ?? carrinhoProvedor.itensCarrinho
                 : carrinhoProvedor.itensCarrinho;
         final itens = resumo.listaComandosPedidos;
+        final possuiCelularCliente =
+            celularDeliveryValido(dados?.celularCliente);
         return PopScope(
           canPop: !_ocupado &&
               (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
@@ -681,7 +683,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (_tipo == TipoCardapio.delivery &&
-                              !widget.modeloRecorrente) ...[
+                              !widget.modeloRecorrente &&
+                              possuiCelularCliente) ...[
                             SizedBox(
                               width: double.infinity,
                               height: 50,
@@ -747,7 +750,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                             MediaQuery.paddingOf(context).bottom +
                                 MediaQuery.textScalerOf(context).scale(
                                     _tipo == TipoCardapio.delivery &&
-                                            !widget.modeloRecorrente
+                                            !widget.modeloRecorrente &&
+                                            possuiCelularCliente
                                         ? 160
                                         : 96),
                           ),

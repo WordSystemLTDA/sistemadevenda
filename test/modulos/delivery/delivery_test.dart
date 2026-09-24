@@ -254,6 +254,81 @@ void main() {
     expect(dados['id_delivery'], '0');
     expect(dados['acao'], 'forma');
   });
+  test('confirmacao do rascunho local usa cliente e omite numero do pedido',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+    final produto = impressao.produto(nome: 'Pizza')
+      ..valorVenda = '84'
+      ..quantidade = 1;
+    final pedido = PedidoDelivery.fromMap({
+      'id': 'delivery-local:teste',
+      'idCliente': '4',
+      'celularCliente': '(44) 99999-9999',
+      'idendereco': '17',
+      'tipodeentrega': '1',
+      'valordaentrega': '4.00',
+      'valorVenda': '88.00',
+      'produtos': [produto.toMap()],
+    });
+
+    await ServicoRascunhoMensagem(dio, usuario)
+        .notificarConfirmacaoPedido(pedido);
+
+    final chamada = adapter.chamadas.single;
+    expect(chamada.path, 'delivery/notificar_cliente.php');
+    final dados = jsonDecode(chamada.data as String) as Map;
+    expect(dados['acao'], 'confirmar');
+    expect(dados['cliente'], '4');
+    expect(dados['endereco'], '17');
+    expect(dados['id_delivery'], '0');
+    expect(dados['pedidoLocal'], isTrue);
+    expect(dados['tipoEntrega'], '1');
+    expect(dados['produtos'], hasLength(1));
+    expect(dados['valorPedido'], '84.00');
+    expect(dados['valorEntrega'], '4.00');
+    expect(dados['valorTotalPedido'], '88.00');
+    expect(dados.containsKey('id'), isFalse);
+  });
+  test('confirmacao local sem celular nao chama o servidor', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+    final pedido = PedidoDelivery.fromMap({
+      'id': 'delivery-local:sem-celular',
+      'idCliente': '4',
+      'celularCliente': 'Sem Celular',
+      'idendereco': '17',
+      'tipodeentrega': '1',
+      'valordaentrega': '4.00',
+      'valorVenda': '54.00',
+      'produtos': [impressao.produto().toMap()],
+    });
+
+    await expectLater(
+      ServicoRascunhoMensagem(dio, usuario).notificarConfirmacaoPedido(pedido),
+      throwsA(isA<StateError>()
+          .having((erro) => erro.message, 'mensagem', contains('sem celular'))),
+    );
+    expect(adapter.chamadas, isEmpty);
+  });
   test('le valores brasileiros e do PHP sem perder milhares', () {
     expect(valorDelivery('1.234,56'), 1234.56);
     expect(valorDelivery('1,234.56'), 1234.56);

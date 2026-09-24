@@ -175,7 +175,9 @@ class _PaginaFinalizarFormaPagamentoState
 
   Future<String?> _enviarConfirmacaoPedidoAposFinalizar(
       ServicoDelivery servico, PedidoDelivery pedido) async {
-    if (!_confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) return null;
+    if (!_confirmacaoPedidoHabilitada || !pedido.possuiCelularCliente) {
+      return null;
+    }
     try {
       await servico.notificarConfirmacaoPedido(pedido);
       return null;

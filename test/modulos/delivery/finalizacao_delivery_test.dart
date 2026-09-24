@@ -57,6 +57,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   bool falharRecorrencia = false;
   bool falharConfirmacaoWhatsApp = false;
   bool recorrenteVinculado = false;
+  String celularCliente = '(44) 99999-9999';
   Completer<void>? esperaEnvio;
   Completer<void>? esperaConfirmacaoWhatsApp;
   Completer<void>? consultaFinalBloqueada;
@@ -78,6 +79,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
         'id': campos['id'],
         'idVenda': conclusoes > 0 ? '77' : '0',
         'idCliente': '209',
+        'celularCliente': celularCliente,
         'status': conclusoes > 0 ? 'Finalizado' : 'Pendente',
         'valorVenda': envios > 0 ? '14.00' : '4.00',
         'somaValorHistorico': pago,
@@ -177,7 +179,8 @@ void main() {
   });
 
   Future<_ModuloDelivery> abrir(WidgetTester tester,
-      {TipoCardapio tipo = TipoCardapio.delivery}) async {
+      {TipoCardapio tipo = TipoCardapio.delivery,
+      String celularCliente = '(44) 99999-9999'}) async {
     SharedPreferences.setMockInitialValues({});
     const fonte = String.fromEnvironment('FONTE_TESTE');
     tester.view.physicalSize = Size(fonte.isEmpty ? 800 : 440, 956);
@@ -185,6 +188,8 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final m = _ModuloDelivery();
+    m.delivery.celularCliente = celularCliente;
+    m.api.celularCliente = celularCliente;
     m.api.cliente.interceptors.insert(0,
         InterceptorsWrapper(onRequest: (options, handler) {
       if (options.path.startsWith('/tela_nfe_saida/listar_bancos.php')) {
@@ -269,6 +274,16 @@ void main() {
     expect(m.delivery.ultimoPedidoConfirmadoWhatsApp?.produtos, hasLength(1));
     expect(m.delivery.ultimoPedidoConfirmadoWhatsApp?.total, 14);
     expect(find.byType(PaginaCarrinho), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('carrinho esconde envio pelo WhatsApp se cliente nao tem celular',
+      (tester) async {
+    await abrir(tester, celularCliente: 'Sem Celular');
+
+    expect(find.byKey(const ValueKey('enviar-pedido-whats-delivery')),
+        findsNothing);
+    expect(find.text('Finalizar'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

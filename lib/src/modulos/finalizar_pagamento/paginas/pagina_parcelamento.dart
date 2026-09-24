@@ -216,7 +216,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
 
   Future<String?> _enviarConfirmacaoPedidoAposFinalizar(
       ServicoDelivery servico, PedidoDelivery pedido) async {
-    if (!widget.confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) {
+    if (!widget.confirmacaoPedidoHabilitada || !pedido.possuiCelularCliente) {
       return null;
     }
     try {

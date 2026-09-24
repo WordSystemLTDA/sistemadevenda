@@ -53,6 +53,7 @@ void main() {
           taxa: 4,
           exibicao: {
             'nomeCliente': 'Cliente de teste',
+            'celularCliente': '(44) 99999-9999',
             'enderecoCliente': 'Rua A'
           });
 
@@ -90,6 +91,7 @@ void main() {
     final pedido = (await fila.listar()).single;
     expect(pedido.id, id);
     expect(pedido.nome, 'Cliente de teste');
+    expect(pedido.possuiCelularCliente, isTrue);
     expect(pedido.endereco, 'Rua A');
     expect(pedido.observacao, 'Sem campainha');
     expect(pedido.taxaEntrega, 4);

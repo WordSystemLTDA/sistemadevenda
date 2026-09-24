@@ -16,6 +16,11 @@ double valorDelivery(Object? valor) {
   return numero.isFinite ? numero : 0;
 }
 
+bool celularDeliveryValido(Object? celular) {
+  final tamanho = celular?.toString().replaceAll(RegExp(r'\D'), '').length ?? 0;
+  return tamanho >= 10 && tamanho <= 15;
+}
+
 ({DateTime inicio, DateTime fim}) periodoOperacionalDelivery({
   required DateTime inicio,
   required DateTime fim,
@@ -106,6 +111,8 @@ class PedidoDelivery {
       texto('numeroPedido').isEmpty ? id : texto('numeroPedido');
   String get etapa => texto('idopcoescarrossel');
   String get cliente => texto('idCliente', '0');
+  bool get possuiCelularCliente =>
+      celularDeliveryValido(dados['celularCliente']);
   String get nome => texto('nomeCliente').trim().isEmpty
       ? (observacao.isEmpty ? 'Sem cliente' : observacao)
       : texto('nomeCliente');

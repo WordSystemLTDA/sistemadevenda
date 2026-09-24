@@ -514,6 +514,37 @@ class ServicoDelivery {
       throw StateError('Pedido sem produtos para enviar pelo WhatsApp.');
     }
 
+    if (pedido.salvoNoAparelho) {
+      if (!pedido.possuiCelularCliente) {
+        throw StateError('Cliente sem celular cadastrado.');
+      }
+      final resposta = await _requisicao(
+        'delivery/notificar_cliente.php',
+        {
+          'acao': 'confirmar',
+          'cliente': pedido.cliente,
+          'endereco': pedido.texto('idendereco', '0'),
+          'id_delivery': '0',
+          'pedidoLocal': true,
+          'tipo': 'Delivery',
+          'tipoEntrega': pedido.tipoEntrega,
+          'produtos': produtos.map((produto) => produto.toMap()).toList(),
+          'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
+          'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
+          'valorTotalPedido': pedido.total.toStringAsFixed(2),
+        },
+        true,
+      );
+      if (resposta is! Map || resposta['sucesso'] != true) {
+        throw StateError(resposta is Map
+            ? (resposta['mensagem'] ??
+                    'Não foi possível enviar a confirmação do pedido.')
+                .toString()
+            : 'Resposta inválida do servidor.');
+      }
+      return Map<String, dynamic>.from(resposta);
+    }
+
     return acao('confirmar', pedido, {
       'id_empresa': usuario.usuario?.empresa,
       'id_cliente': pedido.cliente,

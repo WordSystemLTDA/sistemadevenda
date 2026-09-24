@@ -40,6 +40,7 @@ class _DeliveryContaTeste extends ServicoDelivery {
   final pedidoTeste = PedidoDelivery.fromMap({
     'id': '10118',
     'idCliente': '209',
+    'celularCliente': '(44) 99999-9999',
     'status': 'Pendente',
     'valorVenda': '75.00',
     'somaValorHistorico': '0',

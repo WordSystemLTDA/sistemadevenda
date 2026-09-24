@@ -41,6 +41,7 @@ class ApiFinalizacaoTeste extends Fake implements DioCliente {
   final cliente = Dio();
   final pedidos = <Map<String, dynamic>>[];
   String? idResposta;
+  String celularCliente = '';
 
   ApiFinalizacaoTeste() {
     cliente.interceptors.add(InterceptorsWrapper(onRequest: (opcoes, handler) {
@@ -61,6 +62,7 @@ class ApiFinalizacaoTeste extends Fake implements DioCliente {
           'idMesa': mesa ? numero : '0',
           'idCliente': '0',
           'nomeCliente': '',
+          'celularCliente': celularCliente,
           'observacaoDoPedido': 'Cliente $numero',
           'nomeEmpresa': 'Pizzaria',
         };
