@@ -82,6 +82,41 @@ class ServicoCardapio {
     }
   }
 
+  Future<Modeloworddadoscardapio> listarFinalizadoParaImpressao(
+      String id, TipoCardapio tipo) async {
+    if (tipo != TipoCardapio.comanda && tipo != TipoCardapio.mesa) {
+      throw StateError(
+          'A impressão final é exclusiva para atendimentos de Mesa ou Comanda.');
+    }
+
+    final empresa = usuarioProvedor.usuario!.empresa;
+    final idUsuario = usuarioProvedor.usuario!.id;
+    final response = await dio.cliente.get(
+      'cardapio/listar_por_id.php',
+      queryParameters: {
+        'id': id,
+        'codigoQrcode': null,
+        'empresa': empresa,
+        'id_usuario': idUsuario,
+        'tipo': tipo.nome,
+        'mostrar_itens': 'Sim',
+        'imprimir': 'true',
+      },
+    );
+
+    if (response.statusCode != 200 || response.data is! Map) {
+      throw StateError(
+          'Não foi possível carregar o comprovante da conta finalizada.');
+    }
+
+    final atendimento = Modeloworddadoscardapio.fromMap(
+        Map<String, dynamic>.from(response.data as Map));
+    if (atendimento.id != id || atendimento.status != 'Finalizada') {
+      throw StateError('A conta finalizada não foi localizada para impressão.');
+    }
+    return atendimento;
+  }
+
   Future<
       ({
         String id,

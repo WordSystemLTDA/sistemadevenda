@@ -380,6 +380,68 @@ class Impressao {
     }
   }
 
+  static List<String> prepararComprovanteDeConsumo({
+    List<Modelowordprodutos> produtos = const [],
+    List<ModeloNomeLancamento> nomelancamento = const [],
+    String somaValorHistorico = '',
+    String celularEmpresa = '',
+    String cnpjEmpresa = '',
+    String enderecoEmpresa = '',
+    String nomeEmpresa = '',
+    String numeroPedido = '',
+    String total = '',
+    String local = '',
+    String permanencia = '',
+    String valorentrega = '',
+    String tipodeentrega = '',
+    String nomeCliente = '',
+    bool imprimirSomenteLocal = false,
+    bool enviarDeVolta = true,
+    TipoCardapio tipoTela = TipoCardapio.delivery,
+    bool agruparPorDestino = true,
+  }) {
+    if (!enviarDeVolta || produtos.isEmpty) return const [];
+    final usuario = Modular.get<UsuarioProvedor>();
+
+    String mensagem(List<Modelowordprodutos> itens, {String? nomeComputador}) =>
+        jsonEncode({
+          'idRequisicao': _gerarIdentificadorRequisicao(),
+          'protocoloImpressao': 2,
+          'tipo': tipoTela.nome,
+          'tipoImpressao': '2',
+          if (nomeComputador?.isNotEmpty == true) 'nomedopc': nomeComputador,
+          'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
+          'produtos': itens.map((e) => e.toMap()).toList(),
+          'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
+          'somaValorHistorico': somaValorHistorico,
+          'celularEmpresa': celularEmpresa,
+          'cnpjEmpresa': cnpjEmpresa,
+          'enderecoEmpresa': enderecoEmpresa,
+          'nomeEmpresa': nomeEmpresa,
+          'numeroPedido': numeroPedido,
+          'total': total,
+          'local': local,
+          'permanencia': permanencia,
+          'valorentrega': valorentrega,
+          'tipodeentrega': tipodeentrega,
+          'nomeUsuario': usuario.usuario?.nome ?? '',
+          'idEmpresa': usuario.usuario?.empresa ?? '0',
+          'idUsuario': usuario.usuario?.id ?? '1',
+          'nomeCliente': nomeCliente,
+          'enviarDeVolta': enviarDeVolta,
+        });
+
+    final grupos = agruparPorDestino
+        ? _agruparProdutosPorComputadorDestino(produtos)
+        : <String, List<Modelowordprodutos>>{};
+    if (grupos.isNotEmpty) {
+      return grupos.entries
+          .map((grupo) => mensagem(grupo.value, nomeComputador: grupo.key))
+          .toList(growable: false);
+    }
+    return [mensagem(produtos)];
+  }
+
   static void comprovanteDeConsumo({
     List<Modelowordprodutos> produtos = const [],
     List<ModeloNomeLancamento> nomelancamento = const [],
@@ -399,75 +461,33 @@ class Impressao {
     bool enviarDeVolta = true,
     TipoCardapio tipoTela = TipoCardapio.delivery,
     bool agruparPorDestino = true,
-  }) async {
-    var server = Modular.get<Server>();
-    var usuario = Modular.get<UsuarioProvedor>();
-
-    for (var element in produtos) {
+  }) {
+    final server = Modular.get<Server>();
+    for (final element in produtos) {
       element.quantidadeController = null;
     }
-
-    if (enviarDeVolta == true && produtos.isNotEmpty) {
-      final Map<String, List<Modelowordprodutos>> grupos = agruparPorDestino
-          ? _agruparProdutosPorComputadorDestino(produtos)
-          : <String, List<Modelowordprodutos>>{};
-
-      if (grupos.isNotEmpty) {
-        for (final MapEntry<String, List<Modelowordprodutos>> grupo
-            in grupos.entries) {
-          server.write(jsonEncode({
-            'idRequisicao': _gerarIdentificadorRequisicao(),
-            'tipo': tipoTela.nome,
-            'tipoImpressao': '2',
-            'nomedopc': grupo.key,
-            'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-            'produtos': grupo.value.map((e) => e.toMap()).toList(),
-            'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
-            'somaValorHistorico': somaValorHistorico,
-            'celularEmpresa': celularEmpresa,
-            'cnpjEmpresa': cnpjEmpresa,
-            'enderecoEmpresa': enderecoEmpresa,
-            'nomeEmpresa': nomeEmpresa,
-            'numeroPedido': numeroPedido,
-            'total': total,
-            'local': local,
-            'permanencia': permanencia,
-            'valorentrega': valorentrega,
-            'tipodeentrega': tipodeentrega,
-            'nomeUsuario': usuario.usuario?.nome ?? '',
-            'idEmpresa': usuario.usuario?.empresa ?? '0',
-            'idUsuario': usuario.usuario?.id ?? '1',
-            'nomeCliente': nomeCliente,
-            'enviarDeVolta': enviarDeVolta,
-          }));
-        }
-        return;
-      }
-
-      server.write(jsonEncode({
-        'idRequisicao': _gerarIdentificadorRequisicao(),
-        'tipo': tipoTela.nome,
-        'tipoImpressao': '2',
-        'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
-        'produtos': produtos.map((e) => e.toMap()).toList(),
-        'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
-        'somaValorHistorico': somaValorHistorico,
-        'celularEmpresa': celularEmpresa,
-        'cnpjEmpresa': cnpjEmpresa,
-        'enderecoEmpresa': enderecoEmpresa,
-        'nomeEmpresa': nomeEmpresa,
-        'numeroPedido': numeroPedido,
-        'total': total,
-        'local': local,
-        'permanencia': permanencia,
-        'valorentrega': valorentrega,
-        'tipodeentrega': tipodeentrega,
-        'nomeUsuario': usuario.usuario?.nome ?? '',
-        'idEmpresa': usuario.usuario?.empresa ?? '0',
-        'idUsuario': usuario.usuario?.id ?? '1',
-        'nomeCliente': nomeCliente,
-        'enviarDeVolta': enviarDeVolta,
-      }));
+    final mensagens = prepararComprovanteDeConsumo(
+      produtos: produtos,
+      nomelancamento: nomelancamento,
+      somaValorHistorico: somaValorHistorico,
+      celularEmpresa: celularEmpresa,
+      cnpjEmpresa: cnpjEmpresa,
+      enderecoEmpresa: enderecoEmpresa,
+      nomeEmpresa: nomeEmpresa,
+      numeroPedido: numeroPedido,
+      total: total,
+      local: local,
+      permanencia: permanencia,
+      valorentrega: valorentrega,
+      tipodeentrega: tipodeentrega,
+      nomeCliente: nomeCliente,
+      imprimirSomenteLocal: imprimirSomenteLocal,
+      enviarDeVolta: enviarDeVolta,
+      tipoTela: tipoTela,
+      agruparPorDestino: agruparPorDestino,
+    );
+    for (final mensagem in mensagens) {
+      server.write(mensagem);
     }
   }
 }

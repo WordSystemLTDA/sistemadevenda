@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
@@ -261,6 +262,30 @@ class _PaginaFinalizarContaAtendimentoState
     if (!mounted) return;
     setState(() => _avancando = false);
     if (resultado == ResultadoFluxoAtendimento.finalizou) {
+      final impressaoSalva = await _salvarComprovanteFinalizacao();
+      if (!mounted) return;
+      if (!impressaoSalva) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            icon: Icon(Icons.print_disabled_outlined,
+                color: Theme.of(context).colorScheme.error),
+            title: const Text('Conta finalizada'),
+            content: const Text(
+              'O pagamento foi concluído, mas não foi possível salvar o '
+              'comprovante de consumo para impressão no caixa.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Entendi'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+      }
       Navigator.pop(context, true);
       return;
     }
@@ -275,6 +300,63 @@ class _PaginaFinalizarContaAtendimentoState
             ? 'Pagamento registrado. Confira o saldo atualizado.'
             : 'Conta atualizada. Confira os valores antes de tentar novamente.');
       }
+    }
+  }
+
+  Future<bool> _salvarComprovanteFinalizacao() async {
+    var atendimento = _dados;
+    if (atendimento == null) return false;
+
+    try {
+      // A releitura final inclui a última forma de pagamento e os valores já
+      // confirmados pelo servidor. Se ela falhar, os dados conferidos antes do
+      // pagamento ainda permitem emitir o comprovante de consumo.
+      atendimento = await _servicoCardapio.listarFinalizadoParaImpressao(
+        widget.idAtendimento,
+        widget.tipo,
+      );
+    } catch (_) {
+      atendimento = _dados;
+    }
+
+    final produtos = atendimento?.produtos ?? const <Modelowordprodutos>[];
+    if (atendimento == null || produtos.isEmpty) return false;
+    final abertura = DateTime.tryParse(atendimento.dataAbertura ?? '');
+    final permanencia = abertura == null
+        ? ''
+        : ConfigSistema.formatarHora(DateTime.now().difference(abertura));
+    final mensagens = Impressao.prepararComprovanteDeConsumo(
+      tipoTela: widget.tipo,
+      agruparPorDestino: false,
+      produtos: produtos,
+      nomelancamento: atendimento.nomelancamento ?? const [],
+      somaValorHistorico: atendimento.somaValorHistorico ?? '0',
+      celularEmpresa: atendimento.celularEmpresa ?? '',
+      cnpjEmpresa: atendimento.cnpjEmpresa ?? '',
+      enderecoEmpresa: atendimento.enderecoEmpresa ?? '',
+      nomeEmpresa: atendimento.nomeEmpresa ?? '',
+      numeroPedido: atendimento.numeroPedido ?? '0',
+      total: atendimento.valorTotal ?? '0',
+      local: widget.tipo == TipoCardapio.mesa
+          ? (atendimento.nomeMesa ?? atendimento.nome ?? '')
+          : (atendimento.nome ?? ''),
+      permanencia: permanencia,
+      valorentrega: atendimento.valorentrega ?? '0',
+      tipodeentrega: atendimento.tipodeentrega ?? '',
+      nomeCliente: nomeClienteAtendimento(
+        atendimento.nomeCliente,
+        atendimento.observacaoDoPedido,
+      ),
+    );
+    if (mensagens.isEmpty) return false;
+
+    try {
+      // A fila persistente libera a tela sem aguardar a impressora e recupera
+      // automaticamente a solicitação se o servidor do caixa estiver offline.
+      await _server.enviarImpressoes(mensagens);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
