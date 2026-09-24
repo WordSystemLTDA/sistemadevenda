@@ -54,8 +54,9 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
   final _preferenciaMensagens = PreferenciaMensagensDelivery();
-  bool _mensagensAutomaticas = false;
+  Set<MensagemClienteDelivery> _mensagensAutomaticas = {};
   bool _preferenciaMensagensCarregada = false;
+  bool _salvandoPreferenciaMensagens = false;
   bool _envioAutomaticoIniciado = false;
   ConfigDelivery? _config;
   TabController? _controladorAbas;
@@ -111,13 +112,28 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     });
   }
 
-  Future<void> _alterarMensagensAutomaticas(bool habilitadas) async {
-    if (_salvando) return;
-    final anterior = _mensagensAutomaticas;
-    setState(() => _mensagensAutomaticas = habilitadas);
+  Future<void> _alterarMensagemAutomatica(
+    MensagemClienteDelivery mensagem,
+    bool habilitada,
+  ) async {
+    if (_salvando ||
+        !_preferenciaMensagensCarregada ||
+        _salvandoPreferenciaMensagens) {
+      return;
+    }
+    final anterior = {..._mensagensAutomaticas};
+    final atualizadas = {..._mensagensAutomaticas};
+    if (habilitada) {
+      atualizadas.add(mensagem);
+    } else {
+      atualizadas.remove(mensagem);
+    }
+    setState(() {
+      _mensagensAutomaticas = atualizadas;
+      _salvandoPreferenciaMensagens = true;
+    });
     try {
-      await _preferenciaMensagens.salvar(habilitadas);
-      if (mounted) setState(() => _preferenciaMensagensCarregada = true);
+      await _preferenciaMensagens.salvar(atualizadas);
     } catch (_) {
       if (!mounted) return;
       setState(() => _mensagensAutomaticas = anterior);
@@ -127,6 +143,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
           content: Text('Não foi possível salvar esta opção no aparelho.'),
           behavior: SnackBarBehavior.floating,
         ));
+    } finally {
+      if (mounted) setState(() => _salvandoPreferenciaMensagens = false);
     }
   }
 
@@ -404,7 +422,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   }
 
   Future<void> _agendarMensagensAutomaticas(String idDelivery) async {
-    var habilitadas = _mensagensAutomaticas;
+    var habilitadas = {..._mensagensAutomaticas};
     if (!_preferenciaMensagensCarregada) {
       try {
         habilitadas = await _preferenciaMensagens.carregar();
@@ -420,7 +438,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     }
     if (!mounted) return;
     if (_envioAutomaticoIniciado ||
-        !habilitadas ||
+        habilitadas.isEmpty ||
         !_possuiCelularCliente ||
         widget.recorrente ||
         widget.editarPedido != null) {
@@ -428,11 +446,14 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     }
     _envioAutomaticoIniciado = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_enviarMensagensAutomaticas(idDelivery));
+      unawaited(_enviarMensagensAutomaticas(idDelivery, habilitadas));
     });
   }
 
-  Future<void> _enviarMensagensAutomaticas(String idDelivery) async {
+  Future<void> _enviarMensagensAutomaticas(
+    String idDelivery,
+    Set<MensagemClienteDelivery> mensagensHabilitadas,
+  ) async {
     // Dá prioridade ao primeiro frame e ao carregamento inicial do cardápio.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
@@ -442,6 +463,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       celularCliente: _telefone,
       tipoEntrega: _tipo,
       possuiEndereco: _endereco != null,
+      mensagensHabilitadas: mensagensHabilitadas,
       aoFalhar: (mensagem, erro, pilha) {
         // O envio é complementar: uma falha não pode interromper o pedido.
         developer.log(
@@ -963,6 +985,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   Widget _mensagensCliente() {
     final confirmacaoEnderecoDisponivel =
         _tipo == '1' && _endereco != null && !_carregando;
+    final permiteAutomatico = !widget.recorrente && widget.editarPedido == null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -973,7 +996,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
           crossAxisCount: 2,
           mainAxisSpacing: 8,
           crossAxisSpacing: 8,
-          mainAxisExtent: 72,
+          mainAxisExtent: permiteAutomatico ? 110 : 72,
           children: [
             _botaoMensagem(
               mensagem: MensagemClienteDelivery.confirmarEndereco,
@@ -998,32 +1021,6 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
             ),
           ],
         ),
-        if (!widget.recorrente && widget.editarPedido == null) ...[
-          const SizedBox(height: 8),
-          SwitchListTile(
-            key: const ValueKey('mensagens-automaticas-delivery'),
-            value: _mensagensAutomaticas,
-            onChanged: !_preferenciaMensagensCarregada || _salvando
-                ? null
-                : _alterarMensagensAutomaticas,
-            secondary: const Icon(Icons.auto_awesome_outlined),
-            title: const Text(
-              'Habilitar envio automático',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'Envia estas mensagens em segundo plano ao abrir o cardápio.',
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            tileColor: Theme.of(context)
-                .colorScheme
-                .primaryContainer
-                .withValues(alpha: .18),
-          ),
-        ],
         const SizedBox(height: 8),
       ],
     );
@@ -1037,33 +1034,86 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   }) {
     final cs = Theme.of(context).colorScheme;
     final enviando = _mensagemEnviando == mensagem;
+    final permiteAutomatico = !widget.recorrente && widget.editarPedido == null;
+    final automatico = _mensagensAutomaticas.contains(mensagem);
+    final podeAlterarAutomatico = habilitado &&
+        _preferenciaMensagensCarregada &&
+        !_salvandoPreferenciaMensagens &&
+        !_salvando;
     final podeEnviar = _cliente != '0' &&
         habilitado &&
         _mensagemEnviando == null &&
         !_salvando;
-    return OutlinedButton.icon(
-      key: ValueKey('mensagem-delivery-${mensagem.codigo}'),
-      onPressed: podeEnviar ? () => _notificarCliente(mensagem) : null,
-      icon: enviando
-          ? const SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Icon(icone, size: 21),
-      label: Text(
-        texto,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: cs.primary,
-        backgroundColor: cs.primaryContainer.withValues(alpha: .18),
-        side: BorderSide(color: cs.primary.withValues(alpha: .4)),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            key: ValueKey('mensagem-delivery-${mensagem.codigo}'),
+            onPressed: podeEnviar ? () => _notificarCliente(mensagem) : null,
+            icon: enviando
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icone, size: 21),
+            label: Text(
+              texto,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: cs.primary,
+              backgroundColor: cs.primaryContainer.withValues(alpha: .18),
+              side: BorderSide(color: cs.primary.withValues(alpha: .4)),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        if (permiteAutomatico) ...[
+          const SizedBox(height: 2),
+          InkWell(
+            key: ValueKey('mensagem-automatica-${mensagem.codigo}'),
+            borderRadius: BorderRadius.circular(10),
+            onTap: podeAlterarAutomatico
+                ? () => _alterarMensagemAutomatica(mensagem, !automatico)
+                : null,
+            child: SizedBox(
+              height: 36,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Checkbox(
+                    value: automatico,
+                    onChanged: podeAlterarAutomatico
+                        ? (valor) => _alterarMensagemAutomatica(
+                              mensagem,
+                              valor ?? false,
+                            )
+                        : null,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  const SizedBox(width: 2),
+                  const Flexible(
+                    child: Text(
+                      'Automático',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

@@ -423,6 +423,17 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
               Text(_recorrencia!.resumo),
               const SizedBox(height: 8),
             ],
+            if (ehDelivery) ...[
+              OpcoesEntregaFinalizacao(
+                aoAtualizar: _aoAtualizarEntrega,
+                aoAlterarCarregamento: (alterando) {
+                  if (mounted) {
+                    setState(() => _alterandoEntrega = alterando);
+                  }
+                },
+              ),
+              const SizedBox(height: 18),
+            ],
             // Hero A pagar
             Container(
               padding: const EdgeInsets.all(16),
@@ -520,17 +531,6 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 ],
               ),
             ),
-            if (ehDelivery) ...[
-              const SizedBox(height: 18),
-              OpcoesEntregaFinalizacao(
-                aoAtualizar: _aoAtualizarEntrega,
-                aoAlterarCarregamento: (alterando) {
-                  if (mounted) {
-                    setState(() => _alterandoEntrega = alterando);
-                  }
-                },
-              ),
-            ],
             const SizedBox(height: 18),
             Row(
               children: [

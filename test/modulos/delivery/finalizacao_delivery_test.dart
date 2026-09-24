@@ -355,6 +355,12 @@ void main() {
       expect(find.byKey(ValueKey('tipo-entrega-finalizacao-$tipo')),
           findsOneWidget);
     }
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey('tipo-entrega-finalizacao-1')))
+          .dy,
+      lessThan(tester.getTopLeft(find.text('A PAGAR')).dy),
+    );
     expect(find.text('Opções de Endereço'), findsOneWidget);
     expect(find.textContaining('Rua Nova').hitTestable(), findsNothing);
     expect(find.textContaining('14,00'), findsWidgets);
@@ -400,6 +406,12 @@ void main() {
       expect(find.byKey(ValueKey('tipo-entrega-finalizacao-$tipo')),
           findsOneWidget);
     }
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey('tipo-entrega-finalizacao-1')))
+          .dy,
+      lessThan(tester.getTopLeft(find.text('A PAGAR')).dy),
+    );
     expect(find.text('Opções de Endereço'), findsOneWidget);
     expect(find.textContaining('Rua Atual').hitTestable(), findsNothing);
     expect(find.textContaining('15,30'), findsWidgets);

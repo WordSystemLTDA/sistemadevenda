@@ -8,6 +8,87 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../suporte/captura_tela.dart';
 import 'delivery_test.dart';
 
+class _ServicoLoteDelivery extends ServicoDeliveryTeste {
+  final Map<String, PedidoDelivery> pedidos = {
+    for (final pedido in [
+      pedidoTeste(campos: {
+        'id': '101',
+        'numeroPedido': '101',
+        'idopcoescarrossel': '1',
+        'quantidadeprodutos': '1',
+      }),
+      pedidoTeste(campos: {
+        'id': '102',
+        'numeroPedido': '102',
+        'idopcoescarrossel': '1',
+        'quantidadeprodutos': '1',
+      }),
+      pedidoTeste(campos: {
+        'id': '103',
+        'numeroPedido': '103',
+        'idopcoescarrossel': '1',
+        'quantidadeprodutos': '0',
+      }),
+      pedidoTeste(campos: {
+        'id': 'delivery-local:104',
+        'numeroPedido': '104',
+        'idopcoescarrossel': '1',
+        'quantidadeprodutos': '1',
+      }),
+    ])
+      pedido.id: pedido,
+  };
+
+  @override
+  Future<List<EtapaDelivery>> listar({
+    required DateTime inicio,
+    required DateTime fim,
+    required String horaInicio,
+    required String horaFim,
+    String pesquisa = '',
+    String tipo = '0',
+  }) async =>
+      [
+        EtapaDelivery.fromMap({
+          'id': '1',
+          'nomeOpcao': 'Recebidos',
+          'nomeBotao': 'Iniciar preparo',
+          'tipodeimpressao': '0',
+          'vendas': [
+            for (final pedido in pedidos.values)
+              if (pedido.etapa == '1') pedido.dados,
+          ],
+        }),
+        EtapaDelivery.fromMap({
+          'id': '2',
+          'nomeOpcao': 'Em preparo',
+          'nomeBotao': 'Pronto',
+          'tipodeimpressao': '0',
+          'vendas': [
+            for (final pedido in pedidos.values)
+              if (pedido.etapa == '2') pedido.dados,
+          ],
+        }),
+      ];
+
+  @override
+  Future<PedidoDelivery> pedido(String id) async => pedidos[id]!;
+
+  @override
+  Future<Map<String, dynamic>> salvar(
+      String rota, Map<String, dynamic> campos) async {
+    gravacoes.add((rota, campos));
+    if (rota == 'delivery/mudar_status_delivery.php') {
+      final id = '${campos['id']}';
+      pedidos[id] = pedidos[id]!.comEtapa('${campos['status']}');
+    }
+    return {
+      'sucesso': true,
+      'dados': {'idDelivery': '${campos['id'] ?? ''}'},
+    };
+  }
+}
+
 void main() {
   setUpAll(carregarFontesDeTeste);
   testWidgets('avanca uma vez para o ID da proxima etapa configurada',
@@ -17,7 +98,9 @@ void main() {
     addTearDown(p.dispose);
     await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Iniciar preparo').first);
+    final iniciarPreparo = find.text('Iniciar preparo').first;
+    await tester.ensureVisible(iniciarPreparo);
+    await tester.tap(iniciarPreparo);
     await tester.pumpAndSettle();
     expect(s.gravacoes, hasLength(1));
     expect(s.gravacoes.single.$1, 'delivery/mudar_status_delivery.php');
@@ -27,13 +110,87 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('avanca somente os cards escolhidos no lote', (tester) async {
+    final s = _ServicoLoteDelivery();
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecionar todos (2)'), findsNothing);
+    expect(find.byKey(const ValueKey('selecionar-delivery-101')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('modo-selecao-delivery')));
+    await tester.pump();
+    expect(find.text('Selecionar todos (2)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('selecionar-delivery-101')));
+    await tester.pump();
+    expect(find.text('Avançar selecionados (1)'), findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Avançar 1 pedido?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+    await tester.pumpAndSettle();
+
+    final mudancas = s.gravacoes
+        .where(
+            (registro) => registro.$1 == 'delivery/mudar_status_delivery.php')
+        .toList();
+    expect(mudancas, hasLength(1));
+    expect(mudancas.single.$2['id'], '101');
+    expect(mudancas.single.$2['status'], '2');
+    expect(s.pedidos['102']!.etapa, '1');
+    expect(s.pedidos['103']!.etapa, '1');
+    expect(s.pedidos['delivery-local:104']!.etapa, '1');
+    expect(find.textContaining('Selecionar todos'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('selecionar todos avanca somente os pedidos disponiveis',
+      (tester) async {
+    final s = _ServicoLoteDelivery();
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('modo-selecao-delivery')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selecionar-todos-delivery-1')));
+    await tester.pump();
+    expect(find.text('Avançar selecionados (2)'), findsOneWidget);
+    expect(
+        tester
+            .widget<Checkbox>(
+                find.byKey(const ValueKey('selecionar-delivery-101')))
+            .value,
+        isTrue);
+    await tester
+        .tap(find.byKey(const ValueKey('avancar-selecionados-delivery-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+    await tester.pumpAndSettle();
+
+    final mudancas = s.gravacoes
+        .where(
+            (registro) => registro.$1 == 'delivery/mudar_status_delivery.php')
+        .toList();
+    expect(mudancas, hasLength(2));
+    expect(
+        mudancas.map((registro) => registro.$2['id']).toSet(), {'101', '102'});
+    expect(s.pedidos['103']!.etapa, '1');
+    expect(s.pedidos['delivery-local:104']!.etapa, '1');
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('cancelar pagamento nao avanca o pedido', (tester) async {
     final s = ServicoDeliveryTeste()..config = const ConfigDelivery();
     final p = ProvedorDelivery(s);
     addTearDown(p.dispose);
     await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Receber R\$').first);
+    final receber = find.textContaining('Receber R\$').first;
+    await tester.ensureVisible(receber);
+    await tester.tap(receber);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Receber pagamento'), findsOneWidget);
@@ -73,6 +230,10 @@ void main() {
       await abrir(tester, PaginaDelivery(provedor: p));
       expect(find.byTooltip('Novo Delivery'), findsOneWidget);
       expect(find.text('Novo Delivery'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('modo-selecao-delivery')), findsOneWidget);
+      expect(find.textContaining('Selecionar todos'), findsNothing);
+      expect(find.byType(Checkbox), findsNothing);
       final novoDelivery = find.byKey(const ValueKey('novo-delivery'));
       final impressora =
           find.byKey(const ValueKey('botao_pendencias_impressao_delivery'));

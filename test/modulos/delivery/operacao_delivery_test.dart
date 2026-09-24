@@ -151,15 +151,21 @@ void main() {
 
   test('preferencia de mensagens automaticas fica salva no aparelho', () async {
     final preferencia = PreferenciaMensagensDelivery();
-    expect(await preferencia.carregar(), isFalse);
+    expect(await preferencia.carregar(), isEmpty);
 
-    await preferencia.salvar(true);
+    await preferencia.salvar({
+      MensagemClienteDelivery.confirmarEndereco,
+      MensagemClienteDelivery.oferecerBebida,
+    });
 
-    expect(await preferencia.carregar(), isTrue);
+    expect(await preferencia.carregar(), {
+      MensagemClienteDelivery.confirmarEndereco,
+      MensagemClienteDelivery.oferecerBebida,
+    });
     expect(
       (await SharedPreferences.getInstance())
-          .getBool(PreferenciaMensagensDelivery.chave),
-      isTrue,
+          .getStringList(PreferenciaMensagensDelivery.chave),
+      ['bebida', 'endereco'],
     );
   });
 
@@ -172,12 +178,14 @@ void main() {
       celularCliente: '',
       tipoEntrega: '1',
       possuiEndereco: true,
+      mensagensHabilitadas: {MensagemClienteDelivery.confirmarEndereco},
     );
 
     expect(servico.notificacoes, isEmpty);
   });
 
-  test('fila automatica envia as quatro mensagens e continua apos falha',
+  test(
+      'fila automatica envia somente mensagens escolhidas e continua apos falha',
       () async {
     final servico = ServicoMensagensAutomaticasTeste()
       ..falharEm = MensagemClienteDelivery.formaPagamento;
@@ -189,15 +197,17 @@ void main() {
       celularCliente: '(44) 99921-3336',
       tipoEntrega: '1',
       possuiEndereco: true,
+      mensagensHabilitadas: {
+        MensagemClienteDelivery.formaPagamento,
+        MensagemClienteDelivery.algoMais,
+      },
       aoFalhar: (mensagem, _, __) => falhas.add(mensagem),
     );
 
     expect(
       servico.notificacoes.map((item) => item.mensagem),
       [
-        MensagemClienteDelivery.confirmarEndereco,
         MensagemClienteDelivery.formaPagamento,
-        MensagemClienteDelivery.oferecerBebida,
         MensagemClienteDelivery.algoMais,
       ],
     );
@@ -840,7 +850,7 @@ void main() {
     expect(find.byKey(const ValueKey('editar-cliente')), findsOneWidget);
     expect(find.text('Mensagens no WhatsApp'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('mensagens-automaticas-delivery')),
+      find.byKey(const ValueKey('mensagem-automatica-endereco')),
       findsOneWidget,
     );
     final gravacaoCliente = s.gravacoes
@@ -925,13 +935,17 @@ void main() {
 
     expect(find.text('Mensagens no WhatsApp'), findsNothing);
     expect(
-      find.byKey(const ValueKey('mensagens-automaticas-delivery')),
+      find.byKey(const ValueKey('mensagem-automatica-endereco')),
       findsNothing,
     );
   });
 
-  testWidgets('novo delivery salva opcao de envio automatico no aparelho',
+  testWidgets('novo delivery salva cada envio automatico separadamente',
       (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final s = ServicoEnderecoPadraoTeste([
       {
         'id': '10',
@@ -952,26 +966,45 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    final opcao = find.byKey(
-      const ValueKey('mensagens-automaticas-delivery'),
+    final enderecoAutomatico = find.byKey(
+      const ValueKey('mensagem-automatica-endereco'),
+    );
+    final bebidaAutomatica = find.byKey(
+      const ValueKey('mensagem-automatica-bebida'),
+    );
+    final formaAutomatica = find.byKey(
+      const ValueKey('mensagem-automatica-forma'),
     );
     await tester.scrollUntilVisible(
-      opcao,
+      bebidaAutomatica,
       250,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(opcao, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(opcao).value, isFalse);
-    await tester.tap(opcao);
+    expect(enderecoAutomatico, findsOneWidget);
+    expect(bebidaAutomatica, findsOneWidget);
+    expect(formaAutomatica, findsOneWidget);
+    await tester.ensureVisible(enderecoAutomatico);
+    await tester.tap(enderecoAutomatico);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(bebidaAutomatica);
+    await tester.tap(bebidaAutomatica);
     await tester.pumpAndSettle();
 
-    expect(tester.widget<SwitchListTile>(opcao).value, isTrue);
+    bool marcado(Finder opcao) => tester
+        .widget<Checkbox>(
+          find.descendant(of: opcao, matching: find.byType(Checkbox)),
+        )
+        .value!;
+
+    expect(marcado(enderecoAutomatico), isTrue);
+    expect(marcado(bebidaAutomatica), isTrue);
+    expect(marcado(formaAutomatica), isFalse);
     expect(
       (await SharedPreferences.getInstance())
-          .getBool(PreferenciaMensagensDelivery.chave),
-      isTrue,
+          .getStringList(PreferenciaMensagensDelivery.chave),
+      ['bebida', 'endereco'],
     );
   });
 

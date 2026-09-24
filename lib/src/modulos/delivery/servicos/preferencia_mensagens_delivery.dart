@@ -15,6 +15,7 @@ Future<void> enviarMensagensAutomaticasDelivery({
   required String celularCliente,
   required String tipoEntrega,
   required bool possuiEndereco,
+  required Set<MensagemClienteDelivery> mensagensHabilitadas,
   void Function(
     MensagemClienteDelivery mensagem,
     Object erro,
@@ -25,11 +26,22 @@ Future<void> enviarMensagensAutomaticasDelivery({
     return;
   }
   final mensagens = <MensagemClienteDelivery>[
-    if (tipoEntrega == '1' && possuiEndereco)
+    if (mensagensHabilitadas.contains(
+          MensagemClienteDelivery.confirmarEndereco,
+        ) &&
+        tipoEntrega == '1' &&
+        possuiEndereco)
       MensagemClienteDelivery.confirmarEndereco,
-    MensagemClienteDelivery.formaPagamento,
-    MensagemClienteDelivery.oferecerBebida,
-    MensagemClienteDelivery.algoMais,
+    if (mensagensHabilitadas.contains(
+      MensagemClienteDelivery.formaPagamento,
+    ))
+      MensagemClienteDelivery.formaPagamento,
+    if (mensagensHabilitadas.contains(
+      MensagemClienteDelivery.oferecerBebida,
+    ))
+      MensagemClienteDelivery.oferecerBebida,
+    if (mensagensHabilitadas.contains(MensagemClienteDelivery.algoMais))
+      MensagemClienteDelivery.algoMais,
   ];
   for (final mensagem in mensagens) {
     try {
@@ -41,14 +53,22 @@ Future<void> enviarMensagensAutomaticasDelivery({
 }
 
 class PreferenciaMensagensDelivery {
-  static const chave = 'delivery_mensagens_whatsapp_automaticas_v1';
+  static const chave = 'delivery_mensagens_whatsapp_automaticas_v2';
 
-  Future<bool> carregar() async =>
-      (await SharedPreferences.getInstance()).getBool(chave) ?? false;
+  Future<Set<MensagemClienteDelivery>> carregar() async {
+    final codigos =
+        (await SharedPreferences.getInstance()).getStringList(chave) ?? [];
+    return MensagemClienteDelivery.values
+        .where((mensagem) => codigos.contains(mensagem.codigo))
+        .where((mensagem) => mensagem != MensagemClienteDelivery.perguntarTroco)
+        .toSet();
+  }
 
-  Future<void> salvar(bool habilitadas) async {
+  Future<void> salvar(Set<MensagemClienteDelivery> mensagens) async {
     final preferencias = await SharedPreferences.getInstance();
-    if (!await preferencias.setBool(chave, habilitadas)) {
+    final codigos = mensagens.map((mensagem) => mensagem.codigo).toList()
+      ..sort();
+    if (!await preferencias.setStringList(chave, codigos)) {
       throw StateError('Não foi possível salvar a preferência no aparelho.');
     }
   }

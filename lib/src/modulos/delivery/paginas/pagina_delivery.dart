@@ -40,7 +40,10 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   Timer? _debounce;
   late final MonitorAtualizacaoTela _monitorAtualizacao;
   StreamSubscription<PedidoDelivery>? _atualizacoes;
-  bool _rotaAberta = false, _ativo = true;
+  bool _rotaAberta = false,
+      _ativo = true,
+      _processandoLote = false,
+      _modoSelecao = false;
   String? _ocupado, _excluindo;
   @override
   void initState() {
@@ -57,6 +60,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
           mounted &&
           _ativo &&
           !_rotaAberta &&
+          !_processandoLote &&
           _ocupado == null &&
           ModalRoute.of(context)?.isCurrent != false,
     );
@@ -65,7 +69,11 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _ativo = state == AppLifecycleState.resumed;
-    if (_ativo && !_rotaAberta && _ocupado == null && !_provedor.carregando) {
+    if (_ativo &&
+        !_rotaAberta &&
+        !_processandoLote &&
+        _ocupado == null &&
+        !_provedor.carregando) {
       _provedor.listar();
     }
   }
@@ -237,41 +245,48 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     }
   }
 
-  Future<void> _avancar(PedidoDelivery pedido, EtapaDelivery origem,
-      EtapaDelivery? destino) async {
-    if (pedido.salvoNoAparelho) return _retomarLocal(pedido);
-    if (_ocupado != null) return;
+  Future<bool> _avancar(
+    PedidoDelivery pedido,
+    EtapaDelivery origem,
+    EtapaDelivery? destino, {
+    bool atualizarAoFinal = true,
+  }) async {
+    if (pedido.salvoNoAparelho) {
+      await _retomarLocal(pedido);
+      return false;
+    }
+    if (_ocupado != null) return false;
     if (pedido.quantidade == 0) {
       await _cardapio(pedido);
-      return;
+      return false;
     }
     setState(() => _ocupado = pedido.id);
     bool alterado = false;
     try {
       var atual = await _provedor.servico.pedido(pedido.id);
-      if (!mounted) return;
+      if (!mounted) return false;
       if (!atual.podeAvancar(origem) || atual.etapa != origem.id) {
         throw StateError(
             'O pedido foi atualizado em outro aparelho. Confira a etapa atual.');
       }
       final alvo = destino ?? origem;
       final config = await _provedor.servico.configuracao();
-      if (!mounted) return;
+      if (!mounted) return false;
       if (config.exigePagamento(atual, alvo)) {
         final recebeu =
             await receberDelivery(context, _provedor.servico, atual.id);
-        if (recebeu != true || !mounted) return;
+        if (recebeu != true || !mounted) return false;
         atual = await _provedor.servico.pedido(pedido.id);
         if (atual.restante > .009) {
           _mensagem(
               'Pagamento parcial registrado. Falta ${atual.restante.obterReal()}.');
-          return;
+          return false;
         }
         if (atual.etapa != origem.id || !atual.podeAvancar(origem)) {
           throw StateError('O pedido foi atualizado. Confira a etapa atual.');
         }
       }
-      if (!mounted) return;
+      if (!mounted) return false;
       String entregador = config.entregadorFixo,
           taxa = atual.texto('valordaentrega', '0');
       if (atual.tipoEntrega == '1' &&
@@ -287,7 +302,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                 ],
             nome: (e) => '${e['nomecompleto'] ?? e['nome']}',
             detalhe: (e) => '${e['telefone'] ?? ''}');
-        if (res == null || !mounted) return;
+        if (res == null || !mounted) return false;
         entregador = '${res['id']}';
       }
       // Revalida depois dos diálogos, antes de efetivar a mudança de etapa.
@@ -311,7 +326,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               ambos: imprimirPreparo && imprimirComprovante,
               config: config)
           : <String>[];
-      if (!mounted) return;
+      if (!mounted) return false;
       var preparoPersistido = false;
       if (alvo.impressao == '3' && !conferido.encerrado) {
         await _provedor.servico.concluir(conferido);
@@ -334,18 +349,91 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             Modular.get<Server>(), mensagens,
             preparoPersistido: preparoPersistido);
       }
+      return destino != null || alvo.impressao == '3';
     } catch (e) {
       _mensagem(alterado
           ? 'Etapa atualizada, mas há uma pendência. Confira o pedido e a fila de impressão.'
           : e is StateError
               ? e.message.toString()
               : 'Não foi possível confirmar a alteração. Atualize o Delivery.');
+      return alterado;
     } finally {
       if (mounted) {
         setState(() => _ocupado = null);
-        await _provedor.listar();
+        if (atualizarAoFinal) await _provedor.listar();
       }
     }
+  }
+
+  Future<Set<String>> _avancarLote(
+    List<PedidoDelivery> pedidos,
+    EtapaDelivery origem,
+    EtapaDelivery? destino,
+  ) async {
+    if (_ocupado != null ||
+        _rotaAberta ||
+        _processandoLote ||
+        pedidos.isEmpty) {
+      return const {};
+    }
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.playlist_add_check_circle_outlined),
+        title: Text(pedidos.length == 1
+            ? 'Avançar 1 pedido?'
+            : 'Avançar ${pedidos.length} pedidos?'),
+        content: const Text(
+          'Cada pedido seguirá todas as regras da etapa. Pagamento, entregador e outras confirmações serão solicitados individualmente quando forem obrigatórios. Se uma confirmação for cancelada, somente aquele pedido permanecerá na etapa.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Continuar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou != true || !mounted) return const {};
+
+    setState(() => _processandoLote = true);
+    final avancados = <String>{};
+    try {
+      for (final pedido in pedidos) {
+        if (!mounted) break;
+        final avancou = await _avancar(
+          pedido,
+          origem,
+          destino,
+          atualizarAoFinal: false,
+        );
+        if (avancou) avancados.add(pedido.id);
+      }
+    } finally {
+      if (mounted) {
+        try {
+          await _provedor.listar();
+        } finally {
+          if (mounted) setState(() => _processandoLote = false);
+        }
+      }
+    }
+    if (mounted) {
+      final restantes = pedidos.length - avancados.length;
+      _mensagem(avancados.isEmpty
+          ? 'Nenhum pedido foi avançado.'
+          : restantes == 0
+              ? avancados.length == 1
+                  ? '1 pedido avançado com sucesso.'
+                  : '${avancados.length} pedidos avançados com sucesso.'
+              : '${avancados.length} ${avancados.length == 1 ? 'pedido avançado' : 'pedidos avançados'}. $restantes ${restantes == 1 ? 'permaneceu' : 'permaneceram'} nesta etapa.');
+    }
+    return avancados;
   }
 
   @override
@@ -359,11 +447,13 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
           actions: [
             IconButton(
                 tooltip: 'Atualizar pedidos',
-                onPressed: _ocupado == null ? _provedor.listar : null,
+                onPressed: _ocupado == null && !_processandoLote
+                    ? _provedor.listar
+                    : null,
                 icon: const Icon(Icons.refresh)),
           ]),
       floatingActionButton: _AcoesFlutuantesDelivery(
-        habilitado: _ocupado == null,
+        habilitado: _ocupado == null && !_processandoLote,
         onNovoPedido: () =>
             _abrir(PaginaNovoDelivery(servico: _provedor.servico)),
       ),
@@ -410,15 +500,34 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                     )),
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
+                      key: const ValueKey('modo-selecao-delivery'),
+                      tooltip: _modoSelecao
+                          ? 'Sair da seleção de pedidos'
+                          : 'Selecionar pedidos para avançar',
+                      isSelected: _modoSelecao,
+                      selectedIcon: const Icon(Icons.close_rounded),
+                      onPressed: _ocupado == null && !_processandoLote
+                          ? () => setState(() {
+                                _modoSelecao = !_modoSelecao;
+                              })
+                          : null,
+                      icon: const Icon(Icons.checklist_rounded),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
                         tooltip: 'Filtrar período e entrega',
                         icon: const Icon(Icons.tune),
-                        onPressed: () async {
-                          final aplicar = await showDialog<bool>(
-                              context: context,
-                              builder: (_) =>
-                                  FiltrosDelivery(provedor: _provedor));
-                          if (mounted && aplicar == true) _provedor.listar();
-                        }),
+                        onPressed: _ocupado == null && !_processandoLote
+                            ? () async {
+                                final aplicar = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) =>
+                                        FiltrosDelivery(provedor: _provedor));
+                                if (mounted && aplicar == true) {
+                                  _provedor.listar();
+                                }
+                              }
+                            : null),
                   ])),
               Padding(
                   padding:
@@ -467,13 +576,18 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               etapas: _provedor.etapas,
               filtros: filtros,
               atualizar: _provedor.listar,
-              ocupado: _ocupado,
+              ocupado: _processandoLote ? '__lote__' : _ocupado,
               excluindo: _excluindo,
               abrir: (p) => p.salvoNoAparelho
                   ? _retomarLocal(p)
                   : _abrir(PaginaDetalhesDelivery(
                       servico: _provedor.servico, id: p.id)),
               avancar: _avancar,
+              avancarLote: _avancarLote,
+              modoSelecao: _modoSelecao,
+              encerrarSelecao: () {
+                if (mounted) setState(() => _modoSelecao = false);
+              },
               excluir: _excluirRascunho,
               opcoes: _menu,
               config: _provedor.config,
@@ -487,19 +601,29 @@ class _CarrosselDelivery extends StatefulWidget {
   final List<EtapaDelivery> etapas;
   final Widget filtros;
   final String? ocupado, excluindo;
+  final bool modoSelecao;
   final ConfigDelivery? config;
+  final VoidCallback encerrarSelecao;
   final Future<void> Function() atualizar;
   final Future<void> Function(PedidoDelivery) abrir;
   final Future<void> Function(PedidoDelivery, EtapaDelivery) opcoes;
   final Future<void> Function(PedidoDelivery) excluir;
-  final Future<void> Function(PedidoDelivery, EtapaDelivery, EtapaDelivery?)
+  final Future<bool> Function(PedidoDelivery, EtapaDelivery, EtapaDelivery?)
       avancar;
+  final Future<Set<String>> Function(
+    List<PedidoDelivery>,
+    EtapaDelivery,
+    EtapaDelivery?,
+  ) avancarLote;
   const _CarrosselDelivery(
       {required this.etapas,
       required this.filtros,
       required this.atualizar,
       required this.abrir,
       required this.avancar,
+      required this.avancarLote,
+      required this.modoSelecao,
+      required this.encerrarSelecao,
       required this.excluir,
       required this.opcoes,
       this.ocupado,
@@ -514,10 +638,34 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
   late TabController _abas =
       TabController(length: widget.etapas.length, vsync: this);
   final _produtosExpandidos = <String>{};
+  final _selecionados = <String>{};
+
+  bool _podeSelecionar(
+    PedidoDelivery pedido,
+    EtapaDelivery etapa,
+    EtapaDelivery? destino,
+  ) =>
+      !pedido.salvoNoAparelho &&
+      pedido.quantidade > 0 &&
+      pedido.podeAvancar(etapa) &&
+      destino != null;
+
+  void _alternarSelecao(String id, [bool? selecionar]) {
+    setState(() {
+      if (selecionar ?? !_selecionados.contains(id)) {
+        _selecionados.add(id);
+      } else {
+        _selecionados.remove(id);
+      }
+    });
+  }
 
   @override
   void didUpdateWidget(covariant _CarrosselDelivery old) {
     super.didUpdateWidget(old);
+    if (old.modoSelecao && !widget.modoSelecao) {
+      _selecionados.clear();
+    }
     if (old.etapas.map((e) => e.id).join(',') !=
         widget.etapas.map((e) => e.id).join(',')) {
       final id = old.etapas[_abas.index].id;
@@ -529,6 +677,17 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
           initialIndex: indice < 0 ? 0 : indice);
       WidgetsBinding.instance.addPostFrameCallback((_) => anterior.dispose());
     }
+    final disponiveis = <String>{};
+    for (var i = 0; i < widget.etapas.length; i++) {
+      final etapa = widget.etapas[i];
+      final destino = etapa.impressao != '3' && i + 1 < widget.etapas.length
+          ? widget.etapas[i + 1]
+          : null;
+      disponiveis.addAll(etapa.pedidos
+          .where((pedido) => _podeSelecionar(pedido, etapa, destino))
+          .map((pedido) => pedido.id));
+    }
+    _selecionados.removeWhere((id) => !disponiveis.contains(id));
   }
 
   @override
@@ -563,7 +722,51 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                 etapa.impressao != '3' && i + 1 < widget.etapas.length
                     ? widget.etapas[i + 1]
                     : null;
+            final selecionaveis = etapa.pedidos
+                .where((pedido) => _podeSelecionar(pedido, etapa, destino))
+                .toList();
+            final idsSelecionaveis = selecionaveis.map((p) => p.id).toSet();
+            final selecionadosEtapa =
+                _selecionados.intersection(idsSelecionaveis);
+            final todosSelecionados = selecionaveis.isNotEmpty &&
+                selecionadosEtapa.length == selecionaveis.length;
             return Column(children: [
+              if (widget.modoSelecao && selecionaveis.isNotEmpty)
+                _BarraSelecaoDelivery(
+                  etapa: etapa,
+                  quantidadeSelecionada: selecionadosEtapa.length,
+                  quantidadeDisponivel: selecionaveis.length,
+                  todosSelecionados: todosSelecionados,
+                  ocupado: widget.ocupado != null,
+                  aoSelecionarTodos: () => setState(() {
+                    if (todosSelecionados) {
+                      _selecionados.removeAll(idsSelecionaveis);
+                    } else {
+                      _selecionados.addAll(idsSelecionaveis);
+                    }
+                  }),
+                  aoAvancar: selecionadosEtapa.isEmpty
+                      ? null
+                      : () async {
+                          final escolhidos = [
+                            for (final pedido in selecionaveis)
+                              if (selecionadosEtapa.contains(pedido.id)) pedido,
+                          ];
+                          final avancados = await widget.avancarLote(
+                            escolhidos,
+                            etapa,
+                            destino,
+                          );
+                          if (mounted && avancados.isNotEmpty) {
+                            _selecionados.removeAll(avancados);
+                            if (_selecionados.isEmpty) {
+                              widget.encerrarSelecao();
+                            } else {
+                              setState(() {});
+                            }
+                          }
+                        },
+                ),
               Expanded(
                   child: RefreshIndicator(
                       onRefresh: widget.atualizar,
@@ -606,6 +809,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                             : etapa.botao;
                             final podeAvancar = p.salvoNoAparelho ||
                                 p.podeAvancar(etapa) && destino != null;
+                            final selecionavel =
+                                _podeSelecionar(p, etapa, destino);
+                            final selecionado = _selecionados.contains(p.id);
                             final podeExcluirRascunho =
                                 p.salvoNoAparelho && !p.aguardandoSincronizacao;
                             final excluindo = widget.excluindo == p.id;
@@ -619,14 +825,26 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             return Card(
                                 margin: const EdgeInsets.only(bottom: 12),
                                 elevation: 0,
-                                color: cs.surfaceContainerLowest,
+                                color: widget.modoSelecao && selecionado
+                                    ? cs.primaryContainer.withValues(alpha: .28)
+                                    : cs.surfaceContainerLowest,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    side: BorderSide(color: cs.outlineVariant)),
+                                    side: BorderSide(
+                                        color: widget.modoSelecao && selecionado
+                                            ? cs.primary
+                                            : cs.outlineVariant,
+                                        width: widget.modoSelecao && selecionado
+                                            ? 1.5
+                                            : 1)),
                                 child: InkWell(
                                     borderRadius: BorderRadius.circular(8),
                                     onTap: widget.ocupado == null
-                                        ? () => widget.abrir(p)
+                                        ? widget.modoSelecao
+                                            ? selecionavel
+                                                ? () => _alternarSelecao(p.id)
+                                                : null
+                                            : () => widget.abrir(p)
                                         : null,
                                     child: Padding(
                                         padding: const EdgeInsets.all(14),
@@ -635,6 +853,26 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Row(children: [
+                                                if (widget.modoSelecao &&
+                                                    selecionavel) ...[
+                                                  Checkbox(
+                                                    key: ValueKey(
+                                                        'selecionar-delivery-${p.id}'),
+                                                    value: selecionado,
+                                                    onChanged: widget.ocupado !=
+                                                            null
+                                                        ? null
+                                                        : (valor) =>
+                                                            _alternarSelecao(
+                                                                p.id, valor),
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                    materialTapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                ],
                                                 Expanded(
                                                     child: Text('#${p.numero}',
                                                         style: TextStyle(
@@ -660,7 +898,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     tooltip:
                                                         'Opções do pedido #${p.numero}',
                                                     onPressed: widget.ocupado ==
-                                                            null
+                                                                null &&
+                                                            !widget.modoSelecao
                                                         ? () => widget.opcoes(
                                                             p, etapa)
                                                         : null,
@@ -798,12 +1037,14 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                           OutlinedButton.icon(
                                                         key: ValueKey(
                                                             'excluir-delivery-${p.id}'),
-                                                        onPressed:
-                                                            widget.ocupado !=
-                                                                    null
-                                                                ? null
-                                                                : () => widget
-                                                                    .excluir(p),
+                                                        onPressed: widget
+                                                                        .ocupado !=
+                                                                    null ||
+                                                                widget
+                                                                    .modoSelecao
+                                                            ? null
+                                                            : () => widget
+                                                                .excluir(p),
                                                         icon: excluindo
                                                             ? const SizedBox(
                                                                 width: 18,
@@ -844,8 +1085,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                         : 1,
                                                     child: FilledButton.icon(
                                                       onPressed: widget
-                                                                  .ocupado !=
-                                                              null
+                                                                      .ocupado !=
+                                                                  null ||
+                                                              widget.modoSelecao
                                                           ? null
                                                           : () => widget.avancar(
                                                               p,
@@ -890,6 +1132,93 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
           })
       ])),
     ]);
+  }
+}
+
+class _BarraSelecaoDelivery extends StatelessWidget {
+  final EtapaDelivery etapa;
+  final int quantidadeSelecionada;
+  final int quantidadeDisponivel;
+  final bool todosSelecionados;
+  final bool ocupado;
+  final VoidCallback aoSelecionarTodos;
+  final Future<void> Function()? aoAvancar;
+
+  const _BarraSelecaoDelivery({
+    required this.etapa,
+    required this.quantidadeSelecionada,
+    required this.quantidadeDisponivel,
+    required this.todosSelecionados,
+    required this.ocupado,
+    required this.aoSelecionarTodos,
+    required this.aoAvancar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final podeAvancar = !ocupado && aoAvancar != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Material(
+        color: cs.primaryContainer.withValues(alpha: .22),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: cs.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final compacto = constraints.maxWidth < 500;
+            final parcialmenteSelecionado =
+                quantidadeSelecionada > 0 && !todosSelecionados;
+            return Row(
+              children: [
+                Expanded(
+                  flex: compacto ? 4 : 5,
+                  child: OutlinedButton.icon(
+                    key: ValueKey('selecionar-todos-delivery-${etapa.id}'),
+                    onPressed: ocupado ? null : aoSelecionarTodos,
+                    icon: Icon(
+                      todosSelecionados
+                          ? Icons.check_box_rounded
+                          : parcialmenteSelecionado
+                              ? Icons.indeterminate_check_box_rounded
+                              : Icons.check_box_outline_blank_rounded,
+                      size: 19,
+                    ),
+                    label: Text(compacto
+                        ? 'Todos ($quantidadeDisponivel)'
+                        : 'Selecionar todos ($quantidadeDisponivel)'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: compacto ? 6 : 5,
+                  child: FilledButton.icon(
+                    key: ValueKey('avancar-selecionados-delivery-${etapa.id}'),
+                    onPressed: podeAvancar ? () => aoAvancar!.call() : null,
+                    icon: ocupado
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward_rounded, size: 19),
+                    label: Text(
+                      ocupado
+                          ? 'Avançando...'
+                          : compacto
+                              ? 'Avançar ($quantidadeSelecionada)'
+                              : 'Avançar selecionados ($quantidadeSelecionada)',
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
   }
 }
 

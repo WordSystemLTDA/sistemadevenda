@@ -252,6 +252,17 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                   padding: const EdgeInsets.only(
                       right: 12, left: 12, top: 12, bottom: 190),
                   children: [
+                    if (ehDelivery) ...[
+                      OpcoesEntregaFinalizacao(
+                        aoAtualizar: _aoAtualizarEntrega,
+                        aoAlterarCarregamento: (alterando) {
+                          if (mounted) {
+                            setState(() => _alterandoEntrega = alterando);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     // Hero "A pagar"
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -353,17 +364,6 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                         ],
                       ),
                     ),
-                    if (ehDelivery) ...[
-                      const SizedBox(height: 18),
-                      OpcoesEntregaFinalizacao(
-                        aoAtualizar: _aoAtualizarEntrega,
-                        aoAlterarCarregamento: (alterando) {
-                          if (mounted) {
-                            setState(() => _alterandoEntrega = alterando);
-                          }
-                        },
-                      ),
-                    ],
                     const SizedBox(height: 22),
                     Row(
                       children: [
