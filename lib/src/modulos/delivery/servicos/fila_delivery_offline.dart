@@ -102,10 +102,21 @@ class FilaDeliveryOffline {
     });
   }
 
-  Future<void> definirTaxa(String id, String tipo, double taxa) =>
+  Future<void> definirTaxa(
+    String id,
+    String tipo,
+    double taxa, {
+    String? endereco,
+    Map<String, dynamic>? dadosEndereco,
+  }) =>
       _alterar(id, (r, _) async {
         if (taxa < 0 || !taxa.isFinite || !['1', '2', '3'].contains(tipo)) {
           throw StateError('Confira a taxa e o tipo de entrega.');
+        }
+        final enderecoAtual = r['endereco']?.toString() ?? '0';
+        final novoEndereco = tipo == '1' ? (endereco ?? enderecoAtual) : '0';
+        if (tipo == '1' && (int.tryParse(novoEndereco) ?? 0) <= 0) {
+          throw StateError('Selecione um endereço para entrega.');
         }
         if ((r['pagamentos'] as List).isNotEmpty &&
             (tipo != r['tipoentrega'] ||
@@ -114,7 +125,21 @@ class FilaDeliveryOffline {
               'Há pagamento parcial salvo. Mantenha a taxa original do pedido.');
         }
         r['tipoentrega'] = tipo;
+        r['endereco'] = novoEndereco;
         r['valor_da_entrega'] = (tipo == '1' ? taxa : 0).toStringAsFixed(2);
+        if (tipo == '1' && dadosEndereco != null) {
+          final exibicao =
+              Map<String, dynamic>.from(r['exibicao'] as Map? ?? {});
+          exibicao.addAll({
+            'enderecoCliente': dadosEndereco['endereco']?.toString() ?? '',
+            'numeroCliente': dadosEndereco['numero']?.toString() ?? '',
+            'complementoCliente':
+                dadosEndereco['complemento']?.toString() ?? '',
+            'bairroCliente': dadosEndereco['bairro']?.toString() ?? '',
+            'cidadeCliente': dadosEndereco['cidade']?.toString() ?? '',
+          });
+          r['exibicao'] = exibicao;
+        }
       });
 
   Future<void> definirAjustes(String id,
@@ -276,6 +301,32 @@ class FilaDeliveryOffline {
           throw StateError('Ainda há saldo a receber neste pedido.');
         }
         r['concluido'] = true;
+      });
+
+  /// Descarta o rascunho e qualquer carrinho ainda associado em um unico
+  /// commit. Pedidos que ja entraram na fila de sincronizacao nao podem ser
+  /// removidos por esta acao.
+  Future<void> excluirRascunho(String id) =>
+      ArmazenamentoCarrinhos.instancia.executarComCarrinhosBloqueados(() async {
+        await banco.db.transaction((tx) async {
+          final todos = await _todos(tx);
+          final registro = await _obter(tx, id);
+          if (registro['fase'] != 'rascunho') {
+            throw StateError(
+                'Este pedido já está na fila de sincronização e não pode ser excluído.');
+          }
+
+          final contexto = ContextoCarrinho(
+              empresa: empresa, tipo: 'delivery', idAtendimento: id);
+          final carrinhos = Map<String, dynamic>.from(jsonDecode(
+              await BancoLocal.lerDocumento(tx, banco.chaveCarrinhos) ??
+                  '{}') as Map);
+          todos.remove(id);
+          carrinhos.remove(contexto.chave);
+          await BancoLocal.gravarDocumento(tx, _chave, jsonEncode(todos));
+          await BancoLocal.gravarDocumento(
+              tx, banco.chaveCarrinhos, jsonEncode(carrinhos));
+        });
       });
 
   Future<void> confirmar(String id) async {

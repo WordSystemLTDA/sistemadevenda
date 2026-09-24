@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/comandas/paginas/inserir_cliente.dart';
+import 'package:app/src/modulos/delivery/servicos/preferencia_mensagens_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -41,13 +45,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   final _chaveRecorrencia = ServicosRecorrentes.novaChave();
   final _observacao = TextEditingController();
   String _tipo = '1', _cliente = '0', _nome = '', _telefone = '';
+  Map<String, dynamic>? _dadosCliente;
   Map<String, dynamic>? _endereco;
   List<Map<String, dynamic>> _enderecos = [];
-  bool _carregando = false, _salvando = false;
+  bool _carregando = false, _salvando = false, _carregandoCliente = false;
   bool _exibirErroRecorrencia = false;
   String? _erro;
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
+  final _preferenciaMensagens = PreferenciaMensagensDelivery();
+  bool _mensagensAutomaticas = false;
+  bool _preferenciaMensagensCarregada = false;
+  bool _envioAutomaticoIniciado = false;
   ConfigDelivery? _config;
   TabController? _controladorAbas;
   int _abaRecorrente = 0;
@@ -68,6 +77,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   @override
   void initState() {
     super.initState();
+    unawaited(_carregarPreferenciaMensagens());
     if (widget.recorrente) {
       _controladorAbas = TabController(length: 3, vsync: this);
     }
@@ -79,9 +89,44 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         _cliente = base.cliente;
         _nome = base.nome;
         _telefone = base.texto('celularCliente');
+        _dadosCliente = {
+          'id': _cliente,
+          'nome_puro': _nome,
+          'celular': _telefone,
+        };
         _endereco = {'id': base.texto('idendereco')};
         _carregarEnderecos();
       }
+    }
+  }
+
+  bool get _possuiCelularCliente => clientePossuiCelularDelivery(_telefone);
+
+  Future<void> _carregarPreferenciaMensagens() async {
+    final habilitadas = await _preferenciaMensagens.carregar();
+    if (!mounted) return;
+    setState(() {
+      _mensagensAutomaticas = habilitadas;
+      _preferenciaMensagensCarregada = true;
+    });
+  }
+
+  Future<void> _alterarMensagensAutomaticas(bool habilitadas) async {
+    if (_salvando) return;
+    final anterior = _mensagensAutomaticas;
+    setState(() => _mensagensAutomaticas = habilitadas);
+    try {
+      await _preferenciaMensagens.salvar(habilitadas);
+      if (mounted) setState(() => _preferenciaMensagensCarregada = true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _mensagensAutomaticas = anterior);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Não foi possível salvar esta opção no aparelho.'),
+          behavior: SnackBarBehavior.floating,
+        ));
     }
   }
 
@@ -141,7 +186,76 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         MaterialPageRoute(
             builder: (_) => InserirCliente(servicoEndereco: widget.servico)));
     if (res == null) return null;
-    return {'id': res['idcliente'], 'nome': res['nomecliente']};
+    return {
+      'id': res['idcliente'],
+      'nome': res['nomecliente'],
+      'nome_puro': res['nomecliente'],
+      'celular': res['celular'],
+      'email': res['email'],
+      'obs': res['obs'],
+    };
+  }
+
+  Future<void> _editarCliente() async {
+    if ((int.tryParse(_cliente) ?? 0) <= 0 || _salvando || _carregandoCliente) {
+      return;
+    }
+    setState(() => _carregandoCliente = true);
+    var dados = <String, dynamic>{
+      ...?_dadosCliente,
+      'id': _cliente,
+      'nome_puro': _nome,
+      'celular': _telefone,
+    };
+    try {
+      dados = {...dados, ...await widget.servico.cliente(_cliente)};
+    } catch (_) {
+      // Nome e celular ja selecionados permitem editar mesmo se a consulta
+      // complementar estiver temporariamente indisponivel.
+    }
+    if (!mounted) return;
+    setState(() => _carregandoCliente = false);
+    final resultado = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InserirCliente(
+          servicoEndereco: widget.servico,
+          idCliente: _cliente,
+          dadosIniciais: dados,
+          aoEditarCliente: (nome, celular, email, observacao) async {
+            final atualizado = await widget.servico.editarCliente(
+              id: _cliente,
+              nome: nome,
+              celular: celular,
+              email: email,
+              observacao: observacao,
+            );
+            return (
+              sucesso: true,
+              idcliente: _cliente,
+              nomecliente: atualizado['nome']?.toString() ?? nome,
+              mensagem: 'Cliente atualizado com sucesso',
+            );
+          },
+        ),
+      ),
+    );
+    if (!mounted || resultado == null) return;
+    setState(() {
+      _nome = resultado['nomecliente']?.toString().trim() ?? _nome;
+      _telefone = _formatarTelefoneCliente(
+          resultado['celular']?.toString() ?? _telefone);
+      _dadosCliente = {
+        ...dados,
+        'id': _cliente,
+        'nome_puro': _nome,
+        'nome': _nome,
+        'celular': _telefone,
+        'email': resultado['email']?.toString() ?? '',
+        'obs': resultado['obs']?.toString() ?? '',
+      };
+    });
+    await _carregarEnderecos();
   }
 
   Future<void> _selecionarCliente({bool novo = false}) async {
@@ -168,6 +282,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       _nome = _nomeClienteBusca(resultado);
       _telefone = _formatarTelefoneCliente(
           _textoCliente(resultado, ['celular', 'telefone', 'celularCliente']));
+      _dadosCliente = Map<String, dynamic>.from(resultado);
       _endereco = null;
       _enderecos = [];
       if (widget.recorrente) {
@@ -288,6 +403,57 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     }
   }
 
+  Future<void> _agendarMensagensAutomaticas(String idDelivery) async {
+    var habilitadas = _mensagensAutomaticas;
+    if (!_preferenciaMensagensCarregada) {
+      try {
+        habilitadas = await _preferenciaMensagens.carregar();
+      } catch (erro, pilha) {
+        developer.log(
+          'Falha ao consultar a preferência de mensagens automáticas',
+          name: 'PaginaNovoDelivery',
+          error: erro,
+          stackTrace: pilha,
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
+    if (_envioAutomaticoIniciado ||
+        !habilitadas ||
+        !_possuiCelularCliente ||
+        widget.recorrente ||
+        widget.editarPedido != null) {
+      return;
+    }
+    _envioAutomaticoIniciado = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_enviarMensagensAutomaticas(idDelivery));
+    });
+  }
+
+  Future<void> _enviarMensagensAutomaticas(String idDelivery) async {
+    // Dá prioridade ao primeiro frame e ao carregamento inicial do cardápio.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    await enviarMensagensAutomaticasDelivery(
+      servico: widget.servico,
+      idDelivery: idDelivery,
+      celularCliente: _telefone,
+      tipoEntrega: _tipo,
+      possuiEndereco: _endereco != null,
+      aoFalhar: (mensagem, erro, pilha) {
+        // O envio é complementar: uma falha não pode interromper o pedido.
+        developer.log(
+          'Falha no envio automático da mensagem ${mensagem.codigo}',
+          name: 'PaginaNovoDelivery',
+          error: erro,
+          stackTrace: pilha,
+        );
+      },
+    );
+  }
+
   Future<void> _abrir() async {
     if (_salvando) return;
     if (widget.recorrente && _cliente == '0') {
@@ -386,7 +552,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       // concluido assim que o cardapio abria e a agenda era consultada antes de
       // os produtos do pedido-base serem gravados.
       setState(() => _salvando = false);
-      await Navigator.push<void>(
+      final cardapio = Navigator.push<void>(
           context,
           MaterialPageRoute(
               builder: (_) => PaginaCardapio(
@@ -400,6 +566,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                     modeloRecorrente: widget.recorrente,
                     deliveryDireto: !widget.recorrente,
                   )));
+      unawaited(_agendarMensagensAutomaticas(id));
+      await cardapio;
       if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
 
       // Ao voltar manualmente do cardapio, fecha tambem o formulario, como
@@ -582,14 +750,31 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                       width: double.infinity,
                                       height: 50,
                                       child: FilledButton.tonalIcon(
-                                          key: const ValueKey('novo-cliente'),
-                                          onPressed: _salvando
+                                          key: ValueKey(_cliente == '0'
+                                              ? 'novo-cliente'
+                                              : 'editar-cliente'),
+                                          onPressed: _salvando ||
+                                                  _carregandoCliente
                                               ? null
-                                              : () => _selecionarCliente(
-                                                  novo: true),
-                                          icon: const Icon(
-                                              Icons.person_add_alt_1_outlined),
-                                          label: const Text('Novo Cliente'))),
+                                              : _cliente == '0'
+                                                  ? () => _selecionarCliente(
+                                                      novo: true)
+                                                  : _editarCliente,
+                                          icon: _carregandoCliente
+                                              ? const SizedBox.square(
+                                                  dimension: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2),
+                                                )
+                                              : Icon(_cliente == '0'
+                                                  ? Icons
+                                                      .person_add_alt_1_outlined
+                                                  : Icons
+                                                      .manage_accounts_outlined),
+                                          label: Text(_cliente == '0'
+                                              ? 'Novo Cliente'
+                                              : 'Editar Cliente'))),
                                   if (_tipo == '1') ...[
                                     const SizedBox(height: 20),
                                     Row(children: [
@@ -763,7 +948,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                           hintText: 'Observação do pedido',
                                           border: OutlineInputBorder())),
                                   const SizedBox(height: 8),
-                                  _mensagensCliente(),
+                                  if (_possuiCelularCliente)
+                                    _mensagensCliente(),
                                   if (_erro != null)
                                     Text(_erro!,
                                         style: TextStyle(color: cs.error)),
@@ -812,6 +998,32 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
             ),
           ],
         ),
+        if (!widget.recorrente && widget.editarPedido == null) ...[
+          const SizedBox(height: 8),
+          SwitchListTile(
+            key: const ValueKey('mensagens-automaticas-delivery'),
+            value: _mensagensAutomaticas,
+            onChanged: !_preferenciaMensagensCarregada || _salvando
+                ? null
+                : _alterarMensagensAutomaticas,
+            secondary: const Icon(Icons.auto_awesome_outlined),
+            title: const Text(
+              'Habilitar envio automático',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'Envia estas mensagens em segundo plano ao abrir o cardápio.',
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: Theme.of(context)
+                .colorScheme
+                .primaryContainer
+                .withValues(alpha: .18),
+          ),
+        ],
         const SizedBox(height: 8),
       ],
     );

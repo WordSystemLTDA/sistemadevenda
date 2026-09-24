@@ -8,6 +8,7 @@ import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/preferencia_mensagens_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -83,8 +84,130 @@ class ServicoNovoEnderecoTeste extends ServicoEnderecoPadraoTeste {
   }
 }
 
+class ServicoEdicaoClienteTeste extends ServicoEnderecoPadraoTeste {
+  ServicoEdicaoClienteTeste(super.enderecos);
+
+  final dadosCliente = <String, dynamic>{
+    'id': '4',
+    'nome': 'Bruno Masson',
+    'nome_puro': 'Bruno Masson',
+    'celular': '(44) 99921-3336',
+    'email': 'bruno@teste.com',
+    'obs': 'Cliente antigo',
+  };
+
+  @override
+  Future<dynamic> consultar(String rota,
+      [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'comandas/listar_clientes.php') {
+      return campos['pesquisa'] == '4' ? [dadosCliente] : const [];
+    }
+    return super.consultar(rota, campos);
+  }
+
+  @override
+  Future<Map<String, dynamic>> salvar(
+      String rota, Map<String, dynamic> campos) async {
+    final resposta = await super.salvar(rota, campos);
+    if (rota == 'comandas/inserir_cliente.php') {
+      dadosCliente.addAll({
+        'nome': campos['nome'],
+        'nome_puro': campos['nome'],
+        'celular': campos['celular'],
+        'email': campos['email'],
+        'obs': campos['obs'],
+      });
+    }
+    return resposta;
+  }
+}
+
+class ServicoMensagensAutomaticasTeste extends ServicoDeliveryTeste {
+  MensagemClienteDelivery? falharEm;
+
+  @override
+  Future<String> notificarCliente(
+    MensagemClienteDelivery mensagem, {
+    String cliente = '0',
+    String endereco = '0',
+    String idDelivery = '0',
+    String valorPedido = '',
+  }) async {
+    final resultado = await super.notificarCliente(
+      mensagem,
+      cliente: cliente,
+      endereco: endereco,
+      idDelivery: idDelivery,
+      valorPedido: valorPedido,
+    );
+    if (mensagem == falharEm) throw StateError('Falha simulada');
+    return resultado;
+  }
+}
+
 void main() {
   setUpAll(carregarFontesDeTeste);
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('preferencia de mensagens automaticas fica salva no aparelho', () async {
+    final preferencia = PreferenciaMensagensDelivery();
+    expect(await preferencia.carregar(), isFalse);
+
+    await preferencia.salvar(true);
+
+    expect(await preferencia.carregar(), isTrue);
+    expect(
+      (await SharedPreferences.getInstance())
+          .getBool(PreferenciaMensagensDelivery.chave),
+      isTrue,
+    );
+  });
+
+  test('fila automatica ignora cliente sem celular', () async {
+    final servico = ServicoMensagensAutomaticasTeste();
+
+    await enviarMensagensAutomaticasDelivery(
+      servico: servico,
+      idDelivery: '25',
+      celularCliente: '',
+      tipoEntrega: '1',
+      possuiEndereco: true,
+    );
+
+    expect(servico.notificacoes, isEmpty);
+  });
+
+  test('fila automatica envia as quatro mensagens e continua apos falha',
+      () async {
+    final servico = ServicoMensagensAutomaticasTeste()
+      ..falharEm = MensagemClienteDelivery.formaPagamento;
+    final falhas = <MensagemClienteDelivery>[];
+
+    await enviarMensagensAutomaticasDelivery(
+      servico: servico,
+      idDelivery: '25',
+      celularCliente: '(44) 99921-3336',
+      tipoEntrega: '1',
+      possuiEndereco: true,
+      aoFalhar: (mensagem, _, __) => falhas.add(mensagem),
+    );
+
+    expect(
+      servico.notificacoes.map((item) => item.mensagem),
+      [
+        MensagemClienteDelivery.confirmarEndereco,
+        MensagemClienteDelivery.formaPagamento,
+        MensagemClienteDelivery.oferecerBebida,
+        MensagemClienteDelivery.algoMais,
+      ],
+    );
+    expect(
+      servico.notificacoes.map((item) => item.idDelivery).toSet(),
+      {'25'},
+    );
+    expect(falhas, [MensagemClienteDelivery.formaPagamento]);
+  });
+
   test('pagamento nao encerra preparo nem remove taxa da entrega', () {
     final pago = pedidoTeste(campos: {
       'idVenda': '70',
@@ -649,6 +772,87 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('novo delivery mostra novo cliente enquanto nao ha selecao',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste(const []);
+    await tester.pumpWidget(MaterialApp(home: PaginaNovoDelivery(servico: s)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('novo-cliente')), findsOneWidget);
+    expect(find.text('Novo Cliente'), findsOneWidget);
+    expect(find.byKey(const ValueKey('editar-cliente')), findsNothing);
+    expect(find.text('Editar Cliente'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cliente selecionado pode ser editado sem perder o endereco',
+      (tester) async {
+    tester.view.physicalSize = const Size(600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final s = ServicoEdicaoClienteTeste([
+      {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'estado': 'PR',
+        'padrao': 'Sim',
+      }
+    ])
+      ..dadosCliente['celular'] = '';
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      clonar: pedidoTeste(campos: {
+        'idendereco': '10',
+        'celularCliente': '',
+      }),
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('editar-cliente')), findsOneWidget);
+    expect(find.text('Editar Cliente'), findsOneWidget);
+    expect(find.byKey(const ValueKey('novo-cliente')), findsNothing);
+    expect(find.text('Mensagens no WhatsApp'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('editar-cliente')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar cliente'), findsOneWidget);
+    expect(
+        tester
+            .widget<TextFormField>(find.byKey(const ValueKey('cliente-email')))
+            .controller!
+            .text,
+        'bruno@teste.com');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Bruno Atualizado');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-celular')), '44999887766');
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bruno Atualizado'), findsOneWidget);
+    expect(find.text('(44) 99988-7766'), findsOneWidget);
+    expect(find.byKey(const ValueKey('editar-cliente')), findsOneWidget);
+    expect(find.text('Mensagens no WhatsApp'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mensagens-automaticas-delivery')),
+      findsOneWidget,
+    );
+    final gravacaoCliente = s.gravacoes
+        .where((registro) => registro.$1 == 'comandas/inserir_cliente.php')
+        .single;
+    expect(gravacaoCliente.$2['id'], '4');
+    expect(gravacaoCliente.$2['nome'], 'Bruno Atualizado');
+    expect(find.widgetWithText(ListTile, 'Rua Luiz Roncalha, 169'),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('novo delivery abre edicao do endereco selecionado',
       (tester) async {
     final s = ServicoEnderecoPadraoTeste([
@@ -693,6 +897,82 @@ void main() {
     expect(find.text('Editar endereço'), findsOneWidget);
     expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo delivery oculta mensagens quando cliente nao tem celular',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'padrao': 'Sim',
+      }
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaNovoDelivery(
+        servico: s,
+        editarPedido: pedidoTeste(campos: {
+          'idendereco': '10',
+          'celularCliente': '',
+        }),
+        aoSalvarEdicao: (_) async {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mensagens no WhatsApp'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('mensagens-automaticas-delivery')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('novo delivery salva opcao de envio automatico no aparelho',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'padrao': 'Sim',
+      }
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaNovoDelivery(
+        servico: s,
+        clonar: pedidoTeste(campos: {
+          'idendereco': '10',
+          'celularCliente': '(44) 99921-3336',
+        }),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final opcao = find.byKey(
+      const ValueKey('mensagens-automaticas-delivery'),
+    );
+    await tester.scrollUntilVisible(
+      opcao,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(opcao, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(opcao).value, isFalse);
+    await tester.tap(opcao);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<SwitchListTile>(opcao).value, isTrue);
+    expect(
+      (await SharedPreferences.getInstance())
+          .getBool(PreferenciaMensagensDelivery.chave),
+      isTrue,
+    );
   });
 
   testWidgets(
@@ -770,7 +1050,10 @@ void main() {
     await tester.pumpWidget(MaterialApp(
         home: PaginaNovoDelivery(
       servico: s,
-      editarPedido: pedidoTeste(campos: {'idendereco': '10'}),
+      editarPedido: pedidoTeste(campos: {
+        'idendereco': '10',
+        'celularCliente': '(44) 99921-3336',
+      }),
       aoSalvarEdicao: (_) async {},
     )));
     await tester.pumpAndSettle();

@@ -505,6 +505,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         recorrenteVinculado: pedido.recorrenteVinculado ??
             (widget.deliveryDireto ? false : null),
         pagamentoParcial: pedido.possuiPagamentoRegistrado,
+        pedido: pedido,
       );
       setState(() => isLoading = false);
       await WidgetsBinding.instance.endOfFrame;

@@ -41,7 +41,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   late final MonitorAtualizacaoTela _monitorAtualizacao;
   StreamSubscription<PedidoDelivery>? _atualizacoes;
   bool _rotaAberta = false, _ativo = true;
-  String? _ocupado;
+  String? _ocupado, _excluindo;
   @override
   void initState() {
     super.initState();
@@ -142,13 +142,70 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     pagamento.valor = pedido.restante;
     pagamento.definirContextoDelivery(
         recorrenteVinculado: false,
-        pagamentoParcial: pedido.possuiPagamentoRegistrado);
+        pagamentoParcial: pedido.possuiPagamentoRegistrado,
+        pedido: pedido);
     await _abrir(PaginaSelecionarPagamento(
         totalReceber: pedido.restante,
         desconto: valorDelivery(pedido.dados['valorDesconto']),
         acrescimo: pedido.texto('valorAcrescimo', '0'),
         descontoPercentual: '0',
         totalPedido: pedido.total.toStringAsFixed(2)));
+  }
+
+  Future<void> _excluirRascunho(PedidoDelivery pedido) async {
+    if (_ocupado != null || _rotaAberta || pedido.aguardandoSincronizacao) {
+      return;
+    }
+    final cs = Theme.of(context).colorScheme;
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.delete_outline_rounded, color: cs.error),
+        title: const Text('Excluir rascunho?'),
+        content: Text(
+          pedido.possuiPagamentoRegistrado
+              ? 'Este rascunho possui pagamento registrado. O pedido, os itens e o pagamento salvo neste aparelho serão excluídos. Esta ação não pode ser desfeita.'
+              : 'O pedido e todos os itens salvos neste aparelho serão excluídos. Esta ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Excluir'),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmou != true || !mounted) return;
+
+    setState(() {
+      _ocupado = pedido.id;
+      _excluindo = pedido.id;
+    });
+    try {
+      await _provedor.servico.excluirRascunho(pedido.id);
+      _provedor.removerPedido(pedido.id);
+    } catch (erro) {
+      _mensagem(erro is StateError
+          ? erro.message.toString()
+          : 'Não foi possível excluir o rascunho.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _ocupado = null;
+          _excluindo = null;
+        });
+        await _provedor.listar();
+      }
+    }
   }
 
   void _mensagem(String texto) {
@@ -411,11 +468,13 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               filtros: filtros,
               atualizar: _provedor.listar,
               ocupado: _ocupado,
+              excluindo: _excluindo,
               abrir: (p) => p.salvoNoAparelho
                   ? _retomarLocal(p)
                   : _abrir(PaginaDetalhesDelivery(
                       servico: _provedor.servico, id: p.id)),
               avancar: _avancar,
+              excluir: _excluirRascunho,
               opcoes: _menu,
               config: _provedor.config,
             );
@@ -427,11 +486,12 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
 class _CarrosselDelivery extends StatefulWidget {
   final List<EtapaDelivery> etapas;
   final Widget filtros;
-  final String? ocupado;
+  final String? ocupado, excluindo;
   final ConfigDelivery? config;
   final Future<void> Function() atualizar;
   final Future<void> Function(PedidoDelivery) abrir;
   final Future<void> Function(PedidoDelivery, EtapaDelivery) opcoes;
+  final Future<void> Function(PedidoDelivery) excluir;
   final Future<void> Function(PedidoDelivery, EtapaDelivery, EtapaDelivery?)
       avancar;
   const _CarrosselDelivery(
@@ -440,8 +500,10 @@ class _CarrosselDelivery extends StatefulWidget {
       required this.atualizar,
       required this.abrir,
       required this.avancar,
+      required this.excluir,
       required this.opcoes,
       this.ocupado,
+      this.excluindo,
       this.config});
   @override
   State<_CarrosselDelivery> createState() => _CarrosselDeliveryState();
@@ -544,6 +606,11 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                             : etapa.botao;
                             final podeAvancar = p.salvoNoAparelho ||
                                 p.podeAvancar(etapa) && destino != null;
+                            final podeExcluirRascunho =
+                                p.salvoNoAparelho && !p.aguardandoSincronizacao;
+                            final excluindo = widget.excluindo == p.id;
+                            final avancando =
+                                widget.ocupado == p.id && !excluindo;
                             final produtos = p.produtos;
                             final podeMostrarProdutos =
                                 p.quantidade > 0 && produtos.isNotEmpty;
@@ -723,8 +790,58 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                                 cs.primary))),
                                               if (podeAvancar) ...[
                                                 const SizedBox(height: 12),
-                                                SizedBox(
-                                                    width: double.infinity,
+                                                Row(children: [
+                                                  if (podeExcluirRascunho) ...[
+                                                    Expanded(
+                                                      flex: 5,
+                                                      child:
+                                                          OutlinedButton.icon(
+                                                        key: ValueKey(
+                                                            'excluir-delivery-${p.id}'),
+                                                        onPressed:
+                                                            widget.ocupado !=
+                                                                    null
+                                                                ? null
+                                                                : () => widget
+                                                                    .excluir(p),
+                                                        icon: excluindo
+                                                            ? const SizedBox(
+                                                                width: 18,
+                                                                height: 18,
+                                                                child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2),
+                                                              )
+                                                            : const Icon(
+                                                                Icons
+                                                                    .delete_outline_rounded,
+                                                                size: 19,
+                                                              ),
+                                                        label: Text(excluindo
+                                                            ? 'Excluindo...'
+                                                            : 'Excluir'),
+                                                        style: OutlinedButton
+                                                            .styleFrom(
+                                                          foregroundColor:
+                                                              cs.error,
+                                                          side: BorderSide(
+                                                              color: cs.error),
+                                                          minimumSize:
+                                                              const Size(0, 60),
+                                                          shape: RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8)),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                  Expanded(
+                                                    flex: podeExcluirRascunho
+                                                        ? 8
+                                                        : 1,
                                                     child: FilledButton.icon(
                                                       onPressed: widget
                                                                   .ocupado !=
@@ -737,8 +854,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                                       '3'
                                                                   ? null
                                                                   : destino),
-                                                      icon: widget.ocupado ==
-                                                              p.id
+                                                      icon: avancando
                                                           ? const SizedBox(
                                                               width: 18,
                                                               height: 18,
@@ -751,7 +867,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                                   .arrow_forward,
                                                               size: 18),
                                                       label: Text(
-                                                          widget.ocupado == p.id
+                                                          avancando
                                                               ? 'Aguarde...'
                                                               : label,
                                                           textAlign:
@@ -764,7 +880,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                                   BorderRadius
                                                                       .circular(
                                                                           8))),
-                                                    ))
+                                                    ),
+                                                  ),
+                                                ]),
                                               ],
                                             ]))));
                           }))),

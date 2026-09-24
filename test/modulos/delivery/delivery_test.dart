@@ -912,6 +912,23 @@ void main() {
     expect(p.erro, isNotNull);
     expect(p.carregando, isFalse);
   });
+  test('pedido removido localmente nao reaparece se a atualizacao falhar',
+      () async {
+    final s = ServicoDeliveryTeste();
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await p.listar();
+    final id = p.etapas.first.pedidos.first.id;
+
+    p.removerPedido(id);
+    expect(p.etapas.expand((etapa) => etapa.pedidos).map((pedido) => pedido.id),
+        isNot(contains(id)));
+
+    s.falhar = true;
+    await p.listar();
+    expect(p.etapas.expand((etapa) => etapa.pedidos).map((pedido) => pedido.id),
+        isNot(contains(id)));
+  });
   test('pedido atualizado localmente nao volta para rascunho vazio', () async {
     final s = ServicoDeliveryTeste();
     final stale = pedidoTeste(campos: {

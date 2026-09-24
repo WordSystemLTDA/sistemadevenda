@@ -47,6 +47,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int confirmacoesWhatsApp = 0;
   int notificacoes = 0;
   int consultasRecorrencia = 0;
+  int alteracoesEntrega = 0;
   MensagemClienteDelivery? ultimaMensagem;
   PedidoDelivery? ultimoPedidoConfirmadoWhatsApp;
   String? formaPagamentoConfirmadaWhatsApp;
@@ -60,6 +61,9 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   bool falharConfirmacaoWhatsApp = false;
   bool recorrenteVinculado = false;
   String celularCliente = '(44) 99999-9999';
+  String tipoEntrega = '1';
+  String enderecoSelecionado = '17';
+  double taxaEntrega = 4;
   Completer<void>? esperaEnvio;
   Completer<void>? esperaConfirmacaoWhatsApp;
   Completer<void>? consultaFinalBloqueada;
@@ -67,6 +71,36 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'permissoes_bigchef/listar_permissoes_bigchef.php') {
+      return {
+        'formacobrancaentregadelivery': '2',
+        'valordaentrega': '4.00',
+        'valordiferenca': '0.00',
+      };
+    }
+    if (rota == 'enderecos_clientes/listar_por_cliente.php') {
+      expect(campos['cliente'], '209');
+      return [
+        {
+          'id': '17',
+          'endereco': 'Rua Atual',
+          'numero': '10',
+          'bairro': 'Centro',
+          'cidade': 'Cidade',
+          'padrao': 'Sim',
+          'valortaxabairro': '4.00',
+        },
+        {
+          'id': '18',
+          'endereco': 'Rua Nova',
+          'numero': '20',
+          'bairro': 'Bairro 2',
+          'cidade': 'Cidade',
+          'padrao': 'Não',
+          'valortaxabairro': '7.00',
+        },
+      ];
+    }
     expect(rota, 'delivery/listar_opcoes_por_id.php');
     consultas++;
     if (conclusoes > 0 && consultaFinalBloqueada != null) {
@@ -75,6 +109,8 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     if (envios > 0 && falharConsultaAposSalvar) {
       throw StateError('Falha na consulta do pedido salvo');
     }
+    final taxaAtual = tipoEntrega == '1' ? taxaEntrega : 0.0;
+    final total = (envios > 0 ? 10.0 : 0.0) + taxaAtual;
     return {
       'sucesso': true,
       'dados': {
@@ -83,10 +119,18 @@ class _DeliveryFinalizacao extends ServicoDelivery {
         'idCliente': '209',
         'celularCliente': celularCliente,
         'status': conclusoes > 0 ? 'Finalizado' : 'Pendente',
-        'valorVenda': envios > 0 ? '14.00' : '4.00',
+        'valorVenda': total.toStringAsFixed(2),
         'somaValorHistorico': pago,
         'recorrenteVinculado': recorrenteVinculado,
-        'valordaentrega': '4.00',
+        'valordaentrega': taxaAtual.toStringAsFixed(2),
+        'tipodeentrega': tipoEntrega,
+        'idendereco': enderecoSelecionado,
+        'idopcoescarrossel': '10',
+        'enderecoCliente':
+            enderecoSelecionado == '18' ? 'Rua Nova' : 'Rua Atual',
+        'numeroCliente': enderecoSelecionado == '18' ? '20' : '10',
+        'bairroCliente': enderecoSelecionado == '18' ? 'Bairro 2' : 'Centro',
+        'cidadeCliente': 'Cidade',
       },
     };
   }
@@ -119,6 +163,15 @@ class _DeliveryFinalizacao extends ServicoDelivery {
       expect(campos['id'], '10118');
       confirmacoes++;
       operacoesFinalizacao.add('confirmacao-delivery');
+      return {'sucesso': true};
+    }
+    if (rota == 'delivery/acoes_pedido.php' && campos['acao'] == 'entrega') {
+      expect(campos['id'], '10118');
+      expect(campos['statusOrigem'], '10');
+      tipoEntrega = campos['tipo']?.toString() ?? tipoEntrega;
+      enderecoSelecionado = campos['endereco']?.toString() ?? '0';
+      taxaEntrega = double.tryParse('${campos['taxa']}') ?? 0;
+      alteracoesEntrega++;
       return {'sucesso': true};
     }
     fail('Rota inesperada no delivery: $rota');
@@ -286,6 +339,93 @@ void main() {
                 find.byType(PaginaSelecionarPagamento))
             .totalReceber,
         14);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+      'finalizacao delivery altera modalidade endereco taxa e total nas duas telas',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaFinalizarAcrescimo), findsOneWidget);
+    for (final tipo in ['1', '2', '3']) {
+      expect(find.byKey(ValueKey('tipo-entrega-finalizacao-$tipo')),
+          findsOneWidget);
+    }
+    expect(find.text('Opções de Endereço'), findsOneWidget);
+    expect(find.textContaining('Rua Nova').hitTestable(), findsNothing);
+    expect(find.textContaining('14,00'), findsWidgets);
+
+    final descontoPercentual = find.byWidgetPredicate((widget) =>
+        widget is TextField && widget.decoration?.labelText == 'Desconto (%)');
+    await tester.enterText(descontoPercentual, '10');
+    await tester.pump();
+    expect(find.textContaining('12,60'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-2')));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.tipoEntrega, '2');
+    expect(m.delivery.taxaEntrega, 0);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 10);
+    expect(find.textContaining('9,00'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-1')));
+    await tester.pumpAndSettle();
+    expect(m.delivery.tipoEntrega, '1');
+    expect(m.delivery.taxaEntrega, 4);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 14);
+    expect(find.textContaining('12,60'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('opcoes-endereco-finalizacao')));
+    await tester.pumpAndSettle();
+    final novoEndereco = find.textContaining('Rua Nova').hitTestable();
+    expect(novoEndereco, findsOneWidget);
+    await tester.tap(novoEndereco);
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.enderecoSelecionado, '18');
+    expect(m.delivery.taxaEntrega, 7);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 17);
+    expect(find.textContaining('15,30'), findsWidgets);
+
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaSelecionarPagamento), findsOneWidget);
+    for (final tipo in ['1', '2', '3']) {
+      expect(find.byKey(ValueKey('tipo-entrega-finalizacao-$tipo')),
+          findsOneWidget);
+    }
+    expect(find.text('Opções de Endereço'), findsOneWidget);
+    expect(find.textContaining('Rua Atual').hitTestable(), findsNothing);
+    expect(find.textContaining('15,30'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-3')));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.tipoEntrega, '3');
+    expect(m.delivery.taxaEntrega, 0);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 10);
+    expect(find.textContaining('9,00'), findsWidgets);
+    expect(m.delivery.alteracoesEntrega, 4);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaFinalizarAcrescimo), findsOneWidget);
+    expect(find.text('Sem taxa de entrega'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-1')));
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.tipoEntrega, '1');
+    expect(m.delivery.enderecoSelecionado, '18');
+    expect(m.delivery.taxaEntrega, 7);
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 17);
+    expect(m.delivery.alteracoesEntrega, 5);
+    expect(find.textContaining('15,30'), findsWidgets);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -584,8 +724,14 @@ void main() {
         findsNothing);
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
+    expect(
+        find.byKey(const ValueKey('tipo-entrega-finalizacao-1')), findsNothing);
+    expect(find.text('Opções de Endereço'), findsNothing);
     await tester.tap(find.text('Avançar'));
     await tester.pumpAndSettle();
+    expect(
+        find.byKey(const ValueKey('tipo-entrega-finalizacao-1')), findsNothing);
+    expect(find.text('Opções de Endereço'), findsNothing);
     await tester.tap(find.text('Avançar'));
     await tester.pumpAndSettle();
 

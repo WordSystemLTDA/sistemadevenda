@@ -169,6 +169,33 @@ class PedidoDelivery {
       });
   PedidoDelivery comEtapa(String etapa) =>
       PedidoDelivery.fromMap({...dados, 'idopcoescarrossel': etapa});
+  PedidoDelivery comEntrega({
+    required String tipo,
+    required String endereco,
+    required double taxa,
+    Map<String, dynamic>? dadosEndereco,
+  }) {
+    final entrega = tipo == '1';
+    final novaTaxa = entrega ? taxa : 0.0;
+    final novoTotal = math.max(0.0, total - taxaEntrega + novaTaxa);
+    return PedidoDelivery.fromMap({
+      ...dados,
+      'tipodeentrega': tipo,
+      'idendereco': entrega ? endereco : '0',
+      'valordaentrega': novaTaxa.toStringAsFixed(2),
+      'valorentrega': novaTaxa.toStringAsFixed(2),
+      'valorVenda': novoTotal.toStringAsFixed(2),
+      'valorTotal': novoTotal.toStringAsFixed(2),
+      if (entrega && dadosEndereco != null) ...{
+        'enderecoCliente': dadosEndereco['endereco']?.toString() ?? '',
+        'numeroCliente': dadosEndereco['numero']?.toString() ?? '',
+        'complementoCliente': dadosEndereco['complemento']?.toString() ?? '',
+        'bairroCliente': dadosEndereco['bairro']?.toString() ?? '',
+        'cidadeCliente': dadosEndereco['cidade']?.toString() ?? '',
+      },
+    });
+  }
+
   double get total => valorDelivery(dados['valorVenda']);
   double get pago => valorDelivery(dados['somaValorHistorico']);
   double get restante => math.max(0, total - pago);

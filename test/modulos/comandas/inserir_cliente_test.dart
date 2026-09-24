@@ -65,4 +65,71 @@ void main() {
     expect(servico.gravacoes.single['uf'], 'PR');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('edicao preenche os dados e atualiza o mesmo cliente',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(600, 1200);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    String? nomeSalvo, celularSalvo, emailSalvo, observacaoSalva;
+    await tester.pumpWidget(MaterialApp(
+      home: InserirCliente(
+        servicoEndereco: _ServicoEnderecoTeste(),
+        idCliente: '7',
+        dadosIniciais: const {
+          'nome_puro': 'Cliente Antigo',
+          'celular': '(44) 99999-1111',
+          'email': 'antigo@teste.com',
+          'obs': 'Observação antiga',
+        },
+        aoEditarCliente: (nome, celular, email, observacao) async {
+          nomeSalvo = nome;
+          celularSalvo = celular;
+          emailSalvo = email;
+          observacaoSalva = observacao;
+          return (
+            sucesso: true,
+            idcliente: '7',
+            nomecliente: nome,
+            mensagem: 'Cliente atualizado com sucesso',
+          );
+        },
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar cliente'), findsOneWidget);
+    expect(find.text('EDIÇÃO DE CADASTRO'), findsOneWidget);
+    expect(find.byKey(const ValueKey('cliente-endereco')), findsNothing);
+    expect(
+        tester
+            .widget<TextFormField>(find.byKey(const ValueKey('cliente-nome')))
+            .controller!
+            .text,
+        'Cliente Antigo');
+    expect(
+        tester
+            .widget<TextFormField>(
+                find.byKey(const ValueKey('cliente-celular')))
+            .controller!
+            .text,
+        '(44) 99999-1111');
+
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Cliente Atualizado');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-email')), 'novo@teste.com');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-observacao')), 'Nova observação');
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(nomeSalvo, 'Cliente Atualizado');
+    expect(celularSalvo, '(44) 99999-1111');
+    expect(emailSalvo, 'novo@teste.com');
+    expect(observacaoSalva, 'Nova observação');
+    expect(tester.takeException(), isNull);
+  });
 }

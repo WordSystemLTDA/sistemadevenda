@@ -118,6 +118,65 @@ void main() {
     expect((await fila.pedido(id)).quantidade, 1);
   });
 
+  test('troca modalidade e endereco recalculando a taxa do rascunho', () async {
+    final id = await criar();
+    await adicionar(id);
+    expect((await fila.pedido(id)).total, 54);
+
+    await fila.definirTaxa(id, '2', 0, endereco: '0');
+    var pedido = await fila.pedido(id);
+    expect(pedido.tipoEntrega, '2');
+    expect(pedido.taxaEntrega, 0);
+    expect(pedido.total, 50);
+
+    await fila.definirTaxa(
+      id,
+      '1',
+      7,
+      endereco: '3',
+      dadosEndereco: {
+        'endereco': 'Rua Nova',
+        'numero': '20',
+        'bairro': 'Bairro 2',
+        'cidade': 'Cidade',
+      },
+    );
+    pedido = await fila.pedido(id);
+    expect(pedido.tipoEntrega, '1');
+    expect(pedido.texto('idendereco'), '3');
+    expect(pedido.taxaEntrega, 7);
+    expect(pedido.total, 57);
+    expect(pedido.endereco, 'Rua Nova, 20, Bairro 2, Cidade');
+  });
+
+  test('excluir rascunho remove pedido e carrinho associado no mesmo commit',
+      () async {
+    final id = await criar();
+    await ArmazenamentoCarrinhos.instancia.alterar(
+        contexto(id), (itens) => itens.add(produto(nome: 'Em edição')));
+    expect((await fila.listar()).single.quantidade, 1);
+
+    await fila.excluirRascunho(id);
+
+    expect(await fila.listar(), isEmpty);
+    await expectLater(fila.pedido(id), throwsStateError);
+    final carrinhos =
+        jsonDecode(await banco.ler(banco.chaveCarrinhos) ?? '{}') as Map;
+    expect(carrinhos.containsKey(contexto(id).chave), isFalse);
+    expect(await banco.operacoes(escopo), isEmpty);
+  });
+
+  test('nao exclui pedido que ja entrou na fila de sincronizacao', () async {
+    final id = await criar();
+    await adicionar(id);
+    await fila.confirmar(id);
+
+    await expectLater(fila.excluirRascunho(id), throwsStateError);
+
+    expect((await fila.listar()).single.id, id);
+    expect(await banco.operacoes(escopo), hasLength(1));
+  });
+
   test('peso arredonda por linha como a API, sem deixar centavo pendente',
       () async {
     final id = await criar();

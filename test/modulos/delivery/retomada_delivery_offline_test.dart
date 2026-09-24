@@ -30,6 +30,7 @@ class _DeliveryLocal extends ServicoDelivery {
   Map<String, dynamic> get dados => {
         'id': id,
         'idCliente': '209',
+        'idendereco': '2',
         'nomeCliente': 'Cliente offline',
         'tipodeentrega': '1',
         'numeroPedido': 'Local teste',
@@ -42,6 +43,10 @@ class _DeliveryLocal extends ServicoDelivery {
         'valorAcrescimo': '2.00',
         'somaValorHistorico': '20.00',
         'valordaentrega': '4.00',
+        'enderecoCliente': 'Rua Offline',
+        'numeroCliente': '15',
+        'bairroCliente': 'Centro',
+        'cidadeCliente': 'Cidade',
         'produtos': [
           {'id': '1', 'nome': 'Almoço', 'quantidade': 1, 'valorVenda': '50'}
         ],
@@ -65,11 +70,25 @@ class _DeliveryLocal extends ServicoDelivery {
       ];
 
   @override
-  Future<ConfigDelivery> configuracao() async => const ConfigDelivery();
+  Future<ConfigDelivery> configuracao() async =>
+      const ConfigDelivery(cobrancaEntrega: '1', valorEntrega: '4.00');
 
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'enderecos_clientes/listar_por_cliente.php') {
+      return [
+        {
+          'id': '2',
+          'endereco': 'Rua Offline',
+          'numero': '15',
+          'bairro': 'Centro',
+          'cidade': 'Cidade',
+          'padrao': 'Sim',
+          'valortaxabairro': '4.00',
+        }
+      ];
+    }
     consultasRemotas++;
     throw StateError('A consulta remota não deve ocorrer para o rascunho.');
   }
@@ -149,11 +168,29 @@ void main() {
       Modular.destroy();
     });
     await tester.pumpWidget(MaterialApp(
-      home: PaginaDelivery(provedor: m.lista),
+      home: RepaintBoundary(
+        key: const ValueKey('captura'),
+        child: PaginaDelivery(provedor: m.lista),
+      ),
     ));
     await tester.pumpAndSettle();
     expect(find.text('No aparelho (1)'), findsOneWidget);
+    expect(find.text('Excluir'), findsOneWidget);
     expect(find.text('Continuar pedido'), findsOneWidget);
+    final excluir = tester.getCenter(find.text('Excluir'));
+    final continuar = tester.getCenter(find.text('Continuar pedido'));
+    expect(excluir.dx, lessThan(continuar.dx));
+    expect(excluir.dy, continuar.dy);
+    await capturarTela(tester, 'delivery_rascunho_no_aparelho');
+
+    await tester.tap(find.text('Excluir'));
+    await tester.pumpAndSettle();
+    expect(find.text('Excluir rascunho?'), findsOneWidget);
+    expect(find.textContaining('não pode ser desfeita'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Continuar pedido'), findsOneWidget);
+
     await tester.tap(find.text('Continuar pedido'));
     await tester.pumpAndSettle();
 
@@ -176,6 +213,7 @@ void main() {
     expect(m.delivery.consultasRemotas, 0);
     expect(find.byType(PaginaSelecionarPagamento), findsNothing);
     expect(find.text('Ver sincronização'), findsOneWidget);
+    expect(find.text('Excluir'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 }

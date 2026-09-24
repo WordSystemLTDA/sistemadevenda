@@ -4,8 +4,10 @@ import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/banco_pix_modelo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/widgets/opcoes_entrega_finalizacao.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -43,6 +45,13 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   String? _erro;
   bool _perguntandoPagamento = false;
   bool _confirmandoPedido = false;
+  bool _alterandoEntrega = false;
+  late double _totalReceber;
+  late double _totalPedido;
+  late double _desconto;
+  late double _descontoFixo;
+  late double _acrescimo;
+  late double _descontoPercentual;
 
   bool carregando = true;
   MonitorAtualizacaoTela? _monitorFormas;
@@ -59,6 +68,13 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   @override
   void initState() {
     super.initState();
+    _totalReceber = widget.totalReceber;
+    _totalPedido = valorDelivery(widget.totalPedido);
+    _desconto = widget.desconto;
+    _acrescimo = valorDelivery(widget.acrescimo);
+    _descontoPercentual = valorDelivery(widget.descontoPercentual);
+    _descontoFixo =
+        _desconto - (_totalPedido * _descontoPercentual / 100) + _acrescimo;
     _monitorFormas = MonitorAtualizacaoTela(
       intervalo: const Duration(seconds: 10),
       estaAtiva: () =>
@@ -67,6 +83,16 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
     );
     EventosCatalogo.pagamentos.addListener(_aoAlterarFormas);
     listarBancos();
+  }
+
+  void _aoAtualizarEntrega(PedidoDelivery pedido) {
+    final novoTotal = pedido.restante;
+    setState(() {
+      _totalPedido = novoTotal;
+      _desconto =
+          novoTotal * _descontoPercentual / 100 - _acrescimo + _descontoFixo;
+      _totalReceber = novoTotal - _desconto;
+    });
   }
 
   @override
@@ -132,7 +158,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
   Future<void> _pagarDepois() async {
     if (provedorCardapio.tipo != TipoCardapio.delivery ||
         _perguntandoPagamento ||
-        _confirmandoPedido) {
+        _confirmandoPedido ||
+        _alterandoEntrega) {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -141,10 +168,8 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       final servico = Modular.get<ServicoDelivery>();
       if (provedor.idVenda.startsWith('delivery-local:')) {
         await servico.definirAjustesLocais(provedor.idVenda,
-            desconto: widget.desconto > 0 ? widget.desconto : 0,
-            acrescimo: widget.desconto < 0
-                ? widget.desconto.abs()
-                : double.tryParse(widget.acrescimo) ?? 0);
+            desconto: _desconto > 0 ? _desconto : 0,
+            acrescimo: _desconto < 0 ? _desconto.abs() : _acrescimo);
       }
       await servico.confirmar(provedor.idVenda);
       FeedbackUsuario.pedidoFinalizado();
@@ -168,6 +193,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
 
   Future<void> _perguntarFormaPagamento() async {
     if (_perguntandoPagamento ||
+        _alterandoEntrega ||
         provedorCardapio.tipo != TipoCardapio.delivery) {
       return;
     }
@@ -251,10 +277,12 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 height: 48,
                 child: OutlinedButton.icon(
                   key: const ValueKey('perguntar-pagamento-delivery'),
-                  onPressed:
-                      carregando || _erro != null || _perguntandoPagamento
-                          ? null
-                          : _perguntarFormaPagamento,
+                  onPressed: carregando ||
+                          _erro != null ||
+                          _perguntandoPagamento ||
+                          _alterandoEntrega
+                      ? null
+                      : _perguntarFormaPagamento,
                   icon: _perguntandoPagamento
                       ? const SizedBox.square(
                           dimension: 18,
@@ -279,7 +307,9 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 height: 48,
                 child: OutlinedButton.icon(
                   key: const ValueKey('pagar-depois-delivery'),
-                  onPressed: _perguntandoPagamento || _confirmandoPedido
+                  onPressed: _perguntandoPagamento ||
+                          _confirmandoPedido ||
+                          _alterandoEntrega
                       ? null
                       : _pagarDepois,
                   icon: _confirmandoPedido
@@ -327,7 +357,11 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () {
-                    if (carregando || _erro != null || _perguntandoPagamento) {
+                    if (carregando ||
+                        _erro != null ||
+                        _perguntandoPagamento ||
+                        _alterandoEntrega ||
+                        _totalReceber <= 0) {
                       return;
                     }
                     final nomePagamento = bancos
@@ -339,11 +373,11 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => PaginaFinalizarFormaPagamento(
-                          totalReceber: widget.totalReceber,
-                          desconto: widget.desconto,
+                          totalReceber: _totalReceber,
+                          desconto: _desconto,
                           acrescimo: widget.acrescimo,
                           descontoPercentual: widget.descontoPercentual,
-                          totalPedido: widget.totalPedido,
+                          totalPedido: _totalPedido.toStringAsFixed(2),
                           pagamentoselecionado: pagamentoSelecionado,
                           nomePagamentoSelecionado: nomePagamento,
                           recorrencia: _recorrencia,
@@ -376,157 +410,162 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
       body: Visibility(
         visible: carregando == false,
         replacement: const Center(child: CircularProgressIndicator()),
-        child: Padding(
+        child: ListView(
           padding: EdgeInsets.fromLTRB(12, 12, 12, ehDelivery ? 210 : 90),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_erro != null) ...[
-                Text(_erro!, style: TextStyle(color: cs.error)),
-                TextButton(
-                    onPressed: listarBancos,
-                    child: const Text('Tentar Novamente')),
-              ],
-              if (_recorrencia != null) ...[
-                Text(_recorrencia!.resumo),
-                const SizedBox(height: 8),
-              ],
-              // Hero A pagar
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      cs.primaryContainer,
-                      cs.primaryContainer.withValues(alpha: 0.55)
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
+          children: [
+            if (_erro != null) ...[
+              Text(_erro!, style: TextStyle(color: cs.error)),
+              TextButton(
+                  onPressed: listarBancos,
+                  child: const Text('Tentar Novamente')),
+            ],
+            if (_recorrencia != null) ...[
+              Text(_recorrencia!.resumo),
+              const SizedBox(height: 8),
+            ],
+            // Hero A pagar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    cs.primaryContainer,
+                    cs.primaryContainer.withValues(alpha: 0.55)
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Row(
-                  children: [
-                    SearchAnchor(
-                      builder:
-                          (BuildContext context, SearchController controller) {
-                        return IconButton.filledTonal(
-                          onPressed: () => controller.openView(),
-                          icon: const Icon(Icons.history_rounded, size: 18),
-                          tooltip: 'Histórico de pagamentos',
-                        );
-                      },
-                      suggestionsBuilder: (BuildContext context,
-                          SearchController controller) async {
-                        final res = await Modular.get<ServicoBalcao>()
-                            .listarHistoricoPagamentos(
-                                provedor.idVenda, TipoCardapio.balcao);
-                        return [
-                          ...res.map(
-                            (e) => Card(
-                              elevation: 3.0,
-                              margin: const EdgeInsets.all(5.0),
-                              child: InkWell(
-                                onTap: () {},
-                                borderRadius:
-                                    const BorderRadius.all(Radius.circular(8)),
-                                child: ListTile(
-                                  leading: const Icon(Icons.person_2_outlined),
-                                  title: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(e.pagamento),
-                                      Text(
-                                          "Valor ${double.parse(e.valor).obterReal()}"),
-                                      Text(
-                                          "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
-                                    ],
-                                  ),
-                                  subtitle: Text('ID: ${e.id}'),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  SearchAnchor(
+                    builder:
+                        (BuildContext context, SearchController controller) {
+                      return IconButton.filledTonal(
+                        onPressed: () => controller.openView(),
+                        icon: const Icon(Icons.history_rounded, size: 18),
+                        tooltip: 'Histórico de pagamentos',
+                      );
+                    },
+                    suggestionsBuilder: (BuildContext context,
+                        SearchController controller) async {
+                      final res = await Modular.get<ServicoBalcao>()
+                          .listarHistoricoPagamentos(
+                              provedor.idVenda, TipoCardapio.balcao);
+                      return [
+                        ...res.map(
+                          (e) => Card(
+                            elevation: 3.0,
+                            margin: const EdgeInsets.all(5.0),
+                            child: InkWell(
+                              onTap: () {},
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(8)),
+                              child: ListTile(
+                                leading: const Icon(Icons.person_2_outlined),
+                                title: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(e.pagamento),
+                                    Text(
+                                        "Valor ${double.parse(e.valor).obterReal()}"),
+                                    Text(
+                                        "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                  ],
                                 ),
+                                subtitle: Text('ID: ${e.id}'),
                               ),
                             ),
                           ),
-                        ];
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'A PAGAR',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.4,
-                              color:
-                                  cs.onPrimaryContainer.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.totalReceber.obterReal(),
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onPrimaryContainer,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Icon(Icons.credit_card_rounded, size: 18, color: cs.primary),
+                        ),
+                      ];
+                    },
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Selecione o método',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'A PAGAR',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.4,
+                            color: cs.onPrimaryContainer.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _totalReceber.obterReal(),
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onPrimaryContainer,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: GridView.builder(
-                  itemCount: _recorrencia?.mensal == true ? 1 : bancos.length,
-                  padding: EdgeInsets.zero,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 2.4,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = _recorrencia?.mensal == true
-                        ? bancos.firstWhere((banco) => banco.id == '2')
-                        : bancos[index];
-                    final selecionado = pagamentoSelecionado == item.id;
-                    return _BancoCard(
-                      banco: item,
-                      selecionado: selecionado,
-                      onTap: () =>
-                          setState(() => pagamentoSelecionado = item.id),
-                    );
-                  },
-                ),
+            ),
+            if (ehDelivery) ...[
+              const SizedBox(height: 18),
+              OpcoesEntregaFinalizacao(
+                aoAtualizar: _aoAtualizarEntrega,
+                aoAlterarCarregamento: (alterando) {
+                  if (mounted) {
+                    setState(() => _alterandoEntrega = alterando);
+                  }
+                },
               ),
             ],
-          ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Icon(Icons.credit_card_rounded, size: 18, color: cs.primary),
+                const SizedBox(width: 8),
+                const Text('Selecione o método',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _recorrencia?.mensal == true ? 1 : bancos.length,
+              padding: EdgeInsets.zero,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.4,
+              ),
+              itemBuilder: (context, index) {
+                final item = _recorrencia?.mensal == true
+                    ? bancos.firstWhere((banco) => banco.id == '2')
+                    : bancos[index];
+                final selecionado = pagamentoSelecionado == item.id;
+                return _BancoCard(
+                  banco: item,
+                  selecionado: selecionado,
+                  onTap: () => setState(() => pagamentoSelecionado = item.id),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

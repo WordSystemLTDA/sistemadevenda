@@ -1,3 +1,4 @@
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorFinalizarPagamento extends ChangeNotifier {
@@ -24,12 +25,32 @@ class ProvedorFinalizarPagamento extends ChangeNotifier {
   bool _deliveryComPagamentoParcial = false;
   bool get deliveryComPagamentoParcial => _deliveryComPagamentoParcial;
 
+  PedidoDelivery? _pedidoDelivery;
+  PedidoDelivery? get pedidoDelivery => _pedidoDelivery;
+  String? _ultimoEnderecoDelivery;
+  String? get ultimoEnderecoDelivery => _ultimoEnderecoDelivery;
+
   void definirContextoDelivery({
     bool? recorrenteVinculado,
     bool pagamentoParcial = false,
+    PedidoDelivery? pedido,
   }) {
     _deliveryRecorrenteVinculado = recorrenteVinculado;
     _deliveryComPagamentoParcial = pagamentoParcial;
+    _pedidoDelivery = pedido;
+    _ultimoEnderecoDelivery =
+        pedido?.tipoEntrega == '1' ? pedido?.texto('idendereco').trim() : null;
+    notifyListeners();
+  }
+
+  void atualizarPedidoDelivery(PedidoDelivery pedido) {
+    _pedidoDelivery = pedido;
+    if (pedido.tipoEntrega == '1' &&
+        pedido.texto('idendereco').trim().isNotEmpty &&
+        pedido.texto('idendereco') != '0') {
+      _ultimoEnderecoDelivery = pedido.texto('idendereco');
+    }
+    _valor = pedido.restante;
     notifyListeners();
   }
 }

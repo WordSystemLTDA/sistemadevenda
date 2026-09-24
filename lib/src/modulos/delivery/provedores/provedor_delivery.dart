@@ -79,6 +79,18 @@ class ProvedorDelivery extends ChangeNotifier {
           {Duration validade = const Duration(seconds: 45)}) =>
       atualizarPedido(pedido.comEtapa(etapa), validade: validade);
 
+  void removerPedido(String id) {
+    _pedidosRecentes.remove(id);
+    etapas = [
+      for (final etapa in etapas)
+        EtapaDelivery.comPedidos(
+          etapa,
+          etapa.pedidos.where((pedido) => pedido.id != id).toList(),
+        ),
+    ];
+    notifyListeners();
+  }
+
   List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {
     if (_pedidosRecentes.isEmpty || origem.isEmpty) return origem;
     final agora = DateTime.now();

@@ -32,26 +32,47 @@ class CardIngredientesCardapio extends StatelessWidget {
         item.permiteMontagemCardapio(AcaoIngredienteCardapio.trocar);
 
     final cabecalho = Row(children: [
-      Icon(
-        montagem.acao == AcaoIngredienteCardapio.sem
-            ? Icons.remove_circle_outline
-            : Icons.restaurant_menu_outlined,
-        size: 20,
-        color: alterado || separado ? cor : cs.onSurfaceVariant,
+      Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: (alterado || separado ? cor : cs.onSurfaceVariant)
+              .withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          montagem.acao == AcaoIngredienteCardapio.sem
+              ? Icons.remove_circle_outline_rounded
+              : Icons.restaurant_menu_rounded,
+          size: 22,
+          color: alterado || separado ? cor : cs.onSurfaceVariant,
+        ),
       ),
-      const SizedBox(width: 10),
+      const SizedBox(width: 12),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(
             montagem.nomeOriginal,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: cs.onSurface,
+              fontSize: 18,
+              height: 1.15,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           if (montagem.detalheVisualizacao != null) ...[
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               montagem.detalheVisualizacao!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                  fontSize: 12.5, color: cor, fontWeight: FontWeight.w600),
+                fontSize: 12.5,
+                color: cor,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ]),
@@ -68,22 +89,35 @@ class CardIngredientesCardapio extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: VisualAtendimento.superficie(context),
+        elevation: 1,
+        shadowColor: cs.shadow.withValues(alpha: 0.10),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
             color: alterado || separado
-                ? cor.withValues(alpha: 0.75)
-                : cs.outlineVariant.withValues(alpha: 0.7),
+                ? cor.withValues(alpha: 0.85)
+                : cs.outlineVariant,
+            width: alterado || separado ? 1.5 : 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               cabecalho,
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
+              Text(
+                'QUANTIDADE NO PRATO',
+                style: TextStyle(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+              const SizedBox(height: 7),
               _ControlePorcaoIngrediente(
                 item: item,
                 selecionada: montagem.acao,
@@ -145,13 +179,14 @@ class _ControlePorcaoIngrediente extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: raio,
-      child: Container(
-        foregroundDecoration: BoxDecoration(
-          border: Border.all(color: cs.outline.withValues(alpha: 0.75)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLow,
+          border: Border.all(color: cs.outline.withValues(alpha: 0.70)),
           borderRadius: raio,
         ),
         child: SizedBox(
-          height: 52,
+          height: 56,
           child: Row(children: [
             for (var i = 0; i < acoes.length; i++) ...[
               Expanded(
@@ -170,7 +205,7 @@ class _ControlePorcaoIngrediente extends StatelessWidget {
               if (i < acoes.length - 1)
                 Container(
                   width: 1,
-                  color: cs.outline.withValues(alpha: 0.55),
+                  color: cs.outline.withValues(alpha: 0.45),
                 ),
             ],
           ]),
@@ -197,40 +232,42 @@ class _OpcaoPorcaoIngrediente extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Material(
-      color: selecionada ? cs.primaryContainer : Colors.transparent,
+      color: selecionada ? cs.primary : Colors.transparent,
       borderRadius: borderRadius,
       child: InkWell(
         onTap: aoSelecionar,
         borderRadius: borderRadius,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Center(
-              child: Text(
-                acao.rotulo,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selecionada ? cs.primary : cs.onSurface,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (selecionada)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: cs.outline.withValues(alpha: 0.75),
-                      ),
-                      borderRadius: borderRadius,
+        child: Semantics(
+          button: true,
+          selected: selecionada,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selecionada) ...[
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 17,
+                      color: cs.onPrimary,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Text(
+                    acao.rotulo,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: selecionada ? cs.onPrimary : cs.onSurface,
+                      fontSize: 15,
+                      fontWeight:
+                          selecionada ? FontWeight.w800 : FontWeight.w700,
                     ),
                   ),
-                ),
+                ],
               ),
-          ],
+            ),
+          ),
         ),
       ),
     );
@@ -254,21 +291,49 @@ class _BotaoSecundarioIngrediente extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 48,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: selecionado ? cs.primary : cs.onSurfaceVariant,
-          backgroundColor: selecionado
-              ? cs.primaryContainer.withValues(alpha: 0.55)
-              : cs.surface,
+      height: 54,
+      child: Material(
+        color: selecionado ? cs.primary : cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(
-            color: selecionado ? cs.primary : cs.outlineVariant,
+            color:
+                selecionado ? cs.primary : cs.outline.withValues(alpha: 0.65),
+            width: selecionado ? 1.5 : 1,
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Opacity(
+            opacity: onPressed == null ? 0.45 : 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selecionado ? Icons.check_circle_rounded : icon,
+                    size: 21,
+                    color: selecionado ? cs.onPrimary : cs.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selecionado ? cs.onPrimary : cs.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

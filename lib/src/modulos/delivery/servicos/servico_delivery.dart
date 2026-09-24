@@ -228,6 +228,53 @@ class ServicoDelivery {
           await consultar('permissoes_bigchef/listar_permissoes_bigchef.php')
               as Map));
 
+  Future<Map<String, dynamic>> cliente(String id) async {
+    if ((int.tryParse(id) ?? 0) <= 0) {
+      throw StateError('Selecione um cliente para editar.');
+    }
+    final resposta =
+        await consultar('comandas/listar_clientes.php', {'pesquisa': id});
+    if (resposta is! List) {
+      throw StateError('Não foi possível consultar o cliente.');
+    }
+    final cliente = resposta
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((item) => item['id']?.toString() == id)
+        .firstOrNull;
+    if (cliente == null) {
+      throw StateError('Cliente não encontrado.');
+    }
+    return cliente;
+  }
+
+  Future<Map<String, dynamic>> editarCliente({
+    required String id,
+    required String nome,
+    required String celular,
+    required String email,
+    required String observacao,
+  }) async {
+    if ((int.tryParse(id) ?? 0) <= 0 || nome.trim().isEmpty) {
+      throw StateError('Confira o cliente e o nome informado.');
+    }
+    await salvar('comandas/inserir_cliente.php', {
+      'id': id,
+      'nome': nome.trim(),
+      'celular': celular.trim(),
+      'email': email.trim(),
+      'obs': observacao.trim(),
+    });
+    return {
+      'id': id,
+      'nome': nome.trim(),
+      'nome_puro': nome.trim(),
+      'celular': celular.trim(),
+      'email': email.trim(),
+      'obs': observacao.trim(),
+    };
+  }
+
   Future<PedidoDelivery> pedido(String id) async {
     if (FilaDeliveryOffline.local(id)) {
       return (await _exigirFilaLocal()).pedido(id);
@@ -495,6 +542,14 @@ class ServicoDelivery {
     await salvar('delivery/confirmar_pedido.php', {'id': id});
   }
 
+  Future<void> excluirRascunho(String id) async {
+    if (!FilaDeliveryOffline.local(id)) {
+      throw StateError(
+          'Somente rascunhos salvos no aparelho podem ser excluídos.');
+    }
+    await (await _exigirFilaLocal()).excluirRascunho(id);
+  }
+
   Future<Map<String, dynamic>> acao(String acao, PedidoDelivery pedido,
           [Map<String, dynamic> campos = const {}]) =>
       salvar('delivery/acoes_pedido.php', {
@@ -503,6 +558,49 @@ class ServicoDelivery {
         'id': pedido.id,
         'statusOrigem': pedido.etapa,
       });
+
+  Future<PedidoDelivery> alterarEntrega(
+    PedidoDelivery pedido, {
+    required String tipo,
+    required String endereco,
+    required double taxa,
+    Map<String, dynamic>? dadosEndereco,
+  }) async {
+    if (!['1', '2', '3'].contains(tipo) || taxa < 0 || !taxa.isFinite) {
+      throw StateError('Confira o tipo e a taxa da entrega.');
+    }
+    if (tipo == '1' && (int.tryParse(endereco) ?? 0) <= 0) {
+      throw StateError('Selecione um endereço para entrega.');
+    }
+
+    if (FilaDeliveryOffline.local(pedido.id)) {
+      final fila = await _exigirFilaLocal();
+      await fila.definirTaxa(
+        pedido.id,
+        tipo,
+        tipo == '1' ? taxa : 0,
+        endereco: endereco,
+        dadosEndereco: dadosEndereco,
+      );
+      final atualizado = await fila.pedido(pedido.id);
+      notificarPedidoAtualizado(atualizado);
+      return atualizado;
+    }
+
+    await acao('entrega', pedido, {
+      'tipo': tipo,
+      'endereco': tipo == '1' ? endereco : '0',
+      'taxa': tipo == '1' ? taxa.toStringAsFixed(2) : '0.00',
+    });
+    final atualizado = pedido.comEntrega(
+      tipo: tipo,
+      endereco: endereco,
+      taxa: taxa,
+      dadosEndereco: dadosEndereco,
+    );
+    notificarPedidoAtualizado(atualizado);
+    return atualizado;
+  }
 
   Future<Map<String, dynamic>> notificarConfirmacaoPedido(
     PedidoDelivery pedido, {

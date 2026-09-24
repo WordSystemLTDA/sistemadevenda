@@ -19,11 +19,17 @@ typedef AoCadastrarCliente = Future<ResultadoCadastroCliente> Function(
 class InserirCliente extends StatefulWidget {
   final ServicoDelivery? servicoEndereco;
   final AoCadastrarCliente? aoCadastrarCliente;
+  final AoCadastrarCliente? aoEditarCliente;
+  final String? idCliente;
+  final Map<String, dynamic>? dadosIniciais;
 
   const InserirCliente({
     super.key,
     this.servicoEndereco,
     this.aoCadastrarCliente,
+    this.aoEditarCliente,
+    this.idCliente,
+    this.dadosIniciais,
   });
 
   @override
@@ -49,12 +55,31 @@ class _InserirClienteState extends State<InserirCliente> {
   String? _nomeClienteCriado;
   String? _mensagemClienteCriado;
 
-  bool get _incluiEndereco => widget.servicoEndereco != null;
+  bool get _editando => (int.tryParse(widget.idCliente ?? '') ?? 0) > 0;
+  bool get _incluiEndereco => widget.servicoEndereco != null && !_editando;
 
   @override
   void initState() {
     super.initState();
+    final dados = widget.dadosIniciais;
+    if (dados != null) {
+      _nomeController.text = _valorInicial(dados,
+          ['nome_puro', 'nomePuro', 'nomeCliente', 'nomecliente', 'nome']);
+      _celularController.text =
+          _valorInicial(dados, ['celular', 'telefone', 'celularCliente']);
+      _emailController.text = _valorInicial(dados, ['email', 'e-mail']);
+      _observacaoController.text =
+          _valorInicial(dados, ['obs', 'observacao', 'observação']);
+    }
     if (_incluiEndereco) _carregarConfiguracaoEndereco();
+  }
+
+  String _valorInicial(Map<String, dynamic> dados, List<String> chaves) {
+    for (final chave in chaves) {
+      final valor = dados[chave]?.toString().trim() ?? '';
+      if (valor.isNotEmpty) return valor;
+    }
+    return '';
   }
 
   @override
@@ -100,6 +125,18 @@ class _InserirClienteState extends State<InserirCliente> {
   }
 
   Future<ResultadoCadastroCliente> _cadastrarCliente() {
+    if (_editando) {
+      final callback = widget.aoEditarCliente;
+      if (callback == null) {
+        throw StateError('Não foi possível editar este cliente.');
+      }
+      return callback(
+        _nomeController.text.trim(),
+        _celularController.text,
+        _emailController.text.trim(),
+        _observacaoController.text.trim(),
+      );
+    }
     final callback = widget.aoCadastrarCliente;
     if (callback != null) {
       return callback(
@@ -162,14 +199,19 @@ class _InserirClienteState extends State<InserirCliente> {
       if (!mounted) return;
 
       _mostrarMensagem(
-        _incluiEndereco
-            ? 'Cliente e endereço cadastrados com sucesso'
-            : (_mensagemClienteCriado ?? 'Cliente cadastrado com sucesso'),
+        _editando
+            ? (_mensagemClienteCriado ?? 'Cliente atualizado com sucesso')
+            : _incluiEndereco
+                ? 'Cliente e endereço cadastrados com sucesso'
+                : (_mensagemClienteCriado ?? 'Cliente cadastrado com sucesso'),
         sucesso: true,
       );
       Navigator.pop(context, {
         'idcliente': _idClienteCriado,
         'nomecliente': _nomeClienteCriado,
+        'celular': _celularController.text,
+        'email': _emailController.text.trim(),
+        'obs': _observacaoController.text.trim(),
         'enderecoPadraoCriado': _incluiEndereco,
       });
     } catch (erro) {
@@ -218,8 +260,8 @@ class _InserirClienteState extends State<InserirCliente> {
       appBar: AppBar(
         backgroundColor: cs.inversePrimary,
         elevation: 0,
-        title: const Text('Cadastrar cliente',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(_editando ? 'Editar cliente' : 'Cadastrar cliente',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
@@ -245,7 +287,9 @@ class _InserirClienteState extends State<InserirCliente> {
                       ? 'Salvando...'
                       : _incluiEndereco
                           ? 'Salvar cliente e endereço'
-                          : 'Salvar cliente',
+                          : _editando
+                              ? 'Salvar alterações'
+                              : 'Salvar cliente',
               style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -270,7 +314,8 @@ class _InserirClienteState extends State<InserirCliente> {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 100),
             children: [
-              _CartaoCabecalho(incluirEndereco: _incluiEndereco),
+              _CartaoCabecalho(
+                  incluirEndereco: _incluiEndereco, editando: _editando),
               const SizedBox(height: 18),
               const _LabelCampo(
                   icone: Icons.badge_outlined,
@@ -372,8 +417,10 @@ class _InserirClienteState extends State<InserirCliente> {
 
 class _CartaoCabecalho extends StatelessWidget {
   final bool incluirEndereco;
+  final bool editando;
 
-  const _CartaoCabecalho({required this.incluirEndereco});
+  const _CartaoCabecalho(
+      {required this.incluirEndereco, required this.editando});
 
   @override
   Widget build(BuildContext context) {
@@ -399,8 +446,12 @@ class _CartaoCabecalho extends StatelessWidget {
               color: cs.primaryContainer,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(Icons.person_add_alt_1_rounded,
-                size: 28, color: cs.onPrimaryContainer),
+            child: Icon(
+                editando
+                    ? Icons.manage_accounts_outlined
+                    : Icons.person_add_alt_1_rounded,
+                size: 28,
+                color: cs.onPrimaryContainer),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -409,7 +460,7 @@ class _CartaoCabecalho extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'NOVO CADASTRO',
+                  editando ? 'EDIÇÃO DE CADASTRO' : 'NOVO CADASTRO',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -427,9 +478,11 @@ class _CartaoCabecalho extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  incluirEndereco
-                      ? 'O endereço será salvo como padrão.'
-                      : 'Apenas o nome é obrigatório.',
+                  editando
+                      ? 'Atualize os dados e confirme as alterações.'
+                      : incluirEndereco
+                          ? 'O endereço será salvo como padrão.'
+                          : 'Apenas o nome é obrigatório.',
                   style: TextStyle(fontSize: 12.5, color: cs.onSurfaceVariant),
                 ),
               ],
