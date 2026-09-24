@@ -221,13 +221,18 @@ class ServicoRascunhoMensagem extends ServicoDelivery {
 class ServicoGeracaoCardapioTeste extends ServicoDelivery {
   ServicoGeracaoCardapioTeste(super.dio, super.usuario);
 
-  int consultasIngredientes = 0;
+  int consultasCardapio = 0;
   int uploads = 0;
 
   @override
-  Future<List<String>> ingredientesCardapioDoDia() async {
-    consultasIngredientes++;
-    return const ['Arroz', 'Feijão'];
+  Future<DadosCardapioDelivery> cardapioDoDia() async {
+    consultasCardapio++;
+    return DadosCardapioDelivery(
+      ingredientes: const ['Arroz', 'Feijão'],
+      produtos: const [
+        ProdutoCardapioDelivery(nome: 'Marmita M', valor: 30),
+      ],
+    );
   }
 
   @override
@@ -246,11 +251,40 @@ void main() {
     final bytes = await GeradorCardapioDelivery.gerar(
       nomeEmpresa: 'Restaurante Teste',
       ingredientes: const ['Arroz', 'Feijão', 'Carne de Panela'],
+      produtos: const [
+        ProdutoCardapioDelivery(nome: 'Marmita P', valor: 20),
+        ProdutoCardapioDelivery(nome: 'Marmita M', valor: 30),
+        ProdutoCardapioDelivery(nome: 'Marmita G', valor: 45),
+      ],
       data: DateTime(2026, 9, 24),
     );
 
     expect(bytes.length, greaterThan(1000));
     expect(bytes.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
+  });
+
+  test('carrega produtos marcados para o cardapio com nome e valor', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'})
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery(
+      '{"sucesso":true,"ingredientes":[{"nome":"Arroz"}],'
+      '"produtos":[{"nome":"Marmita M","valor":30.5}]}',
+    );
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+
+    final cardapio = await ServicoDelivery(dio, usuario).cardapioDoDia();
+
+    expect(cardapio.ingredientes, ['Arroz']);
+    expect(cardapio.produtos.single.nome, 'Marmita M');
+    expect(cardapio.produtos.single.valor, 30.5);
+    expect(cardapio.produtos.single.valorFormatado, contains('30,50'));
   });
 
   test('configuracao geral interpreta a unificacao do preparo', () {
@@ -357,7 +391,7 @@ void main() {
     final mensagem = await servico.enviarCardapioDoDia(cliente: '4');
 
     expect(mensagem, 'Cardápio enviado do cache!');
-    expect(servico.consultasIngredientes, 0);
+    expect(servico.consultasCardapio, 0);
     expect(servico.uploads, 0);
     expect(adapter.chamadas, hasLength(1));
   });
@@ -385,7 +419,7 @@ void main() {
     final mensagem = await servico.enviarCardapioDoDia(cliente: '4');
 
     expect(mensagem, 'Cardápio criado e enviado!');
-    expect(servico.consultasIngredientes, 1);
+    expect(servico.consultasCardapio, 1);
     expect(servico.uploads, 1);
   });
   test('confirmacao do rascunho local usa cliente e omite numero do pedido',

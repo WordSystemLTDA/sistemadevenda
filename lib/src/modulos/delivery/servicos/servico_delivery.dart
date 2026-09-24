@@ -840,7 +840,7 @@ class ServicoDelivery {
     return (resposta['mensagem'] ?? 'Mensagem enviada com sucesso.').toString();
   }
 
-  Future<List<String>> ingredientesCardapioDoDia() async {
+  Future<DadosCardapioDelivery> cardapioDoDia() async {
     final resposta = await _requisicao(
       'delivery/listar_cardapio_dia.php',
       const {},
@@ -853,21 +853,36 @@ class ServicoDelivery {
               .toString()
           : 'Resposta inválida do cardápio do dia.');
     }
-    final dados = resposta['ingredientes'];
-    if (dados is! List) {
+    final dadosIngredientes = resposta['ingredientes'];
+    final dadosProdutos = resposta['produtos'];
+    if (dadosIngredientes is! List ||
+        (dadosProdutos != null && dadosProdutos is! List)) {
       throw StateError('Resposta inválida do cardápio do dia.');
     }
-    final ingredientes = dados
+    final ingredientes = dadosIngredientes
         .map((item) => item is Map ? item['nome'] : item)
         .map((item) => item?.toString().trim() ?? '')
         .where((item) => item.isNotEmpty)
         .toSet()
         .toList();
-    if (ingredientes.isEmpty) {
-      throw StateError('Não há ingredientes configurados para hoje.');
+    final produtos = (dadosProdutos is List ? dadosProdutos : const [])
+        .whereType<Map>()
+        .map(ProdutoCardapioDelivery.fromMap)
+        .where((produto) => produto.nome.isNotEmpty)
+        .toList();
+    if (ingredientes.isEmpty && produtos.isEmpty) {
+      throw StateError(
+        'Não há ingredientes ou produtos configurados para hoje.',
+      );
     }
-    return ingredientes;
+    return DadosCardapioDelivery(
+      ingredientes: ingredientes,
+      produtos: produtos,
+    );
   }
+
+  Future<List<String>> ingredientesCardapioDoDia() async =>
+      (await cardapioDoDia()).ingredientes;
 
   Future<String> enviarCardapioDoDia({
     String cliente = '0',
@@ -889,10 +904,11 @@ class ServicoDelivery {
     );
     if (existente != null) return existente;
 
-    final ingredientes = await ingredientesCardapioDoDia();
+    final cardapio = await cardapioDoDia();
     final imagem = await GeradorCardapioDelivery.gerar(
       nomeEmpresa: usuario.usuario?.nomeEmpresa ?? '',
-      ingredientes: ingredientes,
+      ingredientes: cardapio.ingredientes,
+      produtos: cardapio.produtos,
     );
     return enviarImagemCardapio(
       imagem,
