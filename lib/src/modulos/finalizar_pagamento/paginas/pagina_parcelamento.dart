@@ -216,6 +216,17 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     }());
   }
 
+  void _retornarRecebimentoObrigatorioConcluido() {
+    final navegador = Navigator.of(context, rootNavigator: true);
+    navegador.popUntil(
+      (rota) =>
+          rota.settings.name ==
+              ProvedorFinalizarPagamento.rotaRecebimentoObrigatorioDelivery ||
+          rota.isFirst,
+    );
+    if (navegador.canPop()) navegador.pop(true);
+  }
+
   Future<String?> _enviarConfirmacaoPedidoAposFinalizar(
       ServicoDelivery servico, PedidoDelivery pedido) async {
     if (!widget.confirmacaoPedidoHabilitada || !pedido.possuiCelularCliente) {
@@ -284,6 +295,16 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
         pagamentoIntegral ? pedido : await servico.pedido(widget.idVenda);
     final quitado = pagamentoIntegral || atualizado.restante <= 0.009;
     if (quitado) {
+      if (provedor.recebimentoObrigatorioDelivery) {
+        final falhaConfirmacao =
+            await _enviarConfirmacaoPedidoAposFinalizar(servico, atualizado);
+        _notificarDeliveryFinalizadoEmSegundoPlano(servico, widget.idVenda);
+        if (!mounted) return;
+        final mensageiro = ScaffoldMessenger.maybeOf(context);
+        _retornarRecebimentoObrigatorioConcluido();
+        _mostrarFalhaConfirmacaoAposRetorno(mensageiro, falhaConfirmacao);
+        return;
+      }
       await servico.concluir(atualizado);
       await servico.confirmar(widget.idVenda);
       final falhaConfirmacao =
@@ -316,7 +337,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       return;
     }
     Navigator.popUntil(
-        context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+        context, ModalRoute.withName(provedor.rotaInicioFluxoDelivery));
   }
 
   void finalizar() async {

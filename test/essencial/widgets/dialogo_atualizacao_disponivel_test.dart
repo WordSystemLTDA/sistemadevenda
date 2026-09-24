@@ -6,7 +6,6 @@ void main() {
   Future<void> abrirDialogo(
     WidgetTester tester, {
     required Future<bool> Function() onAtualizar,
-    Future<bool> Function()? onBaixarApk,
     Size tamanho = const Size(393, 852),
     double escalaTexto = 1,
   }) async {
@@ -35,7 +34,6 @@ void main() {
                   versaoInstalada: '1.0.36',
                   versaoDisponivel: '1.0.37',
                   onAtualizar: onAtualizar,
-                  onBaixarApk: onBaixarApk,
                 ),
                 child: const Text('Abrir'),
               ),
@@ -61,27 +59,8 @@ void main() {
       find.text('Sua conta e seus pedidos permanecem disponíveis.'),
       findsOneWidget,
     );
-    expect(find.text('Atualizar agora'), findsOneWidget);
+    expect(find.text('Atualizar aplicativo'), findsOneWidget);
     expect(find.text('Baixar APK'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('oferece download do APK quando configurado', (tester) async {
-    var baixouApk = false;
-    await abrirDialogo(
-      tester,
-      onAtualizar: () async => true,
-      onBaixarApk: () async {
-        baixouApk = true;
-        return true;
-      },
-    );
-
-    await tester.ensureVisible(find.byKey(const ValueKey('baixar-apk')));
-    await tester.tap(find.byKey(const ValueKey('baixar-apk')));
-    await tester.pump();
-
-    expect(baixouApk, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -104,7 +83,6 @@ void main() {
     await abrirDialogo(
       tester,
       onAtualizar: () async => true,
-      onBaixarApk: () async => true,
       tamanho: const Size(320, 568),
       escalaTexto: 1.35,
     );

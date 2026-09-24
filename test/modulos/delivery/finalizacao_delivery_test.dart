@@ -512,6 +512,54 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+      'recebimento obrigatorio usa fluxo normal e retorna sem finalizar delivery',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    final pagamento = Modular.get<ProvedorFinalizarPagamento>();
+    final pedido = await m.delivery.pedido('10118');
+    pagamento.idVenda = pedido.id;
+    pagamento.valor = pedido.restante;
+    pagamento.definirContextoDelivery(
+      recorrenteVinculado: pedido.recorrenteVinculado,
+      pedido: pedido,
+      recebimentoObrigatorio: true,
+    );
+
+    bool? recebeu;
+    final contexto = tester.element(find.byType(PaginaCarrinho));
+    unawaited(Navigator.of(contexto)
+        .push<bool>(MaterialPageRoute(
+          settings: const RouteSettings(
+            name: ProvedorFinalizarPagamento.rotaRecebimentoObrigatorioDelivery,
+          ),
+          builder: (_) => const PaginaFinalizarAcrescimo(),
+        ))
+        .then((resultado) => recebeu = resultado));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaFinalizarAcrescimo), findsOneWidget);
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('pagar-depois-delivery')), findsNothing);
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(recebeu, isTrue);
+    expect(m.delivery.pagamentos, 1);
+    expect(m.delivery.conclusoes, 0);
+    expect(m.delivery.confirmacoes, 0);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('delivery recorrente preserva erro da consulta de pagamento',
       (tester) async {
     final m = await abrir(tester);

@@ -256,6 +256,17 @@ class _PaginaFinalizarFormaPagamentoState
     }());
   }
 
+  void _retornarRecebimentoObrigatorioConcluido() {
+    final navegador = Navigator.of(context, rootNavigator: true);
+    navegador.popUntil(
+      (rota) =>
+          rota.settings.name ==
+              ProvedorFinalizarPagamento.rotaRecebimentoObrigatorioDelivery ||
+          rota.isFirst,
+    );
+    if (navegador.canPop()) navegador.pop(true);
+  }
+
   Future<void> _finalizarDelivery() async {
     final servico = Modular.get<ServicoDelivery>();
     final valorRecebido = double.tryParse(_dinheiroController.text) ?? 0;
@@ -295,6 +306,16 @@ class _PaginaFinalizarFormaPagamentoState
         pagamentoIntegral ? pedido : await servico.pedido(provedor.idVenda);
     final quitado = pagamentoIntegral || atualizado.restante <= 0.009;
     if (quitado) {
+      if (provedor.recebimentoObrigatorioDelivery) {
+        final falhaConfirmacao =
+            await _enviarConfirmacaoPedidoAposFinalizar(servico, atualizado);
+        _notificarDeliveryFinalizadoEmSegundoPlano(servico, provedor.idVenda);
+        if (!mounted) return;
+        final mensageiro = ScaffoldMessenger.maybeOf(context);
+        _retornarRecebimentoObrigatorioConcluido();
+        _mostrarFalhaConfirmacaoAposRetorno(mensageiro, falhaConfirmacao);
+        return;
+      }
       await servico.concluir(atualizado);
       await servico.confirmar(provedor.idVenda);
       final falhaConfirmacao =
@@ -328,7 +349,7 @@ class _PaginaFinalizarFormaPagamentoState
       return;
     }
     Navigator.popUntil(
-        context, ModalRoute.withName('PaginaFinalizarAcrescimo'));
+        context, ModalRoute.withName(provedor.rotaInicioFluxoDelivery));
   }
 
   Widget _acoesWhatsappDelivery({

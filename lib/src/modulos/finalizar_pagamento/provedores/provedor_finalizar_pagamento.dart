@@ -2,6 +2,9 @@ import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:flutter/material.dart';
 
 class ProvedorFinalizarPagamento extends ChangeNotifier {
+  static const rotaRecebimentoObrigatorioDelivery =
+      'PaginaRecebimentoObrigatorioDelivery';
+
   String _idVenda = '0';
   String get idVenda => _idVenda;
   set idVenda(String value) {
@@ -25,6 +28,12 @@ class ProvedorFinalizarPagamento extends ChangeNotifier {
   bool _deliveryComPagamentoParcial = false;
   bool get deliveryComPagamentoParcial => _deliveryComPagamentoParcial;
 
+  bool _recebimentoObrigatorioDelivery = false;
+  bool get recebimentoObrigatorioDelivery => _recebimentoObrigatorioDelivery;
+  String get rotaInicioFluxoDelivery => _recebimentoObrigatorioDelivery
+      ? rotaRecebimentoObrigatorioDelivery
+      : 'PaginaFinalizarAcrescimo';
+
   PedidoDelivery? _pedidoDelivery;
   PedidoDelivery? get pedidoDelivery => _pedidoDelivery;
   String? _ultimoEnderecoDelivery;
@@ -34,12 +43,20 @@ class ProvedorFinalizarPagamento extends ChangeNotifier {
     bool? recorrenteVinculado,
     bool pagamentoParcial = false,
     PedidoDelivery? pedido,
+    bool recebimentoObrigatorio = false,
   }) {
     _deliveryRecorrenteVinculado = recorrenteVinculado;
     _deliveryComPagamentoParcial = pagamentoParcial;
     _pedidoDelivery = pedido;
+    _recebimentoObrigatorioDelivery = recebimentoObrigatorio;
     _ultimoEnderecoDelivery =
         pedido?.tipoEntrega == '1' ? pedido?.texto('idendereco').trim() : null;
+    notifyListeners();
+  }
+
+  void encerrarRecebimentoObrigatorioDelivery() {
+    if (!_recebimentoObrigatorioDelivery) return;
+    _recebimentoObrigatorioDelivery = false;
     notifyListeners();
   }
 

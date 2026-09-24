@@ -303,36 +303,40 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                 ),
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  key: const ValueKey('pagar-depois-delivery'),
-                  onPressed: _perguntandoPagamento ||
-                          _confirmandoPedido ||
-                          _alterandoEntrega
-                      ? null
-                      : _pagarDepois,
-                  icon: _confirmandoPedido
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.schedule_rounded, size: 20),
-                  label: const Text(
-                    'Pagar depois',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        isDark ? const Color(0xFF1F2937) : Colors.white,
-                    foregroundColor: cs.primary,
-                    side: BorderSide(color: cs.primary.withValues(alpha: 0.45)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+              if (!provedor.recebimentoObrigatorioDelivery) ...[
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('pagar-depois-delivery'),
+                    onPressed: _perguntandoPagamento ||
+                            _confirmandoPedido ||
+                            _alterandoEntrega
+                        ? null
+                        : _pagarDepois,
+                    icon: _confirmandoPedido
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.schedule_rounded, size: 20),
+                    label: const Text(
+                      'Pagar depois',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor:
+                          isDark ? const Color(0xFF1F2937) : Colors.white,
+                      foregroundColor: cs.primary,
+                      side:
+                          BorderSide(color: cs.primary.withValues(alpha: 0.45)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
+              ],
             ],
             Container(
               width: double.infinity,

@@ -10,7 +10,6 @@ import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/filtros_delivery.dart';
-import 'package:app/src/modulos/delivery/paginas/widgets/pagamento_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/menu_pedido_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/acoes_menu_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
@@ -20,6 +19,7 @@ import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +28,8 @@ import 'package:intl/intl.dart';
 
 class PaginaDelivery extends StatefulWidget {
   final ProvedorDelivery? provedor;
-  const PaginaDelivery({super.key, this.provedor});
+  final Future<bool> Function(PedidoDelivery pedido)? receberPedido;
+  const PaginaDelivery({super.key, this.provedor, this.receberPedido});
   @override
   State<PaginaDelivery> createState() => _PaginaDeliveryState();
 }
@@ -159,6 +160,46 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         acrescimo: pedido.texto('valorAcrescimo', '0'),
         descontoPercentual: '0',
         totalPedido: pedido.total.toStringAsFixed(2)));
+  }
+
+  Future<bool> _receberNoFluxoNormal(PedidoDelivery pedido) async {
+    if (widget.receberPedido != null) {
+      return widget.receberPedido!(pedido);
+    }
+
+    final cardapio = Modular.get<ProvedorCardapio>();
+    cardapio.tipo = TipoCardapio.delivery;
+    cardapio.id = pedido.id;
+    cardapio.idCliente = pedido.cliente;
+    cardapio.tipodeentrega = pedido.tipoEntrega;
+
+    final pagamento = Modular.get<ProvedorFinalizarPagamento>();
+    pagamento.idVenda = pedido.id;
+    pagamento.valor = pedido.restante;
+    pagamento.definirContextoDelivery(
+      recorrenteVinculado: pedido.recorrenteVinculado,
+      pagamentoParcial: pedido.possuiPagamentoRegistrado,
+      pedido: pedido,
+      recebimentoObrigatorio: true,
+    );
+
+    _rotaAberta = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      final recebeu = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          settings: const RouteSettings(
+            name: ProvedorFinalizarPagamento.rotaRecebimentoObrigatorioDelivery,
+          ),
+          builder: (_) => const PaginaFinalizarAcrescimo(),
+        ),
+      );
+      return recebeu == true;
+    } finally {
+      _rotaAberta = false;
+      pagamento.encerrarRecebimentoObrigatorioDelivery();
+    }
   }
 
   Future<void> _excluirRascunho(PedidoDelivery pedido) async {
@@ -327,8 +368,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       if (!mounted) return false;
       var precisaRevalidar = false;
       if (config.exigePagamento(atual, alvo)) {
-        final recebeu =
-            await receberDelivery(context, _provedor.servico, atual.id);
+        final recebeu = await _receberNoFluxoNormal(atual);
         if (recebeu != true || !mounted) return false;
         atual = await _provedor.servico.pedido(pedido.id);
         if (atual.restante > .009) {

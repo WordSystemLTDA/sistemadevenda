@@ -14,6 +14,7 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
   final bool possuiEntregador;
   int consultasEntregadores = 0;
   final Set<String> perderRespostaPara = {};
+  int recebimentos = 0;
 
   _ServicoLoteDelivery({
     this.exigirEntregador = false,
@@ -97,6 +98,15 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
 
   @override
   Future<PedidoDelivery> pedido(String id) async => pedidos[id]!;
+
+  Future<bool> quitar(PedidoDelivery pedido) async {
+    recebimentos++;
+    pedidos[pedido.id] = PedidoDelivery.fromMap({
+      ...pedidos[pedido.id]!.dados,
+      'somaValorHistorico': pedidos[pedido.id]!.total.toStringAsFixed(2),
+    });
+    return true;
+  }
 
   @override
   Future<dynamic> consultar(String rota,
@@ -350,23 +360,60 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
-  testWidgets('cancelar pagamento nao avanca o pedido', (tester) async {
+  testWidgets('cancelar fluxo de recebimento nao avanca o pedido',
+      (tester) async {
     final s = ServicoDeliveryTeste()..config = const ConfigDelivery();
     final p = ProvedorDelivery(s);
     addTearDown(p.dispose);
-    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaDelivery(
+        provedor: p,
+        receberPedido: (_) async => false,
+      ),
+    ));
     await tester.pumpAndSettle();
     final receber = find.textContaining('Receber R\$').first;
     await tester.ensureVisible(receber);
     await tester.tap(receber);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Receber pagamento'), findsOneWidget);
-    await tester.tap(find.text('Fechar'));
     await tester.pumpAndSettle();
     expect(s.gravacoes, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('pagamento obrigatorio concluido avanca para a proxima etapa',
+      (tester) async {
+    final s = _ServicoLoteDelivery()
+      ..config = const ConfigDelivery(
+        receberNoFinal: false,
+        imprimirPreparo: false,
+      );
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaDelivery(
+        provedor: p,
+        receberPedido: s.quitar,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final receber = find.textContaining('Receber R\$').first;
+    await tester.ensureVisible(receber);
+    await tester.tap(receber);
+    await tester.pumpAndSettle();
+
+    expect(s.recebimentos, 1);
+    expect(s.pedidos['101']!.restante, 0);
+    expect(s.pedidos['101']!.etapa, '2');
+    expect(
+      s.gravacoes
+          .where(
+              (registro) => registro.$1 == 'delivery/mudar_status_delivery.php')
+          .length,
+      1,
+    );
+    expect(tester.takeException(), isNull);
   });
   for (final size in [
     const Size(320, 568),

@@ -8,7 +8,6 @@ Future<void> exibirDialogoAtualizacaoDisponivel({
   required String versaoInstalada,
   required String versaoDisponivel,
   required AcaoAtualizacao onAtualizar,
-  AcaoAtualizacao? onBaixarApk,
 }) {
   return showDialog<void>(
     context: context,
@@ -17,7 +16,6 @@ Future<void> exibirDialogoAtualizacaoDisponivel({
       versaoInstalada: versaoInstalada,
       versaoDisponivel: versaoDisponivel,
       onAtualizar: onAtualizar,
-      onBaixarApk: onBaixarApk,
     ),
   );
 }
@@ -35,13 +33,11 @@ class DialogoAtualizacaoDisponivel extends StatefulWidget {
     required this.versaoInstalada,
     required this.versaoDisponivel,
     required this.onAtualizar,
-    this.onBaixarApk,
   });
 
   final String versaoInstalada;
   final String versaoDisponivel;
   final AcaoAtualizacao onAtualizar;
-  final AcaoAtualizacao? onBaixarApk;
 
   @override
   State<DialogoAtualizacaoDisponivel> createState() =>
@@ -241,24 +237,9 @@ class _DialogoAtualizacaoDisponivelState
                         ),
                       )
                     : const Icon(Icons.open_in_new_rounded),
-                label: Text(_executando ? 'Abrindo...' : 'Atualizar agora'),
+                label:
+                    Text(_executando ? 'Abrindo...' : 'Atualizar aplicativo'),
               ),
-              if (widget.onBaixarApk != null) ...[
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  key: const ValueKey('baixar-apk'),
-                  onPressed:
-                      _executando ? null : () => _executar(widget.onBaixarApk!),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Baixar APK'),
-                ),
-              ],
               const SizedBox(height: 12),
               Text(
                 'Você será direcionado para a página segura de atualização.',

@@ -127,16 +127,12 @@ class _PaginaInicioState extends State<PaginaInicio>
       final linkAtualizacao = Platform.isIOS
           ? versoes.linkAtualizacaoIos
           : versoes.linkAtualizacaoAndroid;
-      final linkApk = versoes.linkBaixarApk.trim();
 
       await exibirDialogoAtualizacaoDisponivel(
         context: context,
         versaoInstalada: versaoInstalada,
         versaoDisponivel: versaoDisponivel,
         onAtualizar: () => abrirLinkExternoAtualizacao(linkAtualizacao),
-        onBaixarApk: Platform.isAndroid && linkApk.isNotEmpty
-            ? () => abrirLinkExternoAtualizacao(linkApk)
-            : null,
       );
     }
   }
