@@ -34,6 +34,28 @@ import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
+PedidoDelivery montarConfirmacaoPedidoCarrinho({
+  required PedidoDelivery pedido,
+  required List<Modelowordprodutos> novosItens,
+  required double valorNovosItens,
+  required bool pedidoRegistrado,
+}) {
+  final produtos = pedidoRegistrado
+      ? pedido.produtos
+      : <Modelowordprodutos>[...pedido.produtos, ...novosItens];
+  if (produtos.isEmpty) {
+    throw StateError('O pedido não tem produtos para enviar.');
+  }
+  final total =
+      pedidoRegistrado ? pedido.total : pedido.total + valorNovosItens;
+  return PedidoDelivery.fromMap({
+    ...pedido.dados,
+    'produtos': produtos.map((produto) => produto.toMap()).toList(),
+    'quantidadeprodutos': produtos.length.toString(),
+    'valorVenda': total.toStringAsFixed(2),
+  });
+}
+
 class PaginaCarrinho extends StatefulWidget {
   final ContextoCarrinho? contextoVoz;
   final String? assinaturaVoz, servidorVoz, usuarioVoz;
@@ -525,22 +547,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       final novosItens = _finalizacao.pedidoRegistrado
           ? const <Modelowordprodutos>[]
           : await carrinhoProvedor.obterItensParaFinalizar(contexto);
-      final produtos = pedido.salvoNoAparelho || _finalizacao.pedidoRegistrado
-          ? pedido.produtos
-          : <Modelowordprodutos>[...pedido.produtos, ...novosItens];
-      if (produtos.isEmpty) {
-        throw StateError('O pedido não tem produtos para enviar.');
-      }
-
-      final total = pedido.salvoNoAparelho || _finalizacao.pedidoRegistrado
-          ? pedido.total
-          : pedido.total + resumo.precoTotal;
-      final pedidoParaMensagem = PedidoDelivery.fromMap({
-        ...pedido.dados,
-        'produtos': produtos.map((produto) => produto.toMap()).toList(),
-        'quantidadeprodutos': produtos.length.toString(),
-        'valorVenda': total.toStringAsFixed(2),
-      });
+      final pedidoParaMensagem = montarConfirmacaoPedidoCarrinho(
+        pedido: pedido,
+        novosItens: novosItens,
+        valorNovosItens: resumo.precoTotal,
+        pedidoRegistrado: _finalizacao.pedidoRegistrado,
+      );
       final resposta =
           await servico.notificarConfirmacaoPedido(pedidoParaMensagem);
       if (!mounted) return;

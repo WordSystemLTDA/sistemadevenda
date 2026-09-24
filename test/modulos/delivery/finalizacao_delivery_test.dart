@@ -24,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../cardapio/finalizacao_carrinhos_test.dart';
 import '../../suporte/captura_tela.dart';
+import '../../essencial/utils/impressao_preparo_test.dart' as impressao;
 
 class _DeliveryFinalizacao extends ServicoDelivery {
   _DeliveryFinalizacao(super.dio, super.usuario);
@@ -176,6 +177,33 @@ void main() {
 
     provedor.definirContextoDelivery(recorrenteVinculado: false);
     expect(provedor.rotaRetornoDelivery, 'PaginaDelivery');
+  });
+
+  test('confirmacao local usa os produtos que ainda estao no carrinho', () {
+    final produto = impressao.produto(nome: 'Pizza')
+      ..valorVenda = '84'
+      ..quantidade = 1;
+    final pedido = PedidoDelivery.fromMap({
+      'id': 'delivery-local:teste',
+      'idCliente': '209',
+      'celularCliente': '(44) 99999-9999',
+      'tipodeentrega': '1',
+      'valordaentrega': '4.00',
+      'valorVenda': '4.00',
+      'produtos': const <dynamic>[],
+    });
+
+    final confirmacao = montarConfirmacaoPedidoCarrinho(
+      pedido: pedido,
+      novosItens: [produto],
+      valorNovosItens: 84,
+      pedidoRegistrado: false,
+    );
+
+    expect(confirmacao.produtos, hasLength(1));
+    expect(confirmacao.produtos.single.nome, 'Pizza');
+    expect(confirmacao.taxaEntrega, 4);
+    expect(confirmacao.total, 88);
   });
 
   Future<_ModuloDelivery> abrir(WidgetTester tester,
