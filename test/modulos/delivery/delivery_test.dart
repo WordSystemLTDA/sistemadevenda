@@ -1001,7 +1001,7 @@ void main() {
     expect(json, contains('MEIA BORDA - (1/2) Cheddar'));
     expect(json, isNot(contains('Catupiry')));
   });
-  test('comprovante do entregador envia somente o produto normal', () async {
+  test('comprovante resumido preserva somente os sabores da pizza', () async {
     final servidor = impressao.ServidorTeste();
     final s = ServicoDeliveryTeste();
     final produtoCardapio = impressao.produto(
@@ -1036,14 +1036,14 @@ void main() {
     expect(produto['observacao'], isNull);
     expect(produto['ingredientes'], isEmpty);
     expect(produto['opcoesPacotes'], isNull);
-    expect(produto['opcoesPacotesListaFinal'], isNull);
-    for (final detalhe in [
-      'Sem cebola',
-      'Calabresa',
-      'Cheddar',
-      'Catupiry',
-      'Milho'
-    ]) {
+    final opcoes = produto['opcoesPacotesListaFinal'] as List;
+    expect(opcoes, hasLength(1));
+    expect(opcoes.single['id'], 10);
+    expect(
+      (opcoes.single['dados'] as List).map((sabor) => sabor['nome']),
+      ['Calabresa', 'Chocolate'],
+    );
+    for (final detalhe in ['Sem cebola', 'Cheddar', 'Catupiry', 'Milho']) {
       expect(jsonEncode(produto), isNot(contains(detalhe)));
     }
   });

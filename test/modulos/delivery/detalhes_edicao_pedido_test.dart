@@ -269,16 +269,22 @@ void main() {
     expect(servidor.mensagens.map((m) => m['tipoImpressao']), ['1', '3']);
     final preparo = jsonEncode(servidor.mensagens.first['produtos']);
     final entregador = jsonEncode(servidor.mensagens.last['produtos']);
-    for (final texto in [
+    for (final sabor in [
+      'Mussarela',
       'Catupiry Especial',
       'Dois Queijos',
+    ]) {
+      expect(preparo, contains(sabor));
+      expect(entregador, contains(sabor));
+    }
+    for (final detalhe in [
       'Cheddar',
       'Goiabada',
       'Milho',
-      'Sem cebola'
+      'Sem cebola',
     ]) {
-      expect(preparo, contains(texto));
-      expect(entregador, isNot(contains(texto)));
+      expect(preparo, contains(detalhe));
+      expect(entregador, isNot(contains(detalhe)));
     }
     expect(servidor.mensagens.last['total'], '89.00');
     expect(servidor.mensagens.last['somaValorHistorico'], '88.00');

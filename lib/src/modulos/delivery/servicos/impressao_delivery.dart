@@ -471,12 +471,32 @@ class ImpressaoDelivery {
   static Map<String, dynamic> _produtoSomenteResumo(
       Modelowordprodutos produto) {
     final mapa = produto.toMap();
+    final opcoesFinais = mapa['opcoesPacotesListaFinal'];
+    final opcoesOriginais = mapa['opcoesPacotes'];
+    final opcoes = opcoesFinais is List && opcoesFinais.isNotEmpty
+        ? opcoesFinais
+        : opcoesOriginais is List
+            ? opcoesOriginais
+            : const <dynamic>[];
+    final saboresPizza = opcoes.where(_grupoSaboresPizza).toList();
     mapa['ingredientes'] = <dynamic>[];
     mapa['tamanhosPizza'] = null;
     mapa['opcoesPacotes'] = null;
-    mapa['opcoesPacotesListaFinal'] = null;
+    mapa['opcoesPacotesListaFinal'] =
+        saboresPizza.isEmpty ? null : saboresPizza;
     mapa['observacao'] = null;
     return mapa;
+  }
+
+  static bool _grupoSaboresPizza(Object? opcao) {
+    if (opcao is! Map) return false;
+    final id = (opcao['id'] ?? '').toString().trim();
+    final titulo = _textoNormalizado(opcao['titulo']);
+    final dados = opcao['dados'];
+    return (id == '10' ||
+            (titulo.contains('sabores') && titulo.contains('pizza'))) &&
+        dados is List &&
+        dados.isNotEmpty;
   }
 
   static List<String> comprovantes(ServicoDelivery servico,
