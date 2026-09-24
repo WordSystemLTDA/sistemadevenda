@@ -18,6 +18,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+const _linkApkAndroid =
+    'https://bigchef.com.br/sistema/apis_restaurantes/imagens/apk/app-release.apk';
+
 class DrawerCustomizado extends StatefulWidget {
   const DrawerCustomizado({super.key});
 
@@ -356,12 +359,9 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado>
                               leading: const Icon(Icons.download),
                               onTap: () async {
                                 try {
-                                  if (await canLaunchUrl(Uri.parse(
-                                      configProvider.configs?.linkBaixarApk ??
-                                          ''))) {
-                                    await launchUrl(Uri.parse(
-                                        configProvider.configs?.linkBaixarApk ??
-                                            ''));
+                                  final link = Uri.parse(_linkApkAndroid);
+                                  if (await canLaunchUrl(link)) {
+                                    await launchUrl(link);
                                   }
                                 } catch (e) {
                                   if (kDebugMode) {}
