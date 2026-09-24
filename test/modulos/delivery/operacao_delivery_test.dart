@@ -32,7 +32,12 @@ class ServicoCancelamentoTeste extends ServicoDeliveryTeste {
 class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
   final List<Map<String, dynamic>> enderecos;
   final String requeridoEndereco;
-  ServicoEnderecoPadraoTeste(this.enderecos, {this.requeridoEndereco = 'Sim'});
+  final String ativarCardapioDigital;
+  ServicoEnderecoPadraoTeste(
+    this.enderecos, {
+    this.requeridoEndereco = 'Sim',
+    this.ativarCardapioDigital = 'Almoço',
+  });
 
   @override
   Future<dynamic> consultar(String rota,
@@ -45,6 +50,13 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
       return {
         if (resposta is Map) ...Map<String, dynamic>.from(resposta),
         'requerido_endereco': requeridoEndereco,
+      };
+    }
+    if (rota == 'config_bigchef/listar.php') {
+      final resposta = await super.consultar(rota, campos);
+      return {
+        if (resposta is Map) ...Map<String, dynamic>.from(resposta),
+        'ativarcardapiodigital': ativarCardapioDigital,
       };
     }
     return super.consultar(rota, campos);
@@ -1070,7 +1082,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('novo delivery mostra mensagens e envia o cardapio',
+  testWidgets('novo delivery oculta cardapio quando configuracao nao e Almoco',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste(
+      [
+        {
+          'id': '10',
+          'endereco': 'Rua Luiz Roncalha',
+          'numero': '169',
+          'bairro': 'Jardim Italia',
+          'padrao': 'Sim',
+        }
+      ],
+      ativarCardapioDigital: 'Jantar',
+    );
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      editarPedido: pedidoTeste(campos: {
+        'idendereco': '10',
+        'celularCliente': '(44) 99921-3336',
+      }),
+      aoSalvarEdicao: (_) async {},
+    )));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('mensagem-delivery-cardapio')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo delivery mostra mensagens e envia o cardapio no Almoco',
       (tester) async {
     final s = ServicoEnderecoPadraoTeste([
       {

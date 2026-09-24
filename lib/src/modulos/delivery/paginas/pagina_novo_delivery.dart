@@ -1064,44 +1064,48 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 56,
-          child: OutlinedButton.icon(
-            key: const ValueKey('mensagem-delivery-cardapio'),
-            onPressed: _cliente != '0' &&
-                    _mensagemEnviando == null &&
-                    !_cardapioEnviando &&
-                    !_salvando
-                ? _enviarCardapio
-                : null,
-            icon: _cardapioEnviando
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.image_outlined, size: 23),
-            label: const Text(
-              'Enviar o Cardápio',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.primary,
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: .18),
-              side: BorderSide(
-                color:
-                    Theme.of(context).colorScheme.primary.withValues(alpha: .4),
+        if (_config?.cardapioDigitalAlmocoHabilitado == true) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 56,
+            child: OutlinedButton.icon(
+              key: const ValueKey('mensagem-delivery-cardapio'),
+              onPressed: _cliente != '0' &&
+                      _mensagemEnviando == null &&
+                      !_cardapioEnviando &&
+                      !_salvando
+                  ? _enviarCardapio
+                  : null,
+              icon: _cardapioEnviando
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.image_outlined, size: 23),
+              label: const Text(
+                'Enviar o Cardápio',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: .18),
+                side: BorderSide(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: .4),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
       ],
     );
   }

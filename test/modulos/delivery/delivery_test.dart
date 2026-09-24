@@ -232,6 +232,7 @@ class ServicoGeracaoCardapioTeste extends ServicoDelivery {
       produtos: const [
         ProdutoCardapioDelivery(nome: 'Marmita M', valor: 30),
       ],
+      celularEmpresa: '44999998888',
     );
   }
 
@@ -252,10 +253,11 @@ void main() {
       nomeEmpresa: 'Restaurante Teste',
       ingredientes: const ['Arroz', 'Feijão', 'Carne de Panela'],
       produtos: const [
-        ProdutoCardapioDelivery(nome: 'Marmita P', valor: 20),
-        ProdutoCardapioDelivery(nome: 'Marmita M', valor: 30),
-        ProdutoCardapioDelivery(nome: 'Marmita G', valor: 45),
+        ProdutoCardapioDelivery(nome: 'Marmita P', valor: 20, sequencia: 1),
+        ProdutoCardapioDelivery(nome: 'Marmita M', valor: 30, sequencia: 2),
+        ProdutoCardapioDelivery(nome: 'Marmita G', valor: 45, sequencia: 3),
       ],
+      celularEmpresa: '44999998888',
       data: DateTime(2026, 9, 24),
     );
 
@@ -263,7 +265,8 @@ void main() {
     expect(bytes.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
   });
 
-  test('carrega produtos marcados para o cardapio com nome e valor', () async {
+  test('carrega contato e ordena produtos pela sequencia do cardapio digital',
+      () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode(
           {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'})
@@ -271,7 +274,10 @@ void main() {
     final dio = DioCliente();
     final adapter = AdaptadorDelivery(
       '{"sucesso":true,"ingredientes":[{"nome":"Arroz"}],'
-      '"produtos":[{"nome":"Marmita M","valor":30.5}]}',
+      '"celular_empresa":"44999998888","produtos":['
+      '{"nome":"Marmita G","valor":45,"sequencia":3},'
+      '{"nome":"Marmita P","valor":20,"sequencia":1},'
+      '{"nome":"Marmita M","valor":30.5,"sequencia":2}]}',
     );
     dio.cliente.httpClientAdapter = adapter;
     addTearDown(() => dio.cliente.close());
@@ -282,18 +288,26 @@ void main() {
     final cardapio = await ServicoDelivery(dio, usuario).cardapioDoDia();
 
     expect(cardapio.ingredientes, ['Arroz']);
-    expect(cardapio.produtos.single.nome, 'Marmita M');
-    expect(cardapio.produtos.single.valor, 30.5);
-    expect(cardapio.produtos.single.valorFormatado, contains('30,50'));
+    expect(cardapio.produtos.map((produto) => produto.nome), [
+      'Marmita P',
+      'Marmita M',
+      'Marmita G',
+    ]);
+    expect(cardapio.produtos[1].valor, 30.5);
+    expect(cardapio.produtos[1].valorFormatado, contains('30,50'));
+    expect(cardapio.celularEmpresa, '44999998888');
   });
 
   test('configuracao geral interpreta a unificacao do preparo', () {
     final config = ModeloConfigBigchef.fromMap({
       'imprimir_preparo_comprovante_consumacao': 'Sim',
+      'ativar_cardapio_digital': 'Almoço',
     });
 
     expect(config.imprimePreparoNoComprovanteConsumacao, isTrue);
+    expect(config.cardapioDigitalAlmocoHabilitado, isTrue);
     expect(config.toMap()['imprimirpreparocomprovanteconsumacao'], 'Sim');
+    expect(config.toMap()['ativarcardapiodigital'], 'Almoço');
   });
 
   TestWidgetsFlutterBinding.ensureInitialized();

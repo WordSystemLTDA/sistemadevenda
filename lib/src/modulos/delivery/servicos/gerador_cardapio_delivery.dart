@@ -9,17 +9,24 @@ class ProdutoCardapioDelivery {
   const ProdutoCardapioDelivery({
     required this.nome,
     required this.valor,
+    this.sequencia = 0,
   });
 
   factory ProdutoCardapioDelivery.fromMap(Map<dynamic, dynamic> dados) {
     return ProdutoCardapioDelivery(
       nome: (dados['nome'] ?? '').toString().trim(),
       valor: _converterValor(dados['valor'] ?? dados['valor_venda']),
+      sequencia: int.tryParse(
+            (dados['sequencia'] ?? dados['sequencia_cardapio_digital'] ?? 0)
+                .toString(),
+          ) ??
+          0,
     );
   }
 
   final String nome;
   final double valor;
+  final int sequencia;
 
   String get valorFormatado => NumberFormat.currency(
         locale: 'pt_BR',
@@ -41,11 +48,13 @@ class DadosCardapioDelivery {
   DadosCardapioDelivery({
     required List<String> ingredientes,
     required List<ProdutoCardapioDelivery> produtos,
+    this.celularEmpresa = '',
   })  : ingredientes = List.unmodifiable(ingredientes),
         produtos = List.unmodifiable(produtos);
 
   final List<String> ingredientes;
   final List<ProdutoCardapioDelivery> produtos;
+  final String celularEmpresa;
 }
 
 /// Gera uma imagem leve e pronta para envio no WhatsApp, sem depender de
@@ -61,6 +70,7 @@ class GeradorCardapioDelivery {
     required String nomeEmpresa,
     required List<String> ingredientes,
     List<ProdutoCardapioDelivery> produtos = const [],
+    String celularEmpresa = '',
     DateTime? data,
   }) async {
     final itens = ingredientes
@@ -74,10 +84,22 @@ class GeradorCardapioDelivery {
       if (nome.isEmpty) continue;
       produtosPorNome.putIfAbsent(
         nome.toLowerCase(),
-        () => ProdutoCardapioDelivery(nome: nome, valor: produto.valor),
+        () => ProdutoCardapioDelivery(
+          nome: nome,
+          valor: produto.valor,
+          sequencia: produto.sequencia,
+        ),
       );
     }
-    final opcoes = produtosPorNome.values.toList();
+    final opcoes = produtosPorNome.values.toList()
+      ..sort((a, b) {
+        final sequenciaA = a.sequencia > 0 ? a.sequencia : 1 << 30;
+        final sequenciaB = b.sequencia > 0 ? b.sequencia : 1 << 30;
+        final porSequencia = sequenciaA.compareTo(sequenciaB);
+        return porSequencia != 0
+            ? porSequencia
+            : a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
+      });
     if (itens.isEmpty && opcoes.isEmpty) {
       throw StateError(
           'Não há ingredientes ou produtos configurados para hoje.');
@@ -195,22 +217,7 @@ class GeradorCardapioDelivery {
       );
     }
 
-    final rodape = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(120, 1221, 840, 82),
-      const Radius.circular(41),
-    );
-    _sombra(canvas, rodape, deslocamento: 7, opacidade: .13);
-    canvas.drawRRect(rodape, Paint()..color = _creme);
-    _texto(
-      canvas,
-      'Faça seu pedido pelo WhatsApp',
-      const Rect.fromLTWH(160, 1237, 760, 50),
-      tamanho: 32,
-      peso: FontWeight.w900,
-      cor: _vermelho,
-      maxLinhas: 1,
-      alinhamento: TextAlign.center,
-    );
+    _desenharRodape(canvas, celularEmpresa);
 
     final imagem = await recorder.endRecording().toImage(
           _largura.toInt(),
@@ -349,53 +356,211 @@ class GeradorCardapioDelivery {
       final esquerda = corpo.left + coluna * (largura + espaco);
       final topo = corpo.top + linha * alturaLinha;
       final produto = produtos[indice];
-      if (linha.isEven) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(esquerda, topo + 2, largura, alturaLinha - 4),
-            const Radius.circular(12),
+      final fundoLinha = RRect.fromRectAndRadius(
+        Rect.fromLTWH(esquerda, topo + 3, largura, alturaLinha - 6),
+        const Radius.circular(13),
+      );
+      canvas.drawRRect(
+        fundoLinha,
+        Paint()..color = _vermelho.withValues(alpha: linha.isEven ? .07 : .025),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            esquerda + 8,
+            topo + alturaLinha * .27,
+            5,
+            alturaLinha * .46,
           ),
-          Paint()..color = _vermelho.withValues(alpha: .045),
-        );
-      }
+          const Radius.circular(3),
+        ),
+        Paint()..color = _vermelho,
+      );
 
-      final larguraPreco = math.min(165.0, largura * .34);
-      final inicioPreco = esquerda + largura - larguraPreco;
-      final fimNome = esquerda + largura * .57;
+      final larguraPreco = math.min(180.0, largura * .36);
+      final inicioPreco = esquerda + largura - larguraPreco - 7;
       _texto(
         canvas,
         produto.nome,
         Rect.fromLTWH(
-            esquerda + 12, topo, fimNome - esquerda - 18, alturaLinha),
+          esquerda + 25,
+          topo,
+          inicioPreco - esquerda - 38,
+          alturaLinha,
+        ),
         tamanho: tamanhoFonte,
         peso: FontWeight.w800,
         cor: _vinho,
         maxLinhas: 1,
       );
-      _pontilhado(
-        canvas,
-        Offset(fimNome, topo + alturaLinha / 2 + 2),
-        inicioPreco - 8,
+      final etiquetaPreco = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          inicioPreco,
+          topo + 7,
+          larguraPreco,
+          math.max(24, alturaLinha - 14),
+        ),
+        const Radius.circular(12),
       );
+      canvas.drawRRect(etiquetaPreco, Paint()..color = _vermelho);
       _texto(
         canvas,
         produto.valorFormatado,
-        Rect.fromLTWH(inicioPreco, topo, larguraPreco - 8, alturaLinha),
-        tamanho: tamanhoFonte,
+        Rect.fromLTWH(inicioPreco + 8, topo, larguraPreco - 16, alturaLinha),
+        tamanho: (tamanhoFonte * .88).clamp(16.0, 28.0),
         peso: FontWeight.w900,
-        cor: _vermelho,
+        cor: Colors.white,
         maxLinhas: 1,
-        alinhamento: TextAlign.right,
+        alinhamento: TextAlign.center,
       );
     }
     canvas.restore();
   }
 
-  static void _pontilhado(Canvas canvas, Offset inicio, double fimX) {
-    final tinta = Paint()..color = _vinho.withValues(alpha: .30);
-    for (var x = inicio.dx; x < fimX; x += 10) {
-      canvas.drawCircle(Offset(x, inicio.dy), 1.8, tinta);
+  static void _desenharRodape(Canvas canvas, String celular) {
+    final rodape = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(78, 1208, 924, 104),
+      const Radius.circular(42),
+    );
+    _sombra(canvas, rodape, deslocamento: 8, opacidade: .15);
+    canvas.drawRRect(rodape, Paint()..color = _creme);
+
+    _iconeDelivery(canvas, const Offset(130, 1260));
+    _texto(
+      canvas,
+      'DELIVERY',
+      const Rect.fromLTWH(173, 1229, 165, 60),
+      tamanho: 25,
+      peso: FontWeight.w900,
+      cor: _vermelho,
+      maxLinhas: 1,
+    );
+    canvas.drawLine(
+      const Offset(355, 1230),
+      const Offset(355, 1290),
+      Paint()
+        ..color = _vermelho.withValues(alpha: .22)
+        ..strokeWidth = 2,
+    );
+
+    _iconeWhatsapp(canvas, const Offset(407, 1260));
+    final contato = _formatarCelular(celular);
+    if (contato.isEmpty) {
+      _texto(
+        canvas,
+        'FAÇA SEU PEDIDO PELO WHATSAPP',
+        const Rect.fromLTWH(450, 1230, 500, 60),
+        tamanho: 25,
+        peso: FontWeight.w900,
+        cor: _vermelho,
+        maxLinhas: 1,
+      );
+    } else {
+      _texto(
+        canvas,
+        'PEÇA PELO WHATSAPP',
+        const Rect.fromLTWH(452, 1221, 500, 34),
+        tamanho: 19,
+        peso: FontWeight.w800,
+        cor: _vermelho.withValues(alpha: .78),
+        maxLinhas: 1,
+      );
+      _texto(
+        canvas,
+        contato,
+        const Rect.fromLTWH(452, 1251, 500, 48),
+        tamanho: 32,
+        peso: FontWeight.w900,
+        cor: _vinho,
+        maxLinhas: 1,
+      );
     }
+  }
+
+  static void _iconeDelivery(Canvas canvas, Offset centro) {
+    canvas.drawCircle(centro, 31, Paint()..color = _vermelho);
+    final tinta = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawCircle(centro + const Offset(-14, 13), 5, tinta);
+    canvas.drawCircle(centro + const Offset(16, 13), 5, tinta);
+    final moto = Path()
+      ..moveTo(centro.dx - 23, centro.dy + 7)
+      ..lineTo(centro.dx - 8, centro.dy + 7)
+      ..lineTo(centro.dx - 2, centro.dy - 5)
+      ..lineTo(centro.dx + 12, centro.dy - 5)
+      ..lineTo(centro.dx + 18, centro.dy + 7)
+      ..lineTo(centro.dx + 5, centro.dy + 7)
+      ..moveTo(centro.dx + 12, centro.dy - 5)
+      ..lineTo(centro.dx + 17, centro.dy - 14)
+      ..lineTo(centro.dx + 23, centro.dy - 14);
+    canvas.drawPath(moto, tinta);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: centro + const Offset(-15, -5),
+          width: 20,
+          height: 13,
+        ),
+        const Radius.circular(3),
+      ),
+      Paint()..color = Colors.white,
+    );
+  }
+
+  static void _iconeWhatsapp(Canvas canvas, Offset centro) {
+    const verde = Color(0xff20b858);
+    canvas.drawCircle(centro, 31, Paint()..color = verde);
+    final balao = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5;
+    canvas.drawCircle(centro, 21, balao);
+    final cauda = Path()
+      ..moveTo(centro.dx - 16, centro.dy + 14)
+      ..lineTo(centro.dx - 21, centro.dy + 25)
+      ..lineTo(centro.dx - 8, centro.dy + 20);
+    canvas.drawPath(cauda, balao);
+    final telefone = Path()
+      ..moveTo(centro.dx - 10, centro.dy - 11)
+      ..cubicTo(
+        centro.dx - 8,
+        centro.dy + 2,
+        centro.dx + 1,
+        centro.dy + 10,
+        centro.dx + 12,
+        centro.dy + 12,
+      );
+    canvas.drawPath(
+      telefone,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  static String _formatarCelular(String valor) {
+    var digitos = valor.replaceAll(RegExp(r'\D'), '');
+    var codigoPais = '';
+    if ((digitos.length == 12 || digitos.length == 13) &&
+        digitos.startsWith('55')) {
+      codigoPais = '+55 ';
+      digitos = digitos.substring(2);
+    }
+    if (digitos.length == 11) {
+      return '$codigoPais(${digitos.substring(0, 2)}) '
+          '${digitos.substring(2, 7)}-${digitos.substring(7)}';
+    }
+    if (digitos.length == 10) {
+      return '$codigoPais(${digitos.substring(0, 2)}) '
+          '${digitos.substring(2, 6)}-${digitos.substring(6)}';
+    }
+    return valor.trim();
   }
 
   static void _sombra(

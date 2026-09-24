@@ -869,7 +869,15 @@ class ServicoDelivery {
         .whereType<Map>()
         .map(ProdutoCardapioDelivery.fromMap)
         .where((produto) => produto.nome.isNotEmpty)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final sequenciaA = a.sequencia > 0 ? a.sequencia : 1 << 30;
+        final sequenciaB = b.sequencia > 0 ? b.sequencia : 1 << 30;
+        final porSequencia = sequenciaA.compareTo(sequenciaB);
+        return porSequencia != 0
+            ? porSequencia
+            : a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
+      });
     if (ingredientes.isEmpty && produtos.isEmpty) {
       throw StateError(
         'Não há ingredientes ou produtos configurados para hoje.',
@@ -878,6 +886,10 @@ class ServicoDelivery {
     return DadosCardapioDelivery(
       ingredientes: ingredientes,
       produtos: produtos,
+      celularEmpresa:
+          (resposta['celular_empresa'] ?? resposta['celularEmpresa'] ?? '')
+              .toString()
+              .trim(),
     );
   }
 
@@ -909,6 +921,7 @@ class ServicoDelivery {
       nomeEmpresa: usuario.usuario?.nomeEmpresa ?? '',
       ingredientes: cardapio.ingredientes,
       produtos: cardapio.produtos,
+      celularEmpresa: cardapio.celularEmpresa,
     );
     return enviarImagemCardapio(
       imagem,

@@ -237,6 +237,7 @@ class ConfigDelivery {
   final String imprimirnumerooperacionalentregador;
   final String imprimirnumerooperacionalconsumacao;
   final String imprimirnumerooperacionalpreparo;
+  final String ativarCardapioDigital;
   final double diferencaEntrega;
   const ConfigDelivery(
       {this.receberNoFinal = false,
@@ -252,6 +253,7 @@ class ConfigDelivery {
       this.imprimirnumerooperacionalentregador = '',
       this.imprimirnumerooperacionalconsumacao = '',
       this.imprimirnumerooperacionalpreparo = '',
+      this.ativarCardapioDigital = '',
       this.diferencaEntrega = 0});
   factory ConfigDelivery.fromMap(Map<String, dynamic> map) => ConfigDelivery(
         receberNoFinal: map['receberpedidonofinal'] == 'Sim',
@@ -282,8 +284,15 @@ class ConfigDelivery {
             '${map['imprimirnumerooperacionalconsumacao'] ?? ''}',
         imprimirnumerooperacionalpreparo:
             '${map['imprimirnumerooperacionalpreparo'] ?? ''}',
+        ativarCardapioDigital:
+            '${map['ativarcardapiodigital'] ?? map['ativar_cardapio_digital'] ?? ''}',
         diferencaEntrega: valorDelivery(map['valordiferenca']),
       );
+
+  bool get cardapioDigitalAlmocoHabilitado {
+    final valor = ativarCardapioDigital.trim().toLowerCase();
+    return valor == 'almoço' || valor == 'almoco';
+  }
 
   double taxaEntrega(Object? taxaBairro) => switch (cobrancaEntrega) {
         '1' => math.max(0, valorDelivery(valorEntrega) + diferencaEntrega),
