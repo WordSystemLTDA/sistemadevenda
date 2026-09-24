@@ -14,6 +14,7 @@ import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.d
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/gerador_cardapio_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:dio/dio.dart';
@@ -86,6 +87,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
     String idDelivery,
     String valorPedido,
   })>[];
+  int cardapiosEnviados = 0;
   PedidoDelivery atual = pedidoTeste();
   bool falhar = false;
   int consultas = 0;
@@ -175,18 +177,31 @@ class ServicoDeliveryTeste extends ServicoDelivery {
     ));
     return 'Enviado com sucesso!';
   }
+
+  @override
+  Future<String> enviarCardapioDoDia({
+    String cliente = '0',
+    String idDelivery = '0',
+  }) async {
+    cardapiosEnviados++;
+    return 'Cardápio enviado com sucesso!';
+  }
 }
 
 class AdaptadorDelivery extends Fake implements HttpClientAdapter {
+  AdaptadorDelivery([
+    this.resposta = '{"sucesso":true,"dados":[]}',
+  ]);
+
+  final String resposta;
   final chamadas = <RequestOptions>[];
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
-    return ResponseBody.fromString('{"sucesso":true,"dados":[]}', 200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType]
-        });
+    return ResponseBody.fromString(resposta, 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType]
+    });
   }
 
   @override
@@ -203,7 +218,41 @@ class ServicoRascunhoMensagem extends ServicoDelivery {
       });
 }
 
+class ServicoGeracaoCardapioTeste extends ServicoDelivery {
+  ServicoGeracaoCardapioTeste(super.dio, super.usuario);
+
+  int consultasIngredientes = 0;
+  int uploads = 0;
+
+  @override
+  Future<List<String>> ingredientesCardapioDoDia() async {
+    consultasIngredientes++;
+    return const ['Arroz', 'Feijão'];
+  }
+
+  @override
+  Future<String> enviarImagemCardapio(
+    Uint8List imagem, {
+    String cliente = '0',
+    String idDelivery = '0',
+  }) async {
+    uploads++;
+    return 'Cardápio criado e enviado!';
+  }
+}
+
 void main() {
+  test('gera o cardapio do dia como imagem PNG', () async {
+    final bytes = await GeradorCardapioDelivery.gerar(
+      nomeEmpresa: 'Restaurante Teste',
+      ingredientes: const ['Arroz', 'Feijão', 'Carne de Panela'],
+      data: DateTime(2026, 9, 24),
+    );
+
+    expect(bytes.length, greaterThan(1000));
+    expect(bytes.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
+  });
+
   test('configuracao geral interpreta a unificacao do preparo', () {
     final config = ModeloConfigBigchef.fromMap({
       'imprimir_preparo_comprovante_consumacao': 'Sim',
@@ -256,6 +305,88 @@ void main() {
     expect(dados['endereco'], '17');
     expect(dados['id_delivery'], '0');
     expect(dados['acao'], 'forma');
+  });
+  test('imagem do cardapio usa upload multipart no servidor do Delivery',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+
+    await ServicoDelivery(dio, usuario).enviarImagemCardapio(
+      Uint8List.fromList([137, 80, 78, 71]),
+      cliente: '4',
+    );
+
+    final chamada = adapter.chamadas.single;
+    expect(chamada.path, 'delivery/notificar_cliente.php');
+    final formulario = chamada.data as FormData;
+    expect(Map.fromEntries(formulario.fields)['acao'], 'cardapio');
+    expect(Map.fromEntries(formulario.fields)['cliente'], '4');
+    expect(formulario.files.single.key, 'arquivo');
+    expect(formulario.files.single.value.filename, 'cardapio-do-dia.png');
+  });
+  test('cardapio online existente e reutilizado sem gerar outra imagem',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery(
+      '{"sucesso":true,"mensagem":"Cardápio enviado do cache!"}',
+    );
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(
+        id: '2',
+        empresa: '3',
+        nomeEmpresa: 'Restaurante Teste',
+      ));
+    addTearDown(usuario.dispose);
+    final servico = ServicoGeracaoCardapioTeste(dio, usuario);
+
+    final mensagem = await servico.enviarCardapioDoDia(cliente: '4');
+
+    expect(mensagem, 'Cardápio enviado do cache!');
+    expect(servico.consultasIngredientes, 0);
+    expect(servico.uploads, 0);
+    expect(adapter.chamadas, hasLength(1));
+  });
+  test('cardapio e gerado somente quando o servidor online solicita a imagem',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery(
+      '{"sucesso":false,"precisa_imagem":true}',
+    );
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(
+        id: '2',
+        empresa: '3',
+        nomeEmpresa: 'Restaurante Teste',
+      ));
+    addTearDown(usuario.dispose);
+    final servico = ServicoGeracaoCardapioTeste(dio, usuario);
+
+    final mensagem = await servico.enviarCardapioDoDia(cliente: '4');
+
+    expect(mensagem, 'Cardápio criado e enviado!');
+    expect(servico.consultasIngredientes, 1);
+    expect(servico.uploads, 1);
   });
   test('confirmacao do rascunho local usa cliente e omite numero do pedido',
       () async {

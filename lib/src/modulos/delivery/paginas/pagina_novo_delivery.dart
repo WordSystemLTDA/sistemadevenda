@@ -53,6 +53,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   String? _erro;
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
+  bool _cardapioEnviando = false;
   final _preferenciaMensagens = PreferenciaMensagensDelivery();
   Set<MensagemClienteDelivery> _mensagensAutomaticas = {};
   bool _preferenciaMensagensCarregada = false;
@@ -384,7 +385,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   }
 
   Future<void> _notificarCliente(MensagemClienteDelivery mensagem) async {
-    if (_cliente == '0' || _mensagemEnviando != null || _salvando) return;
+    if (_cliente == '0' ||
+        _mensagemEnviando != null ||
+        _cardapioEnviando ||
+        _salvando) {
+      return;
+    }
     if (mensagem == MensagemClienteDelivery.confirmarEndereco &&
         (_tipo != '1' || _endereco == null)) {
       return;
@@ -418,6 +424,43 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         ));
     } finally {
       if (mounted) setState(() => _mensagemEnviando = null);
+    }
+  }
+
+  Future<void> _enviarCardapio() async {
+    if (_cliente == '0' ||
+        _mensagemEnviando != null ||
+        _cardapioEnviando ||
+        _salvando) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _cardapioEnviando = true);
+    try {
+      final retorno = await widget.servico.enviarCardapioDoDia(
+        cliente: _cliente,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(retorno),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(erro is StateError
+              ? erro.message.toString()
+              : 'Não foi possível enviar o cardápio.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } finally {
+      if (mounted) setState(() => _cardapioEnviando = false);
     }
   }
 
@@ -1022,6 +1065,43 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
           ],
         ),
         const SizedBox(height: 8),
+        SizedBox(
+          height: 56,
+          child: OutlinedButton.icon(
+            key: const ValueKey('mensagem-delivery-cardapio'),
+            onPressed: _cliente != '0' &&
+                    _mensagemEnviando == null &&
+                    !_cardapioEnviando &&
+                    !_salvando
+                ? _enviarCardapio
+                : null,
+            icon: _cardapioEnviando
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.image_outlined, size: 23),
+            label: const Text(
+              'Enviar o Cardápio',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: .18),
+              side: BorderSide(
+                color:
+                    Theme.of(context).colorScheme.primary.withValues(alpha: .4),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -1039,10 +1119,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     final podeAlterarAutomatico = habilitado &&
         _preferenciaMensagensCarregada &&
         !_salvandoPreferenciaMensagens &&
+        !_cardapioEnviando &&
         !_salvando;
     final podeEnviar = _cliente != '0' &&
         habilitado &&
         _mensagemEnviando == null &&
+        !_cardapioEnviando &&
         !_salvando;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

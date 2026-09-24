@@ -938,6 +938,10 @@ void main() {
       find.byKey(const ValueKey('mensagem-automatica-endereco')),
       findsNothing,
     );
+    expect(
+      find.byKey(const ValueKey('mensagem-delivery-cardapio')),
+      findsNothing,
+    );
   });
 
   testWidgets('novo delivery salva cada envio automatico separadamente',
@@ -1066,7 +1070,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('novo delivery mostra quatro mensagens em duas colunas e envia',
+  testWidgets('novo delivery mostra mensagens e envia o cardapio',
       (tester) async {
     final s = ServicoEnderecoPadraoTeste([
       {
@@ -1095,6 +1099,7 @@ void main() {
     final forma = find.byKey(const ValueKey('mensagem-delivery-forma'));
     final bebida = find.byKey(const ValueKey('mensagem-delivery-bebida'));
     final mais = find.byKey(const ValueKey('mensagem-delivery-mais'));
+    final cardapio = find.byKey(const ValueKey('mensagem-delivery-cardapio'));
     await tester.scrollUntilVisible(
       mais,
       250,
@@ -1107,6 +1112,7 @@ void main() {
     expect(forma, findsOneWidget);
     expect(bebida, findsOneWidget);
     expect(mais, findsOneWidget);
+    expect(cardapio, findsOneWidget);
     final larguraTela = tester.getSize(find.byType(Scaffold)).width;
     expect(tester.getRect(endereco).left, lessThanOrEqualTo(17));
     expect(tester.getRect(forma).right, greaterThanOrEqualTo(larguraTela - 17));
@@ -1125,6 +1131,16 @@ void main() {
     expect(s.notificacoes.single.cliente, '4');
     expect(s.notificacoes.single.endereco, '10');
     expect(find.text('Enviado com sucesso!'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(cardapio);
+    await tester.pumpAndSettle();
+    await tester.tap(cardapio);
+    await tester.pumpAndSettle();
+
+    expect(s.cardapiosEnviados, 1);
+    expect(find.text('Cardápio enviado com sucesso!'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

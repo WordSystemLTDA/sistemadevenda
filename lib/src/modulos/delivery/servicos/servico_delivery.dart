@@ -15,6 +15,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/delivery/servicos/gerador_cardapio_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
@@ -129,7 +130,11 @@ class ServicoDelivery {
   }
 
   Future<dynamic> _requisicao(
-      String rota, Map<String, dynamic> campos, bool post) async {
+    String rota,
+    Map<String, dynamic> campos,
+    bool post, {
+    Duration? receiveTimeout,
+  }) async {
     final empresa = usuario.usuario?.empresa;
     final idUsuario = usuario.usuario?.id;
     if (empresa == null || idUsuario == null) {
@@ -150,10 +155,13 @@ class ServicoDelivery {
           'config_bigchef/listar.php',
           'enderecos_clientes/listar_por_cliente.php',
         }.contains(rota);
-    final opcoes = Options(extra: {
-      'servidorFixo': servidor,
-      'semCache': !consultaOffline,
-    });
+    final opcoes = Options(
+      receiveTimeout: receiveTimeout,
+      extra: {
+        'servidorFixo': servidor,
+        'semCache': !consultaOffline,
+      },
+    );
     final resposta = post
         ? await dio.cliente.post(rota, data: jsonEncode(dados), options: opcoes)
         : await dio.cliente.get(rota, queryParameters: dados, options: opcoes);
@@ -830,6 +838,144 @@ class ServicoDelivery {
           : 'Resposta inválida do servidor.');
     }
     return (resposta['mensagem'] ?? 'Mensagem enviada com sucesso.').toString();
+  }
+
+  Future<List<String>> ingredientesCardapioDoDia() async {
+    final resposta = await _requisicao(
+      'delivery/listar_cardapio_dia.php',
+      const {},
+      false,
+    );
+    if (resposta is! Map || resposta['sucesso'] != true) {
+      throw StateError(resposta is Map
+          ? (resposta['mensagem'] ??
+                  'Não foi possível carregar o cardápio do dia.')
+              .toString()
+          : 'Resposta inválida do cardápio do dia.');
+    }
+    final dados = resposta['ingredientes'];
+    if (dados is! List) {
+      throw StateError('Resposta inválida do cardápio do dia.');
+    }
+    final ingredientes = dados
+        .map((item) => item is Map ? item['nome'] : item)
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList();
+    if (ingredientes.isEmpty) {
+      throw StateError('Não há ingredientes configurados para hoje.');
+    }
+    return ingredientes;
+  }
+
+  Future<String> enviarCardapioDoDia({
+    String cliente = '0',
+    String idDelivery = '0',
+  }) async {
+    if (FilaDeliveryOffline.local(idDelivery)) {
+      final rascunho = await pedido(idDelivery);
+      cliente = rascunho.cliente;
+      idDelivery = '0';
+    }
+    if ((int.tryParse(cliente) ?? 0) <= 0 &&
+        (int.tryParse(idDelivery) ?? 0) <= 0) {
+      throw StateError('Selecione um cliente para enviar o cardápio.');
+    }
+
+    final existente = await _enviarCardapioExistente(
+      cliente: cliente,
+      idDelivery: idDelivery,
+    );
+    if (existente != null) return existente;
+
+    final ingredientes = await ingredientesCardapioDoDia();
+    final imagem = await GeradorCardapioDelivery.gerar(
+      nomeEmpresa: usuario.usuario?.nomeEmpresa ?? '',
+      ingredientes: ingredientes,
+    );
+    return enviarImagemCardapio(
+      imagem,
+      cliente: cliente,
+      idDelivery: idDelivery,
+    );
+  }
+
+  Future<String?> _enviarCardapioExistente({
+    required String cliente,
+    required String idDelivery,
+  }) async {
+    final resposta = await _requisicao(
+      'delivery/notificar_cliente.php',
+      {
+        'acao': 'cardapio',
+        'cliente': cliente,
+        'id_delivery': idDelivery,
+      },
+      true,
+      receiveTimeout: const Duration(seconds: 60),
+    );
+    if (resposta is! Map) {
+      throw StateError('Resposta inválida do envio do cardápio.');
+    }
+    if (resposta['sucesso'] == true) {
+      return (resposta['mensagem'] ?? 'Cardápio enviado com sucesso.')
+          .toString();
+    }
+    if (resposta['precisa_imagem'] == true) return null;
+    throw StateError(
+      (resposta['mensagem'] ?? 'Não foi possível enviar o cardápio.')
+          .toString(),
+    );
+  }
+
+  Future<String> enviarImagemCardapio(
+    Uint8List imagem, {
+    String cliente = '0',
+    String idDelivery = '0',
+  }) async {
+    final empresa = usuario.usuario?.empresa;
+    final idUsuario = usuario.usuario?.id;
+    if (empresa == null || idUsuario == null) {
+      throw StateError('Entre novamente no aplicativo.');
+    }
+    if (imagem.isEmpty) {
+      throw StateError('Não foi possível gerar a imagem do cardápio.');
+    }
+    final servidor =
+        enderecoApi((await Apis().getConexao()).servidor).toString();
+    final dados = FormData.fromMap({
+      'acao': 'cardapio',
+      'cliente': cliente,
+      'id_delivery': idDelivery,
+      'empresa': empresa,
+      'id_usuario': idUsuario,
+      'arquivo': MultipartFile.fromBytes(
+        imagem,
+        filename: 'cardapio-do-dia.png',
+      ),
+    });
+    final resposta = await dio.cliente.post(
+      'delivery/notificar_cliente.php',
+      data: dados,
+      options: Options(
+        receiveTimeout: const Duration(seconds: 90),
+        extra: {
+          'servidorFixo': servidor,
+          'semCache': true,
+        },
+      ),
+    );
+    final json = resposta.data is String
+        ? jsonDecode(resposta.data as String)
+        : resposta.data;
+    if (json is! Map || json['sucesso'] != true) {
+      throw StateError(json is Map
+          ? (json['mensagem'] ?? 'Não foi possível enviar o cardápio.')
+              .toString()
+          : 'Resposta inválida do envio do cardápio.');
+    }
+    return (json['mensagem'] ?? 'Cardápio enviado com sucesso.').toString();
   }
 
   Future<Uri> documentoFiscal(PedidoDelivery pedido, {bool xml = false}) async {
