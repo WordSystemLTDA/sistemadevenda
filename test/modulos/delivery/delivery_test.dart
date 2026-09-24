@@ -384,6 +384,7 @@ void main() {
   });
   test('confirmacao do pedido reutiliza os dados da acao do menu', () async {
     final servico = ServicoDeliveryTeste();
+    servico.produtosCardapio = [impressao.produto()];
     final pedido = pedidoTeste(campos: {
       'idendereco': '17',
       'valordaentrega': '6.00',
@@ -397,6 +398,7 @@ void main() {
     expect(gravacao.$2['id'], '25');
     expect(gravacao.$2['id_cliente'], '4');
     expect(gravacao.$2['idEndereco'], '17');
+    expect(gravacao.$2['produtos'], hasLength(1));
     expect(gravacao.$2['valorPedido'], '80.00');
     expect(gravacao.$2['valorEntrega'], '6.00');
     expect(gravacao.$2['valorTotalPedido'], '86.00');

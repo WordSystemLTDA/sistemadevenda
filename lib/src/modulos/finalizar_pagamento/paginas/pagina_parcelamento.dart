@@ -214,17 +214,37 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     }());
   }
 
-  void _enviarConfirmacaoPedidoEmSegundoPlano(
-      ServicoDelivery servico, PedidoDelivery pedido) {
-    if (!widget.confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) return;
-    unawaited(() async {
-      try {
-        await servico.notificarConfirmacaoPedido(pedido);
-      } catch (erro, pilha) {
-        debugPrint(
-            '[Delivery] Pedido finalizado, mas a confirmação no WhatsApp falhou: $erro\n$pilha');
-      }
-    }());
+  Future<String?> _enviarConfirmacaoPedidoAposFinalizar(
+      ServicoDelivery servico, PedidoDelivery pedido) async {
+    if (!widget.confirmacaoPedidoHabilitada || pedido.salvoNoAparelho) {
+      return null;
+    }
+    try {
+      await servico.notificarConfirmacaoPedido(pedido);
+      return null;
+    } catch (erro, pilha) {
+      debugPrint(
+          '[Delivery] Pedido finalizado, mas a confirmação no WhatsApp falhou: $erro\n$pilha');
+      final detalhe = erro is StateError
+          ? erro.message.toString()
+          : 'Confira a conexão e o WhatsApp do cliente.';
+      return 'Pedido finalizado, mas a confirmação não foi enviada. $detalhe';
+    }
+  }
+
+  void _mostrarFalhaConfirmacaoAposRetorno(
+      ScaffoldMessengerState? mensageiro, String? mensagem) {
+    if (mensageiro == null || mensagem == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mensageiro.mounted) return;
+      mensageiro
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(mensagem),
+          backgroundColor: Theme.of(mensageiro.context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+    });
   }
 
   Future<void> _finalizarDelivery() async {
@@ -260,7 +280,8 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
     if (quitado) {
       await servico.concluir(atualizado);
       await servico.confirmar(widget.idVenda);
-      _enviarConfirmacaoPedidoEmSegundoPlano(servico, atualizado);
+      final falhaConfirmacao =
+          await _enviarConfirmacaoPedidoAposFinalizar(servico, atualizado);
       _notificarDeliveryFinalizadoEmSegundoPlano(servico, widget.idVenda);
       provedorBalcao.observacaoDoPedido = '';
       final contexto = carrinhoProvedor.contexto;
@@ -271,8 +292,10 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       }
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
+      final mensageiro = ScaffoldMessenger.maybeOf(context);
       Navigator.of(context, rootNavigator: true).popUntil((rota) =>
           rota.settings.name == provedor.rotaRetornoDelivery || rota.isFirst);
+      _mostrarFalhaConfirmacaoAposRetorno(mensageiro, falhaConfirmacao);
       return;
     }
 

@@ -504,17 +504,27 @@ class ServicoDelivery {
       });
 
   Future<Map<String, dynamic>> notificarConfirmacaoPedido(
-          PedidoDelivery pedido) =>
-      acao('confirmar', pedido, {
-        'id_empresa': usuario.usuario?.empresa,
-        'id_cliente': pedido.cliente,
-        'idEndereco': pedido.texto('idendereco', '0'),
-        'tipo': 'Delivery',
-        'produtos': pedido.produtos.map((produto) => produto.toMap()).toList(),
-        'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
-        'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
-        'valorTotalPedido': pedido.total.toStringAsFixed(2),
-      });
+      PedidoDelivery pedido) async {
+    var produtos = pedido.produtos;
+    if (produtos.isEmpty && !pedido.salvoNoAparelho) {
+      final cardapio = await dadosCardapio(pedido.id);
+      produtos = cardapio.produtos ?? const [];
+    }
+    if (produtos.isEmpty) {
+      throw StateError('Pedido sem produtos para enviar pelo WhatsApp.');
+    }
+
+    return acao('confirmar', pedido, {
+      'id_empresa': usuario.usuario?.empresa,
+      'id_cliente': pedido.cliente,
+      'idEndereco': pedido.texto('idendereco', '0'),
+      'tipo': 'Delivery',
+      'produtos': produtos.map((produto) => produto.toMap()).toList(),
+      'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
+      'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
+      'valorTotalPedido': pedido.total.toStringAsFixed(2),
+    });
+  }
 
   Future<String> notificarCliente(
     MensagemClienteDelivery mensagem, {

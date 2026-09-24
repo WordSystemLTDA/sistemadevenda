@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/src/modulos/voz/configuracao_voz.dart';
 import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
 import 'dart:developer' as developer;
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
@@ -16,6 +17,7 @@ import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -77,6 +79,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       '0';
 
   bool isLoading = false;
+  bool _enviandoPedidoWhats = false;
   final _finalizacao = FinalizacaoComPreparo();
   ItensModeloComandao? _resumoDelivery;
   double? _saldoDelivery;
@@ -84,6 +87,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   bool carregando = true;
   bool _tentouEnvioVoz = false;
   bool _vozDisponivel = false;
+
+  bool get _ocupado => isLoading || _enviandoPedidoWhats;
 
   Future<void> _carregarDisponibilidadeVoz() async {
     if (widget.modeloRecorrente) return;
@@ -95,7 +100,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   Future<void> _pedidoVoz() async {
     if (!_vozDisponivel ||
-        isLoading ||
+        _ocupado ||
         carregando ||
         _finalizacao.pedidoRegistrado) {
       return;
@@ -269,7 +274,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   }
 
   Future<void> _finalizar({bool voz = false}) async {
-    if (isLoading ||
+    if (_ocupado ||
         carregando ||
         _contextoCarrinho == null ||
         carrinhoProvedor.contexto?.chave != _contextoCarrinho?.chave ||
@@ -504,6 +509,68 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
     }
   }
 
+  Future<void> _enviarPedidoPeloWhats(ItensModeloComandao resumo) async {
+    final contexto = _contextoCarrinho;
+    if (_ocupado ||
+        _tipo != TipoCardapio.delivery ||
+        widget.modeloRecorrente ||
+        contexto == null) {
+      return;
+    }
+
+    setState(() => _enviandoPedidoWhats = true);
+    try {
+      final servico = Modular.get<ServicoDelivery>();
+      final pedido = await servico.pedido(contexto.idAtendimento);
+      final novosItens = _finalizacao.pedidoRegistrado
+          ? const <Modelowordprodutos>[]
+          : await carrinhoProvedor.obterItensParaFinalizar(contexto);
+      final produtos = _finalizacao.pedidoRegistrado
+          ? pedido.produtos
+          : <Modelowordprodutos>[...pedido.produtos, ...novosItens];
+      if (produtos.isEmpty) {
+        throw StateError('O pedido não tem produtos para enviar.');
+      }
+
+      final total = _finalizacao.pedidoRegistrado
+          ? pedido.total
+          : pedido.total + resumo.precoTotal;
+      final pedidoParaMensagem = PedidoDelivery.fromMap({
+        ...pedido.dados,
+        'produtos': produtos.map((produto) => produto.toMap()).toList(),
+        'quantidadeprodutos': produtos.length.toString(),
+        'valorVenda': total.toStringAsFixed(2),
+      });
+      final resposta =
+          await servico.notificarConfirmacaoPedido(pedidoParaMensagem);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text((resposta['mensagem'] ??
+                  'Pedido enviado pelo WhatsApp com sucesso.')
+              .toString()),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } catch (erro, pilha) {
+      developer.log('Falha ao enviar pedido pelo WhatsApp',
+          name: 'PaginaCarrinho', error: erro, stackTrace: pilha);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(erro is StateError
+              ? erro.message.toString()
+              : 'Não foi possível enviar o pedido pelo WhatsApp.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+    } finally {
+      if (mounted) setState(() => _enviandoPedidoWhats = false);
+    }
+  }
+
   void _erroSnack() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -530,10 +597,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 : carrinhoProvedor.itensCarrinho;
         final itens = resumo.listaComandosPedidos;
         return PopScope(
-          canPop: !isLoading &&
+          canPop: !_ocupado &&
               (!_finalizacao.pedidoRegistrado || _finalizacao.concluido),
           onPopInvokedWithResult: (saiu, _) {
-            if (!saiu && !isLoading) {
+            if (!saiu && !_ocupado) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text(
                     'Conclua a finalizacao pendente antes de sair do carrinho.'),
@@ -583,7 +650,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                 if (!widget.modeloRecorrente && _vozDisponivel)
                   IconButton(
                       tooltip: 'Pedido por voz',
-                      onPressed: isLoading ||
+                      onPressed: _ocupado ||
                               carregando ||
                               _finalizacao.pedidoRegistrado
                           ? null
@@ -595,7 +662,7 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                     padding: const EdgeInsets.only(right: 6),
                     child: IconButton(
                       tooltip: 'Esvaziar',
-                      onPressed: isLoading || _finalizacao.pedidoRegistrado
+                      onPressed: _ocupado || _finalizacao.pedidoRegistrado
                           ? null
                           : _confirmarLimpar,
                       icon: Icon(Icons.delete_sweep_outlined, color: cs.error),
@@ -610,23 +677,63 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                     top: false,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                      child: BotaoAcaoPedido(
-                        carregando: isLoading,
-                        rotulo: widget.modeloRecorrente
-                            ? 'Salvar modelo'
-                            : 'Finalizar',
-                        iconeRotulo: Icons.check_circle_outline_rounded,
-                        total: (_tipo == TipoCardapio.delivery
-                                ? _saldoDelivery ?? resumo.precoTotal
-                                : carrinhoProvedor.itensCarrinho.precoTotal)
-                            .obterReal(),
-                        onPressed: _finalizar,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_tipo == TipoCardapio.delivery &&
+                              !widget.modeloRecorrente) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: OutlinedButton.icon(
+                                key: const ValueKey(
+                                    'enviar-pedido-whats-delivery'),
+                                onPressed: _ocupado
+                                    ? null
+                                    : () => _enviarPedidoPeloWhats(resumo),
+                                icon: _enviandoPedidoWhats
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.2),
+                                      )
+                                    : const Icon(Icons.chat_outlined),
+                                label: Text(_enviandoPedidoWhats
+                                    ? 'Enviando pedido...'
+                                    : 'Enviar pedido pelo Whats'),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: cs.primary),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          BotaoAcaoPedido(
+                            carregando: isLoading,
+                            habilitado: !_enviandoPedidoWhats,
+                            rotulo: widget.modeloRecorrente
+                                ? 'Salvar modelo'
+                                : 'Finalizar',
+                            iconeRotulo: Icons.check_circle_outline_rounded,
+                            total: (_tipo == TipoCardapio.delivery
+                                    ? _saldoDelivery ?? resumo.precoTotal
+                                    : carrinhoProvedor.itensCarrinho.precoTotal)
+                                .obterReal(),
+                            onPressed: _finalizar,
+                          ),
+                        ],
                       ),
                     )),
             body: IgnorePointer(
               // O Delivery já registrado permanece disponível para
               // conferência. As ações de edição são bloqueadas pelo card.
-              ignoring: isLoading,
+              ignoring: _ocupado,
               child: carregando
                   ? const Center(child: CircularProgressIndicator())
                   : itens.isEmpty
@@ -638,7 +745,11 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
                             16,
                             14,
                             MediaQuery.paddingOf(context).bottom +
-                                MediaQuery.textScalerOf(context).scale(96),
+                                MediaQuery.textScalerOf(context).scale(
+                                    _tipo == TipoCardapio.delivery &&
+                                            !widget.modeloRecorrente
+                                        ? 160
+                                        : 96),
                           ),
                           itemBuilder: (context, posicao) {
                             if (posicao == 0) {

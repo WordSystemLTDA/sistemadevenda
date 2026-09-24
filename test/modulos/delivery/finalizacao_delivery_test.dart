@@ -47,6 +47,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int notificacoes = 0;
   int consultasRecorrencia = 0;
   MensagemClienteDelivery? ultimaMensagem;
+  PedidoDelivery? ultimoPedidoConfirmadoWhatsApp;
   String? deliveryNotificado;
   String? valorPedidoNotificado;
   final operacoesFinalizacao = <String>[];
@@ -57,6 +58,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   bool falharConfirmacaoWhatsApp = false;
   bool recorrenteVinculado = false;
   Completer<void>? esperaEnvio;
+  Completer<void>? esperaConfirmacaoWhatsApp;
   Completer<void>? consultaFinalBloqueada;
 
   @override
@@ -137,10 +139,12 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   Future<Map<String, dynamic>> notificarConfirmacaoPedido(
       PedidoDelivery pedido) async {
     confirmacoesWhatsApp++;
+    ultimoPedidoConfirmadoWhatsApp = pedido;
     operacoesFinalizacao.add('whatsapp');
     if (falharConfirmacaoWhatsApp) {
       throw StateError('WhatsApp indisponível');
     }
+    await esperaConfirmacaoWhatsApp?.future;
     return {'sucesso': true};
   }
 }
@@ -247,6 +251,25 @@ void main() {
         14);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('carrinho do delivery envia o pedido completo pelo WhatsApp',
+      (tester) async {
+    final m = await abrir(tester);
+    final botao = find.byKey(const ValueKey('enviar-pedido-whats-delivery'));
+
+    expect(botao, findsOneWidget);
+    await tester.tap(botao);
+    await tester.pumpAndSettle();
+
+    expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(m.delivery.pagamentos, 0);
+    expect(m.delivery.conclusoes, 0);
+    expect(m.delivery.envios, 0);
+    expect(m.delivery.ultimoPedidoConfirmadoWhatsApp?.produtos, hasLength(1));
+    expect(m.delivery.ultimoPedidoConfirmadoWhatsApp?.total, 14);
+    expect(find.byType(PaginaCarrinho), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('delivery permite pagar depois sem registrar pagamento',
@@ -423,6 +446,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('finalizacao aguarda a confirmacao do WhatsApp antes de sair',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+        find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery')));
+    await tester.pumpAndSettle();
+    m.delivery.esperaConfirmacaoWhatsApp = Completer<void>();
+
+    await tester.tap(find.text('Finalizar'));
+    await tester.pump();
+
+    expect(m.delivery.conclusoes, 1);
+    expect(m.delivery.confirmacoes, 1);
+    expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsOneWidget);
+
+    m.delivery.esperaConfirmacaoWhatsApp!.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('falha do WhatsApp nao desfaz a finalizacao do delivery',
       (tester) async {
     final m = await abrir(tester);
@@ -445,6 +497,8 @@ void main() {
     expect(m.delivery.confirmacoes, 1);
     expect(m.delivery.confirmacoesWhatsApp, 1);
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
+    expect(find.textContaining('Pedido finalizado, mas a confirmação não foi'),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -477,6 +531,8 @@ void main() {
   testWidgets('controles de WhatsApp nao aparecem fora do delivery',
       (tester) async {
     await abrir(tester, tipo: TipoCardapio.balcao);
+    expect(find.byKey(const ValueKey('enviar-pedido-whats-delivery')),
+        findsNothing);
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Avançar'));
