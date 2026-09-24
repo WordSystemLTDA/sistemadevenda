@@ -403,6 +403,7 @@ class FilaDeliveryOffline {
       'lancamentos': [
         for (final p in r['pagamentos'] as List)
           {
+            'nome': _nomePagamentoLocal(p as Map),
             'valor': (valorDelivery(p['valor_lancamento']) -
                     valorDelivery(p['valortroco']))
                 .toStringAsFixed(2)
@@ -412,5 +413,18 @@ class FilaDeliveryOffline {
       'estadoSincronizacao': op?['estado'] ?? 'rascunho',
       'erroSincronizacao': op?['erro'],
     });
+  }
+
+  static String _nomePagamentoLocal(Map pagamento) {
+    final informado = pagamento['nomePagamento']?.toString().trim() ?? '';
+    if (informado.isNotEmpty) return informado;
+    return switch (int.tryParse('${pagamento['pagamentoSelecionado']}')) {
+      1 => 'Dinheiro',
+      2 => 'Conta',
+      3 => 'Débito',
+      4 => 'Crédito',
+      5 => 'Pix',
+      _ => 'Forma de pagamento',
+    };
   }
 }

@@ -38,6 +38,7 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
   final String descontoPercentual;
   final String totalPedido;
   final String pagamentoselecionado;
+  final String nomePagamentoSelecionado;
   final PagamentoRecorrente? recorrencia;
 
   const PaginaFinalizarFormaPagamento({
@@ -48,6 +49,7 @@ class PaginaFinalizarFormaPagamento extends StatefulWidget {
     required this.descontoPercentual,
     required this.totalPedido,
     required this.pagamentoselecionado,
+    required this.nomePagamentoSelecionado,
     this.recorrencia,
   });
 
@@ -179,7 +181,10 @@ class _PaginaFinalizarFormaPagamentoState
       return null;
     }
     try {
-      await servico.notificarConfirmacaoPedido(pedido);
+      await servico.notificarConfirmacaoPedido(
+        pedido,
+        formaPagamento: widget.nomePagamentoSelecionado,
+      );
       return null;
     } catch (erro, pilha) {
       debugPrint(
@@ -269,6 +274,7 @@ class _PaginaFinalizarFormaPagamentoState
       desconto: desconto,
       acrescimo: acrescimo,
       chavePagamento: _chavePagamento,
+      nomePagamento: widget.nomePagamentoSelecionado,
       dataLancamento: widget.recorrencia?.vencimento == null
           ? null
           : DateFormat('yyyy-MM-dd').format(widget.recorrencia!.vencimento!),
@@ -488,6 +494,8 @@ class _PaginaFinalizarFormaPagamentoState
                               totalReceber:
                                   widget.totalReceber.toStringAsFixed(2),
                               pagamentoselecionado: widget.pagamentoselecionado,
+                              nomePagamentoSelecionado:
+                                  widget.nomePagamentoSelecionado,
                               confirmacaoPedidoHabilitada:
                                   _confirmacaoPedidoHabilitada,
                               vencimentoRecorrente:

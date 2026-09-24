@@ -41,6 +41,7 @@ class PaginaParcelamento extends StatefulWidget {
   final String valorFalta;
   final String valorTroco;
   final String pagamentoselecionado;
+  final String nomePagamentoSelecionado;
   final bool confirmacaoPedidoHabilitada;
   final DateTime? vencimentoRecorrente;
 
@@ -60,6 +61,7 @@ class PaginaParcelamento extends StatefulWidget {
     required this.valorFalta,
     required this.valorTroco,
     required this.pagamentoselecionado,
+    this.nomePagamentoSelecionado = 'Conta',
     this.confirmacaoPedidoHabilitada = false,
     this.vencimentoRecorrente,
   });
@@ -220,7 +222,10 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       return null;
     }
     try {
-      await servico.notificarConfirmacaoPedido(pedido);
+      await servico.notificarConfirmacaoPedido(
+        pedido,
+        formaPagamento: widget.nomePagamentoSelecionado,
+      );
       return null;
     } catch (erro, pilha) {
       debugPrint(
@@ -271,6 +276,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       dataLancamento: dataOriginal,
       parcelasLista: listaParcelas.value,
       chavePagamento: _chavePagamento,
+      nomePagamento: widget.nomePagamentoSelecionado,
     );
 
     final pagamentoIntegral = widget.valor + 0.009 >= totalReceber;

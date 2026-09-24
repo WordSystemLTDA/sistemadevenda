@@ -7,7 +7,10 @@ import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
+import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/impressao_delivery.dart';
@@ -297,6 +300,7 @@ void main() {
     expect(dados['valorPedido'], '84.00');
     expect(dados['valorEntrega'], '4.00');
     expect(dados['valorTotalPedido'], '88.00');
+    expect(dados['formaPagamento'], 'A definir');
     expect(dados.containsKey('id'), isFalse);
   });
   test('confirmacao local sem celular nao chama o servidor', () async {
@@ -477,6 +481,50 @@ void main() {
     expect(gravacao.$2['valorPedido'], '80.00');
     expect(gravacao.$2['valorEntrega'], '6.00');
     expect(gravacao.$2['valorTotalPedido'], '86.00');
+    expect(gravacao.$2['formaPagamento'], 'A definir');
+  });
+  test('confirmacao omite ingredientes normais e envia forma de pagamento',
+      () async {
+    final servico = ServicoDeliveryTeste();
+    final marmita = impressao.produto(nome: 'Marmita M')
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '1',
+              nome: 'Arroz',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Arroz',
+                acao: AcaoIngredienteCardapio.pouco,
+              ),
+            ),
+            ModeloDadosOpcoesPacotes(
+              id: '2',
+              nome: 'Feijão',
+              montagemCardapio: const MontagemIngredienteCardapio(
+                nomeOriginal: 'Feijão',
+              ),
+            ),
+          ],
+        ),
+      ];
+    servico.produtosCardapio = [marmita];
+
+    await servico.notificarConfirmacaoPedido(
+      pedidoTeste(campos: {'idendereco': '17'}),
+      formaPagamento: 'Pix',
+    );
+
+    final campos = servico.gravacoes.single.$2;
+    final produto = (campos['produtos'] as List).single as Map;
+    final grupo = (produto['opcoesPacotesListaFinal'] as List).single as Map;
+    final ingredientes = grupo['dados'] as List;
+    expect(ingredientes.map((item) => (item as Map)['nome']), ['POUCO Arroz']);
+    expect(campos['formaPagamento'], 'Pix');
   });
   test('lista permite copia offline isolada pela empresa e pelo usuario',
       () async {

@@ -49,6 +49,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int consultasRecorrencia = 0;
   MensagemClienteDelivery? ultimaMensagem;
   PedidoDelivery? ultimoPedidoConfirmadoWhatsApp;
+  String? formaPagamentoConfirmadaWhatsApp;
   String? deliveryNotificado;
   String? valorPedidoNotificado;
   final operacoesFinalizacao = <String>[];
@@ -140,9 +141,12 @@ class _DeliveryFinalizacao extends ServicoDelivery {
 
   @override
   Future<Map<String, dynamic>> notificarConfirmacaoPedido(
-      PedidoDelivery pedido) async {
+    PedidoDelivery pedido, {
+    String? formaPagamento,
+  }) async {
     confirmacoesWhatsApp++;
     ultimoPedidoConfirmadoWhatsApp = pedido;
+    formaPagamentoConfirmadaWhatsApp = formaPagamento;
     operacoesFinalizacao.add('whatsapp');
     if (falharConfirmacaoWhatsApp) {
       throw StateError('WhatsApp indisponível');
@@ -296,6 +300,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(m.delivery.formaPagamentoConfirmadaWhatsApp, isNull);
     expect(m.delivery.pagamentos, 0);
     expect(m.delivery.conclusoes, 0);
     expect(m.delivery.envios, 0);
@@ -479,6 +484,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(m.delivery.confirmacoesWhatsApp, 1);
+    expect(m.delivery.formaPagamentoConfirmadaWhatsApp, 'Dinheiro');
     expect(m.delivery.operacoesFinalizacao, [
       'pagamento',
       'conclusao',

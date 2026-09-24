@@ -12,6 +12,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.dart';
@@ -504,7 +505,9 @@ class ServicoDelivery {
       });
 
   Future<Map<String, dynamic>> notificarConfirmacaoPedido(
-      PedidoDelivery pedido) async {
+    PedidoDelivery pedido, {
+    String? formaPagamento,
+  }) async {
     var produtos = pedido.produtos;
     if (produtos.isEmpty && !pedido.salvoNoAparelho) {
       final cardapio = await dadosCardapio(pedido.id);
@@ -513,6 +516,11 @@ class ServicoDelivery {
     if (produtos.isEmpty) {
       throw StateError('Pedido sem produtos para enviar pelo WhatsApp.');
     }
+    final produtosConfirmacao = produtos
+        .map((produto) => _produtoConfirmacao(produto.toMap()))
+        .toList();
+    final pagamentoConfirmacao =
+        _formaPagamentoConfirmacao(pedido, formaPagamento);
 
     if (pedido.salvoNoAparelho) {
       if (!pedido.possuiCelularCliente) {
@@ -528,10 +536,11 @@ class ServicoDelivery {
           'pedidoLocal': true,
           'tipo': 'Delivery',
           'tipoEntrega': pedido.tipoEntrega,
-          'produtos': produtos.map((produto) => produto.toMap()).toList(),
+          'produtos': produtosConfirmacao,
           'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
           'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
           'valorTotalPedido': pedido.total.toStringAsFixed(2),
+          'formaPagamento': pagamentoConfirmacao,
         },
         true,
       );
@@ -550,11 +559,118 @@ class ServicoDelivery {
       'id_cliente': pedido.cliente,
       'idEndereco': pedido.texto('idendereco', '0'),
       'tipo': 'Delivery',
-      'produtos': produtos.map((produto) => produto.toMap()).toList(),
+      'produtos': produtosConfirmacao,
       'valorPedido': (pedido.total - pedido.taxaEntrega).toStringAsFixed(2),
       'valorEntrega': pedido.taxaEntrega.toStringAsFixed(2),
       'valorTotalPedido': pedido.total.toStringAsFixed(2),
+      'formaPagamento': pagamentoConfirmacao,
     });
+  }
+
+  String _formaPagamentoConfirmacao(
+      PedidoDelivery pedido, String? formaInformada) {
+    final formas = <String>[];
+    final nomes = [
+      for (final pagamento in pedido.pagamentos)
+        pagamento['nome'] ??
+            pagamento['nomePagamento'] ??
+            pagamento['documento'] ??
+            '',
+      formaInformada ?? '',
+    ];
+    for (final valor in nomes) {
+      final nome = valor.toString().trim();
+      if (nome.isEmpty ||
+          formas.any((item) => item.toLowerCase() == nome.toLowerCase())) {
+        continue;
+      }
+      formas.add(nome);
+    }
+    return formas.isEmpty ? 'A definir' : formas.join(' + ');
+  }
+
+  Map<String, dynamic> _produtoConfirmacao(Map<String, dynamic> produto) {
+    final resultado = Map<String, dynamic>.from(produto);
+    final opcoes = produto['opcoesPacotesListaFinal'];
+    if (opcoes is List) {
+      resultado['opcoesPacotesListaFinal'] = _opcoesConfirmacao(opcoes);
+    }
+    return resultado;
+  }
+
+  List<Map<String, dynamic>> _opcoesConfirmacao(List opcoes) {
+    final resultado = <Map<String, dynamic>>[];
+    for (final valor in opcoes) {
+      if (valor is! Map) continue;
+      final grupo = Map<String, dynamic>.from(valor);
+      final dadosOriginais =
+          grupo['dados'] is List ? grupo['dados'] as List : const <dynamic>[];
+      final titulo = grupo['titulo']?.toString().trim().toLowerCase() ?? '';
+      final grupoCardapio = grupo['tipo']?.toString() == '8' ||
+          tituloIngredientesCardapio(grupo['titulo']) ||
+          titulo == 'cardápio' ||
+          titulo == 'cardapio' ||
+          dadosOriginais.any((dado) {
+            if (dado is! Map) return false;
+            final idCategoria = (dado['idCategoriaCardapio'] ??
+                    dado['categoriaCardapio'] ??
+                    dado['id_categoria_cardapio'] ??
+                    dado['categoria_cardapio'] ??
+                    '')
+                .toString()
+                .trim()
+                .toLowerCase();
+            return dado['montagemCardapio'] is Map ||
+                dado['montagem_cardapio'] is Map ||
+                (idCategoria.isNotEmpty &&
+                    idCategoria != '0' &&
+                    idCategoria != 'null');
+          });
+
+      if (grupoCardapio) {
+        grupo['dados'] = [
+          for (final dado in dadosOriginais)
+            if (dado is Map)
+              if (_ingredienteAlterado(dado) case final alterado?) alterado,
+        ];
+      }
+
+      final produtos = grupo['produtos'];
+      if (produtos is List) {
+        grupo['produtos'] = [
+          for (final produto in produtos)
+            if (produto is Map)
+              _produtoConfirmacao(Map<String, dynamic>.from(produto)),
+        ];
+      }
+
+      final dados = grupo['dados'];
+      final produtosDoGrupo = grupo['produtos'];
+      final semDados = dados is! List || dados.isEmpty;
+      final semProdutos = produtosDoGrupo is! List || produtosDoGrupo.isEmpty;
+      if (grupoCardapio && semDados && semProdutos) continue;
+      resultado.add(grupo);
+    }
+    return resultado;
+  }
+
+  Map<String, dynamic>? _ingredienteAlterado(Map dado) {
+    final mapaMontagem = dado['montagemCardapio'] ??
+        dado['montagem_cardapio'] ??
+        dado['montagem_json'];
+    final montagem = mapaMontagem is Map
+        ? MontagemIngredienteCardapio.fromMap(
+            Map<String, dynamic>.from(mapaMontagem),
+          )
+        : MontagemIngredienteCardapio.inferirAlteracao(
+            dado['nome']?.toString() ?? '',
+          );
+    if (montagem == null || !montagem.possuiAlteracao) return null;
+    return {
+      ...Map<String, dynamic>.from(dado),
+      'nome': montagem.descricao,
+      'montagemCardapio': montagem.toMap(),
+    };
   }
 
   Future<String> notificarCliente(
@@ -665,6 +781,7 @@ class ServicoDelivery {
       double? acrescimo,
       String? chavePagamento,
       bool confirmarRecorrente = false,
+      String? nomePagamento,
       String? dataLancamento,
       List<ParcelasModelo> parcelasLista = const []}) async {
     final totalOriginal = valorOriginal ?? pedido.total;
@@ -710,6 +827,8 @@ class ServicoDelivery {
       'valor_original': totalOriginal.toStringAsFixed(2),
       'valor_lancamento': recebido.toStringAsFixed(2),
       'pagamentoSelecionado': forma,
+      if (nomePagamento?.trim().isNotEmpty == true)
+        'nomePagamento': nomePagamento!.trim(),
       'quantidadePessoas': 1,
       'subTotal': totalOriginal.toStringAsFixed(2),
       'dataLancamento': vencimento,

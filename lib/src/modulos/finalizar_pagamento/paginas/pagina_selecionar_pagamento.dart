@@ -330,6 +330,11 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                     if (carregando || _erro != null || _perguntandoPagamento) {
                       return;
                     }
+                    final nomePagamento = bancos
+                        .where((banco) => banco.id == pagamentoSelecionado)
+                        .firstOrNull
+                        ?.nome;
+                    if (nomePagamento == null) return;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -340,6 +345,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
                           descontoPercentual: widget.descontoPercentual,
                           totalPedido: widget.totalPedido,
                           pagamentoselecionado: pagamentoSelecionado,
+                          nomePagamentoSelecionado: nomePagamento,
                           recorrencia: _recorrencia,
                         ),
                       ),
