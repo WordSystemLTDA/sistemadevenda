@@ -342,7 +342,12 @@ class _PaginaFinalizarContaAtendimentoState
           : (atendimento.nome ?? ''),
       permanencia: permanencia,
       valorentrega: atendimento.valorentrega ?? '0',
+      valortaxadeservico: atendimento.valorTaxaServico ?? '0',
+      valordesconto: atendimento.valorDesconto ?? '0',
+      valoracrescimo: atendimento.valorAcrescimo ?? '0',
       tipodeentrega: atendimento.tipodeentrega ?? '',
+      observacaoDoPedido: atendimento.observacaoDoPedido ?? '',
+      comanda: atendimento.nome ?? '',
       nomeCliente: nomeClienteAtendimento(
         atendimento.nomeCliente,
         atendimento.observacaoDoPedido,

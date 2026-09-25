@@ -757,6 +757,7 @@ void main() {
         );
         expect(servidor.mensagens, hasLength(1));
         expect(servidor.mensagens.single['tipo'], TipoCardapio.balcao.nome);
+        expect(servidor.mensagens.single['protocoloImpressao'], 2);
         expect(servidor.mensagens.single.containsKey('nomedopc'), isFalse);
       });
     }

@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
@@ -16,24 +21,36 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   String? senhaCancelamento;
+  int leiturasFinalizadas = 0;
 
-  @override
-  Future<Modeloworddadoscardapio> listarPorId(
-      String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode}) async {
+  Modeloworddadoscardapio _atendimento({
+    required String id,
+    required TipoCardapio tipo,
+    String status = 'Andamento',
+    bool pagamentoCompleto = false,
+  }) {
     return Modeloworddadoscardapio(
       id: id,
-      idComanda: '3',
-      idMesa: '0',
+      idComanda: tipo == TipoCardapio.comanda ? '3' : '0',
+      idMesa: tipo == TipoCardapio.mesa ? '3' : '0',
       idCliente: '8',
-      nome: 'Comanda: 3',
+      nome: '${tipo.nome}: 3',
+      nomeMesa: tipo == TipoCardapio.mesa ? 'Mesa: 3' : '',
       nomeCliente: 'Cliente teste',
-      status: 'Andamento',
+      nomeEmpresa: 'Restaurante teste',
+      celularEmpresa: '(44) 99999-0000',
+      cnpjEmpresa: '00.000.000/0001-00',
+      enderecoEmpresa: 'Rua do Restaurante, 10',
+      dataAbertura: '2026-09-24T18:00:00',
+      numeroPedido: '44',
+      status: status,
       valorTotal: '85.00',
-      somaValorHistorico: '20.00',
+      somaValorHistorico: pagamentoCompleto ? '85.00' : '20.00',
       quantidadePessoas: 2,
       nomelancamento: [
         ModeloNomeLancamento(nome: 'Dinheiro', valor: '20.00'),
+        if (pagamentoCompleto)
+          ModeloNomeLancamento(nome: 'Dinheiro', valor: '65.00'),
       ],
       produtos: [
         Modelowordprodutos(
@@ -99,6 +116,25 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   }
 
   @override
+  Future<Modeloworddadoscardapio> listarPorId(
+      String id, TipoCardapio tipo, String mostraritens,
+      {String? codigoQrcode}) async {
+    return _atendimento(id: id, tipo: tipo);
+  }
+
+  @override
+  Future<Modeloworddadoscardapio> listarFinalizadoParaImpressao(
+      String id, TipoCardapio tipo) async {
+    leiturasFinalizadas++;
+    return _atendimento(
+      id: id,
+      tipo: tipo,
+      status: 'Finalizada',
+      pagamentoCompleto: true,
+    );
+  }
+
+  @override
   Future<
       ({
         bool sucesso,
@@ -118,6 +154,16 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
       mensagem: 'Cancelamento simulado.',
       destinoCaixa: null,
     );
+  }
+}
+
+class _ServidorFinalizacaoFake extends Fake implements Server {
+  final mensagens = <Map<String, dynamic>>[];
+
+  @override
+  Future<void> enviarImpressoes(List<String> novasMensagens) async {
+    mensagens.addAll(novasMensagens.map(
+        (mensagem) => Map<String, dynamic>.from(jsonDecode(mensagem) as Map)));
   }
 }
 
@@ -190,22 +236,28 @@ class _PagamentoFinalizacaoFake extends Fake
 class _ModuloFinalizacao extends Module {
   final _PagamentoFinalizacaoFake pagamento;
   final _CardapioFinalizacaoFake cardapio;
-  _ModuloFinalizacao(this.pagamento, this.cardapio);
+  final _ServidorFinalizacaoFake servidor;
+  _ModuloFinalizacao(this.pagamento, this.cardapio, this.servidor);
 
   @override
   void binds(Injector i) {
     i.addInstance<ServicoCardapio>(cardapio);
     i.addInstance<ServicoFinalizarPagamento>(pagamento);
+    i.addInstance<Server>(servidor);
+    i.addInstance<UsuarioProvedor>(UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '7', empresa: '9', nome: 'Operador')));
   }
 }
 
 void main() {
   late _PagamentoFinalizacaoFake pagamento;
   late _CardapioFinalizacaoFake cardapio;
+  late _ServidorFinalizacaoFake servidor;
   setUp(() {
     pagamento = _PagamentoFinalizacaoFake();
     cardapio = _CardapioFinalizacaoFake();
-    Modular.init(_ModuloFinalizacao(pagamento, cardapio));
+    servidor = _ServidorFinalizacaoFake();
+    Modular.init(_ModuloFinalizacao(pagamento, cardapio, servidor));
   });
   tearDown(Modular.destroy);
 
@@ -385,4 +437,53 @@ void main() {
     expect(find.text('Conta finalizada'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+    testWidgets(
+        'finalização de ${tipo.name} salva comprovante de consumo no caixa',
+        (tester) async {
+      tester.view.physicalSize = const Size(430, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(MaterialApp(
+        home: PaginaFinalizarContaAtendimento(
+          idAtendimento: '138',
+          idComanda: tipo == TipoCardapio.comanda ? '3' : '0',
+          idMesa: tipo == TipoCardapio.mesa ? '3' : '0',
+          tipo: tipo,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester
+          .tap(find.byKey(const ValueKey('avancar_finalizacao_atendimento')));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(const ValueKey('avancar_acrescimos_atendimento')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+          find.byKey(const ValueKey('avancar_forma_pagamento_atendimento')));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(const ValueKey('finalizar_pagamento_atendimento')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Confirmar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Concluir'));
+      await tester.pumpAndSettle();
+
+      expect(cardapio.leiturasFinalizadas, 1);
+      expect(servidor.mensagens, hasLength(1));
+      final impressao = servidor.mensagens.single;
+      expect(impressao['tipoImpressao'], '2');
+      expect(impressao['protocoloImpressao'], 2);
+      expect(impressao['tipo'], tipo.nome);
+      expect(impressao.containsKey('nomedopc'), isFalse);
+      expect(impressao['somaValorHistorico'], '85.00');
+      expect(impressao['local'], '${tipo.nome}: 3');
+      expect(impressao['idEmpresa'], '9');
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

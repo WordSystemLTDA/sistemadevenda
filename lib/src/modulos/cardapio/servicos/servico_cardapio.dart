@@ -95,7 +95,7 @@ class ServicoCardapio {
       'cardapio/listar_por_id.php',
       queryParameters: {
         'id': id,
-        'codigoQrcode': null,
+        'codigoQrcode': 'null',
         'empresa': empresa,
         'id_usuario': idUsuario,
         'tipo': tipo.nome,
