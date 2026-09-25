@@ -114,6 +114,17 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   final _sincronizador = Sincronizador.instancia;
   late final _favoritos = FavoritosProdutos(provedor.usuarioProvedor);
 
+  String? get _subtituloCabecalho {
+    final nome = widget.nomeAtendimento?.trim();
+    final identificadorLocal =
+        widget.id?.startsWith('delivery-local:') == true ||
+            nome?.toLowerCase().contains('delivery-local:') == true;
+    if (widget.tipo == TipoCardapio.delivery && identificadorLocal) {
+      return null;
+    }
+    return nome?.isNotEmpty == true ? nome : widget.tipo.nome;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -366,6 +377,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       animation: provedor,
       builder: (context, _) {
         final temCategorias = _tabController != null && _categorias.isNotEmpty;
+        final subtituloCabecalho = _subtituloCabecalho;
         return Scaffold(
           extendBody: true,
           backgroundColor: cs.surface,
@@ -393,13 +405,14 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0)),
-                    Text(widget.nomeAtendimento ?? widget.tipo.nome,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
-                            color: cs.onSurfaceVariant)),
+                    if (subtituloCabecalho != null)
+                      Text(subtituloCabecalho,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: cs.onSurfaceVariant)),
                   ],
                 )),
               ],

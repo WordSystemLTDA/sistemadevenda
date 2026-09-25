@@ -87,7 +87,8 @@ void main() {
   Future<void> abrir(WidgetTester tester,
       {Size tela = const Size(393, 852),
       double escala = 1,
-      bool escuro = false}) async {
+      bool escuro = false,
+      Widget? pagina}) async {
     tester.view.physicalSize = tela;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -107,11 +108,12 @@ void main() {
             data: MediaQuery.of(context)
                 .copyWith(textScaler: TextScaler.linear(escala)),
             child: child!),
-        home: const PaginaCardapio(
-            tipo: TipoCardapio.comanda,
-            id: '10673',
-            idComanda: '3',
-            nomeAtendimento: 'Comanda 3'),
+        home: pagina ??
+            const PaginaCardapio(
+                tipo: TipoCardapio.comanda,
+                id: '10673',
+                idComanda: '3',
+                nomeAtendimento: 'Comanda 3'),
       ),
     ));
     await tester.pumpAndSettle();
@@ -129,6 +131,23 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant({TargetPlatform.iOS}));
+
+  testWidgets('cabecalho nao exibe identificador tecnico do delivery local',
+      (tester) async {
+    await abrir(
+      tester,
+      pagina: const PaginaCardapio(
+        tipo: TipoCardapio.delivery,
+        id: 'delivery-local:ef1c3b550ffc2fde3afd743da0ad66',
+        nomeAtendimento:
+            'Delivery #delivery-local:ef1c3b550ffc2fde3afd743da0ad66',
+      ),
+    );
+
+    expect(find.text('Cardápio'), findsOneWidget);
+    expect(find.textContaining('delivery-local:'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('produto por peso solicita gramas e calcula o total correto',
       (tester) async {
