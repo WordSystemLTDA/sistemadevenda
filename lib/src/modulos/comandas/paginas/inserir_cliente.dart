@@ -49,6 +49,7 @@ class _InserirClienteState extends State<InserirCliente> {
 
   bool _salvando = false;
   bool _carregandoEndereco = false;
+  bool _enderecoEmSitio = false;
   ConfiguracaoEnderecoCliente _configuracaoEndereco =
       const ConfiguracaoEnderecoCliente();
   String? _idClienteCriado;
@@ -163,6 +164,7 @@ class _InserirClienteState extends State<InserirCliente> {
       'id': '',
       'idCliente': idCliente,
       'padrao': 'Sim',
+      'tipoLocalEntrega': _enderecoEmSitio ? 'Sitio' : 'Normal',
       'podeInserirNovaCidade': false,
     });
   }
@@ -350,6 +352,14 @@ class _InserirClienteState extends State<InserirCliente> {
                 _CabecalhoEndereco(carregando: _carregandoEndereco),
                 const SizedBox(height: 16),
                 if (_carregandoEndereco) const LinearProgressIndicator(),
+                if (!_carregandoEndereco) ...[
+                  _SeletorEnderecoSitio(
+                    value: _enderecoEmSitio,
+                    onChanged: (value) =>
+                        setState(() => _enderecoEmSitio = value),
+                  ),
+                  const SizedBox(height: 18),
+                ],
                 if (!_carregandoEndereco)
                   for (final campo in const [
                     ('cep', 'CEP', Icons.location_searching_outlined),
@@ -530,6 +540,75 @@ class _CabecalhoEndereco extends StatelessWidget {
         ),
       ),
     ]);
+  }
+}
+
+class _SeletorEnderecoSitio extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SeletorEnderecoSitio({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: value ? cs.primaryContainer : cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: value ? cs.primary : cs.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.agriculture_outlined,
+                color: value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Endereço em sítio',
+                      style: TextStyle(
+                        color: value ? cs.onPrimaryContainer : cs.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Usa a taxa especial de entrega rural.',
+                      style: TextStyle(
+                        color:
+                            value ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const ValueKey('cliente-endereco-sitio'),
+                value: value,
+                onChanged: onChanged,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

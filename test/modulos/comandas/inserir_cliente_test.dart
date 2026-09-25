@@ -63,6 +63,44 @@ void main() {
     expect(servico.gravacoes, hasLength(1));
     expect(servico.gravacoes.single['cidade'], 'Lobato');
     expect(servico.gravacoes.single['uf'], 'PR');
+    expect(servico.gravacoes.single['tipoLocalEntrega'], 'Normal');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cadastro do cliente salva endereco em sitio quando selecionado',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(600, 2000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final servico = _ServicoEnderecoTeste();
+    await tester.pumpWidget(MaterialApp(
+      home: InserirCliente(
+        servicoEndereco: servico,
+        aoCadastrarCliente: (nome, celular, email, observacao) async => (
+          sucesso: true,
+          idcliente: '8',
+          nomecliente: nome,
+          mensagem: 'Cliente cadastrado',
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Cliente do Sítio');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-endereco')), 'Estrada Rural');
+    await tester.enterText(find.byKey(const ValueKey('cliente-numero')), 'S/N');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-bairro')), 'Zona Rural');
+    await tester.tap(find.byKey(const ValueKey('cliente-endereco-sitio')));
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+
+    expect(servico.gravacoes, hasLength(1));
+    expect(servico.gravacoes.single['tipoLocalEntrega'], 'Sitio');
     expect(tester.takeException(), isNull);
   });
 
