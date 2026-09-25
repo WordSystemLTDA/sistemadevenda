@@ -257,7 +257,7 @@ class GeradorCardapioDelivery {
       titulo,
       Rect.fromLTWH(area.left + 34, area.top + 17, area.width - 68, 48),
       tamanho: 28,
-      peso: FontWeight.w900,
+      peso: FontWeight.w700,
       cor: _creme,
       maxLinhas: 1,
     );
@@ -305,7 +305,7 @@ class GeradorCardapioDelivery {
           alturaLinha,
         ),
         tamanho: tamanhoFonte,
-        peso: FontWeight.w800,
+        peso: FontWeight.w600,
         cor: Colors.white,
         maxLinhas: alturaLinha >= 60 ? 2 : 1,
       );
@@ -393,7 +393,7 @@ class GeradorCardapioDelivery {
           alturaLinha,
         ),
         tamanho: tamanhoFonte,
-        peso: FontWeight.w800,
+        peso: FontWeight.w600,
         cor: _vinho,
         maxLinhas: 1,
       );
@@ -412,7 +412,7 @@ class GeradorCardapioDelivery {
         produto.valorFormatado,
         Rect.fromLTWH(inicioPreco + 8, topo, larguraPreco - 16, alturaLinha),
         tamanho: (tamanhoFonte * .88).clamp(16.0, 28.0),
-        peso: FontWeight.w900,
+        peso: FontWeight.w700,
         cor: Colors.white,
         maxLinhas: 1,
         alinhamento: TextAlign.center,
@@ -435,7 +435,7 @@ class GeradorCardapioDelivery {
       'DELIVERY',
       const Rect.fromLTWH(173, 1229, 165, 60),
       tamanho: 25,
-      peso: FontWeight.w900,
+      peso: FontWeight.w700,
       cor: _vermelho,
       maxLinhas: 1,
     );
@@ -455,7 +455,7 @@ class GeradorCardapioDelivery {
         'FAÇA SEU PEDIDO PELO WHATSAPP',
         const Rect.fromLTWH(450, 1230, 500, 60),
         tamanho: 25,
-        peso: FontWeight.w900,
+        peso: FontWeight.w700,
         cor: _vermelho,
         maxLinhas: 1,
       );
@@ -465,7 +465,7 @@ class GeradorCardapioDelivery {
         'PEÇA PELO WHATSAPP',
         const Rect.fromLTWH(452, 1221, 500, 34),
         tamanho: 19,
-        peso: FontWeight.w800,
+        peso: FontWeight.w600,
         cor: _vermelho.withValues(alpha: .78),
         maxLinhas: 1,
       );
@@ -474,7 +474,7 @@ class GeradorCardapioDelivery {
         contato,
         const Rect.fromLTWH(452, 1251, 500, 48),
         tamanho: 32,
-        peso: FontWeight.w900,
+        peso: FontWeight.w700,
         cor: _vinho,
         maxLinhas: 1,
       );
