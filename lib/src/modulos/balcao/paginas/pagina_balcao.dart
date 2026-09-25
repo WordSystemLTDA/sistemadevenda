@@ -95,13 +95,16 @@ class _PaginaBalcaoState extends State<PaginaBalcao> {
         ),
       ),
       floatingActionButton: _BotaoNovaVenda(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => PaginaNovaVendaBalcao(aoSalvar: () {}),
             ),
           );
+          if (mounted) {
+            await provedor.listar(mostrarCarregamento: false);
+          }
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,

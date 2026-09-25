@@ -393,16 +393,31 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       if (!sucesso) {
         throw StateError('Pedido nao registrado.');
       }
+      final valorLancado = itens.fold<double>(
+        0,
+        (total, item) =>
+            total +
+            (double.tryParse(item.valorVenda.replaceAll(',', '.')) ?? 0) *
+                (item.quantidade ?? 1),
+      );
       FeedbackUsuario.pedidoFinalizado();
+      if (tipo == TipoCardapio.mesa) {
+        provedorMesas.registrarPedidoLancado(
+          contextoCarrinho.idAtendimento,
+          idRecurso: idMesa,
+          valorAdicionado: valorLancado,
+        );
+      } else {
+        provedorComanda.registrarPedidoLancado(
+          contextoCarrinho.idAtendimento,
+          idRecurso: idComanda,
+          valorAdicionado: valorLancado,
+        );
+      }
       server.write(jsonEncode({
         'tipo': tipo.nome,
         'nomeConexao': usuarioProvedor.usuario?.nome ?? ''
       }));
-      if (tipo == TipoCardapio.mesa) {
-        provedorMesas.listarMesas('');
-      } else {
-        provedorComanda.listarComandas('');
-      }
       if (mounted) {
         setState(() => isLoading = false);
         await WidgetsBinding.instance.endOfFrame;
@@ -498,6 +513,10 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       if (!mounted) return;
       final pedido = await servicoDelivery.pedido(contexto.idAtendimento);
       if (!mounted) return;
+      // A lista de Delivery fica atrás desta rota. Publica o pedido já
+      // confirmado para ele aparecer imediatamente, mesmo que a listagem
+      // geral do servidor ainda leve alguns segundos para incluí-lo.
+      servicoDelivery.notificarPedidoAtualizado(pedido);
       _saldoDelivery = pedido.restante;
       provedorFinalizarPagamento.idVenda = contexto.idAtendimento;
       provedorFinalizarPagamento.valor = _saldoDelivery!;

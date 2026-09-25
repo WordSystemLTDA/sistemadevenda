@@ -18,9 +18,61 @@ class ProvedorComanda extends ChangeNotifier {
   int _consulta = 0;
   int _consultaLista = 0;
   final Set<String> _finalizacoesPendentes = {};
+  final Map<
+      String,
+      ({
+        String? idRecurso,
+        double totalMinimo,
+        DateTime lancadoEm,
+        DateTime ate,
+      })> _pedidosRecentes = {};
 
   static const _mensagemFalha =
       'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.';
+
+  double _valor(String? valor) =>
+      double.tryParse((valor ?? '0').replaceAll(',', '.')) ?? 0;
+
+  /// Atualiza o card assim que a API confirma o lançamento dos produtos. A
+  /// listagem pode levar alguns segundos para refletir o novo total; durante
+  /// esse intervalo, respostas antigas não substituem o valor já confirmado.
+  void registrarPedidoLancado(
+    String idAtendimento, {
+    String? idRecurso,
+    required double valorAdicionado,
+  }) {
+    if (!valorAdicionado.isFinite || valorAdicionado <= 0) return;
+    ModeloComanda? atualizada;
+    for (final grupo in comandas) {
+      for (final item in grupo.comandas ?? const <ModeloComanda>[]) {
+        if (item.idComandaPedido?.toString() == idAtendimento ||
+            (idRecurso != null &&
+                idRecurso.isNotEmpty &&
+                item.id == idRecurso &&
+                item.comandaOcupada)) {
+          atualizada = item;
+          break;
+        }
+      }
+      if (atualizada != null) break;
+    }
+    if (atualizada == null) return;
+
+    final agora = DateTime.now();
+    final totalMinimo = _valor(atualizada.valor) + valorAdicionado;
+    atualizada
+      ..valor = totalMinimo.toStringAsFixed(2)
+      ..dataultimopedido = agora.toIso8601String();
+    final idListado = atualizada.idComandaPedido?.toString();
+    final chave = idListado?.isNotEmpty == true ? idListado! : idAtendimento;
+    _pedidosRecentes[chave] = (
+      idRecurso: idRecurso,
+      totalMinimo: totalMinimo,
+      lancadoEm: agora,
+      ate: agora.add(const Duration(seconds: 45)),
+    );
+    notifyListeners();
+  }
 
   /// Reflete imediatamente uma finalização já confirmada pela API. Enquanto a
   /// listagem remota ainda devolver o atendimento antigo, ele continua livre
@@ -43,6 +95,7 @@ class ProvedorComanda extends ChangeNotifier {
         final idListado = finalizada.idComandaPedido?.toString();
         if (idListado != null && idListado.isNotEmpty) {
           _finalizacoesPendentes.add(idListado);
+          _pedidosRecentes.remove(idListado);
         }
         break;
       }
@@ -114,6 +167,40 @@ class ProvedorComanda extends ChangeNotifier {
       ..addAll(aindaPendentes);
   }
 
+  void _preservarPedidosRecentes(List<ModeloComandas> resposta) {
+    if (_pedidosRecentes.isEmpty) return;
+    final agora = DateTime.now();
+    final confirmados = <String>{};
+    _pedidosRecentes.removeWhere((_, item) => item.ate.isBefore(agora));
+    if (_pedidosRecentes.isEmpty) return;
+    final recentesPorRecurso = {
+      for (final entrada in _pedidosRecentes.entries)
+        if (entrada.value.idRecurso?.isNotEmpty == true)
+          entrada.value.idRecurso!: entrada,
+    };
+
+    for (final grupo in resposta) {
+      for (final item in grupo.comandas ?? const <ModeloComanda>[]) {
+        final id = item.idComandaPedido?.toString();
+        final entrada = id != null && _pedidosRecentes.containsKey(id)
+            ? MapEntry(id, _pedidosRecentes[id]!)
+            : recentesPorRecurso[item.id];
+        final recente = entrada?.value;
+        if (recente == null || !item.comandaOcupada) continue;
+        if (_valor(item.valor) + 0.009 >= recente.totalMinimo) {
+          confirmados.add(entrada!.key);
+          continue;
+        }
+        item
+          ..valor = recente.totalMinimo.toStringAsFixed(2)
+          ..dataultimopedido = recente.lancadoEm.toIso8601String();
+      }
+    }
+    for (final id in confirmados) {
+      _pedidosRecentes.remove(id);
+    }
+  }
+
   final _atualizacao = AtualizacaoAgrupada();
 
   Future<List<ModeloComandas>> listarComandas(String pesquisa,
@@ -130,6 +217,7 @@ class ProvedorComanda extends ChangeNotifier {
         final res = await _servico.listar(pesquisa);
         if (consulta != _consulta) return;
         _preservarFinalizacoesPendentes(res);
+        _preservarPedidosRecentes(res);
         comandas = res;
         return;
       } catch (_) {

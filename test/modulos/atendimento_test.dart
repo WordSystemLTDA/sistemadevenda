@@ -13,6 +13,7 @@ import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart'
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/pagina_balcao.dart';
+import 'package:app/src/modulos/balcao/paginas/pagina_nova_venda_balcao.dart';
 import 'package:app/src/modulos/balcao/paginas/widgets/card_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
@@ -321,6 +322,23 @@ void main() {
     expect(tamanho.width, 361);
     expect(tamanho.height, greaterThanOrEqualTo(64));
     expect(centro.dx, 196.5);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('balcao atualiza a lista assim que o fluxo da venda termina',
+      (tester) async {
+    await abrir(tester, const PaginaBalcao(), largura: 800);
+    final consultasAntes = modulo.balcao.pesquisas.length;
+
+    await tester.tap(find.byKey(const ValueKey('nova-venda-balcao')));
+    await tester.pumpAndSettle();
+    final paginaNova = find.byType(PaginaNovaVendaBalcao);
+    expect(paginaNova, findsOneWidget);
+
+    Navigator.of(tester.element(paginaNova)).pop();
+    await tester.pumpAndSettle();
+
+    expect(modulo.balcao.pesquisas.length, consultasAntes + 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -786,6 +804,118 @@ void main() {
     expect(itens.single.mesaOcupada, isFalse);
     expect(itens.single.idComandaPedido, isNull);
     expect(itens.single.valor, isNull);
+  });
+
+  test('valor lancado aparece imediatamente e nao volta a zero na comanda',
+      () async {
+    modulo.provedorComandas.comandas = [
+      ModeloComandas(
+        titulo: 'Ocupadas',
+        comandas: [
+          ModeloComanda(
+            id: '2',
+            nome: 'Comanda: 2',
+            codigo: '2',
+            ativo: 'Sim',
+            comandaOcupada: true,
+            idComandaPedido: '10853',
+            valor: '0.00',
+          ),
+        ],
+      ),
+    ];
+
+    modulo.provedorComandas.registrarPedidoLancado(
+      '10853',
+      idRecurso: '2',
+      valorAdicionado: 84,
+    );
+    var card = modulo.provedorComandas.comandas.single.comandas!.single;
+    expect(card.valor, '84.00');
+    expect(card.dataultimopedido, isNotNull);
+
+    modulo.comandas.controlarRespostas = true;
+    final consulta = modulo.provedorComandas.listarComandas('');
+    modulo.comandas.pendentes.single.complete([
+      ModeloComandas(
+        titulo: 'Ocupadas',
+        comandas: [
+          ModeloComanda(
+            id: '2',
+            nome: 'Comanda: 2',
+            codigo: '2',
+            ativo: 'Sim',
+            comandaOcupada: true,
+            idComandaPedido: '10853',
+            valor: '0.00',
+          ),
+        ],
+      ),
+    ]);
+    await consulta;
+
+    card = modulo.provedorComandas.comandas.single.comandas!.single;
+    expect(card.valor, '84.00');
+    expect(card.dataultimopedido, isNotNull);
+  });
+
+  test('valor lancado aparece imediatamente e nao volta a zero na mesa',
+      () async {
+    modulo.provedorMesas.mesas = [
+      MesasModel(
+        titulo: 'Ocupadas',
+        mesas: [
+          MesaModelo(
+            id: '2',
+            nome: 'Mesa 2',
+            codigo: '2',
+            ativo: 'Sim',
+            mesaOcupada: true,
+            nomeCliente: null,
+            dataAbertura: null,
+            horaAbertura: null,
+            idComandaPedido: '10854',
+            valor: '0.00',
+          ),
+        ],
+      ),
+    ];
+
+    modulo.provedorMesas.registrarPedidoLancado(
+      '10854',
+      idRecurso: '2',
+      valorAdicionado: 84,
+    );
+    var card = modulo.provedorMesas.mesas.single.mesas!.single;
+    expect(card.valor, '84.00');
+    expect(card.dataultimopedido, isNotNull);
+
+    modulo.mesas.controlarRespostas = true;
+    final consulta = modulo.provedorMesas.listarMesas('');
+    modulo.mesas.pendentes.single.complete([
+      MesasModel(
+        titulo: 'Ocupadas',
+        mesas: [
+          MesaModelo(
+            id: '2',
+            nome: 'Mesa 2',
+            codigo: '2',
+            ativo: 'Sim',
+            mesaOcupada: true,
+            nomeCliente: null,
+            dataAbertura: null,
+            horaAbertura: null,
+            idComandaPedido: '10854',
+            valor: '0.00',
+          ),
+        ],
+      ),
+    ]);
+    await consulta;
+
+    card = modulo.provedorMesas.mesas.single.mesas!.single;
+    expect(card.valor, '84.00');
+    expect(card.dataultimopedido, isNotNull);
   });
 
   test('comandas libera carregamento apos timeout e preserva lista antiga',

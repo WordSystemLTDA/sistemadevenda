@@ -1185,6 +1185,36 @@ void main() {
     expect(p.etapas.first.pedidos.single.quantidade, 7);
     expect(p.etapas.first.pedidos.single.total, 114);
   });
+  test('pedido novo notificado aparece antes da listagem geral', () async {
+    final s = ServicoDeliveryTeste();
+    final pedidoNovo = pedidoTeste(campos: {
+      'id': '99',
+      'numeroPedido': '99',
+      'idopcoescarrossel': '1',
+      'quantidadeprodutos': '1',
+      'valorVenda': '84.00',
+    });
+    s.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [],
+          }),
+        ];
+    final p = ProvedorDelivery(s);
+    addTearDown(p.dispose);
+    await p.listar();
+
+    p.atualizarPedido(pedidoNovo);
+    expect(p.etapas.single.pedidos.single.id, '99');
+
+    // A primeira resposta remota ainda não contém a venda recém-criada.
+    await p.listar();
+    expect(p.etapas.single.pedidos.single.id, '99');
+    expect(p.etapas.single.pedidos.single.total, 84);
+  });
   test('pedido movido localmente aparece na nova etapa antes da listagem',
       () async {
     final s = ServicoDeliveryTeste();
