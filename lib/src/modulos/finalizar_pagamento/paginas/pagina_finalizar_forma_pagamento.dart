@@ -9,6 +9,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/essencial/utils/numero_pedido_operacional.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
@@ -549,7 +550,7 @@ class _PaginaFinalizarFormaPagamentoState
                           return;
                         }
 
-                        var (sucesso, mensagem, idvenda) = await context
+                        final resultadoPagamento = await context
                             .read<ServicoFinalizarPagamento>()
                             .pagarPedido(
                               provedor.idVenda,
@@ -579,6 +580,13 @@ class _PaginaFinalizarFormaPagamentoState
                                   .toStringAsFixed(2), // valorAPagarOriginal,
                               provedorBalcao.observacaoDoPedido,
                             );
+                        if (!mounted) {
+                          finalizando.value = false;
+                          return;
+                        }
+                        final sucesso = resultadoPagamento.sucesso;
+                        final mensagem = resultadoPagamento.mensagem;
+                        final idvenda = resultadoPagamento.idVenda;
 
                         if (sucesso) {
                           if (idvenda.startsWith('venda-local:')) {
@@ -617,6 +625,11 @@ class _PaginaFinalizarFormaPagamentoState
                                 .firstOrNull;
 
                             if (vendaBalcao != null) {
+                              final numeroPedido =
+                                  numeroPedidoOperacionalConfirmado(
+                                          resultadoPagamento.numeroPedido) ??
+                                      numeroPedidoOperacionalConfirmado(
+                                          vendaBalcao.numeropedido);
                               server.write(jsonEncode({
                                 'tipo': TipoCardapio.balcao.nome,
                                 'nomeConexao': usuarioProvedor.usuario!.nome,
@@ -635,12 +648,13 @@ class _PaginaFinalizarFormaPagamentoState
                                     configuracaoImpressao;
                               }
 
-                              if (!imprimirPreparoNoComprovante) {
+                              if (!imprimirPreparoNoComprovante &&
+                                  numeroPedido != null) {
                                 await Impressao.comprovanteDePedido(
                                   local: '',
                                   tipoTela: provedorCardapio.tipo,
                                   comanda: "Balcão $idvenda",
-                                  numeroPedido: vendaBalcao.numeropedido,
+                                  numeroPedido: numeroPedido,
                                   nomeCliente: ((vendaBalcao.nomecliente) ==
                                                   'Sem Cliente' ||
                                               vendaBalcao.nomecliente == "") &&
@@ -665,43 +679,56 @@ class _PaginaFinalizarFormaPagamentoState
                               final newDuration =
                                   ConfigSistema.formatarHora(duration);
 
-                              Impressao.comprovanteDeConsumo(
-                                tipoTela: TipoCardapio.balcao,
-                                agruparPorDestino: false,
-                                valorentrega:
-                                    informacoes.informacoes.valorentrega,
-                                nomeEmpresa: vendaBalcao.nomeEmpresa,
-                                produtos: informacoes.produtos,
-                                nomelancamento: List<ModeloNomeLancamento>.from(
-                                    parcelas.map((elemento) {
-                                  return ModeloNomeLancamento(
-                                      nome: elemento.entradaMov,
-                                      valor: UtilBrasilFields
-                                              .converterMoedaParaDouble(
-                                                  elemento.valorMovF)
-                                          .toStringAsExponential(2));
-                                })),
-                                somaValorHistorico:
-                                    informacoes.informacoes.subtotal,
-                                cnpjEmpresa: informacoes.informacoes.docempresa,
-                                celularEmpresa:
-                                    informacoes.informacoes.celularcliente,
-                                enderecoEmpresa:
-                                    informacoes.informacoes.enderecoempresa,
-                                permanencia: newDuration,
-                                local: '',
-                                total: informacoes.informacoes.subtotal,
-                                numeroPedido:
-                                    informacoes.informacoes.numerodopedido,
-                                tipodeentrega:
-                                    informacoes.informacoes.tipodeentrega,
-                                nomeCliente:
-                                    (informacoes.informacoes.nomeCliente == ''
-                                            ? null
-                                            : informacoes
-                                                .informacoes.nomeCliente) ??
-                                        'Sem Cliente',
-                              );
+                              if (numeroPedido != null) {
+                                Impressao.comprovanteDeConsumo(
+                                  tipoTela: TipoCardapio.balcao,
+                                  agruparPorDestino: false,
+                                  valorentrega:
+                                      informacoes.informacoes.valorentrega,
+                                  nomeEmpresa: vendaBalcao.nomeEmpresa,
+                                  produtos: informacoes.produtos,
+                                  nomelancamento:
+                                      List<ModeloNomeLancamento>.from(
+                                          parcelas.map((elemento) {
+                                    return ModeloNomeLancamento(
+                                        nome: elemento.entradaMov,
+                                        valor: UtilBrasilFields
+                                                .converterMoedaParaDouble(
+                                                    elemento.valorMovF)
+                                            .toStringAsExponential(2));
+                                  })),
+                                  somaValorHistorico:
+                                      informacoes.informacoes.subtotal,
+                                  cnpjEmpresa:
+                                      informacoes.informacoes.docempresa,
+                                  celularEmpresa:
+                                      informacoes.informacoes.celularcliente,
+                                  enderecoEmpresa:
+                                      informacoes.informacoes.enderecoempresa,
+                                  permanencia: newDuration,
+                                  local: '',
+                                  total: informacoes.informacoes.subtotal,
+                                  numeroPedido: numeroPedido,
+                                  tipodeentrega:
+                                      informacoes.informacoes.tipodeentrega,
+                                  nomeCliente:
+                                      (informacoes.informacoes.nomeCliente == ''
+                                              ? null
+                                              : informacoes
+                                                  .informacoes.nomeCliente) ??
+                                          'Sem Cliente',
+                                );
+                              } else if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Venda finalizada, mas o servidor não confirmou o número do comprovante.',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
                               FeedbackUsuario.pedidoFinalizado();
                             }
 
@@ -724,11 +751,13 @@ class _PaginaFinalizarFormaPagamentoState
                             }
                           }
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(mensagem),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                          ));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(mensagem),
+                              backgroundColor: Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
                         }
 
                         finalizando.value = false;

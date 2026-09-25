@@ -428,6 +428,11 @@ void main() {
     expect((await fila.listar()).single.texto('erroSincronizacao'),
         'Caixa encerrado');
     await banco.atualizarOperacao(op['id'] as String, {
+      'estado': 'registrado',
+      'resposta': jsonEncode({'idDelivery': '501', 'numeroPedido': '20'})
+    });
+    expect((await fila.pedido(id)).numeroOperacional, '20');
+    await banco.atualizarOperacao(op['id'] as String, {
       'estado': 'concluido',
       'resposta': jsonEncode({'idDelivery': '501', 'numeroPedido': '20'})
     });

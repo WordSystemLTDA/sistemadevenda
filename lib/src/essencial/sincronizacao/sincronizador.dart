@@ -7,6 +7,7 @@ import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
+import 'package:app/src/essencial/utils/numero_pedido_operacional.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
@@ -1108,18 +1109,22 @@ class Sincronizador extends ChangeNotifier {
         }
         if (op['acao'] == 'abertura' &&
             ((int.tryParse('${resultado['id_comanda_pedido']}') ?? 0) <= 0 ||
-                '${resultado['versao_atendimento'] ?? ''}'.isEmpty)) {
+                '${resultado['versao_atendimento'] ?? ''}'.isEmpty ||
+                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
+                    null)) {
           throw StateError(
               'O servidor nao confirmou a identidade da abertura.');
         }
         if (op['acao'] == 'venda' &&
             ((int.tryParse('${resultado['idVenda']}') ?? 0) <= 0 ||
-                '${resultado['numeroPedido'] ?? ''}'.isEmpty)) {
+                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
+                    null)) {
           throw StateError('O servidor nao confirmou a identidade da venda.');
         }
         if (op['acao'] == 'delivery' &&
             ((int.tryParse('${resultado['idDelivery']}') ?? 0) <= 0 ||
-                '${resultado['numeroPedido'] ?? ''}'.isEmpty)) {
+                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
+                    null)) {
           throw StateError(
               'O servidor nao confirmou a identidade do Delivery.');
         }
@@ -1147,8 +1152,10 @@ class Sincronizador extends ChangeNotifier {
                   jsonDecode(mensagem)['tipoImpressao']?.toString() != '1')
               .map((mensagem) {
         final dados = jsonDecode(mensagem) as Map<String, dynamic>;
-        if (recibo['numeroPedido'] != null) {
-          dados['numeroPedido'] = recibo['numeroPedido'];
+        final numeroPedido =
+            numeroPedidoOperacionalConfirmado(recibo['numeroPedido']);
+        if (numeroPedido != null) {
+          dados['numeroPedido'] = numeroPedido;
         }
         if (op['acao'] == 'venda') {
           dados['comanda'] = 'Balcão ${recibo['idVenda']}';

@@ -427,11 +427,12 @@ class FilaDeliveryOffline {
     final total = _total({...r, 'produtos': produtos}).toStringAsFixed(2);
     final id = r['id'] as String;
     final exibicao = r['exibicao'] as Map? ?? {};
+    final recibo = jsonDecode(op?['resposta'] as String? ?? '{}') as Map;
     return PedidoDelivery.fromMap({
       ...exibicao,
       'id': id,
       'idVenda': '0',
-      'numeroPedido': 'Local ${id.substring(id.length - 6).toUpperCase()}',
+      'numeroPedido': recibo['numeroPedido']?.toString() ?? '',
       'idCliente': r['cliente'],
       'idendereco': r['endereco'],
       'tipodeentrega': r['tipoentrega'],

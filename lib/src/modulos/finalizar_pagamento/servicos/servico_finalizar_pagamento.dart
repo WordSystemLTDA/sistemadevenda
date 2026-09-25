@@ -207,7 +207,13 @@ class ServicoFinalizarPagamento {
     }
   }
 
-  Future<(bool, String, String)> pagarPedido(
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        String idVenda,
+        String numeroPedido,
+      })> pagarPedido(
     String id,
     String idComanda,
     String idMesa,
@@ -276,7 +282,12 @@ class ServicoFinalizarPagamento {
         dados['produtos'] = produtos.map((p) => p.toMap()).toList();
         if (id.startsWith('venda-local:')) {
           await sync.guardarPagamentoVenda(id, dados);
-          return (true, 'Pagamento salvo no aparelho.', id);
+          return (
+            sucesso: true,
+            mensagem: 'Pagamento salvo no aparelho.',
+            idVenda: id,
+            numeroPedido: '',
+          );
         }
         await sync.configurar();
         final nomeCliente = await AtendimentosLocais(sync.banco, sync.escopo)
@@ -295,7 +306,12 @@ class ServicoFinalizarPagamento {
             itens: produtos,
             dados: dados,
             impressoes: mensagens);
-        return (true, 'Venda salva no aparelho.', idLocal);
+        return (
+          sucesso: true,
+          mensagem: 'Venda salva no aparelho.',
+          idVenda: idLocal,
+          numeroPedido: '',
+        );
       }
 
       var response = await dio.cliente.post(
@@ -306,18 +322,25 @@ class ServicoFinalizarPagamento {
       bool sucesso = jsonData['sucesso'];
       String mensagem = jsonData['mensagem'];
       String idVenda = jsonData['idVenda'] ?? '0';
+      String numeroPedido = jsonData['numeroPedido']?.toString().trim() ?? '';
       if (sucesso && tipo == TipoCardapio.balcao) {
         NotificadorAtualizacao.atendimento('Balcão');
       }
 
-      return (sucesso, mensagem, idVenda);
+      return (
+        sucesso: sucesso,
+        mensagem: mensagem,
+        idVenda: idVenda,
+        numeroPedido: numeroPedido,
+      );
     } catch (erro) {
       return (
-        false,
-        erro is StateError
+        sucesso: false,
+        mensagem: erro is StateError
             ? erro.message.toString()
             : 'Nao foi possivel confirmar o pagamento. Confira o servidor antes de tentar novamente.',
-        id
+        idVenda: id,
+        numeroPedido: '',
       );
     }
   }

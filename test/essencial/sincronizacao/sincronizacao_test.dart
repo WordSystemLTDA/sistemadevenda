@@ -64,6 +64,7 @@ void main() {
   var mensagemConflito = 'Atendimento encerrado';
   var contratoConflito = true;
   var conflitoAbertura = false;
+  var reciboAberturaIncompleto = false;
   Completer<void>? requisicaoPausada;
   Completer<void>? liberarResposta;
   var reciboVendaIncompleto = false;
@@ -81,6 +82,7 @@ void main() {
     mensagemConflito = 'Atendimento encerrado';
     contratoConflito = true;
     conflitoAbertura = false;
+    reciboAberturaIncompleto = false;
     requisicaoPausada = null;
     liberarResposta = null;
     reciboVendaIncompleto = false;
@@ -166,7 +168,7 @@ void main() {
           if (pedido['acao'] == 'abertura') ...{
             'id_comanda_pedido': '201',
             'versao_atendimento': 'nova-versao',
-            'numeroPedido': '31',
+            if (!reciboAberturaIncompleto) 'numeroPedido': '31',
           },
           if (pedido['dados']['id_abertura'] != null) 'numeroPedido': '31',
           if (pedido['acao'] == 'venda' && !reciboVendaIncompleto) ...{
@@ -487,6 +489,23 @@ void main() {
       expect(enviados.single['dados']['id_abertura'], id.substring(6));
     });
   }
+
+  test('abertura sem numero oficial permanece pendente e nao imprime',
+      () async {
+    final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
+    conectado = true;
+    reciboAberturaIncompleto = true;
+
+    await sync.tentarNovamente();
+
+    expect(await banco.operacoes(sync.escopo), hasLength(1));
+    expect(socket.filaImpressao.itens, isEmpty);
+
+    reciboAberturaIncompleto = false;
+    await banco.atualizarOperacao(id.substring(6), {'proxima': 0});
+    await sync.tentarNovamente();
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
 
   test(
       'itens preservam mesa e comanda da abertura, mesmo com argumentos antigos da tela',

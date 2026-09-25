@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/essencial/utils/numero_pedido_operacional.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
@@ -37,9 +38,16 @@ class ImpressaoDelivery {
     final dados = resultados[0] as Modeloworddadoscardapio;
     final detalhesLocais = resultados[1] as List<Modelowordprodutos>;
     final configuracao = config ?? await _configuracao(servico);
+    final numeroPedido =
+        numeroPedidoOperacionalConfirmado(dados.numeroPedido) ??
+            exigirNumeroPedidoOperacional(pedido.numeroOperacional);
+    final pedidoConfirmado = PedidoDelivery.fromMap({
+      ...pedido.dados,
+      'numeroPedido': numeroPedido,
+    });
     final produtosBase = dados.produtos ?? <Modelowordprodutos>[];
     final produtos = produtosComDetalhesDoPedido(
-      pedido,
+      pedidoConfirmado,
       produtosBase,
       detalhesLocais: detalhesLocais,
     );
@@ -52,15 +60,15 @@ class ImpressaoDelivery {
           Impressao.prepararComprovanteDePedido(
               produtos: produtos,
               tipoTela: TipoCardapio.delivery,
-              tipodeentrega: pedido.tipoEntrega,
-              nomeCliente: pedido.nome,
+              tipodeentrega: pedidoConfirmado.tipoEntrega,
+              nomeCliente: pedidoConfirmado.nome,
               nomeEmpresa: dados.nomeEmpresa ?? '',
-              comanda: 'Delivery ${pedido.id}',
-              numeroPedido: pedido.numero),
+              comanda: 'Delivery ${pedidoConfirmado.id}',
+              numeroPedido: numeroPedido),
           configuracao,
         ),
       if (!preparo || ambos)
-        ...comprovantes(servico, pedido.comEndereco(dados), produtos,
+        ...comprovantes(servico, pedidoConfirmado.comEndereco(dados), produtos,
             config: configuracao),
     ];
     return chaveRecorrente == null
@@ -502,6 +510,8 @@ class ImpressaoDelivery {
   static List<String> comprovantes(ServicoDelivery servico,
       PedidoDelivery pedido, List<Modelowordprodutos> produtos,
       {TipoCardapio tipo = TipoCardapio.delivery, ConfigDelivery? config}) {
+    final numeroPedido =
+        exigirNumeroPedidoOperacional(pedido.numeroOperacional);
     final grupos = <String, List<Modelowordprodutos>>{};
     if (tipo == TipoCardapio.balcao) {
       grupos[''] = produtos;
@@ -550,7 +560,7 @@ class ImpressaoDelivery {
           'total': pedido.total.toStringAsFixed(2),
           'permanencia': '',
           'valorentrega': pedido.texto('valordaentrega', '0'),
-          'numeroPedido': pedido.numero,
+          'numeroPedido': numeroPedido,
           'tipodeentrega': pedido.tipoEntrega,
           'nomeCliente': pedido.nome.trim(),
           'valortroco': pedido.texto('valortroco', '0'),

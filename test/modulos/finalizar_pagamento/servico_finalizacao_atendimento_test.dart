@@ -13,8 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 class _AdaptadorPagamento implements HttpClientAdapter {
   final chamadas = <RequestOptions>[];
   final bool perderPrimeiraResposta;
+  final String resposta;
 
-  _AdaptadorPagamento({this.perderPrimeiraResposta = false});
+  _AdaptadorPagamento({
+    this.perderPrimeiraResposta = false,
+    this.resposta = '{"sucesso":true,"mensagem":"ok","finalizouPedido":"0",'
+        '"idVenda":"0","somaValorHistorico":"6.00"}',
+  });
 
   @override
   Future<ResponseBody> fetch(RequestOptions options,
@@ -27,8 +32,7 @@ class _AdaptadorPagamento implements HttpClientAdapter {
       );
     }
     return ResponseBody.fromString(
-      '{"sucesso":true,"mensagem":"ok","finalizouPedido":"0",'
-      '"idVenda":"0","somaValorHistorico":"6.00"}',
+      resposta,
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType]
@@ -140,5 +144,47 @@ void main() {
     final segundo = jsonDecode(adaptador.chamadas.last.data as String) as Map;
     expect(segundo['id_operacao'], primeiro['id_operacao']);
     expect(segundo, primeiro);
+  });
+
+  test('finalizacao do balcao preserva o numero oficial retornado pela API',
+      () async {
+    final api = DioCliente(servidor: 'https://servidor.test/api1/');
+    addTearDown(() => api.cliente.close());
+    final adaptador = _AdaptadorPagamento(
+      resposta:
+          '{"sucesso":true,"mensagem":"ok","idVenda":"901","numeroPedido":"57"}',
+    );
+    api.cliente.httpClientAdapter = adaptador;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '7', empresa: '9', nome: 'Operador'));
+    addTearDown(usuario.dispose);
+
+    final resultado = await ServicoFinalizarPagamento(api, usuario).pagarPedido(
+      '0',
+      '0',
+      '0',
+      '0',
+      '12.00',
+      '12.00',
+      1,
+      0,
+      '12.00',
+      '2026-09-25',
+      '0',
+      [],
+      TipoCardapio.balcao,
+      '0.00',
+      '0.00',
+      '12.00',
+      false,
+      '3',
+      const [],
+      '12.00',
+      '',
+    );
+
+    expect(resultado.sucesso, isTrue);
+    expect(resultado.idVenda, '901');
+    expect(resultado.numeroPedido, '57');
   });
 }

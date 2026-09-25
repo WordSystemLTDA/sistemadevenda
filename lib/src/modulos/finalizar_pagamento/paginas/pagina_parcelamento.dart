@@ -7,6 +7,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/essencial/utils/numero_pedido_operacional.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_nome_lancamento.dart';
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
@@ -379,7 +380,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
       return;
     }
 
-    var (sucesso, mensagem, idvenda) =
+    final resultadoPagamento =
         await context.read<ServicoFinalizarPagamento>().pagarPedido(
               provedor.idVenda,
               provedorCardapio.idComanda,
@@ -406,6 +407,13 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
               widget.totalReceber, // valorAPagarOriginal,
               provedorBalcao.observacaoDoPedido,
             );
+    if (!mounted) {
+      finalizando.value = false;
+      return;
+    }
+    final sucesso = resultadoPagamento.sucesso;
+    final mensagem = resultadoPagamento.mensagem;
+    final idvenda = resultadoPagamento.idVenda;
 
     if (sucesso) {
       if (idvenda.startsWith('venda-local:')) {
@@ -436,6 +444,9 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             .firstOrNull;
 
         if (vendaBalcao != null) {
+          final numeroPedido = numeroPedidoOperacionalConfirmado(
+                  resultadoPagamento.numeroPedido) ??
+              numeroPedidoOperacionalConfirmado(vendaBalcao.numeropedido);
           server.write(jsonEncode({
             'tipo': TipoCardapio.balcao.nome,
             'nomeConexao': usuarioProvedor.usuario!.nome,
@@ -453,12 +464,12 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
             provedorCardapio.configBigchef = configuracaoImpressao;
           }
 
-          if (!imprimirPreparoNoComprovante) {
+          if (!imprimirPreparoNoComprovante && numeroPedido != null) {
             await Impressao.comprovanteDePedido(
               local: '',
               tipoTela: provedorCardapio.tipo,
               comanda: "Balcão $idvenda",
-              numeroPedido: vendaBalcao.numeropedido,
+              numeroPedido: numeroPedido,
               nomeCliente: (vendaBalcao.nomecliente) == 'Sem Cliente' &&
                       (vendaBalcao.observacaoDoPedido ?? '').isNotEmpty
                   ? (vendaBalcao.observacaoDoPedido ?? '')
@@ -476,34 +487,46 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
               DateTime.now().difference(DateTime.parse(vendaBalcao.dataHora));
           final newDuration = ConfigSistema.formatarHora(duration);
 
-          Impressao.comprovanteDeConsumo(
-            tipoTela: TipoCardapio.balcao,
-            agruparPorDestino: false,
-            valorentrega: informacoes.informacoes.valorentrega,
-            nomeEmpresa: vendaBalcao.nomeEmpresa,
-            produtos: informacoes.produtos,
-            nomelancamento:
-                List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
-              return ModeloNomeLancamento(
-                  nome: elemento.entradaMov,
-                  valor: UtilBrasilFields.converterMoedaParaDouble(
-                          elemento.valorMovF)
-                      .toStringAsExponential(2));
-            })),
-            somaValorHistorico: informacoes.informacoes.subtotal,
-            cnpjEmpresa: informacoes.informacoes.docempresa,
-            celularEmpresa: informacoes.informacoes.celularcliente,
-            enderecoEmpresa: informacoes.informacoes.enderecoempresa,
-            permanencia: newDuration,
-            local: '',
-            total: informacoes.informacoes.subtotal,
-            numeroPedido: informacoes.informacoes.numerodopedido,
-            tipodeentrega: informacoes.informacoes.tipodeentrega,
-            nomeCliente: (informacoes.informacoes.nomeCliente == ''
-                    ? null
-                    : informacoes.informacoes.nomeCliente) ??
-                'Sem Cliente',
-          );
+          if (numeroPedido != null) {
+            Impressao.comprovanteDeConsumo(
+              tipoTela: TipoCardapio.balcao,
+              agruparPorDestino: false,
+              valorentrega: informacoes.informacoes.valorentrega,
+              nomeEmpresa: vendaBalcao.nomeEmpresa,
+              produtos: informacoes.produtos,
+              nomelancamento:
+                  List<ModeloNomeLancamento>.from(parcelas.map((elemento) {
+                return ModeloNomeLancamento(
+                    nome: elemento.entradaMov,
+                    valor: UtilBrasilFields.converterMoedaParaDouble(
+                            elemento.valorMovF)
+                        .toStringAsExponential(2));
+              })),
+              somaValorHistorico: informacoes.informacoes.subtotal,
+              cnpjEmpresa: informacoes.informacoes.docempresa,
+              celularEmpresa: informacoes.informacoes.celularcliente,
+              enderecoEmpresa: informacoes.informacoes.enderecoempresa,
+              permanencia: newDuration,
+              local: '',
+              total: informacoes.informacoes.subtotal,
+              numeroPedido: numeroPedido,
+              tipodeentrega: informacoes.informacoes.tipodeentrega,
+              nomeCliente: (informacoes.informacoes.nomeCliente == ''
+                      ? null
+                      : informacoes.informacoes.nomeCliente) ??
+                  'Sem Cliente',
+            );
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Venda finalizada, mas o servidor não confirmou o número do comprovante.',
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
           FeedbackUsuario.pedidoFinalizado();
 
           // Impressao.enviarImpressao(
@@ -523,7 +546,7 @@ class _PaginaParcelamentoState extends State<PaginaParcelamento> {
           Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
         }
       } else {
-        if (context.mounted) {
+        if (mounted) {
           provedor.idVenda = idvenda;
           provedor.valor = double.parse(widget.totalReceber) - widget.valor;
 

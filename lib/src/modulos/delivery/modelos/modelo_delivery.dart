@@ -110,8 +110,12 @@ class PedidoDelivery {
   bool get produtosConfirmadosLocal =>
       dados['produtosConfirmadosLocal'] == true;
   bool get possuiRascunhoLocal => dados['possuiRascunhoLocal'] == true;
-  String get numero =>
-      texto('numeroPedido').isEmpty ? id : texto('numeroPedido');
+  String get numeroOperacional => texto('numeroPedido').trim();
+  String get numero => numeroOperacional.isNotEmpty
+      ? numeroOperacional
+      : salvoNoAparelho
+          ? 'Aguardando'
+          : id;
   String get etapa => texto('idopcoescarrossel');
   String get cliente => texto('idCliente', '0');
   bool get possuiCelularCliente =>

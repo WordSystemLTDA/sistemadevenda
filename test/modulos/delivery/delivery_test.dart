@@ -95,6 +95,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
       const ConfigDelivery(receberNoFinal: true, imprimirPreparo: false);
   List<Modelowordprodutos> produtosCardapio = [];
   List<Modelowordprodutos> produtosLocais = [];
+  String numeroPedidoCardapio = '';
   Future<List<EtapaDelivery>> Function()? respostaLista;
   @override
   Future<List<EtapaDelivery>> listar(
@@ -117,6 +118,7 @@ class ServicoDeliveryTeste extends ServicoDelivery {
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async =>
       Modeloworddadoscardapio(
           id: id,
+          numeroPedido: numeroPedidoCardapio,
           produtos: [...produtosCardapio],
           enderecoCliente: 'Rua A',
           numeroCliente: '12',
@@ -1019,6 +1021,25 @@ void main() {
     expect(jsonEncode(produto), contains('7 - (1/2) Calabresa'));
     expect(jsonEncode(produto), contains('Bordas (2)'));
     expect(jsonEncode(produto), contains('Adicionais'));
+  });
+  test('impressao do delivery usa o numero mais recente confirmado pela API',
+      () async {
+    final servidor = impressao.ServidorTeste();
+    Modular.init(impressao.ModuloImpressaoTeste(servidor));
+    addTearDown(Modular.destroy);
+
+    final s = ServicoDeliveryTeste()
+      ..numeroPedidoCardapio = '88'
+      ..produtosCardapio = [impressao.produto(computador: 'COZINHA')];
+
+    await ImpressaoDelivery.imprimir(
+      s,
+      servidor,
+      pedidoTeste(campos: {'numeroPedido': '14'}),
+      preparo: true,
+    );
+
+    expect(servidor.mensagens.single['numeroPedido'], '88');
   });
   test('preparo do delivery destaca meia borda e nao imprime nao escolhida',
       () async {

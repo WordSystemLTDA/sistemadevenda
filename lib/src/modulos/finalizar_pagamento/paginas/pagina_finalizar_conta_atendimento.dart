@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/config_sistema.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
+import 'package:app/src/essencial/utils/numero_pedido_operacional.dart';
 import 'package:app/src/essencial/utils/nome_cliente_atendimento.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
@@ -319,6 +320,9 @@ class _PaginaFinalizarContaAtendimentoState
 
     final produtos = atendimento?.produtos ?? const <Modelowordprodutos>[];
     if (atendimento == null || produtos.isEmpty) return false;
+    final numeroPedido =
+        numeroPedidoOperacionalConfirmado(atendimento.numeroPedido);
+    if (numeroPedido == null) return false;
     final abertura = DateTime.tryParse(atendimento.dataAbertura ?? '');
     final permanencia = abertura == null
         ? ''
@@ -333,7 +337,7 @@ class _PaginaFinalizarContaAtendimentoState
       cnpjEmpresa: atendimento.cnpjEmpresa ?? '',
       enderecoEmpresa: atendimento.enderecoEmpresa ?? '',
       nomeEmpresa: atendimento.nomeEmpresa ?? '',
-      numeroPedido: atendimento.numeroPedido ?? '0',
+      numeroPedido: numeroPedido,
       total: atendimento.valorTotal ?? '0',
       local: widget.tipo == TipoCardapio.mesa
           ? (atendimento.nomeMesa ?? atendimento.nome ?? '')
