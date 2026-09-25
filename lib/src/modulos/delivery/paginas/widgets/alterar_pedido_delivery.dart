@@ -102,10 +102,13 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
 
   void _atualizarTaxa() {
     final e = _enderecos.where((e) => '${e['id']}' == _endereco).firstOrNull;
-    _taxa.text =
-        (_tipo == '1' ? _config?.taxaEntrega(e?['valortaxabairro']) ?? 0 : 0)
-            .toStringAsFixed(2)
-            .replaceAll('.', ',');
+    final taxaCalculada = double.tryParse(
+        (e?['taxaentregacalculada'] ?? '').toString().replaceAll(',', '.'));
+    _taxa.text = (_tipo == '1'
+            ? taxaCalculada ?? _config?.taxaEntrega(e?['valortaxabairro']) ?? 0
+            : 0)
+        .toStringAsFixed(2)
+        .replaceAll('.', ',');
   }
 
   Future<void> _salvar() async {
@@ -386,6 +389,7 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                       const SizedBox(height: 16),
                                       TextField(
                                           controller: _taxa,
+                                          readOnly: true,
                                           keyboardType: const TextInputType
                                               .numberWithOptions(decimal: true),
                                           decoration: const InputDecoration(

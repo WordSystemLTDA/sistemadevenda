@@ -71,6 +71,11 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
         original.texto('idendereco') == '${_endereco?['id']}') {
       return original.taxaEntrega;
     }
+    final taxaCalculada = _endereco?['taxaentregacalculada'];
+    if (taxaCalculada != null && taxaCalculada.toString().trim().isNotEmpty) {
+      return double.tryParse(taxaCalculada.toString().replaceAll(',', '.')) ??
+          0;
+    }
     return _config?.taxaEntrega(_endereco?['valortaxabairro']) ?? 0;
   }
 
@@ -991,11 +996,18 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                       Padding(
                                           padding:
                                               const EdgeInsets.only(top: 12),
-                                          child: Text(
-                                              'Taxa de entrega: ${_taxa.obterReal()}',
-                                              style: const TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.w600))),
+                                          child: Row(children: [
+                                            const Icon(
+                                                Icons.local_shipping_outlined,
+                                                size: 18),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                                child: Text(
+                                                    'Taxa de entrega: ${_taxa.obterReal()}${_endereco?['tipolocalentrega'] == 'Sitio' ? ' • Sítio' : ''}${(_endereco?['periodotaxaentrega'] ?? '').toString().isNotEmpty ? ' • ${_endereco?['periodotaxaentrega']}' : ''}',
+                                                    style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600)))
+                                          ])),
                                   ],
                                   const SizedBox(height: 20),
                                   _titulo('Observação', Icons.edit_note),

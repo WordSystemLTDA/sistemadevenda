@@ -26,7 +26,10 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     ])
       k: TextEditingController()
   };
-  bool _salvando = false, _padrao = false, _carregandoPadrao = true;
+  bool _salvando = false,
+      _padrao = false,
+      _sitio = false,
+      _carregandoPadrao = true;
   bool _temOutroEnderecoPadrao = false;
   List<Map<String, dynamic>> _outrosEnderecosPadrao = [];
   bool _bloquearCidade = false, _enderecoObrigatorio = true;
@@ -61,6 +64,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     _preencherSeVazio('cidade', _valor(endereco, ['cidade']));
     _preencherSeVazio('uf', _valor(endereco, ['estado', 'uf']));
     _padrao = _ehPadrao(endereco['padrao']);
+    _sitio = _valor(endereco, ['tipolocalentrega']) == 'Sitio';
   }
 
   Future<void> _carregarPadraoEndereco() async {
@@ -179,6 +183,9 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       'id': endereco['id']?.toString() ?? '',
       'idCliente': widget.cliente,
       'padrao': 'Não',
+      'tipoLocalEntrega': _valor(endereco, ['tipolocalentrega']) == 'Sitio'
+          ? 'Sitio'
+          : 'Normal',
       'substituirPadrao': false,
       'podeInserirNovaCidade': false,
     });
@@ -213,6 +220,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
         'id': widget.endereco?['id']?.toString() ?? '',
         'idCliente': widget.cliente,
         'padrao': salvarComoPadrao ? 'Sim' : 'Não',
+        'tipoLocalEntrega': _sitio ? 'Sitio' : 'Normal',
         'substituirPadrao': substituirPadrao,
         'podeInserirNovaCidade': false,
       });
@@ -305,6 +313,16 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                               onChanged: _salvando || _carregandoPadrao
                                   ? null
                                   : (v) => setState(() => _padrao = v)),
+                          SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              secondary: const Icon(Icons.agriculture_outlined),
+                              title: const Text('Endereço em sítio'),
+                              subtitle: const Text(
+                                  'Aplica a taxa especial configurada para área rural.'),
+                              value: _sitio,
+                              onChanged: _salvando || _carregandoPadrao
+                                  ? null
+                                  : (v) => setState(() => _sitio = v)),
                           if (_erro != null)
                             Text(_erro!,
                                 style: TextStyle(
