@@ -17,27 +17,43 @@ class ProvedorComanda extends ChangeNotifier {
   String? erro;
   int _consulta = 0;
   int _consultaLista = 0;
+  final Set<String> _finalizacoesPendentes = {};
 
   static const _mensagemFalha =
       'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.';
 
-  /// Reflete imediatamente uma finalização já confirmada pela API. A consulta
-  /// seguinte continua sendo a fonte definitiva e corrige qualquer diferença.
-  void marcarAtendimentoFinalizado(String idAtendimento) {
+  /// Reflete imediatamente uma finalização já confirmada pela API. Enquanto a
+  /// listagem remota ainda devolver o atendimento antigo, ele continua livre
+  /// localmente para não reaparecer como ocupado por alguns segundos.
+  void marcarAtendimentoFinalizado(String idAtendimento, {String? idRecurso}) {
+    ++_consulta;
+    _finalizacoesPendentes.add(idAtendimento);
     ModeloComanda? finalizada;
     for (final grupo in comandas) {
       final itens = grupo.comandas;
       if (itens == null) continue;
-      final indice = itens.indexWhere(
-          (item) => item.idComandaPedido?.toString() == idAtendimento);
+      final indice = itens.indexWhere((item) =>
+          item.idComandaPedido?.toString() == idAtendimento ||
+          (idRecurso != null &&
+              idRecurso.isNotEmpty &&
+              item.id == idRecurso &&
+              item.comandaOcupada));
       if (indice >= 0) {
         finalizada = itens.removeAt(indice);
+        final idListado = finalizada.idComandaPedido?.toString();
+        if (idListado != null && idListado.isNotEmpty) {
+          _finalizacoesPendentes.add(idListado);
+        }
         break;
       }
     }
     if (finalizada == null) return;
-    ++_consulta;
 
+    _moverParaLivres(finalizada, comandas);
+    notifyListeners();
+  }
+
+  void _moverParaLivres(ModeloComanda finalizada, List<ModeloComandas> grupos) {
     final agora = DateTime.now().toIso8601String();
     finalizada
       ..comandaOcupada = false
@@ -55,17 +71,17 @@ class ProvedorComanda extends ChangeNotifier {
       ..ultimaVezAbertoDataHora = agora;
 
     ModeloComandas? grupoLivres;
-    for (final grupo in comandas) {
+    for (final grupo in grupos) {
       if (grupo.titulo.toLowerCase() == 'livres') {
         grupoLivres = grupo;
         break;
       }
     }
     grupoLivres ??= ModeloComandas(titulo: 'Livres', comandas: []);
-    if (!comandas.contains(grupoLivres)) comandas.add(grupoLivres);
+    if (!grupos.contains(grupoLivres)) grupos.add(grupoLivres);
     grupoLivres.comandas ??= [];
     grupoLivres.comandas!
-      ..removeWhere((item) => item.id == finalizada!.id)
+      ..removeWhere((item) => item.id == finalizada.id)
       ..add(finalizada);
     grupoLivres.comandas!.sort((a, b) {
       final primeiro = int.tryParse(a.id);
@@ -74,7 +90,28 @@ class ProvedorComanda extends ChangeNotifier {
           ? primeiro.compareTo(segundo)
           : a.nome.compareTo(b.nome);
     });
-    notifyListeners();
+  }
+
+  void _preservarFinalizacoesPendentes(List<ModeloComandas> resposta) {
+    if (_finalizacoesPendentes.isEmpty) return;
+    final aindaPendentes = <String>{};
+    final finalizadas = <ModeloComanda>[];
+    for (final grupo in resposta) {
+      final itens = grupo.comandas;
+      if (itens == null) continue;
+      for (var indice = itens.length - 1; indice >= 0; indice--) {
+        final id = itens[indice].idComandaPedido?.toString();
+        if (id == null || !_finalizacoesPendentes.contains(id)) continue;
+        aindaPendentes.add(id);
+        finalizadas.add(itens.removeAt(indice));
+      }
+    }
+    for (final finalizada in finalizadas) {
+      _moverParaLivres(finalizada, resposta);
+    }
+    _finalizacoesPendentes
+      ..clear()
+      ..addAll(aindaPendentes);
   }
 
   final _atualizacao = AtualizacaoAgrupada();
@@ -92,6 +129,7 @@ class ProvedorComanda extends ChangeNotifier {
       try {
         final res = await _servico.listar(pesquisa);
         if (consulta != _consulta) return;
+        _preservarFinalizacoesPendentes(res);
         comandas = res;
         return;
       } catch (_) {

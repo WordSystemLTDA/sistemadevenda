@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -262,30 +263,7 @@ class _PaginaFinalizarContaAtendimentoState
     if (!mounted) return;
     setState(() => _avancando = false);
     if (resultado == ResultadoFluxoAtendimento.finalizou) {
-      final impressaoSalva = await _salvarComprovanteFinalizacao();
-      if (!mounted) return;
-      if (!impressaoSalva) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            icon: Icon(Icons.print_disabled_outlined,
-                color: Theme.of(context).colorScheme.error),
-            title: const Text('Conta finalizada'),
-            content: const Text(
-              'O pagamento foi concluído, mas não foi possível salvar o '
-              'comprovante de consumo para impressão no caixa.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Entendi'),
-              ),
-            ],
-          ),
-        );
-        if (!mounted) return;
-      }
+      _salvarComprovanteSemBloquearSaida();
       Navigator.pop(context, true);
       return;
     }
@@ -301,6 +279,26 @@ class _PaginaFinalizarContaAtendimentoState
             : 'Conta atualizada. Confira os valores antes de tentar novamente.');
       }
     }
+  }
+
+  void _salvarComprovanteSemBloquearSaida() {
+    final mensageiro = ScaffoldMessenger.maybeOf(context);
+    final corErro = Theme.of(context).colorScheme.error;
+    unawaited(() async {
+      final impressaoSalva = await _salvarComprovanteFinalizacao();
+      if (impressaoSalva || mensageiro == null || !mensageiro.mounted) return;
+      mensageiro
+        ..removeCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: const Text(
+            'Conta finalizada, mas não foi possível salvar o comprovante '
+            'de consumo para impressão no caixa.',
+          ),
+          backgroundColor: corErro,
+          behavior: SnackBarBehavior.floating,
+          showCloseIcon: true,
+        ));
+    }());
   }
 
   Future<bool> _salvarComprovanteFinalizacao() async {

@@ -15,54 +15,74 @@ class ProvedorMesas extends ChangeNotifier {
   String? erro;
   int _consulta = 0;
   int _consultaLista = 0;
+  final Set<String> _finalizacoesPendentes = {};
 
   static const _mensagemFalha =
       'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.';
 
-  /// Reflete imediatamente uma finalização já confirmada pela API. A consulta
-  /// seguinte continua sendo a fonte definitiva e corrige qualquer diferença.
-  void marcarAtendimentoFinalizado(String idAtendimento) {
+  /// Reflete imediatamente uma finalização já confirmada pela API. Enquanto a
+  /// listagem remota ainda devolver o atendimento antigo, ele continua livre
+  /// localmente para não reaparecer como ocupado por alguns segundos.
+  void marcarAtendimentoFinalizado(String idAtendimento, {String? idRecurso}) {
+    ++_consulta;
+    _finalizacoesPendentes.add(idAtendimento);
     MesaModelo? finalizada;
     for (final grupo in mesas) {
       final itens = grupo.mesas;
       if (itens == null) continue;
-      final indice = itens.indexWhere(
-          (item) => item.idComandaPedido?.toString() == idAtendimento);
+      final indice = itens.indexWhere((item) =>
+          item.idComandaPedido?.toString() == idAtendimento ||
+          (idRecurso != null &&
+              idRecurso.isNotEmpty &&
+              item.id == idRecurso &&
+              item.mesaOcupada));
       if (indice >= 0) {
         final item = itens.removeAt(indice);
-        final mapa = item.toMap()
-          ..addAll({
-            'mesaOcupada': false,
-            'idCliente': null,
-            'nomeCliente': null,
-            'obs': null,
-            'dataAbertura': null,
-            'horaAbertura': null,
-            'idComandaPedido': null,
-            'valor': null,
-            'ultimaVezAbertoDataHora': DateTime.now().toIso8601String(),
-            'dataultimopedido': null,
-            'fechamento': false,
-          });
-        finalizada = MesaModelo.fromMap(mapa);
+        final idListado = item.idComandaPedido?.toString();
+        if (idListado != null && idListado.isNotEmpty) {
+          _finalizacoesPendentes.add(idListado);
+        }
+        finalizada = _comoLivre(item);
         break;
       }
     }
     if (finalizada == null) return;
-    ++_consulta;
 
+    _moverParaLivres(finalizada, mesas);
+    notifyListeners();
+  }
+
+  MesaModelo _comoLivre(MesaModelo item) {
+    final mapa = item.toMap()
+      ..addAll({
+        'mesaOcupada': false,
+        'idCliente': null,
+        'nomeCliente': null,
+        'obs': null,
+        'dataAbertura': null,
+        'horaAbertura': null,
+        'idComandaPedido': null,
+        'valor': null,
+        'ultimaVezAbertoDataHora': DateTime.now().toIso8601String(),
+        'dataultimopedido': null,
+        'fechamento': false,
+      });
+    return MesaModelo.fromMap(mapa);
+  }
+
+  void _moverParaLivres(MesaModelo finalizada, List<MesasModel> grupos) {
     MesasModel? grupoLivres;
-    for (final grupo in mesas) {
+    for (final grupo in grupos) {
       if (grupo.titulo.toLowerCase() == 'livres') {
         grupoLivres = grupo;
         break;
       }
     }
     grupoLivres ??= MesasModel(titulo: 'Livres', mesas: []);
-    if (!mesas.contains(grupoLivres)) mesas.add(grupoLivres);
+    if (!grupos.contains(grupoLivres)) grupos.add(grupoLivres);
     grupoLivres.mesas ??= [];
     grupoLivres.mesas!
-      ..removeWhere((item) => item.id == finalizada!.id)
+      ..removeWhere((item) => item.id == finalizada.id)
       ..add(finalizada);
     grupoLivres.mesas!.sort((a, b) {
       final primeiro = int.tryParse(a.id);
@@ -71,7 +91,28 @@ class ProvedorMesas extends ChangeNotifier {
           ? primeiro.compareTo(segundo)
           : a.nome.compareTo(b.nome);
     });
-    notifyListeners();
+  }
+
+  void _preservarFinalizacoesPendentes(List<MesasModel> resposta) {
+    if (_finalizacoesPendentes.isEmpty) return;
+    final aindaPendentes = <String>{};
+    final finalizadas = <MesaModelo>[];
+    for (final grupo in resposta) {
+      final itens = grupo.mesas;
+      if (itens == null) continue;
+      for (var indice = itens.length - 1; indice >= 0; indice--) {
+        final id = itens[indice].idComandaPedido?.toString();
+        if (id == null || !_finalizacoesPendentes.contains(id)) continue;
+        aindaPendentes.add(id);
+        finalizadas.add(_comoLivre(itens.removeAt(indice)));
+      }
+    }
+    for (final finalizada in finalizadas) {
+      _moverParaLivres(finalizada, resposta);
+    }
+    _finalizacoesPendentes
+      ..clear()
+      ..addAll(aindaPendentes);
   }
 
   final _atualizacao = AtualizacaoAgrupada();
@@ -89,6 +130,7 @@ class ProvedorMesas extends ChangeNotifier {
       try {
         final res = await _servico.listar(pesquisa);
         if (consulta != _consulta) return;
+        _preservarFinalizacoesPendentes(res);
         mesas = res;
         return;
       } catch (_) {

@@ -678,6 +678,116 @@ void main() {
     expect(livres.last.fechamento, isFalse);
   });
 
+  test('consulta antiga nao volta a ocupar comanda ja finalizada', () async {
+    modulo.provedorComandas.comandas = [
+      ModeloComandas(
+        titulo: 'Ocupadas',
+        comandas: [
+          ModeloComanda(
+            id: '2',
+            nome: 'Comanda: 2',
+            codigo: '2',
+            ativo: 'Sim',
+            comandaOcupada: true,
+            idComandaPedido: '10851',
+            valor: '96.00',
+          ),
+        ],
+      ),
+    ];
+    modulo.provedorComandas.marcarAtendimentoFinalizado(
+      'id-local-diferente',
+      idRecurso: '2',
+    );
+
+    modulo.comandas.controlarRespostas = true;
+    final consulta = modulo.provedorComandas.listarComandas('');
+    modulo.comandas.pendentes.single.complete([
+      ModeloComandas(
+        titulo: 'Ocupadas',
+        comandas: [
+          ModeloComanda(
+            id: '2',
+            nome: 'Comanda: 2',
+            codigo: '2',
+            ativo: 'Sim',
+            comandaOcupada: true,
+            idComandaPedido: '10851',
+            valor: '96.00',
+          ),
+        ],
+      ),
+    ]);
+    await consulta;
+
+    final itens = modulo.provedorComandas.comandas
+        .expand((grupo) => grupo.comandas ?? const <ModeloComanda>[])
+        .toList();
+    expect(itens, hasLength(1));
+    expect(itens.single.id, '2');
+    expect(itens.single.comandaOcupada, isFalse);
+    expect(itens.single.idComandaPedido, isNull);
+    expect(itens.single.valor, isNull);
+  });
+
+  test('consulta antiga nao volta a ocupar mesa ja finalizada', () async {
+    modulo.provedorMesas.mesas = [
+      MesasModel(
+        titulo: 'Ocupadas',
+        mesas: [
+          MesaModelo(
+            id: '2',
+            nome: 'Mesa 2',
+            codigo: '2',
+            ativo: 'Sim',
+            mesaOcupada: true,
+            nomeCliente: null,
+            dataAbertura: null,
+            horaAbertura: null,
+            idComandaPedido: '10852',
+            valor: '75.00',
+          ),
+        ],
+      ),
+    ];
+    modulo.provedorMesas.marcarAtendimentoFinalizado(
+      'id-local-diferente',
+      idRecurso: '2',
+    );
+
+    modulo.mesas.controlarRespostas = true;
+    final consulta = modulo.provedorMesas.listarMesas('');
+    modulo.mesas.pendentes.single.complete([
+      MesasModel(
+        titulo: 'Ocupadas',
+        mesas: [
+          MesaModelo(
+            id: '2',
+            nome: 'Mesa 2',
+            codigo: '2',
+            ativo: 'Sim',
+            mesaOcupada: true,
+            nomeCliente: null,
+            dataAbertura: null,
+            horaAbertura: null,
+            idComandaPedido: '10852',
+            valor: '75.00',
+          ),
+        ],
+      ),
+    ]);
+    await consulta;
+
+    final itens = modulo.provedorMesas.mesas
+        .expand((grupo) => grupo.mesas ?? const <MesaModelo>[])
+        .toList();
+    expect(itens, hasLength(1));
+    expect(itens.single.id, '2');
+    expect(itens.single.mesaOcupada, isFalse);
+    expect(itens.single.idComandaPedido, isNull);
+    expect(itens.single.valor, isNull);
+  });
+
   test('comandas libera carregamento apos timeout e preserva lista antiga',
       () async {
     await modulo.provedorComandas.listarComandas('');
