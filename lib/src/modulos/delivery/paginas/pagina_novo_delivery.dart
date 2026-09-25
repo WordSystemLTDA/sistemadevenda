@@ -325,6 +325,50 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     return valor == 'sim' || valor == 's' || valor == '1' || valor == 'true';
   }
 
+  String _valorEndereco(Map<String, dynamic> endereco, List<String> chaves) {
+    for (final chave in chaves) {
+      final valor = endereco[chave]?.toString().trim() ?? '';
+      if (valor.isNotEmpty) return valor;
+    }
+    return '';
+  }
+
+  String _rotuloTaxaEndereco(Object? valor) {
+    final texto = valor?.toString().trim() ?? '';
+    return texto.toLowerCase() == 'sitio' ? 'Sítio' : texto;
+  }
+
+  double _taxaDoEndereco(Map<String, dynamic> endereco) {
+    final taxaCalculada = endereco['taxaentregacalculada'];
+    if (taxaCalculada != null && taxaCalculada.toString().trim().isNotEmpty) {
+      return double.tryParse(taxaCalculada.toString().replaceAll(',', '.')) ??
+          0;
+    }
+    return _config?.taxaEntrega(endereco['valortaxabairro']) ?? 0;
+  }
+
+  String _resumoLocalEndereco(Map<String, dynamic> endereco) {
+    final cep = _valorEndereco(endereco, ['cep']);
+    return [
+      _valorEndereco(endereco, ['bairro']),
+      _valorEndereco(endereco, ['cidade']),
+      if (cep.isNotEmpty) 'CEP $cep',
+      _valorEndereco(endereco, ['complemento']),
+    ].where((valor) => valor.isNotEmpty).join(' • ');
+  }
+
+  String _resumoTaxaEndereco(Map<String, dynamic> endereco) {
+    final origem = _rotuloTaxaEndereco(endereco['origemtaxaentrega']);
+    final tipoLocal = _rotuloTaxaEndereco(endereco['tipolocalentrega']);
+    final periodo = _rotuloTaxaEndereco(endereco['periodotaxaentrega']);
+    return [
+      origem,
+      if (tipoLocal == 'Sítio') tipoLocal,
+      periodo,
+      _taxaDoEndereco(endereco).obterReal().replaceAll('\u00a0', ' '),
+    ].where((valor) => valor.isNotEmpty).join(' • ');
+  }
+
   Future<void> _carregarEnderecos({
     bool selecionarNovo = false,
     Set<String> idsAnteriores = const {},
@@ -874,13 +918,17 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                     else
                                       ..._enderecos.map((e) {
                                         final padrao = _ehEnderecoPadrao(e);
+                                        final resumoLocal =
+                                            _resumoLocalEndereco(e);
+                                        final resumoTaxa =
+                                            _resumoTaxaEndereco(e);
                                         return Padding(
                                           padding:
                                               const EdgeInsets.only(bottom: 8),
                                           child: ListTile(
                                             selected:
                                                 e['id'] == _endereco?['id'],
-                                            isThreeLine: padrao,
+                                            isThreeLine: true,
                                             selectedTileColor: cs
                                                 .primaryContainer
                                                 .withValues(alpha: .4),
@@ -910,62 +958,47 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  Text([
-                                                    e['bairro'],
-                                                    e['cidade'],
-                                                    e['complemento']
-                                                  ]
-                                                      .where((s) =>
-                                                          s != null &&
-                                                          s
-                                                              .toString()
-                                                              .isNotEmpty)
-                                                      .join(' · ')),
+                                                  if (resumoLocal.isNotEmpty)
+                                                    Text(
+                                                      resumoLocal,
+                                                      style: TextStyle(
+                                                        color:
+                                                            cs.onSurfaceVariant,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  if (resumoTaxa.isNotEmpty)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 2),
+                                                      child: Text(
+                                                        resumoTaxa,
+                                                        style: TextStyle(
+                                                          color: cs.primary,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   if (padrao)
                                                     Padding(
                                                       padding:
                                                           const EdgeInsets.only(
-                                                              top: 4),
-                                                      child: Container(
+                                                              top: 2),
+                                                      child: Text(
+                                                        'Padrão do cliente',
                                                         key: ValueKey(
                                                             'endereco-padrao-${_idEndereco(e)}'),
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                horizontal: 8,
-                                                                vertical: 3),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: cs
-                                                              .secondaryContainer,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(20),
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                                Icons
-                                                                    .home_outlined,
-                                                                size: 15,
-                                                                color: cs
-                                                                    .onSecondaryContainer),
-                                                            const SizedBox(
-                                                                width: 4),
-                                                            Text(
-                                                              'Padrão',
-                                                              style: TextStyle(
-                                                                color: cs
-                                                                    .onSecondaryContainer,
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                              ),
-                                                            ),
-                                                          ],
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: TextStyle(
+                                                          color: cs.primary,
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                         ),
                                                       ),
                                                     ),

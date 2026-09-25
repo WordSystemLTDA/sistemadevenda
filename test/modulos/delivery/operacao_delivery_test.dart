@@ -638,7 +638,11 @@ void main() {
     expect(find.text('PR'), findsOneWidget);
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+    expect(
+        tester
+            .widget<SwitchListTile>(
+                find.widgetWithText(SwitchListTile, 'Endereço padrão'))
+            .value,
         isTrue);
     expect(tester.takeException(), isNull);
   });
@@ -656,7 +660,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+    expect(
+        tester
+            .widget<SwitchListTile>(
+                find.widgetWithText(SwitchListTile, 'Endereço padrão'))
+            .value,
         isFalse);
     expect(tester.takeException(), isNull);
   });
@@ -675,7 +683,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Endereço padrão'));
     await tester.tap(find.text('Salvar endereço'));
     await tester.pumpAndSettle();
 
@@ -708,7 +716,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Endereço padrão'));
     await tester.tap(find.text('Salvar endereço'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sim, alterar'));
@@ -918,6 +926,59 @@ void main() {
 
     expect(find.text('Editar endereço'), findsOneWidget);
     expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('novo delivery mostra local taxa e padrao em cada endereco',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'cep': '86.790-000',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Jardim Italia',
+        'cidade': 'Santa Fé',
+        'padrao': 'Sim',
+        'tipolocalentrega': 'Normal',
+        'origemtaxaentrega': 'Fixo',
+        'periodotaxaentrega': 'Diurno',
+        'taxaentregacalculada': '4.00',
+      },
+      {
+        'id': '11',
+        'cep': '86.790-000',
+        'endereco': 'Endereço de Sítio',
+        'numero': '1',
+        'cidade': 'Lobato',
+        'padrao': 'Não',
+        'tipolocalentrega': 'Sitio',
+        'origemtaxaentrega': 'Sitio',
+        'periodotaxaentrega': 'Diurno',
+        'taxaentregacalculada': '5.00',
+      },
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaNovoDelivery(
+        servico: s,
+        editarPedido: pedidoTeste(campos: {'idendereco': '10'}),
+        aoSalvarEdicao: (_) async {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.text('Jardim Italia • Santa Fé • CEP 86.790-000'), findsOneWidget);
+    expect(find.text('Fixo • Diurno • R\$ 4,00'), findsOneWidget);
+    expect(find.text('Padrão do cliente'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Endereço de Sítio, 1'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Lobato • CEP 86.790-000'), findsOneWidget);
+    expect(find.text('Sítio • Sítio • Diurno • R\$ 5,00'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

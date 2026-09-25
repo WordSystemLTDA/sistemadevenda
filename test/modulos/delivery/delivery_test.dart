@@ -249,6 +249,10 @@ class ServicoGeracaoCardapioTeste extends ServicoDelivery {
 
 void main() {
   test('gera o cardapio do dia como imagem PNG', () async {
+    expect(
+      GeradorCardapioDelivery.tituloDiaSemana(DateTime(2026, 9, 24)),
+      'Quinta-Feira',
+    );
     final bytes = await GeradorCardapioDelivery.gerar(
       nomeEmpresa: 'Restaurante Teste',
       ingredientes: const ['Arroz', 'Feijão', 'Carne de Panela'],

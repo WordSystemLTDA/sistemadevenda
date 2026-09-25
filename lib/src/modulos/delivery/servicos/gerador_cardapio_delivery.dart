@@ -73,6 +73,7 @@ class GeradorCardapioDelivery {
     String celularEmpresa = '',
     DateTime? data,
   }) async {
+    final dataCardapio = data ?? DateTime.now();
     final itens = ingredientes
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
@@ -152,7 +153,7 @@ class GeradorCardapioDelivery {
     );
     _texto(
       canvas,
-      DateFormat('dd/MM/yyyy').format(data ?? DateTime.now()),
+      DateFormat('dd/MM/yyyy').format(dataCardapio),
       const Rect.fromLTWH(120, 159, 840, 49),
       tamanho: 30,
       peso: FontWeight.w700,
@@ -192,6 +193,7 @@ class GeradorCardapioDelivery {
         canvas,
         itens,
         Rect.fromLTWH(52, topoConteudo, 976, alturaIngredientes),
+        titulo: tituloDiaSemana(dataCardapio),
       );
       _desenharProdutos(
         canvas,
@@ -208,6 +210,7 @@ class GeradorCardapioDelivery {
         canvas,
         itens,
         const Rect.fromLTWH(52, topoConteudo, 976, fimConteudo - topoConteudo),
+        titulo: tituloDiaSemana(dataCardapio),
       );
     } else {
       _desenharProdutos(
@@ -234,8 +237,9 @@ class GeradorCardapioDelivery {
   static void _desenharIngredientes(
     Canvas canvas,
     List<String> itens,
-    Rect area,
-  ) {
+    Rect area, {
+    required String titulo,
+  }) {
     final cartao = RRect.fromRectAndRadius(area, const Radius.circular(34));
     canvas.drawRRect(
       cartao,
@@ -250,7 +254,7 @@ class GeradorCardapioDelivery {
     );
     _texto(
       canvas,
-      'INGREDIENTES DO DIA',
+      titulo,
       Rect.fromLTWH(area.left + 34, area.top + 17, area.width - 68, 48),
       tamanho: 28,
       peso: FontWeight.w900,
@@ -512,36 +516,59 @@ class GeradorCardapioDelivery {
   }
 
   static void _iconeWhatsapp(Canvas canvas, Offset centro) {
-    const verde = Color(0xff20b858);
+    const verde = Color(0xff25d366);
     canvas.drawCircle(centro, 31, Paint()..color = verde);
-    final balao = Paint()
+
+    final branco = Paint()..color = Colors.white;
+    canvas.drawCircle(centro, 23, branco);
+    final cauda = Path()
+      ..moveTo(centro.dx - 15, centro.dy + 14)
+      ..lineTo(centro.dx - 24, centro.dy + 27)
+      ..lineTo(centro.dx - 5, centro.dy + 21)
+      ..close();
+    canvas.drawPath(cauda, branco);
+    canvas.drawCircle(centro, 18.5, Paint()..color = verde);
+
+    final tintaTelefone = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-    canvas.drawCircle(centro, 21, balao);
-    final cauda = Path()
-      ..moveTo(centro.dx - 16, centro.dy + 14)
-      ..lineTo(centro.dx - 21, centro.dy + 25)
-      ..lineTo(centro.dx - 8, centro.dy + 20);
-    canvas.drawPath(cauda, balao);
-    final telefone = Path()
-      ..moveTo(centro.dx - 10, centro.dy - 11)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final tracoTelefone = Path()
+      ..moveTo(centro.dx - 10, centro.dy - 10)
       ..cubicTo(
         centro.dx - 8,
-        centro.dy + 2,
+        centro.dy,
         centro.dx + 1,
+        centro.dy + 9,
+        centro.dx + 11,
         centro.dy + 10,
-        centro.dx + 12,
-        centro.dy + 12,
       );
-    canvas.drawPath(
-      telefone,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5
-        ..strokeCap = StrokeCap.round,
+    canvas.drawPath(tracoTelefone, tintaTelefone);
+    canvas.drawLine(
+      centro + const Offset(-12, -13),
+      centro + const Offset(-7, -7),
+      tintaTelefone,
     );
+    canvas.drawLine(
+      centro + const Offset(8, 11),
+      centro + const Offset(14, 7),
+      tintaTelefone,
+    );
+  }
+
+  static String tituloDiaSemana(DateTime data) {
+    const dias = [
+      'Segunda-Feira',
+      'Terça-Feira',
+      'Quarta-Feira',
+      'Quinta-Feira',
+      'Sexta-Feira',
+      'Sábado',
+      'Domingo',
+    ];
+    return dias[data.weekday - DateTime.monday];
   }
 
   static String _formatarCelular(String valor) {
