@@ -51,6 +51,7 @@ class ModeloConfigBigchef {
   final String permitirfinalizarmesa;
   final String permitirfinalizarcomanda;
   final String ativarcardapiodigital;
+  final String mostrarapenasprodutosativovenda;
 
   ModeloConfigBigchef({
     this.clientecompedidosdecorrentes = 'Não',
@@ -91,6 +92,7 @@ class ModeloConfigBigchef {
     this.permitirfinalizarmesa = 'Não',
     this.permitirfinalizarcomanda = 'Não',
     this.ativarcardapiodigital = '',
+    this.mostrarapenasprodutosativovenda = 'Não',
   });
 
   bool get permiteEditarQuantidadeAposFinalizar =>
@@ -105,6 +107,8 @@ class ModeloConfigBigchef {
       _sim(permitireditaradicionalappaposfinalizar);
   bool get permiteFinalizarMesa => _sim(permitirfinalizarmesa);
   bool get permiteFinalizarComanda => _sim(permitirfinalizarcomanda);
+  bool get mostrarApenasProdutosAtivoVendaHabilitado =>
+      _sim(mostrarapenasprodutosativovenda);
   bool get cardapioDigitalAlmocoHabilitado {
     final valor = ativarcardapiodigital.trim().toLowerCase();
     return valor == 'almoço' || valor == 'almoco';
@@ -179,6 +183,7 @@ class ModeloConfigBigchef {
       'permitirfinalizarmesa': permitirfinalizarmesa,
       'permitirfinalizarcomanda': permitirfinalizarcomanda,
       'ativarcardapiodigital': ativarcardapiodigital,
+      'mostrarapenasprodutosativovenda': mostrarapenasprodutosativovenda,
     };
   }
 
@@ -263,6 +268,10 @@ class ModeloConfigBigchef {
           map, 'permitirfinalizarcomanda', 'permitir_finalizar_comanda'),
       ativarcardapiodigital:
           _textoConfig(map, 'ativarcardapiodigital', 'ativar_cardapio_digital'),
+      mostrarapenasprodutosativovenda: _textoConfig(
+          map,
+          'mostrarapenasprodutosativovenda',
+          'mostrar_apenas_produtos_ativo_venda'),
     );
   }
 

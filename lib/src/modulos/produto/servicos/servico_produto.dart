@@ -42,9 +42,14 @@ class ServicoProduto {
       {bool cachePrimeiro = false}) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
+    final filtroPersonalizados = usuarioProvedor
+        .configbigchef?.mostrarApenasProdutosAtivoVendaHabilitado;
 
+    final parametroPersonalizados = filtroPersonalizados == true
+        ? '&mostrar_apenas_produtos_ativo_venda=Sim'
+        : '';
     final response = await dio.cliente.get(
-        'produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina',
+        'produtos/listar_por_categoria.php?categoria=$categoria&empresa=$empresa&id_usuario=$idusuario&pagina=$pagina$parametroPersonalizados',
         options: Options(extra: {
           if (cachePrimeiro) 'cachePrimeiro': true,
         }));
@@ -52,10 +57,19 @@ class ServicoProduto {
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        final produtos =
+        var produtos =
             List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
+        if (filtroPersonalizados == true) {
+          produtos = produtos
+              .where((produto) =>
+                  produto.ativarProdutoPersonalizadoNoCardapio
+                      .trim()
+                      .toLowerCase() ==
+                  'sim')
+              .toList(growable: false);
+        }
         _anteciparMontagensDoCatalogo(produtos);
         return produtos;
       } else {
@@ -71,6 +85,8 @@ class ServicoProduto {
       {bool codigoExato = false}) async {
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
+    final filtroPersonalizados = usuarioProvedor
+        .configbigchef?.mostrarApenasProdutosAtivoVendaHabilitado;
     final response =
         await dio.cliente.get('produtos/listar.php', queryParameters: {
       'pesquisa': pesquisa,
@@ -79,14 +95,25 @@ class ServicoProduto {
       'id_usuario': idusuario,
       'id_cliente': idcliente,
       'codigo_exato': codigoExato ? 'Sim' : 'Não',
+      if (filtroPersonalizados == true)
+        'mostrar_apenas_produtos_ativo_venda': 'Sim',
     });
 
     if (response.statusCode == 200) {
       if (response.data.isNotEmpty) {
-        final produtos =
+        var produtos =
             List<Modelowordprodutos>.from(response.data.map((elemento) {
           return Modelowordprodutos.fromMap(elemento);
         }));
+        if (filtroPersonalizados == true) {
+          produtos = produtos
+              .where((produto) =>
+                  produto.ativarProdutoPersonalizadoNoCardapio
+                      .trim()
+                      .toLowerCase() ==
+                  'sim')
+              .toList(growable: false);
+        }
         _anteciparMontagensDoCatalogo(produtos);
         return produtos;
       } else {

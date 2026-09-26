@@ -19,7 +19,9 @@ class ProvedorCardapio extends ChangeNotifier {
   final ServicosCategoria _categoriaService;
   final UsuarioProvedor usuarioProvedor;
 
-  ProvedorCardapio(this._categoriaService, this.usuarioProvedor);
+  ProvedorCardapio(this._categoriaService, this.usuarioProvedor) {
+    _configBigchef = usuarioProvedor.configbigchef;
+  }
 
   TipoCardapio _tipo = TipoCardapio.comanda;
   TipoCardapio get tipo => _tipo;
@@ -105,6 +107,7 @@ class ProvedorCardapio extends ChangeNotifier {
   ModeloConfigBigchef? get configBigchef => _configBigchef;
   set configBigchef(ModeloConfigBigchef? value) {
     _configBigchef = value;
+    usuarioProvedor.setConfigBigChef(value);
     notifyListeners();
   }
 

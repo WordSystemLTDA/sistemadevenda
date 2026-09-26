@@ -28,7 +28,11 @@ class ServicoConfigBigchef {
           options: Options(extra: {'semCache': forcarAtualizacao}));
       final jsonData = response.data;
       final chaveCache = _chaveCache(response.requestOptions, idEmpresa);
-      if (jsonData is! Map) return _cachePorDestino[chaveCache];
+      if (jsonData is! Map) {
+        final configCache = _cachePorDestino[chaveCache];
+        if (configCache != null) usuarioProvedor.setConfigBigChef(configCache);
+        return configCache;
+      }
 
       final dados = Map<String, dynamic>.from(jsonData);
       if (_precisaCompletarComDesktop(dados)) {
@@ -45,6 +49,7 @@ class ServicoConfigBigchef {
 
       final config = ModeloConfigBigchef.fromMap(dados);
       _cachePorDestino[chaveCache] = config;
+      usuarioProvedor.setConfigBigChef(config);
       return config;
     } on DioException catch (e) {
       if (e.response == null) {
@@ -53,7 +58,10 @@ class ServicoConfigBigchef {
         }
       }
 
-      return _cachePorDestino[_chaveCache(e.requestOptions, idEmpresa)];
+      final configCache =
+          _cachePorDestino[_chaveCache(e.requestOptions, idEmpresa)];
+      if (configCache != null) usuarioProvedor.setConfigBigChef(configCache);
+      return configCache;
     }
   }
 
@@ -65,9 +73,14 @@ class ServicoConfigBigchef {
       dados.containsKey('clientecompedidosdecorrentes') ||
       dados.containsKey('cliente_com_pedidos_decorrentes');
 
+  bool _possuiFiltroProdutosPersonalizados(Map<String, dynamic> dados) =>
+      dados.containsKey('mostrarapenasprodutosativovenda') ||
+      dados.containsKey('mostrar_apenas_produtos_ativo_venda');
+
   bool _precisaCompletarComDesktop(Map<String, dynamic> dados) =>
       !_possuiValorEmbalagemSeparada(dados) ||
-      !_possuiConfiguracaoRecorrentes(dados);
+      !_possuiConfiguracaoRecorrentes(dados) ||
+      !_possuiFiltroProdutosPersonalizados(dados);
 
   String _chaveCache(RequestOptions requisicao, String empresa) {
     final base = requisicao.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');

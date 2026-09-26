@@ -271,11 +271,20 @@ class _PaginaCardapioState extends State<PaginaCardapio>
           cachePrimeiro: true));
     }
 
-    // Inicia junto com as categorias para que a tarifa da embalagem separada
-    // esteja disponivel assim que o usuario abrir um produto de Cardapio.
-    // Se o produto for aberto antes, a acao "Separado" aguarda esta mesma
-    // consulta, sem disparar uma segunda requisicao.
-    unawaited(provedor.listarConfigBigChef().catchError(
+    // Preserva a abertura rapida: a configuracao continua em paralelo. Se
+    // esta for a primeira leitura da sessao e o filtro vier habilitado, as
+    // abas atualizam o catalogo imediatamente com a nova regra.
+    final filtroPersonalizadosAntes = provedor.usuarioProvedor.configbigchef
+            ?.mostrarApenasProdutosAtivoVendaHabilitado ==
+        true;
+    unawaited(provedor.listarConfigBigChef().then((_) {
+      final filtroPersonalizadosAgora = provedor.usuarioProvedor.configbigchef
+              ?.mostrarApenasProdutosAtivoVendaHabilitado ==
+          true;
+      if (!filtroPersonalizadosAntes && filtroPersonalizadosAgora) {
+        EventosCatalogo.notificar('config_bigchef');
+      }
+    }).catchError(
       (Object erro, StackTrace stack) {
         log('Falha ao atualizar a configuracao do cardapio',
             error: erro, stackTrace: stack);

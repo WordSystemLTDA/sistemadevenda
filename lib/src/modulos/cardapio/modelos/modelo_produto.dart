@@ -127,6 +127,7 @@ class Modelowordprodutos {
   ModeloDescontoProduto? descontoProduto;
   String? habilsepardelivery;
   String? idCategoriaCardapio;
+  String ativarProdutoPersonalizadoNoCardapio;
   int? limiteSaboresBorda;
   bool conferidoNoCarrinho;
 
@@ -176,6 +177,7 @@ class Modelowordprodutos {
     this.descontoProduto,
     this.habilsepardelivery,
     this.idCategoriaCardapio,
+    this.ativarProdutoPersonalizadoNoCardapio = 'Não',
     this.limiteSaboresBorda,
     this.conferidoNoCarrinho = false,
   });
@@ -232,6 +234,10 @@ class Modelowordprodutos {
       'categoriaCardapio': idCategoriaCardapio,
       'id_categoria_cardapio': idCategoriaCardapio,
       'categoria_cardapio': idCategoriaCardapio,
+      'ativarProdutoPersonalizadoNoCardapio':
+          ativarProdutoPersonalizadoNoCardapio,
+      'ativar_produto_personalizado_no_cardapio':
+          ativarProdutoPersonalizadoNoCardapio,
       'limiteSaboresBorda': limiteSaboresBorda,
       'conferidoNoCarrinho': conferidoNoCarrinho,
     };
@@ -266,6 +272,11 @@ class Modelowordprodutos {
           map['categoriaCardapio']?.toString() ??
           map['id_categoria_cardapio']?.toString() ??
           map['categoria_cardapio']?.toString(),
+      ativarProdutoPersonalizadoNoCardapio:
+          (map['ativarProdutoPersonalizadoNoCardapio'] ??
+                  map['ativar_produto_personalizado_no_cardapio'] ??
+                  'Não')
+              .toString(),
       ativarCustoDeProducao: map['ativarCustoDeProducao']?.toString(),
       novo: _boolOpcional(map['novo']),
       destinoDeImpressao: _mapa(map['destinoDeImpressao']) != null
