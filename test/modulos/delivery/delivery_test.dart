@@ -687,6 +687,7 @@ void main() {
       () async {
     final servico = ServicoDeliveryTeste();
     final marmita = impressao.produto(nome: 'Marmita M')
+      ..observacao = 'Bem Feito'
       ..opcoesPacotesListaFinal = [
         ModeloOpcoesPacotes(
           id: 12,
@@ -721,6 +722,7 @@ void main() {
 
     final campos = servico.gravacoes.single.$2;
     final produto = (campos['produtos'] as List).single as Map;
+    expect(produto['observacao'], 'Bem Feito');
     final grupo = (produto['opcoesPacotesListaFinal'] as List).single as Map;
     final ingredientes = grupo['dados'] as List;
     expect(ingredientes.map((item) => (item as Map)['nome']), ['POUCO Arroz']);
