@@ -552,6 +552,28 @@ class ServicoDelivery {
     }
     await salvar('delivery/finalizar_pedido_delivery.php',
         {'id_delivery': pedido.id, 'cliente': pedido.cliente});
+    unawaited(_enviarChavePixAutomaticamente(pedido.id));
+  }
+
+  Future<void> _enviarChavePixAutomaticamente(String id) async {
+    try {
+      // A API envia logo depois de confirmar a venda. Esta segunda tentativa
+      // recupera uma falha momentanea sem segurar a tela de finalizacao.
+      await Future<void>.delayed(const Duration(seconds: 30));
+      final resposta = await consultar(
+        'delivery/notificarenviarchavepix.php',
+        {'id': id, 'automatico': '1'},
+      );
+      if (resposta is Map && resposta['sucesso'] != true) {
+        debugPrint(
+          '[ServicoDelivery] envio automatico da chave Pix: ${resposta['mensagem'] ?? 'falha no envio'}',
+        );
+      }
+    } catch (erro) {
+      debugPrint(
+        '[ServicoDelivery] envio automatico da chave Pix nao concluido: $erro',
+      );
+    }
   }
 
   Future<void> confirmar(String id) async {
