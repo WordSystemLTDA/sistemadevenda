@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   String? senhaCancelamento;
   int leiturasFinalizadas = 0;
+  bool divisaoPersistida = false;
 
   Modeloworddadoscardapio _atendimento({
     required String id,
@@ -44,9 +45,12 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
       dataAbertura: '2026-09-24T18:00:00',
       numeroPedido: '44',
       status: status,
-      valorTotal: '85.00',
-      somaValorHistorico: pagamentoCompleto ? '85.00' : '20.00',
-      quantidadePessoas: 2,
+      valorTotal: divisaoPersistida ? '123.00' : '85.00',
+      somaValorHistorico:
+          pagamentoCompleto ? '85.00' : (divisaoPersistida ? '37.00' : '20.00'),
+      quantidadePessoas: divisaoPersistida ? 3 : 2,
+      valorBaseDivisao: divisaoPersistida ? '111.00' : null,
+      pessoasPagasDivisao: divisaoPersistida ? 1 : 0,
       nomelancamento: [
         ModeloNomeLancamento(nome: 'Dinheiro', valor: '20.00'),
         if (pagamentoCompleto)
@@ -317,6 +321,17 @@ void main() {
         scrollable: lista.first);
     expect(find.text('Movimentos realizados'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cobra produto novo somente da pessoa atual', (tester) async {
+    cardapio.divisaoPersistida = true;
+    await abrir(tester);
+
+    await tester.tap(find.text('Por pessoa'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('49,00'), findsWidgets);
+    expect(find.textContaining('Divisão iniciada'), findsOneWidget);
   });
 
   testWidgets('segue conferencia, ajustes, forma e metodo de pagamento',

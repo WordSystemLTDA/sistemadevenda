@@ -81,9 +81,11 @@ class _PaginaFinalizarContaAtendimentoState
       if (atendimento.id == null || atendimento.id != widget.idAtendimento) {
         throw StateError('Atendimento não encontrado.');
       }
-      if (atendimento.status == 'Finalizada' && concluirSeFinalizada) {
+      if (['Finalizada', 'Concluída'].contains(atendimento.status) &&
+          concluirSeFinalizada) {
         contaFinalizada = true;
-      } else if (!['Andamento', 'Fechamento'].contains(atendimento.status)) {
+      } else if (!['Andamento', 'Fechamento', 'Pendente']
+          .contains(atendimento.status)) {
         throw StateError('Esta conta não está mais aberta para recebimento.');
       }
       if (!contaFinalizada) {
@@ -111,6 +113,12 @@ class _PaginaFinalizarContaAtendimentoState
   int get _totalCentavos => centavosMonetarios(_dados?.valorTotal);
   int get _pagoCentavos => centavosMonetarios(_dados?.somaValorHistorico);
   int get _saldoCentavos => math.max(0, _totalCentavos - _pagoCentavos);
+  int? get _valorBaseDivisaoCentavos => _dados?.valorBaseDivisao == null
+      ? null
+      : centavosMonetarios(_dados!.valorBaseDivisao);
+  int get _pessoasPagasDivisao => _dados?.pessoasPagasDivisao ?? 0;
+  bool get _divisaoIniciada =>
+      (_valorBaseDivisaoCentavos ?? 0) > 0 || _pessoasPagasDivisao > 0;
 
   String _chaveProduto(Modelowordprodutos produto, int indice) =>
       produto.iditensvenda?.trim().isNotEmpty == true
@@ -131,10 +139,12 @@ class _PaginaFinalizarContaAtendimentoState
       case ModoRecebimentoAtendimento.contaInteira:
         return _saldoCentavos;
       case ModoRecebimentoAtendimento.porPessoa:
-        return parcelaAtualEmCentavos(
-          totalCentavos: _totalCentavos,
+        return parcelaDivisaoPersistidaEmCentavos(
+          totalAtualCentavos: _totalCentavos,
           pagoCentavos: _pagoCentavos,
           pessoas: _quantidadePessoas,
+          valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
+          pessoasPagasDivisao: _pessoasPagasDivisao,
         );
       case ModoRecebimentoAtendimento.porProduto:
         return math.min(
@@ -166,6 +176,13 @@ class _PaginaFinalizarContaAtendimentoState
 
   void _alterarPessoas(int diferenca) {
     if (_avancando || _cancelandoItem) return;
+    if (_divisaoIniciada) {
+      _mostrarMensagem(
+        'A quantidade de pessoas fica fixa depois do primeiro pagamento.',
+        erro: true,
+      );
+      return;
+    }
     setState(() {
       _quantidadePessoas =
           (_quantidadePessoas + diferenca).clamp(2, 99).toInt();
@@ -254,6 +271,8 @@ class _PaginaFinalizarContaAtendimentoState
       valorDescontoCentavos: descontoAtual,
       valorAcrescimoCentavos: acrescimoAtual,
       valorTaxaServico: _dados!.valorTaxaServico ?? '0',
+      valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
+      pessoasPagasDivisao: _pessoasPagasDivisao,
     );
 
     setState(() => _avancando = true);
@@ -369,7 +388,8 @@ class _PaginaFinalizarContaAtendimentoState
 
   bool _podeExcluirProduto(Modelowordprodutos produto) {
     return !_cancelandoItem &&
-        widget.tipo != TipoCardapio.delivery &&
+        (widget.tipo == TipoCardapio.comanda ||
+            widget.tipo == TipoCardapio.mesa) &&
         _dados?.status == 'Andamento' &&
         (produto.iditensvenda ?? '').trim().isNotEmpty &&
         centavosMonetarios(produto.valorPago) <= 0;
@@ -537,6 +557,17 @@ class _PaginaFinalizarContaAtendimentoState
               onMais: () => _alterarPessoas(1),
               valorAtual: valorDosCentavos(_valorSugeridoCentavos),
             ),
+            if (_divisaoIniciada) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Divisão iniciada: novos produtos serão cobrados somente da pessoa atual.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ],
           const SizedBox(height: 18),
           OutlinedButton.icon(

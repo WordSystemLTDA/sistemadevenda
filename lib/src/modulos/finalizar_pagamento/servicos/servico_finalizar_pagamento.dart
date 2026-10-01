@@ -48,10 +48,12 @@ class ServicoFinalizarPagamento {
     String valorDesconto = '0',
     String valorAcrescimo = '0',
   }) async {
-    if (tipo != TipoCardapio.comanda && tipo != TipoCardapio.mesa) {
+    if (tipo != TipoCardapio.comanda &&
+        tipo != TipoCardapio.mesa &&
+        tipo != TipoCardapio.balcao) {
       return (
         sucesso: false,
-        mensagem: 'Este recebimento é exclusivo para Comanda ou Mesa.',
+        mensagem: 'Este recebimento é exclusivo para Mesa, Comanda ou Balcão.',
         finalizou: false,
         idVenda: '0',
         totalPago: 0.0,
@@ -111,6 +113,7 @@ class ServicoFinalizarPagamento {
       'valorAPagar': moeda(valorAPagar),
       'editar_movimentacao': '0',
       'modoProdutoParcial': modoProdutoParcial,
+      'modoMultiplasPessoas': !modoProdutoParcial && quantidadePessoas > 1,
       'obs': '',
       'valordesconto': valorDesconto,
       'valoracrescimo': valorAcrescimo,
@@ -157,7 +160,9 @@ class ServicoFinalizarPagamento {
           double totalPago,
         })> enviar() async {
       final response = await dio.cliente.post(
-        '${tipo.nomeSimplificado}/pagar_pedido.php',
+        tipo == TipoCardapio.balcao
+            ? 'balcao/pagar_conta_atendimento.php'
+            : '${tipo.nomeSimplificado}/pagar_pedido.php',
         data: jsonEncode(campos),
       );
       return interpretarResposta(response.data);

@@ -21,6 +21,8 @@ class FluxoFinalizacaoAtendimento {
   final int valorDescontoCentavos;
   final int valorAcrescimoCentavos;
   final String valorTaxaServico;
+  final int? valorBaseDivisaoCentavos;
+  final int pessoasPagasDivisao;
 
   const FluxoFinalizacaoAtendimento({
     required this.idAtendimento,
@@ -37,6 +39,8 @@ class FluxoFinalizacaoAtendimento {
     required this.valorDescontoCentavos,
     required this.valorAcrescimoCentavos,
     required this.valorTaxaServico,
+    this.valorBaseDivisaoCentavos,
+    this.pessoasPagasDivisao = 0,
   });
 
   int get valorTotalCentavos => math.max(
@@ -51,10 +55,12 @@ class FluxoFinalizacaoAtendimento {
       case ModoRecebimentoAtendimento.contaInteira:
         return saldoCentavos;
       case ModoRecebimentoAtendimento.porPessoa:
-        return parcelaAtualEmCentavos(
-          totalCentavos: valorTotalCentavos,
+        return parcelaDivisaoPersistidaEmCentavos(
+          totalAtualCentavos: valorTotalCentavos,
           pagoCentavos: valorPagoCentavos,
           pessoas: quantidadePessoas,
+          valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
+          pessoasPagasDivisao: pessoasPagasDivisao,
         );
       case ModoRecebimentoAtendimento.porProduto:
         return math.min(
@@ -83,6 +89,8 @@ class FluxoFinalizacaoAtendimento {
       valorDescontoCentavos: descontoCentavos,
       valorAcrescimoCentavos: acrescimoCentavos,
       valorTaxaServico: valorTaxaServico,
+      valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
+      pessoasPagasDivisao: pessoasPagasDivisao,
     );
   }
 }

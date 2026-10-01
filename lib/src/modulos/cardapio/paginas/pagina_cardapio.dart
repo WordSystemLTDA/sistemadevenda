@@ -233,22 +233,39 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     });
     setarCampos();
 
-    // O carrinho fica no armazenamento local e nao precisa bloquear a consulta
-    // atual do catalogo. Em aparelhos com uma fila de gravacoes pendente, esperar
-    // por ele aqui fazia a tela permanecer vazia antes mesmo de consultar as
-    // categorias no servidor.
-    unawaited(carrinhoProvedor
-        .selecionarAtendimento(
+    final selecionarCarrinho = carrinhoProvedor.selecionarAtendimento(
       tipo: widget.tipo.name,
       idAtendimento: widget.id ?? '0',
       idRecurso: widget.tipo == TipoCardapio.mesa
           ? widget.idMesa ?? ''
           : widget.idComanda ?? '',
-    )
-        .catchError((Object erro, StackTrace stack) {
-      log('Falha ao carregar o carrinho do atendimento',
-          error: erro, stackTrace: stack);
-    }));
+    );
+    if (widget.retornarParaFinalizacao) {
+      // Nesta entrada o usuario pode tocar em um produto assim que o catalogo
+      // aparece. Aguarda a troca de contexto para o item nunca cair no carrinho
+      // anterior (ou resultar no aviso generico "Ocorreu um erro").
+      try {
+        await selecionarCarrinho;
+      } catch (erro, stack) {
+        log('Falha ao carregar o carrinho do atendimento',
+            error: erro, stackTrace: stack);
+        if (mounted) {
+          setState(() {
+            _erroCarregamento =
+                'Não foi possível preparar o carrinho deste atendimento.';
+            _carregandoDados = false;
+          });
+        }
+        return;
+      }
+    } else {
+      // Na abertura normal, o armazenamento local continua em paralelo para
+      // preservar a primeira exibicao rapida do catalogo.
+      unawaited(selecionarCarrinho.catchError((Object erro, StackTrace stack) {
+        log('Falha ao carregar o carrinho do atendimento',
+            error: erro, stackTrace: stack);
+      }));
+    }
 
     // Associa o cache a empresa e ao usuario antes das primeiras consultas.
     // Logo apos o login, uma oscilacao de rede podia acontecer enquanto esse

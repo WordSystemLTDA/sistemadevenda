@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -84,9 +85,11 @@ class ServicoCardapio {
 
   Future<Modeloworddadoscardapio> listarFinalizadoParaImpressao(
       String id, TipoCardapio tipo) async {
-    if (tipo != TipoCardapio.comanda && tipo != TipoCardapio.mesa) {
+    if (tipo != TipoCardapio.comanda &&
+        tipo != TipoCardapio.mesa &&
+        tipo != TipoCardapio.balcao) {
       throw StateError(
-          'A impressão final é exclusiva para atendimentos de Mesa ou Comanda.');
+          'A impressão final não está disponível para este atendimento.');
     }
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -111,10 +114,104 @@ class ServicoCardapio {
 
     final atendimento = Modeloworddadoscardapio.fromMap(
         Map<String, dynamic>.from(response.data as Map));
-    if (atendimento.id != id || atendimento.status != 'Finalizada') {
+    if (atendimento.id != id ||
+        !['Finalizada', 'Concluída'].contains(atendimento.status)) {
       throw StateError('A conta finalizada não foi localizada para impressão.');
     }
     return atendimento;
+  }
+
+  Future<
+      ({
+        bool sucesso,
+        String mensagem,
+        String idVenda,
+        String numeroPedido,
+      })> prepararFinalizacaoBalcao({
+    required String idVenda,
+    required String cliente,
+    required String observacao,
+    required String tipoDeEntrega,
+    required List<Modelowordprodutos> produtos,
+  }) async {
+    final campos = <String, dynamic>{
+      'id_operacao': BancoLocal.novoId(),
+      'id': idVenda.isEmpty ? '0' : idVenda,
+      'empresa': usuarioProvedor.usuario?.empresa ?? '',
+      'id_usuario': usuarioProvedor.usuario?.id ?? '',
+      'cliente': cliente.isEmpty ? '0' : cliente,
+      'obs': observacao,
+      'tipodeentrega': tipoDeEntrega,
+      'produtos': produtos,
+    };
+
+    ({
+      bool sucesso,
+      String mensagem,
+      String idVenda,
+      String numeroPedido,
+    }) interpretar(Object? resposta) {
+      if (resposta is! Map) {
+        return (
+          sucesso: false,
+          mensagem: 'O servidor retornou uma resposta inválida.',
+          idVenda: idVenda,
+          numeroPedido: '',
+        );
+      }
+      final dados = Map<String, dynamic>.from(resposta);
+      return (
+        sucesso: dados['sucesso'] == true,
+        mensagem: dados['mensagem']?.toString() ?? 'Pedido não registrado.',
+        idVenda: dados['idVenda']?.toString() ?? idVenda,
+        numeroPedido: dados['numeroPedido']?.toString() ?? '',
+      );
+    }
+
+    Future<
+        ({
+          bool sucesso,
+          String mensagem,
+          String idVenda,
+          String numeroPedido,
+        })> enviar() async {
+      final resposta = await dio.cliente.post(
+        'balcao/preparar_finalizacao.php',
+        data: jsonEncode(campos),
+      );
+      return interpretar(resposta.data);
+    }
+
+    try {
+      return await enviar();
+    } on DioException catch (primeiroErro) {
+      if (primeiroErro.response == null) {
+        try {
+          return await enviar();
+        } on DioException catch (segundoErro) {
+          final dados = segundoErro.response?.data;
+          return (
+            sucesso: false,
+            mensagem: dados is Map
+                ? dados['mensagem']?.toString() ??
+                    'Não foi possível preparar a venda.'
+                : 'Não foi possível preparar a venda.',
+            idVenda: idVenda,
+            numeroPedido: '',
+          );
+        }
+      }
+      final dados = primeiroErro.response?.data;
+      return (
+        sucesso: false,
+        mensagem: dados is Map
+            ? dados['mensagem']?.toString() ??
+                'Não foi possível preparar a venda.'
+            : 'Não foi possível preparar a venda.',
+        idVenda: idVenda,
+        numeroPedido: '',
+      );
+    }
   }
 
   Future<

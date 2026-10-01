@@ -13,6 +13,7 @@ import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/provedores/edicao_produto_carrinho.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -41,6 +42,8 @@ class _PaginaDetalhesDaVendaBalcaoState
       !_carregando &&
       _dados != null &&
       !_dados!.informacoes.status.startsWith('Cancelad');
+  bool get _podeContinuarRecebimento =>
+      !_ocupado && !_carregando && _dados?.informacoes.status == 'Andamento';
 
   PedidoDelivery get _pedido => PedidoDelivery.fromMap({
         ...ServicoEdicaoPedido.pedidoBalcao(widget.idVenda, _dados!).dados,
@@ -193,6 +196,24 @@ class _PaginaDetalhesDaVendaBalcaoState
             }));
   }
 
+  Future<void> _continuarRecebimento() async {
+    if (!_podeContinuarRecebimento) return;
+    final finalizou = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      settings: const RouteSettings(name: 'PaginaFinalizarContaAtendimento'),
+      builder: (_) => PaginaFinalizarContaAtendimento(
+        idAtendimento: widget.idVenda,
+        idComanda: '0',
+        idMesa: '0',
+        tipo: TipoCardapio.balcao,
+      ),
+    ));
+    if (!mounted) return;
+    if (finalizou == true) {
+      Modular.get<ProvedorBalcao>().listar();
+    }
+    await _listar();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pedido = _dados == null ? null : _pedido;
@@ -231,7 +252,26 @@ class _PaginaDetalhesDaVendaBalcaoState
       bottomNavigationBar: pedido == null
           ? null
           : SafeArea(
-              top: false, child: RodapeTotalPedidoVenda(total: pedido.total)),
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_podeContinuarRecebimento)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      child: FilledButton.icon(
+                        onPressed: _continuarRecebimento,
+                        icon: const Icon(Icons.payments_outlined),
+                        label: const Text('Continuar recebimento'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                    ),
+                  RodapeTotalPedidoVenda(total: pedido.total),
+                ],
+              ),
+            ),
       body: RefreshIndicator(
           onRefresh: _listar,
           child: ListView(

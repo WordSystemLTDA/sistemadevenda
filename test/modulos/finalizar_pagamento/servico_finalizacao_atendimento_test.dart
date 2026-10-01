@@ -104,10 +104,47 @@ void main() {
     expect(corpo['tipo'], 'Comanda');
     expect(corpo['id_operacao'], matches(RegExp(r'^[a-f0-9]{48}$')));
     expect(corpo['modoProdutoParcial'], isTrue);
+    expect(corpo['modoMultiplasPessoas'], isFalse);
     expect(corpo['valor_lancamento'], '6.00');
     expect(corpo['produtosParaFinalizar'], hasLength(1));
     expect(corpo['produtosParaFinalizar'][0]['iditensvenda'], '77');
     expect(corpo['produtosParaFinalizar'][0]['valorpago'], '0');
+  });
+
+  test('usa recebimento seguro e divisao persistente no balcao', () async {
+    final api = DioCliente(servidor: 'https://servidor.test/api1/');
+    addTearDown(() => api.cliente.close());
+    final adaptador = _AdaptadorPagamento();
+    api.cliente.httpClientAdapter = adaptador;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '7', empresa: '9', nome: 'Operador'));
+    addTearDown(usuario.dispose);
+
+    final resultado =
+        await ServicoFinalizarPagamento(api, usuario).pagarContaAtendimento(
+      id: '901',
+      idComanda: '0',
+      idMesa: '0',
+      cliente: '0',
+      tipo: TipoCardapio.balcao,
+      valorLancamento: 49,
+      valorOriginal: 123,
+      valorAPagar: 49,
+      troco: 0,
+      pagamentoSelecionado: 1,
+      quantidadePessoas: 3,
+      vencimento: DateTime(2026, 9, 21),
+      produtosParaFinalizar: const [],
+      modoProdutoParcial: false,
+    );
+
+    expect(resultado.sucesso, isTrue);
+    final chamada = adaptador.chamadas.single;
+    expect(chamada.uri.path, '/api1/balcao/pagar_conta_atendimento.php');
+    final corpo = jsonDecode(chamada.data as String) as Map<String, dynamic>;
+    expect(corpo['tipo'], TipoCardapio.balcao.nome);
+    expect(corpo['modoMultiplasPessoas'], isTrue);
+    expect(corpo['quantidadePessoas'], 3);
   });
 
   test('resposta perdida repete o mesmo recibo sem duplicar o pagamento',

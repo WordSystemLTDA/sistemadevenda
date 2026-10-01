@@ -11,6 +11,7 @@ import 'package:app/src/modulos/delivery/servicos/preferencia_confirmacao_delive
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_forma_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
@@ -787,14 +788,7 @@ void main() {
     expect(
         find.byKey(const ValueKey('tipo-entrega-finalizacao-1')), findsNothing);
     expect(find.text('Opções de Endereço'), findsNothing);
-    await tester.tap(find.text('Avançar'));
-    await tester.pumpAndSettle();
-    expect(
-        find.byKey(const ValueKey('tipo-entrega-finalizacao-1')), findsNothing);
-    expect(find.text('Opções de Endereço'), findsNothing);
-    await tester.tap(find.text('Avançar'));
-    await tester.pumpAndSettle();
-
+    expect(find.byType(PaginaFinalizarContaAtendimento), findsOneWidget);
     expect(
         find.byKey(const ValueKey('perguntar-troco-delivery')), findsNothing);
     expect(find.byKey(const ValueKey('habilitar-confirmacao-pedido-delivery')),
@@ -894,17 +888,17 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('balcao abre descontos sem salvar no delivery ou limpar itens',
+  testWidgets('balcao salva os itens e abre a finalizacao segura',
       (tester) async {
     final m = await abrir(tester, tipo: TipoCardapio.balcao);
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
-    expect(find.byType(PaginaFinalizarAcrescimo), findsOneWidget);
-    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 10);
-    expect(m.carrinho.itensCarrinho.listaComandosPedidos, hasLength(1));
+    expect(find.byType(PaginaFinalizarContaAtendimento), findsOneWidget);
+    expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(m.delivery.envios, 0);
     expect(m.delivery.consultas, 0);
-    expect(m.api.pedidos, isEmpty);
+    expect(m.api.pedidos, hasLength(1));
+    expect(m.api.pedidos.single['produtos'], hasLength(1));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

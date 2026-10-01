@@ -23,8 +23,10 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/card_carrinho.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
+import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -109,6 +111,8 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   bool carregando = true;
   bool _tentouEnvioVoz = false;
   bool _vozDisponivel = false;
+  String? _idBalcaoPreparado;
+  String? _numeroPedidoBalcaoPreparado;
 
   bool get _ocupado => isLoading || _enviandoPedidoWhats;
 
@@ -312,12 +316,20 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
       recorrenteVinculado: widget.deliveryDireto ? false : null,
     );
     if (_tipo == TipoCardapio.balcao) {
-      Navigator.push(
+      final sincronizador = Sincronizador.instancia;
+      final vendaLocal =
+          _contextoCarrinho!.idAtendimento.startsWith('venda-local:');
+      if (vendaLocal || sincronizador?.api.cache?.servidorDisponivel == false) {
+        Navigator.push(
           context,
           MaterialPageRoute(
             settings: const RouteSettings(name: 'PaginaFinalizarAcrescimo'),
             builder: (_) => const PaginaFinalizarAcrescimo(),
-          ));
+          ),
+        );
+        return;
+      }
+      await _finalizarBalcao();
       return;
     }
     if (_tipo == TipoCardapio.delivery) {
@@ -460,6 +472,118 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _finalizarBalcao() async {
+    final contexto = _contextoCarrinho;
+    final dadosPedido = dados;
+    if (contexto == null || dadosPedido == null || isLoading) return;
+
+    setState(() => isLoading = true);
+    String mensagemFalha = 'Não foi possível preparar a venda de Balcão.';
+    try {
+      final itens = await carrinhoProvedor.obterItensParaFinalizar(contexto);
+      if (itens.isEmpty && !_finalizacao.pedidoRegistrado) {
+        throw StateError('O carrinho nao tem produtos pendentes.');
+      }
+      final idAtual = _idBalcaoPreparado ??
+          (int.tryParse(contexto.idAtendimento) != null
+              ? contexto.idAtendimento
+              : '0');
+      final sucesso = await _finalizacao.executar(
+        prepararImpressao: () => Impressao.prepararComprovanteDePedido(
+          produtos: itens,
+          tipoTela: TipoCardapio.balcao,
+          tipodeentrega: _tipoDeEntrega,
+          comanda: 'Balcão',
+          numeroPedido: _numeroPedidoBalcaoPreparado ?? '',
+          nomeCliente: nomeClienteAtendimento(
+            dadosPedido.nomeCliente,
+            dadosPedido.observacaoDoPedido,
+            vazio: '',
+          ),
+          nomeEmpresa: dadosPedido.nomeEmpresa ?? '',
+        ),
+        registrarPedido: () async {
+          final resposta = await servicoCardapio.prepararFinalizacaoBalcao(
+            idVenda: idAtual,
+            cliente: dadosPedido.idCliente ?? provedorCardapio.idCliente,
+            observacao: dadosPedido.observacaoDoPedido ??
+                Modular.get<ProvedorBalcao>().observacaoDoPedido,
+            tipoDeEntrega: _tipoDeEntrega,
+            produtos: itens,
+          );
+          mensagemFalha = resposta.mensagem;
+          if (resposta.sucesso) {
+            _idBalcaoPreparado = resposta.idVenda;
+            _numeroPedidoBalcaoPreparado = resposta.numeroPedido;
+          }
+          return resposta.sucesso;
+        },
+        enviarImpressao: server.enviarImpressoes,
+        aoFalharImpressao: server.avisarFalhaImpressao,
+        salvarImpressaoAntesDoPedido: server.prepararImpressoes,
+        cancelarImpressaoPreparada: server.filaImpressao.cancelarPreparacao,
+        limparCarrinho: () async {
+          if (!await carrinhoProvedor.removerComandasPedidos(
+              contexto: contexto)) {
+            throw StateError('Nao foi possivel limpar o carrinho finalizado.');
+          }
+          await carrinhoProvedor.listarComandasPedidos();
+        },
+      );
+      if (!sucesso || (_idBalcaoPreparado ?? '').isEmpty) {
+        throw StateError(mensagemFalha);
+      }
+
+      FeedbackUsuario.pedidoFinalizado();
+      server.write(jsonEncode({
+        'tipo': TipoCardapio.balcao.nome,
+        'nomeConexao': usuarioProvedor.usuario?.nome ?? '',
+      }));
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      if (widget.retornarParaFinalizacao) {
+        Navigator.popUntil(
+          context,
+          (route) =>
+              route.settings.name == 'PaginaFinalizarContaAtendimento' ||
+              route.isFirst,
+        );
+        return;
+      }
+
+      await Navigator.of(context).push<bool>(MaterialPageRoute(
+        settings: const RouteSettings(name: 'PaginaFinalizarContaAtendimento'),
+        builder: (_) => PaginaFinalizarContaAtendimento(
+          idAtendimento: _idBalcaoPreparado!,
+          idComanda: '0',
+          idMesa: '0',
+          tipo: TipoCardapio.balcao,
+        ),
+      ));
+      if (mounted) {
+        Navigator.popUntil(context, ModalRoute.withName('PaginaBalcao'));
+      }
+    } catch (erro) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..removeCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(_finalizacao.pedidoRegistrado
+              ? 'Venda salva. Toque em Finalizar para concluir a impressão e abrir o recebimento.'
+              : erro is StateError
+                  ? erro.message.toString()
+                  : mensagemFalha),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ));
     } finally {
       if (mounted) setState(() => isLoading = false);
     }

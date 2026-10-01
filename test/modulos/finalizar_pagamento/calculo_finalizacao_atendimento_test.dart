@@ -46,6 +46,30 @@ void main() {
         334);
   });
 
+  test('novo produto fica somente com a pessoa atual da divisao', () {
+    expect(
+      parcelaDivisaoPersistidaEmCentavos(
+        totalAtualCentavos: 12300,
+        pagoCentavos: 3700,
+        pessoas: 3,
+        valorBaseDivisaoCentavos: 11100,
+        pessoasPagasDivisao: 1,
+      ),
+      4900,
+    );
+
+    expect(
+      parcelaDivisaoPersistidaEmCentavos(
+        totalAtualCentavos: 12300,
+        pagoCentavos: 8600,
+        pessoas: 3,
+        valorBaseDivisaoCentavos: 11100,
+        pessoasPagasDivisao: 2,
+      ),
+      3700,
+    );
+  });
+
   test('produto parcial considera total e o valor que ja foi pago', () {
     final primeiro = produto(total: '18.00', valor: '6', pago: '6');
     final segundo = produto(valor: '10', pago: '2', quantidade: 2);

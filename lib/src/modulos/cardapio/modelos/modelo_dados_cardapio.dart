@@ -74,6 +74,8 @@ class Modeloworddadoscardapio {
   String? valorDesconto;
   String? valorAcrescimo;
   int? quantidadePessoas;
+  String? valorBaseDivisao;
+  int? pessoasPagasDivisao;
 
   Modeloworddadoscardapio({
     this.id,
@@ -114,6 +116,8 @@ class Modeloworddadoscardapio {
     this.valorDesconto,
     this.valorAcrescimo,
     this.quantidadePessoas,
+    this.valorBaseDivisao,
+    this.pessoasPagasDivisao,
   });
 
   Map<String, dynamic> toMap() {
@@ -156,6 +160,8 @@ class Modeloworddadoscardapio {
       'valordesconto': valorDesconto,
       'valoracrescimo': valorAcrescimo,
       'quantidadepessoas': quantidadePessoas,
+      'valorBaseDivisao': valorBaseDivisao,
+      'pessoasPagasDivisao': pessoasPagasDivisao,
     };
   }
 
@@ -205,6 +211,11 @@ class Modeloworddadoscardapio {
           _textoOpcional(map['valoracrescimo'] ?? map['valor_acrescimo']),
       quantidadePessoas: int.tryParse(
           (map['quantidadepessoas'] ?? map['quantidade_pessoa'] ?? '')
+              .toString()),
+      valorBaseDivisao:
+          _textoOpcional(map['valorBaseDivisao'] ?? map['valor_base_divisao']),
+      pessoasPagasDivisao: int.tryParse(
+          (map['pessoasPagasDivisao'] ?? map['pessoas_pagas_divisao'] ?? '0')
               .toString()),
     );
   }

@@ -42,6 +42,45 @@ int parcelaAtualEmCentavos({
   return math.min(parcelaBase - pagoNaParcelaAtual, restante);
 }
 
+/// Calcula a parcela da pessoa atual sem redistribuir produtos adicionados
+/// depois que a divisao da conta comecou.
+///
+/// [valorBaseDivisaoCentavos] e o total congelado no primeiro recebimento e
+/// [pessoasPagasDivisao] e a quantidade de cotas originais ja concluidas. Na
+/// ausencia desses dados, mantem o calculo legado para atendimentos antigos.
+int parcelaDivisaoPersistidaEmCentavos({
+  required int totalAtualCentavos,
+  required int pagoCentavos,
+  required int pessoas,
+  int? valorBaseDivisaoCentavos,
+  int pessoasPagasDivisao = 0,
+}) {
+  if (valorBaseDivisaoCentavos == null || valorBaseDivisaoCentavos <= 0) {
+    return parcelaAtualEmCentavos(
+      totalCentavos: totalAtualCentavos,
+      pagoCentavos: pagoCentavos,
+      pessoas: pessoas,
+    );
+  }
+
+  if (totalAtualCentavos <= 0) return 0;
+  final pagoLimitado = pagoCentavos.clamp(0, totalAtualCentavos).toInt();
+  final restante = totalAtualCentavos - pagoLimitado;
+  if (restante <= 0 || pessoas <= 1) return restante;
+
+  final base = math.max(0, valorBaseDivisaoCentavos);
+  final pagas = pessoasPagasDivisao.clamp(0, pessoas).toInt();
+  if (pagas >= pessoas) return restante;
+
+  final parcelaBase = base ~/ pessoas;
+  final pessoaAtual = pagas + 1;
+  final baseAcumulada =
+      pessoaAtual == pessoas ? base : parcelaBase * pessoaAtual;
+  final alteracoesDepoisDaDivisao = totalAtualCentavos - base;
+  final devido = baseAcumulada + alteracoesDepoisDaDivisao - pagoLimitado;
+  return devido.clamp(0, restante).toInt();
+}
+
 int totalProdutoEmCentavos(Modelowordprodutos produto) {
   final totalInformado = centavosMonetarios(produto.valorTotalVendas);
   if (totalInformado > 0) return totalInformado;
