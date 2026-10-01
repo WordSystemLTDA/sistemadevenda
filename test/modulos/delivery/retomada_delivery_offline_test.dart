@@ -107,6 +107,13 @@ class _DeliveryLocal extends ServicoDelivery {
     fase = 'enfileirado';
     confirmacoes++;
   }
+
+  @override
+  Future<void> confirmarPagarDepois(String id) async {
+    expect(id, _DeliveryLocal.id);
+    fase = 'enfileirado';
+    confirmacoes++;
+  }
 }
 
 class _ModuloLocal extends ModuloFinalizacaoTeste {

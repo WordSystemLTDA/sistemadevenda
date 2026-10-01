@@ -530,6 +530,16 @@ class ImpressaoDelivery {
     final somenteResumo = pedido.tipoEntrega == '1' &&
         config != null &&
         !config.imprimirPreparoNoComprovanteConsumacao;
+    final pagamentos = pedido.pagamentos.isEmpty
+        ? [
+            {
+              'nome': pedido.total <= 0.009
+                  ? 'Cortesia / sem cobrança'
+                  : 'Pagar depois - receber na entrega',
+              'valor': pedido.restante.toStringAsFixed(2),
+            }
+          ]
+        : pedido.pagamentos;
     return [
       for (final grupo in grupos.entries)
         jsonEncode({
@@ -545,7 +555,7 @@ class ImpressaoDelivery {
                   ? _produtoSomenteResumo(produto)
                   : produto.toMap())
               .toList(),
-          'nomelancamento': pedido.pagamentos,
+          'nomelancamento': pagamentos,
           'somaValorHistorico': pedido.pago.toStringAsFixed(2),
           'comanda': comanda,
           for (final campo in [

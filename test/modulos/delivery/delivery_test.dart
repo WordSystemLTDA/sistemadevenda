@@ -551,6 +551,13 @@ void main() {
     expect(config.exigePagamento(pedidoTeste(), etapasTeste()[1]), isFalse);
     expect(config.motivoCancelamentoObrigatorio, isTrue);
     expect(config.exigePagamento(pedidoTeste(), etapasTeste().last), isTrue);
+    expect(
+      config.exigePagamento(
+        pedidoTeste(campos: {'pagamentoPendente': true}),
+        etapasTeste().last,
+      ),
+      isFalse,
+    );
     expect(config.taxaEntrega('6.00'), 8.5);
     expect(config.entregadorFixo, isEmpty);
     expect(config.imprimirPreparoNoComprovanteConsumacao, isTrue);
@@ -853,6 +860,10 @@ void main() {
     expect(json['numeroPedido'], '14');
     expect(json['comanda'], 'Delivery 25');
     expect(json['protocoloImpressao'], 2);
+    expect(
+      (json['nomelancamento'] as List).single['nome'],
+      'Pagar depois - receber na entrega',
+    );
   });
   test('mantem numero e bairro separados para o layout do comprovante', () {
     final pedido = pedidoTeste(campos: {

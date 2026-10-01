@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
@@ -329,7 +330,7 @@ class FilaDeliveryOffline {
         });
       });
 
-  Future<void> confirmar(String id) async {
+  Future<void> confirmar(String id, {bool pagamentoPendente = false}) async {
     await banco.db.transaction((tx) async {
       final todos = await _todos(tx);
       final r = await _obter(tx, id);
@@ -365,6 +366,7 @@ class FilaDeliveryOffline {
           'pagamentos'
         ])
           campo: r[campo],
+        'pagamento_pendente': pagamentoPendente,
         'concluido': true,
       };
       await tx.insert('operacoes', {
@@ -379,6 +381,7 @@ class FilaDeliveryOffline {
         'criado': DateTime.now().millisecondsSinceEpoch,
       });
       r['fase'] = 'enfileirado';
+      r['pagamento_pendente'] = pagamentoPendente;
       todos[id] = r;
       await BancoLocal.gravarDocumento(tx, _chave, jsonEncode(todos));
     });
@@ -444,6 +447,7 @@ class FilaDeliveryOffline {
       'valorVenda': total,
       'valorTotal': total,
       'somaValorHistorico': _pago(r).toStringAsFixed(2),
+      'pagamentoPendente': r['pagamento_pendente'] == true,
       'valordaentrega': r['valor_da_entrega'],
       'valorentrega': r['valor_da_entrega'],
       'valorDesconto': r['valor_desconto'],
@@ -459,7 +463,13 @@ class FilaDeliveryOffline {
             'valor': (valorDelivery(p['valor_lancamento']) -
                     valorDelivery(p['valortroco']))
                 .toStringAsFixed(2)
-          }
+          },
+        if (r['pagamento_pendente'] == true)
+          {
+            'nome': 'Pagar depois - receber na entrega',
+            'valor':
+                math.max(0, valorDelivery(total) - _pago(r)).toStringAsFixed(2),
+          },
       ],
       'faseLocal': r['fase'],
       'estadoSincronizacao': op?['estado'] ?? 'rascunho',

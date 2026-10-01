@@ -206,6 +206,8 @@ class PedidoDelivery {
   double get total => valorDelivery(dados['valorVenda']);
   double get pago => valorDelivery(dados['somaValorHistorico']);
   double get restante => math.max(0, total - pago);
+  bool get pagamentoPendente => valorDeliverySim(
+      dados['pagamentoPendente'] ?? dados['pagamento_pendente']);
   int get quantidade =>
       int.tryParse(texto('quantidadeprodutos')) ?? produtos.length;
   DateTime? get abertura => DateTime.tryParse(texto('dataAbertura'));
@@ -226,7 +228,13 @@ class PedidoDelivery {
       ];
   bool get possuiPagamentoRegistrado =>
       pago > 0.009 ||
-      pagamentos.any((pagamento) => valorDelivery(pagamento['valor']) > 0.009);
+      pagamentos.any((pagamento) =>
+          !pagamento['nome']
+              .toString()
+              .trim()
+              .toLowerCase()
+              .startsWith('pagar depois') &&
+          valorDelivery(pagamento['valor']) > 0.009);
 }
 
 class ConfigDelivery {
@@ -305,7 +313,9 @@ class ConfigDelivery {
       };
 
   bool exigePagamento(PedidoDelivery pedido, EtapaDelivery destino) =>
-      pedido.restante > 0.009 && (!receberNoFinal || destino.impressao == '3');
+      pedido.restante > 0.009 &&
+      !pedido.pagamentoPendente &&
+      (!receberNoFinal || destino.impressao == '3');
 
   bool get controlaNumeroOperacionalPedido =>
       ativarnumerooperacionalpedido.trim().isNotEmpty ||

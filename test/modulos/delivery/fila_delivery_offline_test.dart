@@ -204,13 +204,14 @@ void main() {
     final id = await criar();
     await adicionar(id);
     await fila.definirAjustes(id, desconto: 5, acrescimo: 2);
-    await fila.confirmar(id);
+    await fila.confirmar(id, pagamentoPendente: true);
     final dados =
         jsonDecode((await banco.operacoes(escopo)).single['dados'] as String)
             as Map;
     expect(dados['valor_desconto'], '5.00');
     expect(dados['valor_acrescimo'], '2.00');
     expect(dados['pagamentos'], isEmpty);
+    expect(dados['pagamento_pendente'], isTrue);
     expect((await fila.pedido(id)).total, 51);
   });
 

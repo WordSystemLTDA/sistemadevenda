@@ -171,7 +171,7 @@ class _PaginaSelecionarPagamentoState extends State<PaginaSelecionarPagamento> {
             desconto: _desconto > 0 ? _desconto : 0,
             acrescimo: _desconto < 0 ? _desconto.abs() : _acrescimo);
       }
-      await servico.confirmar(provedor.idVenda);
+      await servico.confirmarPagarDepois(provedor.idVenda);
       FeedbackUsuario.pedidoFinalizado();
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).popUntil(

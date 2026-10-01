@@ -577,8 +577,17 @@ class ServicoDelivery {
   }
 
   Future<void> confirmar(String id) async {
+    await _confirmar(id, pagarDepois: false);
+  }
+
+  Future<void> confirmarPagarDepois(String id) async {
+    await _confirmar(id, pagarDepois: true);
+  }
+
+  Future<void> _confirmar(String id, {required bool pagarDepois}) async {
     if (FilaDeliveryOffline.local(id)) {
-      await (await _exigirFilaLocal()).confirmar(id);
+      await (await _exigirFilaLocal())
+          .confirmar(id, pagamentoPendente: pagarDepois);
       Sincronizador.instancia?.solicitar();
       NotificadorAtualizacao.atendimento('Delivery');
       return;
@@ -586,7 +595,10 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) <= 0) {
       throw StateError('Pedido invÃ¡lido para confirmaÃ§Ã£o.');
     }
-    await salvar('delivery/confirmar_pedido.php', {'id': id});
+    await salvar('delivery/confirmar_pedido.php', {
+      'id': id,
+      if (pagarDepois) 'pagar_depois': true,
+    });
   }
 
   Future<void> excluirRascunho(String id) async {

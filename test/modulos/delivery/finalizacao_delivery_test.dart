@@ -61,6 +61,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   bool falharRecorrencia = false;
   bool falharConfirmacaoWhatsApp = false;
   bool recorrenteVinculado = false;
+  bool pagarDepoisConfirmado = false;
   String celularCliente = '(44) 99999-9999';
   String tipoEntrega = '1';
   String enderecoSelecionado = '17';
@@ -162,6 +163,7 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     }
     if (rota == 'delivery/confirmar_pedido.php') {
       expect(campos['id'], '10118');
+      pagarDepoisConfirmado = campos['pagar_depois'] == true;
       confirmacoes++;
       operacoesFinalizacao.add('confirmacao-delivery');
       return {'sucesso': true};
@@ -492,6 +494,7 @@ void main() {
     expect(m.delivery.pagamentos, 0);
     expect(m.delivery.conclusoes, 0);
     expect(m.delivery.confirmacoes, 1);
+    expect(m.delivery.pagarDepoisConfirmado, isTrue);
     expect(m.carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
