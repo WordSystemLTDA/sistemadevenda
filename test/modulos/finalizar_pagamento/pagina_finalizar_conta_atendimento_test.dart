@@ -23,6 +23,8 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   String? senhaCancelamento;
   int leiturasFinalizadas = 0;
   bool divisaoPersistida = false;
+  int quantidadeDivisao = 3;
+  int pessoasPagasDivisao = 1;
 
   Modeloworddadoscardapio _atendimento({
     required String id,
@@ -48,9 +50,9 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
       valorTotal: divisaoPersistida ? '123.00' : '85.00',
       somaValorHistorico:
           pagamentoCompleto ? '85.00' : (divisaoPersistida ? '37.00' : '20.00'),
-      quantidadePessoas: divisaoPersistida ? 3 : 2,
+      quantidadePessoas: divisaoPersistida ? quantidadeDivisao : 2,
       valorBaseDivisao: divisaoPersistida ? '111.00' : null,
-      pessoasPagasDivisao: divisaoPersistida ? 1 : 0,
+      pessoasPagasDivisao: divisaoPersistida ? pessoasPagasDivisao : 0,
       nomelancamento: [
         ModeloNomeLancamento(nome: 'Dinheiro', valor: '20.00'),
         if (pagamentoCompleto)
@@ -327,11 +329,34 @@ void main() {
     cardapio.divisaoPersistida = true;
     await abrir(tester);
 
-    await tester.tap(find.text('Por pessoa'));
-    await tester.pumpAndSettle();
-
+    expect(find.text('Quantidade de pessoas'), findsOneWidget);
     expect(find.textContaining('49,00'), findsWidgets);
     expect(find.textContaining('Divisão iniciada'), findsOneWidget);
+
+    await tester.tap(find.text('Conta inteira'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('não pode ser desativada'), findsOneWidget);
+    expect(find.text('Quantidade de pessoas'), findsOneWidget);
+    expect(find.textContaining('49,00'), findsWidgets);
+  });
+
+  testWidgets('mostra pessoas pagas e restantes na divisao', (tester) async {
+    cardapio
+      ..divisaoPersistida = true
+      ..quantidadeDivisao = 5
+      ..pessoasPagasDivisao = 2;
+    await abrir(tester);
+
+    final progresso = find.byKey(const ValueKey('progresso_divisao_pessoas'));
+    expect(progresso, findsOneWidget);
+    expect(find.descendant(of: progresso, matching: find.text('Pessoas pagas')),
+        findsOneWidget);
+    expect(find.descendant(of: progresso, matching: find.text('2 de 5')),
+        findsOneWidget);
+    expect(find.descendant(of: progresso, matching: find.text('Faltam pagar')),
+        findsOneWidget);
+    expect(find.descendant(of: progresso, matching: find.text('3')),
+        findsOneWidget);
   });
 
   testWidgets('segue conferencia, ajustes, forma e metodo de pagamento',

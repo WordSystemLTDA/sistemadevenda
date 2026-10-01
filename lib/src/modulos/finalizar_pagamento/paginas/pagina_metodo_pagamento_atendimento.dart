@@ -38,6 +38,13 @@ class _PaginaMetodoPagamentoAtendimentoState
       : _valorPagamentoCentavos;
   int get _trocoCentavos =>
       math.max(0, _valorRecebidoCentavos - _valorPagamentoCentavos);
+  bool get _permiteDinheiroParcial =>
+      _idForma == 1 &&
+      widget.fluxo.modo == ModoRecebimentoAtendimento.porProduto;
+  int get _valorRegistradoCentavos =>
+      math.min(_valorRecebidoCentavos, _valorPagamentoCentavos);
+  int get _faltaCentavos =>
+      math.max(0, _valorPagamentoCentavos - _valorRecebidoCentavos);
 
   @override
   void initState() {
@@ -85,7 +92,13 @@ class _PaginaMetodoPagamentoAtendimentoState
       _mensagem('Não há saldo para receber. Atualize a conta.');
       return;
     }
-    if (_idForma == 1 && _valorRecebidoCentavos < _valorPagamentoCentavos) {
+    if (_idForma == 1 && _valorRecebidoCentavos <= 0) {
+      _mensagem('Informe um valor recebido maior que zero.');
+      return;
+    }
+    if (_idForma == 1 &&
+        _valorRecebidoCentavos < _valorPagamentoCentavos &&
+        !_permiteDinheiroParcial) {
       _mensagem('O valor recebido em dinheiro é insuficiente.');
       return;
     }
@@ -97,9 +110,10 @@ class _PaginaMetodoPagamentoAtendimentoState
         title: const Text('Confirmar recebimento'),
         content: Text(
           '${widget.forma.nome} de '
-          '${valorDosCentavos(_valorPagamentoCentavos).obterReal()} será lançado '
+          '${valorDosCentavos(_valorRegistradoCentavos).obterReal()} será lançado '
           'na ${widget.fluxo.tipo.nome.toLowerCase()}.'
-          '${_trocoCentavos > 0 ? '\nTroco: ${valorDosCentavos(_trocoCentavos).obterReal()}.' : ''}',
+          '${_trocoCentavos > 0 ? '\nTroco: ${valorDosCentavos(_trocoCentavos).obterReal()}.' : ''}'
+          '${_permiteDinheiroParcial && _faltaCentavos > 0 ? '\nRestará ${valorDosCentavos(_faltaCentavos).obterReal()} para outra forma de pagamento.' : ''}',
         ),
         actions: [
           TextButton(
@@ -283,6 +297,46 @@ class _PaginaMetodoPagamentoAtendimentoState
                             fontWeight: FontWeight.w900)),
                   ]),
                 ),
+                if (_permiteDinheiroParcial && _faltaCentavos > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    key: const ValueKey('falta_pagamento_produtos'),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: cs.outlineVariant),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.pending_actions_outlined),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Falta para os produtos selecionados',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          Text(
+                            valorDosCentavos(_faltaCentavos).obterReal(),
+                            style: TextStyle(
+                                color: cs.primary,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Esse valor poderá ser recebido em outra forma de pagamento.',
+                          style: TextStyle(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ] else
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -368,7 +422,7 @@ class _PaginaMetodoPagamentoAtendimentoState
                 const Expanded(
                     child: Text('Total Registrado',
                         style: TextStyle(fontWeight: FontWeight.w700))),
-                Text(valorDosCentavos(_valorRecebidoCentavos).obterReal(),
+                Text(valorDosCentavos(_valorRegistradoCentavos).obterReal(),
                     style: TextStyle(
                         color: cs.primary,
                         fontSize: 18,

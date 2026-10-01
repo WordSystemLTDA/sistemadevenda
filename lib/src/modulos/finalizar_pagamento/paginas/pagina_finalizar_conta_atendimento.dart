@@ -89,10 +89,17 @@ class _PaginaFinalizarContaAtendimentoState
         throw StateError('Esta conta não está mais aberta para recebimento.');
       }
       if (!contaFinalizada) {
+        final quantidadePessoas =
+            math.max(2, atendimento.quantidadePessoas ?? _quantidadePessoas);
+        final divisaoIniciada =
+            centavosMonetarios(atendimento.valorBaseDivisao) > 0 ||
+                (atendimento.pessoasPagasDivisao ?? 0) > 0;
         setState(() {
           _dados = atendimento;
-          _quantidadePessoas =
-              math.max(2, atendimento.quantidadePessoas ?? _quantidadePessoas);
+          _quantidadePessoas = quantidadePessoas;
+          if (divisaoIniciada && quantidadePessoas > 1) {
+            _modo = ModoRecebimentoAtendimento.porPessoa;
+          }
           _removerChavesInvalidas();
         });
       }
@@ -166,6 +173,13 @@ class _PaginaFinalizarContaAtendimentoState
 
   void _alterarModo(ModoRecebimentoAtendimento modo) {
     if (_avancando || _cancelandoItem || modo == _modo) return;
+    if (_divisaoIniciada && _modo == ModoRecebimentoAtendimento.porPessoa) {
+      _mostrarMensagem(
+        'A divisão por pessoa não pode ser desativada depois do primeiro pagamento.',
+        erro: true,
+      );
+      return;
+    }
     setState(() {
       _modo = modo;
       if (modo != ModoRecebimentoAtendimento.porProduto) {
@@ -532,6 +546,8 @@ class _PaginaFinalizarContaAtendimentoState
     }
 
     final dados = _dados!;
+    final pessoasPagas =
+        _pessoasPagasDivisao.clamp(0, _quantidadePessoas).toInt();
     return Stack(children: [
       ListView(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 124),
@@ -543,6 +559,10 @@ class _PaginaFinalizarContaAtendimentoState
             total: valorDosCentavos(_totalCentavos),
             pago: valorDosCentavos(_pagoCentavos),
             saldo: valorDosCentavos(_saldoCentavos),
+            totalPessoas: _modo == ModoRecebimentoAtendimento.porPessoa
+                ? _quantidadePessoas
+                : null,
+            pessoasPagas: pessoasPagas,
           ),
           const SizedBox(height: 18),
           const _TituloSecao(
@@ -681,6 +701,8 @@ class _ResumoConta extends StatelessWidget {
   final double total;
   final double pago;
   final double saldo;
+  final int? totalPessoas;
+  final int pessoasPagas;
 
   const _ResumoConta({
     required this.titulo,
@@ -688,6 +710,8 @@ class _ResumoConta extends StatelessWidget {
     required this.total,
     required this.pago,
     required this.saldo,
+    required this.totalPessoas,
+    required this.pessoasPagas,
   });
 
   @override
@@ -739,9 +763,81 @@ class _ResumoConta extends StatelessWidget {
         Text(saldo.obterReal(),
             style: TextStyle(
                 color: verde, fontSize: 30, fontWeight: FontWeight.w800)),
+        if (totalPessoas != null)
+          _ResumoPessoasDivisao(
+            total: totalPessoas!,
+            pagas: pessoasPagas,
+          ),
       ]),
     );
   }
+}
+
+class _ResumoPessoasDivisao extends StatelessWidget {
+  final int total;
+  final int pagas;
+
+  const _ResumoPessoasDivisao({required this.total, required this.pagas});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final restantes = total - pagas;
+    return Column(
+      key: const ValueKey('progresso_divisao_pessoas'),
+      children: [
+        const SizedBox(height: 10),
+        Divider(color: cs.outlineVariant),
+        const SizedBox(height: 4),
+        _LinhaProgressoDivisao(
+          label: 'Pessoas pagas',
+          value: '$pagas de $total',
+          valueColor: cs.primary,
+        ),
+        _LinhaProgressoDivisao(
+          label: 'Faltam pagar',
+          value: '$restantes',
+        ),
+      ],
+    );
+  }
+}
+
+class _LinhaProgressoDivisao extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _LinhaProgressoDivisao({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _ValorResumo extends StatelessWidget {
