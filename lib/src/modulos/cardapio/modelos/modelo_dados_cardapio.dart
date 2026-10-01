@@ -202,7 +202,7 @@ class Modeloworddadoscardapio {
       observacaoDoPedido: _textoOpcional(map['observacaoDoPedido']),
       nomeMesa: _textoOpcional(map['nomeMesa']),
       tipodeentrega: _textoOpcional(map['tipodeentrega']),
-      valorentrega: _textoOpcional(map['valorentrega']),
+      valorentrega: _textoOpcional(map['valorentrega'] ?? map['valorEntrega']),
       valorTaxaServico:
           _textoOpcional(map['valortaxadeservico'] ?? map['valor_da_taxa']),
       valorDesconto:

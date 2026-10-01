@@ -21,6 +21,8 @@ class FluxoFinalizacaoAtendimento {
   final int valorDescontoCentavos;
   final int valorAcrescimoCentavos;
   final String valorTaxaServico;
+  final String valorEntrega;
+  final String tipoEntrega;
   final int? valorBaseDivisaoCentavos;
   final int pessoasPagasDivisao;
 
@@ -39,6 +41,8 @@ class FluxoFinalizacaoAtendimento {
     required this.valorDescontoCentavos,
     required this.valorAcrescimoCentavos,
     required this.valorTaxaServico,
+    this.valorEntrega = '0',
+    this.tipoEntrega = '0',
     this.valorBaseDivisaoCentavos,
     this.pessoasPagasDivisao = 0,
   });
@@ -89,6 +93,8 @@ class FluxoFinalizacaoAtendimento {
       valorDescontoCentavos: descontoCentavos,
       valorAcrescimoCentavos: acrescimoCentavos,
       valorTaxaServico: valorTaxaServico,
+      valorEntrega: valorEntrega,
+      tipoEntrega: tipoEntrega,
       valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
       pessoasPagasDivisao: pessoasPagasDivisao,
     );

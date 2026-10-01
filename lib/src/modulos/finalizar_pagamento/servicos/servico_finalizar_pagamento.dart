@@ -45,15 +45,18 @@ class ServicoFinalizarPagamento {
     required List<Modelowordprodutos> produtosParaFinalizar,
     required bool modoProdutoParcial,
     String valorTaxaServico = '0',
+    String valorEntrega = '0',
+    String tipoEntrega = '0',
     String valorDesconto = '0',
     String valorAcrescimo = '0',
   }) async {
     if (tipo != TipoCardapio.comanda &&
         tipo != TipoCardapio.mesa &&
-        tipo != TipoCardapio.balcao) {
+        tipo != TipoCardapio.balcao &&
+        tipo != TipoCardapio.delivery) {
       return (
         sucesso: false,
-        mensagem: 'Este recebimento é exclusivo para Mesa, Comanda ou Balcão.',
+        mensagem: 'Este recebimento não está disponível para este atendimento.',
         finalizou: false,
         idVenda: '0',
         totalPago: 0.0,
@@ -102,11 +105,11 @@ class ServicoFinalizarPagamento {
       'id_mesa': idMesa.isEmpty ? '0' : idMesa,
       'tipo': tipo.nome,
       'valortroco': moeda(troco),
-      'valor_da_entrega': '0.00',
+      'valor_da_entrega': valorEntrega,
       'valordataxadeservico': valorTaxaServico,
       'valoresProduto': moeda(valorAPagar),
       'novo': false,
-      'tipodeentrega': '0',
+      'tipodeentrega': tipoEntrega,
       'produtos': const <dynamic>[],
       'produtosParaFinalizar': produtosParciais,
       'valorAPagarOriginal': moeda(valorAPagar),

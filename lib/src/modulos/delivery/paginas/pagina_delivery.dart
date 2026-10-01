@@ -20,6 +20,7 @@ import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_acrescimo.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_selecionar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
@@ -172,6 +173,27 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     cardapio.id = pedido.id;
     cardapio.idCliente = pedido.cliente;
     cardapio.tipodeentrega = pedido.tipoEntrega;
+
+    if (pedido.recorrenteVinculado != true) {
+      _rotaAberta = true;
+      FocusManager.instance.primaryFocus?.unfocus();
+      try {
+        final recebeu = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaginaFinalizarContaAtendimento(
+              idAtendimento: pedido.id,
+              idComanda: '0',
+              idMesa: '0',
+              tipo: TipoCardapio.delivery,
+            ),
+          ),
+        );
+        return recebeu == true;
+      } finally {
+        _rotaAberta = false;
+      }
+    }
 
     final pagamento = Modular.get<ProvedorFinalizarPagamento>();
     pagamento.idVenda = pedido.id;

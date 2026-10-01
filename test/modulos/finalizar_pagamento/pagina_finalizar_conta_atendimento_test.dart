@@ -225,6 +225,8 @@ class _PagamentoFinalizacaoFake extends Fake
     required List<Modelowordprodutos> produtosParaFinalizar,
     required bool modoProdutoParcial,
     String valorTaxaServico = '0',
+    String valorEntrega = '0',
+    String tipoEntrega = '0',
     String valorDesconto = '0',
     String valorAcrescimo = '0',
   }) async {

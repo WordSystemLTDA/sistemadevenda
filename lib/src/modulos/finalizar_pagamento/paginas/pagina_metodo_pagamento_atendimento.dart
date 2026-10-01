@@ -151,6 +151,8 @@ class _PaginaMetodoPagamentoAtendimentoState
       modoProdutoParcial:
           widget.fluxo.modo == ModoRecebimentoAtendimento.porProduto,
       valorTaxaServico: widget.fluxo.valorTaxaServico,
+      valorEntrega: widget.fluxo.valorEntrega,
+      tipoEntrega: widget.fluxo.tipoEntrega,
       valorDesconto: valorDosCentavos(widget.fluxo.valorDescontoCentavos)
           .toStringAsFixed(2),
       valorAcrescimo: valorDosCentavos(widget.fluxo.valorAcrescimoCentavos)

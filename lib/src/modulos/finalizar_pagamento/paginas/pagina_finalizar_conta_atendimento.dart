@@ -285,6 +285,8 @@ class _PaginaFinalizarContaAtendimentoState
       valorDescontoCentavos: descontoAtual,
       valorAcrescimoCentavos: acrescimoAtual,
       valorTaxaServico: _dados!.valorTaxaServico ?? '0',
+      valorEntrega: _dados!.valorentrega ?? '0',
+      tipoEntrega: _dados!.tipodeentrega ?? '0',
       valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
       pessoasPagasDivisao: _pessoasPagasDivisao,
     );
