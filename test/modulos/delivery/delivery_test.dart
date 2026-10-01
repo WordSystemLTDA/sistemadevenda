@@ -488,6 +488,38 @@ void main() {
     expect(dados['formaPagamento'], 'A definir');
     expect(dados.containsKey('id'), isFalse);
   });
+  test('confirmacao local envia todas as formas registradas com seus valores',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'}),
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+    final pedido = PedidoDelivery.fromMap({
+      'id': 'delivery-local:pagamentos',
+      'idCliente': '4',
+      'celularCliente': '(44) 99999-9999',
+      'tipodeentrega': '2',
+      'valorVenda': '90.00',
+      'produtos': [impressao.produto().toMap()],
+      'lancamentos': [
+        {'nome': 'Dinheiro', 'valor': '45.00', 'status': 'NÃ£o Pago'},
+        {'nome': 'Pix', 'valor': '45.00', 'status': 'NÃ£o Pago'},
+      ],
+    });
+
+    await ServicoRascunhoMensagem(dio, usuario)
+        .notificarConfirmacaoPedido(pedido);
+
+    final dados = jsonDecode(adapter.chamadas.single.data as String) as Map;
+    expect(dados['formaPagamento'], 'Dinheiro: R\$ 45,00 + Pix: R\$ 45,00');
+  });
   test('confirmacao local sem celular nao chama o servidor', () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode(

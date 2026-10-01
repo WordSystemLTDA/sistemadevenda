@@ -726,24 +726,38 @@ class ServicoDelivery {
 
   String _formaPagamentoConfirmacao(
       PedidoDelivery pedido, String? formaInformada) {
-    final formas = <String>[];
-    final nomes = [
-      for (final pagamento in pedido.pagamentos)
-        pagamento['nome'] ??
-            pagamento['nomePagamento'] ??
-            pagamento['documento'] ??
-            '',
-      formaInformada ?? '',
-    ];
-    for (final valor in nomes) {
-      final nome = valor.toString().trim();
-      if (nome.isEmpty ||
-          formas.any((item) => item.toLowerCase() == nome.toLowerCase())) {
-        continue;
-      }
-      formas.add(nome);
+    final nomes = <String, String>{};
+    final valores = <String, double>{};
+    for (final pagamento in pedido.pagamentos) {
+      final nome = (pagamento['nome'] ??
+              pagamento['nomePagamento'] ??
+              pagamento['documento'] ??
+              '')
+          .toString()
+          .trim();
+      if (nome.isEmpty) continue;
+
+      final chave = nome.toLowerCase();
+      nomes.putIfAbsent(chave, () => nome);
+      valores[chave] = (valores[chave] ?? 0) +
+          valorDelivery(pagamento['valor'] ??
+              pagamento['valor_lancamento'] ??
+              pagamento['valorRecebido']);
     }
-    return formas.isEmpty ? 'A definir' : formas.join(' + ');
+
+    final nomeInformado = formaInformada?.trim() ?? '';
+    if (nomeInformado.isNotEmpty) {
+      nomes.putIfAbsent(nomeInformado.toLowerCase(), () => nomeInformado);
+    }
+    if (nomes.isEmpty) return 'A definir';
+
+    final moeda = NumberFormat('#,##0.00', 'pt_BR');
+    return nomes.entries.map((forma) {
+      final valor = valores[forma.key] ?? 0;
+      return valor > 0.009
+          ? '${forma.value}: R\$ ${moeda.format(valor)}'
+          : forma.value;
+    }).join(' + ');
   }
 
   Map<String, dynamic> _produtoConfirmacao(Map<String, dynamic> produto) {
