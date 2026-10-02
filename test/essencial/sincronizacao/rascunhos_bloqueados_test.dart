@@ -95,6 +95,39 @@ void main() {
     expect(registro['itens'], hasLength(1));
   });
 
+  test('finalizacao usa e envia rascunho com encerramento local antigo',
+      () async {
+    await fechar();
+    const autorizado = ContextoCarrinho(
+      empresa: '32',
+      tipo: 'comanda',
+      idAtendimento: '104',
+      idRecurso: '4',
+      permitirBloqueado: true,
+    );
+
+    expect(await armazenamento.listar(contexto), isEmpty);
+    expect(await armazenamento.listar(autorizado), hasLength(1));
+    expect(
+      await armazenamento.alterar(autorizado, (itens) => itens.add(produto())),
+      isTrue,
+    );
+    final itens = await armazenamento.listar(autorizado);
+    expect(itens, hasLength(2));
+
+    await armazenamento.finalizarDuravel(
+      escopo: 'teste-finalizacao',
+      contexto: autorizado,
+      itens: itens,
+      dados: const {'tipo': 'comanda'},
+      impressoes: const [],
+      destino: '',
+    );
+
+    expect(await armazenamento.listar(autorizado), isEmpty);
+    expect(await banco.operacoes('teste-finalizacao'), hasLength(1));
+  });
+
   test('mudanca real de status atualiza bloqueio e notifica uma vez', () async {
     await conferirStatus('Fechamento');
     expect(

@@ -63,7 +63,9 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
     await _fila;
     final prefs = await SharedPreferences.getInstance();
     final registro = (await _ler(prefs))[contexto.chave];
-    if (!contexto.valido || registro == null || registro['encerrado'] == true) {
+    if (!contexto.valido ||
+        registro == null ||
+        (registro['encerrado'] == true && !contexto.permitirBloqueado)) {
       return [];
     }
     return (registro[recorrentes ? 'recorrentes' : 'itens'] as List? ?? [])
@@ -84,8 +86,8 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
               'itens': <dynamic>[],
               'recorrentes': <dynamic>[],
             });
-        if (registro['encerrado'] == true ||
-            (registro['bloqueado'] == true && !contexto.permitirBloqueado)) {
+        if ((registro['encerrado'] == true || registro['bloqueado'] == true) &&
+            !contexto.permitirBloqueado) {
           return false;
         }
         final campo = recorrentes ? 'recorrentes' : 'itens';
@@ -149,6 +151,7 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
           recorrentes: recorrentes,
           acao: acao,
           idOperacao: idOperacao,
+          permitirBloqueado: contexto.permitirBloqueado,
         );
         notifyListeners();
         return id;

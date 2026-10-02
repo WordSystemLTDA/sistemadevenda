@@ -111,6 +111,7 @@ class BancoLocal {
     bool recorrentes = false,
     String acao = 'produtos',
     String? idOperacao,
+    bool permitirBloqueado = false,
   }) async {
     final id = idOperacao ?? novoId();
     final campo = recorrentes ? 'recorrentes' : 'itens';
@@ -121,8 +122,8 @@ class BancoLocal {
       final carrinho = carrinhos[chaveCarrinho] as Map<String, dynamic>?;
       if (itens.isEmpty ||
           carrinho == null ||
-          carrinho['encerrado'] == true ||
-          carrinho['bloqueado'] == true ||
+          ((carrinho['encerrado'] == true || carrinho['bloqueado'] == true) &&
+              !permitirBloqueado) ||
           jsonEncode(carrinho[campo]) != jsonEncode(itens)) {
         throw StateError('O carrinho mudou. Confira os produtos novamente.');
       }

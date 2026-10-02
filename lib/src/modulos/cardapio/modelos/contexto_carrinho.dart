@@ -5,6 +5,8 @@ class ContextoCarrinho {
   final String tipo;
   final String idAtendimento;
   final String idRecurso;
+  // Autorizacao transitoria criada somente ao abrir o cardapio pela tela de
+  // finalizacao. Nao faz parte de [toMap], portanto nunca fica persistida.
   final bool permitirBloqueado;
 
   const ContextoCarrinho({

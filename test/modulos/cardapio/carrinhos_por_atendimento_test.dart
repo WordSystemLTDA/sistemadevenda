@@ -400,8 +400,7 @@ void main() {
     expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
   });
 
-  test(
-      'somente o fluxo de finalizacao adiciona em carrinho bloqueado e nunca em encerrado',
+  test('somente o fluxo de finalizacao altera carrinho bloqueado ou encerrado',
       () async {
     await abrir('4', '104');
     await armazenamento.atualizarStatus('32', '104', 'Fechamento');
@@ -428,6 +427,11 @@ void main() {
       idRecurso: '4',
       permitirBloqueado: true,
     );
+    expect(await adicionar(), isTrue);
+    expect(carrinho.itensCarrinho.quantidadeTotal, 2);
+
+    carrinho.restringirAtendimentoBloqueado();
+    expect(carrinho.itensCarrinho.quantidadeTotal, 0);
     expect(await adicionar(), isFalse);
   });
 
@@ -655,7 +659,8 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('cardapio aberto pela finalizacao adiciona produto no fechamento',
+  testWidgets(
+      'cardapio da finalizacao adiciona produto com marcador local encerrado',
       (tester) async {
     const contexto = ContextoCarrinho(
       empresa: '32',
@@ -664,7 +669,7 @@ void main() {
       idRecurso: '4',
     );
     await armazenamento.alterar(contexto, (_) {});
-    await armazenamento.atualizarStatus('32', '104', 'Fechamento');
+    await armazenamento.atualizarStatus('32', '104', 'Finalizada');
 
     final cardapio = ProvedorCardapio(CategoriasTeste(), usuario);
     final produtos = ProdutosTeste()..produtos.clear();
