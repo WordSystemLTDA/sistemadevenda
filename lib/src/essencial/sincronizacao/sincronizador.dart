@@ -52,6 +52,8 @@ class Sincronizador extends ChangeNotifier {
   DateTime? _ultimoCatalogo;
   DateTime? _ultimasListas;
   DateTime? _ultimasFormasPagamento;
+  DateTime? _proximaConsultaEstado;
+  int _falhasConsultaEstado = 0;
   int _geracaoCatalogo = 0;
   int _geracaoPagamentos = 0;
   String? _estadoNotificado;
@@ -95,6 +97,8 @@ class Sincronizador extends ChangeNotifier {
     _rascunhosParaConferir = 0;
     online = false;
     erro = null;
+    _proximaConsultaEstado = null;
+    _falhasConsultaEstado = 0;
     catalogoPronto = false;
     ultimaAtualizacao = null;
     _notificar();
@@ -130,6 +134,11 @@ class Sincronizador extends ChangeNotifier {
 
   void solicitar() {
     if (_descartado) return;
+    if (_emAndamento == null &&
+        _proximaConsultaEstado != null &&
+        DateTime.now().isBefore(_proximaConsultaEstado!)) {
+      return;
+    }
     _solicitada = true;
     if (_emAndamento == null) {
       unawaited(sincronizar());
@@ -549,6 +558,28 @@ class Sincronizador extends ChangeNotifier {
         receiveTimeout: const Duration(seconds: 15),
       );
 
+  void _registrarSucessoConsultaEstado() {
+    _falhasConsultaEstado = 0;
+    _proximaConsultaEstado = null;
+  }
+
+  void _registrarFalhaConsultaEstado() {
+    _falhasConsultaEstado = (_falhasConsultaEstado + 1).clamp(0, 5);
+    final segundos = switch (_falhasConsultaEstado) {
+      1 => 30,
+      2 => 60,
+      3 => 120,
+      4 => 240,
+      _ => 300,
+    };
+    // Evita que varios celulares reconectem no mesmo instante apos uma queda.
+    final jitter =
+        escopo.codeUnits.fold<int>(0, (soma, item) => soma + item) % 5000;
+    _proximaConsultaEstado = DateTime.now().add(
+      Duration(milliseconds: segundos * 1000 + jitter),
+    );
+  }
+
   // O envio automatico e as acoes de recuperacao compartilham a mesma fila.
   // Assim nao arquivamos/devolvemos um pedido enquanto o HTTP esta em voo.
   Future<T> _operacaoExclusiva<T>(Future<T> Function() acao) {
@@ -664,6 +695,7 @@ class Sincronizador extends ChangeNotifier {
       }
       online = true;
       erro = null;
+      _registrarSucessoConsultaEstado();
       api.cache?.confirmarConexao();
       final estadoAtual = jsonEncode(estado.data);
       final estadoMudou = estadoAtual != _estadoNotificado;
@@ -694,6 +726,7 @@ class Sincronizador extends ChangeNotifier {
       if (estadoMudou) aoAtualizarTelas?.call();
     } on DioException catch (e) {
       if (alvo != escopo) return;
+      _registrarFalhaConsultaEstado();
       if (CacheConsultas.falhaDeConexao(e)) {
         online = false;
       } else {
@@ -703,6 +736,7 @@ class Sincronizador extends ChangeNotifier {
       }
     } catch (e) {
       if (alvo != null && alvo != escopo) return;
+      _registrarFalhaConsultaEstado();
       erro = e is StateError
           ? e.message.toString()
           : 'Nao foi possivel sincronizar.';
