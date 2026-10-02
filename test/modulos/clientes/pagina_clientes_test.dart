@@ -13,6 +13,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   int cadastros = 0;
   int edicoes = 0;
   String? ultimoIdEditado;
+  bool falharEdicao = false;
 
   @override
   ServicoDelivery get servicoEndereco => throw UnimplementedError();
@@ -76,6 +77,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   ) async {
     edicoes++;
     ultimoIdEditado = id;
+    if (falharEdicao) throw Exception('Falha simulada');
     return (
       sucesso: true,
       idcliente: id,
@@ -235,5 +237,30 @@ void main() {
     expect(delivery.gravacoes.single.$1, 'comandas/editar_cliente.php');
     expect(delivery.gravacoes.single.$2['id'], '10');
     expect(delivery.gravacoes.single.$2['idCliente'], '10');
+  });
+
+  testWidgets('falha na edicao nunca mostra mensagem de cadastro',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste()..falharEdicao = true;
+    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('editar-cliente-10')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(repositorio.edicoes, 1);
+    expect(repositorio.cadastros, 0);
+    expect(find.text('Não foi possível editar o cliente.'), findsOneWidget);
+    expect(find.text('Não foi possível cadastrar o cliente.'), findsNothing);
+    expect(find.text('Editar cliente'), findsOneWidget);
   });
 }

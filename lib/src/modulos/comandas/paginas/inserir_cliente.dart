@@ -50,9 +50,9 @@ class _InserirClienteState extends State<InserirCliente> {
   bool _salvando = false;
   bool _carregandoEndereco = false;
   bool _enderecoEmSitio = false;
-  String? _idClienteCriado;
-  String? _nomeClienteCriado;
-  String? _mensagemClienteCriado;
+  String? _idClienteSalvo;
+  String? _nomeClienteSalvo;
+  String? _mensagemClienteSalvo;
 
   bool get _editando => (int.tryParse(widget.idCliente ?? '') ?? 0) > 0;
   bool get _incluiEndereco => widget.servicoEndereco != null && !_editando;
@@ -122,7 +122,7 @@ class _InserirClienteState extends State<InserirCliente> {
     controller.text = campo == 'uf' ? valor.toUpperCase() : valor;
   }
 
-  Future<ResultadoCadastroCliente> _cadastrarCliente() {
+  Future<ResultadoCadastroCliente> _salvarDadosCliente() {
     if (_editando) {
       final callback = widget.aoEditarCliente;
       if (callback == null) {
@@ -179,35 +179,35 @@ class _InserirClienteState extends State<InserirCliente> {
     setState(() => _salvando = true);
 
     try {
-      if (_idClienteCriado == null) {
-        final resposta = await _cadastrarCliente();
+      if (_idClienteSalvo == null) {
+        final resposta = await _salvarDadosCliente();
         if (!mounted) return;
         if (!resposta.sucesso) {
           setState(() => _salvando = false);
           _mostrarMensagem(resposta.mensagem, sucesso: false);
           return;
         }
-        _idClienteCriado = resposta.idcliente;
-        _nomeClienteCriado = resposta.nomecliente;
-        _mensagemClienteCriado = resposta.mensagem;
+        _idClienteSalvo = resposta.idcliente;
+        _nomeClienteSalvo = resposta.nomecliente;
+        _mensagemClienteSalvo = resposta.mensagem;
       }
 
       if (_incluiEndereco) {
-        await _salvarEnderecoPadrao(_idClienteCriado!);
+        await _salvarEnderecoPadrao(_idClienteSalvo!);
       }
       if (!mounted) return;
 
       _mostrarMensagem(
         _editando
-            ? (_mensagemClienteCriado ?? 'Cliente atualizado com sucesso')
+            ? (_mensagemClienteSalvo ?? 'Cliente atualizado com sucesso')
             : _incluiEndereco
                 ? 'Cliente e endereço cadastrados com sucesso'
-                : (_mensagemClienteCriado ?? 'Cliente cadastrado com sucesso'),
+                : (_mensagemClienteSalvo ?? 'Cliente cadastrado com sucesso'),
         sucesso: true,
       );
       Navigator.pop(context, {
-        'idcliente': _idClienteCriado,
-        'nomecliente': _nomeClienteCriado,
+        'idcliente': _idClienteSalvo,
+        'nomecliente': _nomeClienteSalvo,
         'celular': _celularController.text,
         'email': _emailController.text.trim(),
         'obs': _observacaoController.text.trim(),
@@ -217,14 +217,21 @@ class _InserirClienteState extends State<InserirCliente> {
       if (!mounted) return;
       setState(() => _salvando = false);
       _mostrarMensagem(
-        erro is StateError
-            ? erro.message.toString()
-            : _idClienteCriado != null
-                ? 'Cliente cadastrado. Não foi possível salvar o endereço; tente novamente.'
-                : 'Não foi possível cadastrar o cliente.',
+        _mensagemFalhaSalvar(erro),
         sucesso: false,
       );
     }
+  }
+
+  String _mensagemFalhaSalvar(Object erro) {
+    if (erro is StateError && erro.message.toString().trim().isNotEmpty) {
+      return erro.message.toString();
+    }
+    if (_editando) return 'Não foi possível editar o cliente.';
+    if (_idClienteSalvo != null && _incluiEndereco) {
+      return 'Cliente cadastrado. Não foi possível salvar o endereço; tente novamente.';
+    }
+    return 'Não foi possível cadastrar o cliente.';
   }
 
   void _mostrarMensagem(String mensagem, {required bool sucesso}) {
