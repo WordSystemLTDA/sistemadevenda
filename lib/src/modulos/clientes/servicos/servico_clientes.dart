@@ -89,6 +89,7 @@ class ServicoClientes implements RepositorioClientes {
       );
     }
     final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
+      'acao': 'cadastrar',
       'nome': nomeNormalizado,
       'celular': celular.trim(),
       'email': email.trim(),
@@ -124,7 +125,22 @@ class ServicoClientes implements RepositorioClientes {
         mensagem: 'Informe o nome do cliente',
       );
     }
-    final resposta = await _delivery.salvar('comandas/editar_cliente.php', {
+    Map<String, dynamic> capacidade;
+    try {
+      capacidade = await _delivery.salvar('comandas/inserir_cliente.php', {
+        'acao': 'verificar_edicao_cliente',
+        'id': idNormalizado,
+        'idCliente': idNormalizado,
+      });
+    } catch (_) {
+      throw StateError('A API de edição de clientes não está atualizada.');
+    }
+    if (capacidade['recurso'] != 'edicao_cliente_v1') {
+      throw StateError('A API de edição de clientes não está atualizada.');
+    }
+
+    final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
+      'acao': 'editar',
       'id': idNormalizado,
       'idCliente': idNormalizado,
       'nome': nomeNormalizado,
@@ -133,7 +149,8 @@ class ServicoClientes implements RepositorioClientes {
       'obs': observacao.trim(),
     });
     final idResposta = resposta['idcliente']?.toString().trim() ?? '';
-    if (idResposta != idNormalizado) {
+    if (resposta['operacao'] != 'cliente_editado' ||
+        idResposta != idNormalizado) {
       throw StateError('O servidor não confirmou a edição do cliente.');
     }
     return (

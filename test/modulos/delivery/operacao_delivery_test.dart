@@ -129,7 +129,11 @@ class ServicoEdicaoClienteTeste extends ServicoEnderecoPadraoTeste {
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     final resposta = await super.salvar(rota, campos);
-    if (rota == 'comandas/editar_cliente.php') {
+    if (campos['acao'] == 'verificar_edicao_cliente') {
+      resposta['recurso'] = 'edicao_cliente_v1';
+    }
+    if (campos['acao'] == 'editar') {
+      resposta['operacao'] = 'cliente_editado';
       resposta['idcliente'] = campos['id'];
       dadosCliente.addAll({
         'nome': campos['nome'],
@@ -996,9 +1000,9 @@ void main() {
       find.byKey(const ValueKey('mensagem-automatica-endereco')),
       findsOneWidget,
     );
-    final gravacaoCliente = s.gravacoes
-        .where((registro) => registro.$1 == 'comandas/editar_cliente.php')
-        .single;
+    final gravacaoCliente =
+        s.gravacoes.where((registro) => registro.$2['acao'] == 'editar').single;
+    expect(gravacaoCliente.$1, 'comandas/inserir_cliente.php');
     expect(gravacaoCliente.$2['id'], '4');
     expect(gravacaoCliente.$2['idCliente'], '4');
     expect(gravacaoCliente.$2['nome'], 'Bruno Atualizado');

@@ -283,7 +283,22 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) <= 0 || nome.trim().isEmpty) {
       throw StateError('Confira o cliente e o nome informado.');
     }
-    final resposta = await salvar('comandas/editar_cliente.php', {
+    Map<String, dynamic> capacidade;
+    try {
+      capacidade = await salvar('comandas/inserir_cliente.php', {
+        'acao': 'verificar_edicao_cliente',
+        'id': id,
+        'idCliente': id,
+      });
+    } catch (_) {
+      throw StateError('A API de edição de clientes não está atualizada.');
+    }
+    if (capacidade['recurso'] != 'edicao_cliente_v1') {
+      throw StateError('A API de edição de clientes não está atualizada.');
+    }
+
+    final resposta = await salvar('comandas/inserir_cliente.php', {
+      'acao': 'editar',
       'id': id,
       'idCliente': id,
       'nome': nome.trim(),
@@ -291,7 +306,8 @@ class ServicoDelivery {
       'email': email.trim(),
       'obs': observacao.trim(),
     });
-    if (resposta['idcliente']?.toString().trim() != id.trim()) {
+    if (resposta['operacao'] != 'cliente_editado' ||
+        resposta['idcliente']?.toString().trim() != id.trim()) {
       throw StateError('O servidor não confirmou a edição do cliente.');
     }
     return {
