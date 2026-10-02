@@ -18,6 +18,7 @@ import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
+import 'package:app/src/modulos/clientes/servicos/servico_clientes.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:app/src/modulos/finalizar_pagamento/servicos/servico_finalizar_pagamento.dart';
@@ -60,6 +61,7 @@ class AppModule extends Module {
     i.add<ServicoBalcao>(ServicoBalcao.new);
     i.add<ServicoDelivery>(ServicoDelivery.new);
     i.addSingleton<ProvedorDelivery>(ProvedorDelivery.new);
+    i.add<RepositorioClientes>(ServicoClientes.new);
 
     // FINALIZAR
     i.addSingleton<ProvedorFinalizarPagamento>(ProvedorFinalizarPagamento.new);

@@ -9,6 +9,7 @@ import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/comandas/paginas/todas_comandas.dart';
+import 'package:app/src/modulos/clientes/paginas/pagina_clientes.dart';
 import 'package:app/src/modulos/mesas/paginas/pagina_lista_mesas.dart';
 import 'package:app/src/modulos/indicadores/modelo_indicadores.dart';
 import 'package:app/src/modulos/indicadores/pagina_indicadores.dart';
@@ -259,6 +260,21 @@ class _DrawerCustomizadoState extends State<DrawerCustomizado>
                                 ));
                               },
                             ),
+                          ListTile(
+                            key: const ValueKey('menu-clientes'),
+                            leading: const Icon(Icons.people_alt_outlined),
+                            title: const Text('Clientes'),
+                            onTap: () {
+                              final navigator = Navigator.of(context);
+                              navigator.pop();
+                              navigator.push(MaterialPageRoute(
+                                settings: const RouteSettings(
+                                  name: 'PaginaClientes',
+                                ),
+                                builder: (_) => const PaginaClientes(),
+                              ));
+                            },
+                          ),
                           ListTile(
                             leading: const Icon(Icons.text_snippet),
                             title: const Text('Cadastrar'),
