@@ -427,6 +427,98 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final caso in [
+    (unificar: false, quantidade: 2),
+    (unificar: true, quantidade: 1),
+  ]) {
+    testWidgets(
+        'botao do card imprime pedido com preparo ${caso.unificar ? 'unificado' : 'separado'}',
+        (tester) async {
+      final servidor = impressao.ServidorTeste();
+      Modular.init(impressao.ModuloImpressaoTeste(servidor));
+      addTearDown(Modular.destroy);
+      final produto = impressao.produto(computador: 'COZINHA')
+        ..observacao = 'Sem cebola';
+      final s = ServicoDeliveryTeste()
+        ..config = ConfigDelivery(
+          receberNoFinal: true,
+          imprimirPreparo: true,
+          imprimirPreparoNoComprovanteConsumacao: caso.unificar,
+        )
+        ..produtosCardapio = [produto];
+      s.atual = pedidoTeste(campos: {
+        'id': 'preparando',
+        'idopcoescarrossel': '2',
+        'tipodeentrega': '1',
+        'quantidadeprodutos': '1',
+      });
+      final aguardando = pedidoTeste(campos: {
+        'id': 'aguardando',
+        'idopcoescarrossel': '1',
+        'quantidadeprodutos': '1',
+      });
+      s.respostaLista = () async => [
+            EtapaDelivery.fromMap({
+              'id': '1',
+              'nomeOpcao': 'AGUARDANDO',
+              'nomeBotao': 'PREPARAR',
+              'tipodeimpressao': '0',
+              'vendas': [aguardando.dados],
+            }),
+            EtapaDelivery.fromMap({
+              'id': '2',
+              'nomeOpcao': 'PREPARANDO',
+              'nomeBotao': 'PRONTO',
+              'tipodeimpressao': '1',
+              'vendas': [s.atual.dados],
+            }),
+            EtapaDelivery.fromMap({
+              'id': '3',
+              'nomeOpcao': 'EM ENTREGA',
+              'nomeBotao': 'ENTREGUE',
+              'tipodeimpressao': '2',
+              'vendas': const [],
+            }),
+          ];
+      final p = ProvedorDelivery(s);
+      addTearDown(p.dispose);
+
+      await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: p)));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('imprimir-delivery-aguardando')),
+          findsNothing);
+      await tester.tap(find.text('PREPARANDO (1)'));
+      await tester.pumpAndSettle();
+
+      final imprimir =
+          find.byKey(const ValueKey('imprimir-delivery-preparando'));
+      final avancar = find.byKey(const ValueKey('avancar-delivery-preparando'));
+      expect(imprimir, findsOneWidget);
+      expect(avancar, findsOneWidget);
+      expect(tester.getSize(avancar).width,
+          greaterThan(tester.getSize(imprimir).width * 3.5));
+
+      await tester.tap(imprimir);
+      await tester.pumpAndSettle();
+
+      expect(servidor.mensagens, hasLength(caso.quantidade));
+      expect(servidor.mensagens.last['tipoImpressao'], '3');
+      if (caso.unificar) {
+        final impresso =
+            (servidor.mensagens.single['produtos'] as List).single as Map;
+        expect(impresso['observacao'], 'Sem cebola');
+      } else {
+        expect(
+          servidor.mensagens.map((mensagem) => mensagem['tipoImpressao']),
+          containsAll(['1', '3']),
+        );
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   testWidgets('card do delivery mostra previa de itens somente ao expandir',
       (tester) async {
     final s = ServicoDeliveryTeste();

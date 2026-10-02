@@ -47,7 +47,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       _processandoLote = false,
       _modoSelecao = false;
   int _progressoLote = 0, _totalLote = 0;
-  String? _ocupado, _excluindo;
+  String? _ocupado, _excluindo, _imprimindo;
   @override
   void initState() {
     super.initState();
@@ -283,6 +283,37 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   void _mensagem(String texto) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  }
+
+  Future<void> _imprimir(PedidoDelivery pedido) async {
+    if (_ocupado != null || _rotaAberta || pedido.salvoNoAparelho) return;
+    setState(() {
+      _ocupado = pedido.id;
+      _imprimindo = pedido.id;
+    });
+    try {
+      final atualizado = await _provedor.servico.pedido(pedido.id);
+      final config = await _provedor.servico.configuracao();
+      if (!mounted) return;
+      await ImpressaoDelivery.imprimir(
+        _provedor.servico,
+        Modular.get<Server>(),
+        atualizado,
+        ambos: config.imprimirPreparoSeparado,
+        config: config,
+      );
+    } catch (erro) {
+      _mensagem(erro is StateError
+          ? erro.message.toString()
+          : 'NÃ£o foi possÃ­vel imprimir o pedido. Confira a fila de impressÃ£o.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _ocupado = null;
+          _imprimindo = null;
+        });
+      }
+    }
   }
 
   Future<void> _menu(PedidoDelivery pedido, EtapaDelivery etapa) async {
@@ -861,6 +892,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               atualizar: _provedor.listar,
               ocupado: _processandoLote ? '__lote__' : _ocupado,
               excluindo: _excluindo,
+              imprimindo: _imprimindo,
               abrir: (p) => p.salvoNoAparelho
                   ? _retomarLocal(p)
                   : _abrir(PaginaDetalhesDelivery(
@@ -874,6 +906,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                 if (mounted) setState(() => _modoSelecao = false);
               },
               excluir: _excluirRascunho,
+              imprimir: _imprimir,
               opcoes: _menu,
               config: _provedor.config,
             );
@@ -885,7 +918,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
 class _CarrosselDelivery extends StatefulWidget {
   final List<EtapaDelivery> etapas;
   final Widget filtros;
-  final String? ocupado, excluindo;
+  final String? ocupado, excluindo, imprimindo;
   final bool modoSelecao;
   final int progressoLote, totalLote;
   final ConfigDelivery? config;
@@ -894,6 +927,7 @@ class _CarrosselDelivery extends StatefulWidget {
   final Future<void> Function(PedidoDelivery) abrir;
   final Future<void> Function(PedidoDelivery, EtapaDelivery) opcoes;
   final Future<void> Function(PedidoDelivery) excluir;
+  final Future<void> Function(PedidoDelivery) imprimir;
   final Future<bool> Function(PedidoDelivery, EtapaDelivery, EtapaDelivery?)
       avancar;
   final Future<Set<String>> Function(
@@ -914,9 +948,11 @@ class _CarrosselDelivery extends StatefulWidget {
       required this.modoSelecao,
       required this.encerrarSelecao,
       required this.excluir,
+      required this.imprimir,
       required this.opcoes,
       this.ocupado,
       this.excluindo,
+      this.imprimindo,
       this.config});
   @override
   State<_CarrosselDelivery> createState() => _CarrosselDeliveryState();
@@ -928,6 +964,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
       TabController(length: widget.etapas.length, vsync: this);
   final _produtosExpandidos = <String>{};
   final _selecionados = <String>{};
+
+  bool _etapaAguardando(EtapaDelivery etapa) =>
+      etapa.nome.trim().toLowerCase() == 'aguardando';
 
   bool _podeSelecionar(
     PedidoDelivery pedido,
@@ -1107,8 +1146,13 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final podeExcluirRascunho =
                                 p.salvoNoAparelho && !p.aguardandoSincronizacao;
                             final excluindo = widget.excluindo == p.id;
-                            final avancando =
-                                widget.ocupado == p.id && !excluindo;
+                            final imprimindo = widget.imprimindo == p.id;
+                            final avancando = widget.ocupado == p.id &&
+                                !excluindo &&
+                                !imprimindo;
+                            final podeImprimir = !p.salvoNoAparelho &&
+                                p.quantidade > 0 &&
+                                !_etapaAguardando(etapa);
                             final produtos = p.produtos;
                             final podeMostrarProdutos =
                                 p.quantidade > 0 && produtos.isNotEmpty;
@@ -1319,7 +1363,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                             fontSize: 12,
                                                             color:
                                                                 cs.primary))),
-                                              if (podeAvancar) ...[
+                                              if (podeAvancar ||
+                                                  podeImprimir) ...[
                                                 const SizedBox(height: 12),
                                                 Row(children: [
                                                   if (podeExcluirRascunho) ...[
@@ -1371,51 +1416,107 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     ),
                                                     const SizedBox(width: 8),
                                                   ],
-                                                  Expanded(
-                                                    flex: podeExcluirRascunho
-                                                        ? 8
-                                                        : 1,
-                                                    child: FilledButton.icon(
-                                                      onPressed: widget
-                                                                      .ocupado !=
-                                                                  null ||
-                                                              widget.modoSelecao
-                                                          ? null
-                                                          : () => widget.avancar(
-                                                              p,
-                                                              etapa,
-                                                              etapa.impressao ==
-                                                                      '3'
-                                                                  ? null
-                                                                  : destino),
-                                                      icon: avancando
-                                                          ? const SizedBox(
-                                                              width: 18,
-                                                              height: 18,
-                                                              child:
-                                                                  CircularProgressIndicator(
+                                                  if (podeImprimir) ...[
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Tooltip(
+                                                        message:
+                                                            'Imprimir pedido #${p.numero}',
+                                                        child: OutlinedButton(
+                                                          key: ValueKey(
+                                                              'imprimir-delivery-${p.id}'),
+                                                          onPressed: widget
+                                                                          .ocupado !=
+                                                                      null ||
+                                                                  widget
+                                                                      .modoSelecao
+                                                              ? null
+                                                              : () => widget
+                                                                  .imprimir(p),
+                                                          style: OutlinedButton
+                                                              .styleFrom(
+                                                            minimumSize:
+                                                                const Size(
+                                                                    0, 60),
+                                                            padding:
+                                                                EdgeInsets.zero,
+                                                            shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8)),
+                                                          ),
+                                                          child: imprimindo
+                                                              ? const SizedBox(
+                                                                  width: 18,
+                                                                  height: 18,
+                                                                  child: CircularProgressIndicator(
                                                                       strokeWidth:
-                                                                          2))
-                                                          : const Icon(
-                                                              Icons
-                                                                  .arrow_forward,
-                                                              size: 18),
-                                                      label: Text(
-                                                          avancando
-                                                              ? 'Aguarde...'
-                                                              : label,
-                                                          textAlign:
-                                                              TextAlign.center),
-                                                      style: FilledButton.styleFrom(
-                                                          minimumSize:
-                                                              const Size(0, 60),
-                                                          shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8))),
+                                                                          2),
+                                                                )
+                                                              : const Icon(
+                                                                  Icons
+                                                                      .print_rounded,
+                                                                  size: 22,
+                                                                ),
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                  if (podeAvancar)
+                                                    Expanded(
+                                                      flex:
+                                                          podeExcluirRascunho ||
+                                                                  podeImprimir
+                                                              ? 8
+                                                              : 1,
+                                                      child: FilledButton.icon(
+                                                        key: ValueKey(
+                                                            'avancar-delivery-${p.id}'),
+                                                        onPressed: widget
+                                                                        .ocupado !=
+                                                                    null ||
+                                                                widget
+                                                                    .modoSelecao
+                                                            ? null
+                                                            : () => widget.avancar(
+                                                                p,
+                                                                etapa,
+                                                                etapa.impressao ==
+                                                                        '3'
+                                                                    ? null
+                                                                    : destino),
+                                                        icon: avancando
+                                                            ? const SizedBox(
+                                                                width: 18,
+                                                                height: 18,
+                                                                child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2))
+                                                            : const Icon(
+                                                                Icons
+                                                                    .arrow_forward,
+                                                                size: 18),
+                                                        label: Text(
+                                                            avancando
+                                                                ? 'Aguarde...'
+                                                                : label,
+                                                            textAlign: TextAlign
+                                                                .center),
+                                                        style: FilledButton.styleFrom(
+                                                            minimumSize:
+                                                                const Size(
+                                                                    0, 60),
+                                                            shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8))),
+                                                      ),
+                                                    )
+                                                  else if (podeImprimir)
+                                                    const Spacer(flex: 8),
                                                 ]),
                                               ],
                                             ]))));
