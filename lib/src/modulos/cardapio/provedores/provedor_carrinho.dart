@@ -37,12 +37,14 @@ class ProvedorCarrinho extends ChangeNotifier {
   Future<void> selecionarAtendimento(
       {required String tipo,
       required String idAtendimento,
-      String idRecurso = ''}) async {
+      String idRecurso = '',
+      bool permitirBloqueado = false}) async {
     final novo = ContextoCarrinho(
       empresa: _servico.usuarioProvedor.usuario?.empresa ?? '',
       tipo: tipo,
       idAtendimento: idAtendimento,
       idRecurso: idRecurso,
+      permitirBloqueado: permitirBloqueado,
     );
     _contexto = novo;
     ++_consulta;
@@ -51,6 +53,19 @@ class ProvedorCarrinho extends ChangeNotifier {
       await _servico.armazenamento.alterar(novo, (_) {});
     }
     if (_contexto == novo && !_descartado) await listarComandasPedidos();
+  }
+
+  void restringirAtendimentoBloqueado() {
+    final atual = _contexto;
+    if (atual == null || !atual.permitirBloqueado) return;
+    _contexto = ContextoCarrinho(
+      empresa: atual.empresa,
+      tipo: atual.tipo,
+      idAtendimento: atual.idAtendimento,
+      idRecurso: atual.idRecurso,
+    );
+    ++_consulta;
+    _atualizarItens([]);
   }
 
   void _atualizarItens(List<Modelowordprodutos> itens) {

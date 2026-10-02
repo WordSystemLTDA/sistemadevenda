@@ -128,6 +128,7 @@ class CarrinhoPendente extends ProvedorCarrinho {
     required String tipo,
     required String idAtendimento,
     String idRecurso = '',
+    bool permitirBloqueado = false,
   }) =>
       resposta.future;
 }

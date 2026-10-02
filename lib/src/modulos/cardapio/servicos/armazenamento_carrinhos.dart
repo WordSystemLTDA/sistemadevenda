@@ -84,7 +84,8 @@ class ArmazenamentoCarrinhos extends ChangeNotifier {
               'itens': <dynamic>[],
               'recorrentes': <dynamic>[],
             });
-        if (registro['encerrado'] == true || registro['bloqueado'] == true) {
+        if (registro['encerrado'] == true ||
+            (registro['bloqueado'] == true && !contexto.permitirBloqueado)) {
           return false;
         }
         final campo = recorrentes ? 'recorrentes' : 'itens';

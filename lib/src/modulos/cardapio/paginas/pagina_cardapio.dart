@@ -161,6 +161,9 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     _tabController?.removeListener(_aoTrocarCategoria);
     _tabController?.dispose();
     _produtosIniciais.dispose();
+    if (widget.retornarParaFinalizacao) {
+      carrinhoProvedor.restringirAtendimentoBloqueado();
+    }
     super.dispose();
   }
 
@@ -239,6 +242,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
       idRecurso: widget.tipo == TipoCardapio.mesa
           ? widget.idMesa ?? ''
           : widget.idComanda ?? '',
+      permitirBloqueado: widget.retornarParaFinalizacao,
     );
     if (widget.retornarParaFinalizacao) {
       // Nesta entrada o usuario pode tocar em um produto assim que o catalogo

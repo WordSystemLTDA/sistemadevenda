@@ -5,12 +5,14 @@ class ContextoCarrinho {
   final String tipo;
   final String idAtendimento;
   final String idRecurso;
+  final bool permitirBloqueado;
 
   const ContextoCarrinho({
     required this.empresa,
     required this.tipo,
     required this.idAtendimento,
     this.idRecurso = '',
+    this.permitirBloqueado = false,
   });
 
   // Mesas e comandas usam a mesma tabela de atendimentos no servidor.

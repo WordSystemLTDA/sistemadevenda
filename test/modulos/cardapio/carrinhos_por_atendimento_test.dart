@@ -401,6 +401,37 @@ void main() {
   });
 
   test(
+      'somente o fluxo de finalizacao adiciona em carrinho bloqueado e nunca em encerrado',
+      () async {
+    await abrir('4', '104');
+    await armazenamento.atualizarStatus('32', '104', 'Fechamento');
+    expect(await adicionar(), isFalse);
+
+    await carrinho.selecionarAtendimento(
+      tipo: 'comanda',
+      idAtendimento: '104',
+      idRecurso: '4',
+      permitirBloqueado: true,
+    );
+    expect(carrinho.contexto?.permitirBloqueado, isTrue);
+    expect(await adicionar(), isTrue);
+    expect(carrinho.itensCarrinho.quantidadeTotal, 1);
+
+    carrinho.restringirAtendimentoBloqueado();
+    expect(carrinho.contexto?.permitirBloqueado, isFalse);
+    expect(await adicionar(), isFalse);
+
+    await armazenamento.atualizarStatus('32', '104', 'Finalizada');
+    await carrinho.selecionarAtendimento(
+      tipo: 'comanda',
+      idAtendimento: '104',
+      idRecurso: '4',
+      permitirBloqueado: true,
+    );
+    expect(await adicionar(), isFalse);
+  });
+
+  test(
       'recorrentes antigos sao recuperados so para atendimento confirmado e uma unica vez',
       () async {
     final prefs = await SharedPreferences.getInstance();
@@ -622,5 +653,49 @@ void main() {
         find.byKey(const ValueKey('quantidade_carrinho_1010')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('cardapio aberto pela finalizacao adiciona produto no fechamento',
+      (tester) async {
+    const contexto = ContextoCarrinho(
+      empresa: '32',
+      tipo: 'comanda',
+      idAtendimento: '104',
+      idRecurso: '4',
+    );
+    await armazenamento.alterar(contexto, (_) {});
+    await armazenamento.atualizarStatus('32', '104', 'Fechamento');
+
+    final cardapio = ProvedorCardapio(CategoriasTeste(), usuario);
+    final produtos = ProdutosTeste()..produtos.clear();
+    produtos.produtos.add(produtoCarrinho());
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    final carrinhoDaTela = Modular.get<ProvedorCarrinho>();
+    addTearDown(() {
+      Modular.destroy();
+      carrinhoDaTela.dispose();
+      cardapio.dispose();
+    });
+
+    await tester.pumpWidget(const MaterialApp(
+      home: PaginaCardapio(
+        tipo: TipoCardapio.comanda,
+        id: '104',
+        idComanda: '4',
+        retornarParaFinalizacao: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byWidgetPredicate(
+        (widget) => widget is CardProduto && widget.item.id == '1010'));
+    await tester.pumpAndSettle();
+
+    expect(carrinhoDaTela.itensCarrinho.quantidadeTotal, 1);
+    expect(find.text('Ocorreu um erro'), findsNothing);
+    expect(carrinhoDaTela.contexto?.permitirBloqueado, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(carrinhoDaTela.contexto?.permitirBloqueado, isFalse);
+    expect(tester.takeException(), isNull);
   });
 }
