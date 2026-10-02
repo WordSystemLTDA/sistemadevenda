@@ -283,8 +283,7 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) <= 0 || nome.trim().isEmpty) {
       throw StateError('Confira o cliente e o nome informado.');
     }
-    // A API publicada seleciona o UPDATE nesta rota quando recebe o ID.
-    await salvar('comandas/inserir_cliente.php', {
+    final resposta = await salvar('comandas/editar_cliente.php', {
       'id': id,
       'idCliente': id,
       'nome': nome.trim(),
@@ -292,6 +291,9 @@ class ServicoDelivery {
       'email': email.trim(),
       'obs': observacao.trim(),
     });
+    if (resposta['idcliente']?.toString().trim() != id.trim()) {
+      throw StateError('O servidor não confirmou a edição do cliente.');
+    }
     return {
       'id': id,
       'nome': nome.trim(),

@@ -78,14 +78,30 @@ class ServicoClientes implements RepositorioClientes {
     String celular,
     String email,
     String observacao,
-  ) =>
-      _salvarCliente(
-        id: '',
-        nome: nome,
-        celular: celular,
-        email: email,
-        observacao: observacao,
+  ) async {
+    final nomeNormalizado = nome.trim();
+    if (nomeNormalizado.isEmpty) {
+      return (
+        sucesso: false,
+        idcliente: '',
+        nomecliente: nomeNormalizado,
+        mensagem: 'Informe o nome do cliente',
       );
+    }
+    final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
+      'nome': nomeNormalizado,
+      'celular': celular.trim(),
+      'email': email.trim(),
+      'obs': observacao.trim(),
+    });
+    return (
+      sucesso: true,
+      idcliente: resposta['idcliente']?.toString() ?? '',
+      nomecliente: resposta['nomecliente']?.toString() ?? nomeNormalizado,
+      mensagem:
+          resposta['mensagem']?.toString() ?? 'Cliente cadastrado com sucesso',
+    );
+  }
 
   @override
   Future<ResultadoSalvarCliente> editarCliente(
@@ -94,52 +110,38 @@ class ServicoClientes implements RepositorioClientes {
     String celular,
     String email,
     String observacao,
-  ) =>
-      _salvarCliente(
-        id: id,
-        nome: nome,
-        celular: celular,
-        email: email,
-        observacao: observacao,
-      );
-
-  Future<ResultadoSalvarCliente> _salvarCliente({
-    required String id,
-    required String nome,
-    required String celular,
-    required String email,
-    required String observacao,
-  }) async {
-    if (nome.trim().isEmpty) {
+  ) async {
+    final idNormalizado = id.trim();
+    final nomeNormalizado = nome.trim();
+    if ((int.tryParse(idNormalizado) ?? 0) <= 0) {
+      throw StateError('Cliente não identificado para edição.');
+    }
+    if (nomeNormalizado.isEmpty) {
       return (
         sucesso: false,
-        idcliente: id,
-        nomecliente: nome.trim(),
+        idcliente: idNormalizado,
+        nomecliente: nomeNormalizado,
         mensagem: 'Informe o nome do cliente',
       );
     }
-    final idNormalizado = id.trim();
-    final editando = idNormalizado.isNotEmpty;
-    // A API publicada usa esta mesma rota para INSERT e UPDATE; com ID válido
-    // ela atualiza o cliente existente e não executa o trecho de cadastro.
-    final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
-      if (editando) ...{
-        'id': idNormalizado,
-        'idCliente': idNormalizado,
-      },
-      'nome': nome.trim(),
+    final resposta = await _delivery.salvar('comandas/editar_cliente.php', {
+      'id': idNormalizado,
+      'idCliente': idNormalizado,
+      'nome': nomeNormalizado,
       'celular': celular.trim(),
       'email': email.trim(),
       'obs': observacao.trim(),
     });
+    final idResposta = resposta['idcliente']?.toString().trim() ?? '';
+    if (idResposta != idNormalizado) {
+      throw StateError('O servidor não confirmou a edição do cliente.');
+    }
     return (
       sucesso: true,
-      idcliente: resposta['idcliente']?.toString() ?? id,
-      nomecliente: resposta['nomecliente']?.toString() ?? nome.trim(),
-      mensagem: resposta['mensagem']?.toString() ??
-          (editando
-              ? 'Cliente atualizado com sucesso'
-              : 'Cliente cadastrado com sucesso'),
+      idcliente: idNormalizado,
+      nomecliente: resposta['nomecliente']?.toString() ?? nomeNormalizado,
+      mensagem:
+          resposta['mensagem']?.toString() ?? 'Cliente atualizado com sucesso',
     );
   }
 }

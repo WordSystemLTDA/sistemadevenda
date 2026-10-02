@@ -89,6 +89,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
 
 class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
   final gravacoes = <(String, Map<String, dynamic>)>[];
+  String? idClienteResposta;
 
   @override
   Future<Map<String, dynamic>> salvar(
@@ -96,7 +97,7 @@ class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
     gravacoes.add((rota, campos));
     return {
       'sucesso': true,
-      'idcliente': campos['id'] ?? '11',
+      'idcliente': idClienteResposta ?? campos['id'] ?? '11',
       'nomecliente': campos['nome'],
     };
   }
@@ -220,7 +221,7 @@ void main() {
     expect(pesquisa.controller?.text, 'filtro mantido');
   });
 
-  test('servico usa rota publicada e envia os ids ao editar', () async {
+  test('servico usa rota exclusiva e envia os ids ao editar', () async {
     final delivery = _ServicoDeliveryGravacaoTeste();
     final repositorio = ServicoClientes(delivery);
 
@@ -234,9 +235,37 @@ void main() {
 
     expect(resposta.idcliente, '10');
     expect(delivery.gravacoes, hasLength(1));
-    expect(delivery.gravacoes.single.$1, 'comandas/inserir_cliente.php');
+    expect(delivery.gravacoes.single.$1, 'comandas/editar_cliente.php');
     expect(delivery.gravacoes.single.$2['id'], '10');
     expect(delivery.gravacoes.single.$2['idCliente'], '10');
+  });
+
+  test('cadastro usa somente a rota de insercao e nao envia id', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    final repositorio = ServicoClientes(delivery);
+
+    await repositorio.cadastrarCliente(
+      'Novo cliente',
+      '(44) 99999-0000',
+      '',
+      '',
+    );
+
+    expect(delivery.gravacoes, hasLength(1));
+    expect(delivery.gravacoes.single.$1, 'comandas/inserir_cliente.php');
+    expect(delivery.gravacoes.single.$2, isNot(contains('id')));
+    expect(delivery.gravacoes.single.$2, isNot(contains('idCliente')));
+  });
+
+  test('edicao rejeita resposta com id de um novo cadastro', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste()..idClienteResposta = '99';
+    final repositorio = ServicoClientes(delivery);
+
+    await expectLater(
+      repositorio.editarCliente('10', 'Bruno Atualizado', '', '', ''),
+      throwsA(isA<StateError>()),
+    );
+    expect(delivery.gravacoes.single.$1, 'comandas/editar_cliente.php');
   });
 
   testWidgets('falha na edicao nunca mostra mensagem de cadastro',
