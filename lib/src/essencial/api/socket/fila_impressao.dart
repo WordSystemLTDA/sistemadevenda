@@ -97,6 +97,18 @@ class FilaImpressao extends ChangeNotifier {
   }
 
   Future<void> _salvar(List<ImpressaoPendente> itens) async {
+    // Registros sao imutaveis. Repetir o mesmo lote/cancelamento nao precisa
+    // regravar a fila nem notificar toda a interface.
+    if (itens.length == _itens.length) {
+      var alterada = false;
+      for (var i = 0; i < itens.length; i++) {
+        if (!identical(itens[i], _itens[i])) {
+          alterada = true;
+          break;
+        }
+      }
+      if (!alterada) return;
+    }
     final banco = BancoLocal.instancia;
     if (banco != null) {
       await banco.gravar(

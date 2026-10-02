@@ -24,6 +24,17 @@ class ArmazenamentoFalhando extends InMemorySharedPreferencesStore {
   }
 }
 
+class ArmazenamentoContando extends InMemorySharedPreferencesStore {
+  ArmazenamentoContando() : super.empty();
+  int gravacoes = 0;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async {
+    gravacoes++;
+    return super.setValue(valueType, key, value);
+  }
+}
+
 String mensagem(String id) => jsonEncode({
       'idRequisicao': id,
       'tipoImpressao': '1',
@@ -36,6 +47,31 @@ String mensagem(String id) => jsonEncode({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('lote repetido nao regrava nem notifica fila; liberacao do pedido continua duravel', () async {
+    final armazenamento = ArmazenamentoContando();
+    SharedPreferencesStorePlatform.instance = armazenamento;
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    final mensagens = List.generate(30, (i) => mensagem('lote-$i'));
+    await fila.registrar(mensagens, estado: EstadoImpressao.aguardandoPedido);
+    var notificacoes = 0;
+    fila.addListener(() => notificacoes++);
+    for (var i = 0; i < 10; i++) {
+      await fila.registrar(mensagens, estado: EstadoImpressao.aguardandoPedido);
+    }
+    await fila.cancelarPreparacao([mensagem('inexistente')]);
+    expect(armazenamento.gravacoes, 1);
+    expect(notificacoes, 0);
+    await fila.registrar(mensagens);
+    expect(armazenamento.gravacoes, 2);
+    expect(notificacoes, 1);
+    final restaurada = FilaImpressao();
+    addTearDown(restaurada.dispose);
+    await restaurada.carregar();
+    expect(restaurada.itens, hasLength(30));
+    expect(restaurada.itens.every((item) => item.estado == EstadoImpressao.aguardandoEnvio), isTrue);
+  });
 
   test('recupera antiga pausa por consultas mas conserva pausa do spooler',
       () async {
