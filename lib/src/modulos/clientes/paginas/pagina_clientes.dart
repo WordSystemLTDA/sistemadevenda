@@ -121,9 +121,13 @@ class _PaginaClientesState extends State<PaginaClientes> {
   }
 
   void _limparPesquisa() {
+    unawaited(_recarregarTodosClientes());
+  }
+
+  Future<void> _recarregarTodosClientes() async {
     _debounce?.cancel();
     _pesquisaController.clear();
-    unawaited(_carregarClientes());
+    await _carregarClientes();
   }
 
   Future<void> _abrirCadastro() async {
@@ -143,9 +147,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
       ),
     );
     if (!mounted || resultado == null) return;
-    final nome = resultado['nomecliente']?.toString().trim() ?? '';
-    if (nome.isNotEmpty) _pesquisaController.text = nome;
-    await _carregarClientes();
+    await _recarregarTodosClientes();
   }
 
   Future<void> _editarCliente(ClienteCadastro cliente) async {
@@ -167,7 +169,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
       ),
     );
     if (!mounted || resultado == null) return;
-    await _carregarClientes();
+    await _recarregarTodosClientes();
   }
 
   Future<void> _abrirEndereco(

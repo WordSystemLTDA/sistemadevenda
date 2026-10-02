@@ -9,6 +9,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   _RepositorioClientesTeste({this.enderecos});
 
   final List<EnderecoClienteCadastro>? enderecos;
+  final _servicoEndereco = _ServicoEnderecoClientesTeste();
   String ultimaPesquisa = '';
   int cadastros = 0;
   int edicoes = 0;
@@ -16,7 +17,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   bool falharEdicao = false;
 
   @override
-  ServicoDelivery get servicoEndereco => throw UnimplementedError();
+  ServicoDelivery get servicoEndereco => _servicoEndereco;
 
   @override
   Future<List<ClienteCadastro>> listarClientes(String pesquisa) async {
@@ -85,6 +86,18 @@ class _RepositorioClientesTeste implements RepositorioClientes {
       mensagem: 'Salvo',
     );
   }
+}
+
+class _ServicoEnderecoClientesTeste extends Fake implements ServicoDelivery {
+  @override
+  Future<dynamic> consultar(String rota,
+          [Map<String, dynamic> campos = const {}]) async =>
+      const <String, dynamic>{};
+
+  @override
+  Future<Map<String, dynamic>> salvar(
+          String rota, Map<String, dynamic> campos) async =>
+      const {'sucesso': true};
 }
 
 class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
@@ -191,7 +204,8 @@ void main() {
     expect(posicaoPadrao.dy, lessThan(posicaoComum.dy));
   });
 
-  testWidgets('edita o mesmo cliente e conserva o filtro', (tester) async {
+  testWidgets('edicao limpa o filtro e recarrega todos os clientes',
+      (tester) async {
     final repositorio = _RepositorioClientesTeste();
     tester.view.physicalSize = const Size(430, 1200);
     tester.view.devicePixelRatio = 1;
@@ -225,7 +239,53 @@ void main() {
     final pesquisa = tester.widget<TextField>(
       find.byKey(const ValueKey('pesquisa-clientes')),
     );
-    expect(pesquisa.controller?.text, 'filtro mantido');
+    expect(pesquisa.controller?.text, isEmpty);
+    expect(repositorio.ultimaPesquisa, isEmpty);
+  });
+
+  testWidgets('cadastro limpa o filtro e recarrega todos os clientes',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste();
+    tester.view.physicalSize = const Size(600, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('pesquisa-clientes')),
+      'filtro anterior',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('novo-cliente-flutuante')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('cliente-nome')),
+      'Novo cliente',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('cliente-endereco')),
+      'Rua Teste',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('cliente-numero')),
+      '10',
+    );
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+
+    expect(repositorio.cadastros, 1);
+    final pesquisa = tester.widget<TextField>(
+      find.byKey(const ValueKey('pesquisa-clientes')),
+    );
+    expect(pesquisa.controller?.text, isEmpty);
+    expect(repositorio.ultimaPesquisa, isEmpty);
   });
 
   test('servico confirma a API e envia operacao explicita ao editar', () async {

@@ -622,6 +622,46 @@ void main() {
     expect(produtos.consultasPorCategoria, [('Calabresa', 1)]);
   });
 
+  testWidgets(
+      'selecionar tamanho mostra apenas Pizza e desmarcar restaura produtos',
+      (tester) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    produtos.produtos.insert(
+        0,
+        sabor('Coca Cola', 'Bebidas', '10')
+          ..tamanhosPizza = []
+          ..habilTipo = 'Normal'
+          ..valorVenda = '10');
+
+    await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('Coca Cola')), findsOneWidget);
+    await tocarTamanho(tester, 'G');
+
+    expect(find.byKey(const ValueKey('Coca Cola')), findsNothing);
+    expect(find.byType(CardProduto), findsWidgets);
+    expect(
+      tester
+          .widgetList<CardProduto>(find.byType(CardProduto))
+          .every((card) => card.item.habilTipo == 'Pizza'),
+      isTrue,
+    );
+
+    await tocarTamanho(tester, 'G');
+    expect(cardapio.tamanhosPizza, isNull);
+    expect(find.byKey(const ValueKey('Coca Cola')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   for (final largura in [320.0, 393.0, 800.0]) {
     testWidgets('monta pizza em Todos e avanca ate o carrinho em $largura',
         (tester) async {
@@ -631,10 +671,12 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       Modular.init(ModuloTeste(cardapio, usuario, produtos));
       addTearDown(Modular.destroy);
-      produtos.produtos.add(sabor('Agua', 'Bebidas', '10')
-        ..tamanhosPizza = []
-        ..habilTipo = ''
-        ..valorVenda = '10');
+      produtos.produtos.insert(
+          0,
+          sabor('Agua', 'Bebidas', '10')
+            ..tamanhosPizza = []
+            ..habilTipo = ''
+            ..valorVenda = '10');
 
       await tester.pumpWidget(RepaintBoundary(
         key: const ValueKey('captura'),
@@ -648,8 +690,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.byType(ListaTamanhosPizza), findsOneWidget);
+      expect(find.byKey(const ValueKey('Agua')), findsOneWidget);
       expect(cardapio.categorias.first.tamanhosPizza, hasLength(2));
       await tocarTamanho(tester, 'G');
+      expect(find.byKey(const ValueKey('Agua')), findsNothing);
       await tocarProduto(tester, 'Mussarela');
       expect(produtos.detalhesAntecipados, contains(('Mussarela', 'G')));
       await trocarCategoria(tester, 'Calabresa');
@@ -670,16 +714,16 @@ void main() {
           findsNothing);
       expect(find.byKey(const ValueKey('quantidade_carrinho_Mussarela')),
           findsNothing);
-      await tocarProduto(tester, 'Agua');
+      expect(find.byKey(const ValueKey('Agua')), findsNothing);
       expect(cardapio.saboresPizzaSelecionados, hasLength(3));
       expect(cardapio.calcularPrecoPizza(), 70);
-      expect(carrinho.itensCarrinho.listaComandosPedidos.single.nome, 'Agua');
-      expect(carrinho.numeroAdicoes, 1);
+      expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+      expect(carrinho.numeroAdicoes, 0);
       expect(
           find.descendant(
               of: find.byType(BotaoCarrinho),
               matching: find.byIcon(Icons.check_rounded)),
-          findsOneWidget);
+          findsNothing);
       expect(find.byType(SnackBar), findsNothing);
 
       await tester.runAsync(() => precacheImage(
@@ -711,13 +755,13 @@ void main() {
       expect(pizza.valorVenda, '70.00');
       expect(pizza.opcoesPacotesListaFinal!.firstWhere((o) => o.id == 10).dados,
           hasLength(3));
-      expect(carrinho.numeroAdicoes, 2);
+      expect(carrinho.numeroAdicoes, 1);
       expect(carrinho.quantidadeDoProduto('Mussarela'), 0);
       expect(find.byType(PaginaCardapio), findsOneWidget);
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
       expect(
           tester.widget<BotaoCarrinho>(find.byType(BotaoCarrinho)).quantidade,
-          2);
+          1);
       await capturarTela(tester, 'pizza_adicionada_${largura.toInt()}');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -846,7 +890,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pumpAndSettle();
 
-    expect(produtos.consultasPorNome, ['Muss']);
+    expect(produtos.consultasPorNome, ['', 'Muss']);
     expect(find.textContaining(r'50,00'), findsOneWidget);
     await tocarProduto(tester, 'Mussarela');
     expect(cardapio.saboresPizzaSelecionados.map((produto) => produto.id),
