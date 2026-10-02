@@ -5,11 +5,9 @@ import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_categoria.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
-import 'package:app/src/modulos/cardapio/modelos/modelo_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/card_produto.dart';
 import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.dart';
 import 'package:app/src/modulos/cardapio/provedores/favoritos_produtos.dart';
-import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -59,8 +57,6 @@ class _TabCustomState extends State<TabCustom>
 
   late final ProvedorProdutos provedor =
       widget.provedorInicial ?? Modular.get<ProvedorProdutos>();
-  late final ProvedorCardapio _provedorCardapio =
-      Modular.get<ProvedorCardapio>();
   bool _iniciouConsulta = false;
   final _scrollController = ScrollController();
   final _pesquisaController = TextEditingController();
@@ -108,18 +104,14 @@ class _TabCustomState extends State<TabCustom>
   void didUpdateWidget(covariant TabCustom oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.ativa && !oldWidget.ativa) {
-      if (_provedorCardapio.tamanhosPizza != null) {
-        unawaited(_atualizar());
+      // Abas mantidas vivas nao consultam escondidas. Ao voltar, valida no
+      // servidor preservando a rolagem, a busca e a lista durante a consulta.
+      if (_iniciouConsulta) {
+        unawaited(_monitorCatalogo?.solicitar());
       } else {
-        // Abas mantidas vivas nao consultam escondidas. Ao voltar, valida no
-        // servidor preservando a rolagem, a busca e a lista durante a consulta.
-        if (_iniciouConsulta) {
-          unawaited(_monitorCatalogo?.solicitar());
-        } else {
-          // A primeira exibicao da categoria vem do catalogo completo salvo no
-          // aparelho; a validacao no servidor continua em segundo plano.
-          unawaited(_atualizar(cachePrimeiro: true));
-        }
+        // A primeira exibicao da categoria vem do catalogo completo salvo no
+        // aparelho; a validacao no servidor continua em segundo plano.
+        unawaited(_atualizar(cachePrimeiro: true));
       }
     }
     final pesquisaVoz = widget.pesquisaVoz?.trim();
@@ -197,7 +189,6 @@ class _TabCustomState extends State<TabCustom>
   void _carregarMais() {
     if (widget.ativa &&
         !_somenteFavoritos &&
-        _provedorCardapio.tamanhosPizza == null &&
         _scrollController.hasClients &&
         _scrollController.position.extentAfter < 240 &&
         _pesquisaController.text.trim().isEmpty &&
@@ -210,9 +201,7 @@ class _TabCustomState extends State<TabCustom>
     _iniciouConsulta = true;
     _debounce?.cancel();
     final pesquisa = _pesquisaController.text.trim();
-    if (pesquisa.isEmpty &&
-        !_somenteFavoritos &&
-        _provedorCardapio.tamanhosPizza == null) {
+    if (pesquisa.isEmpty && !_somenteFavoritos) {
       return provedor.listarProdutosPorCategoria(widget.category,
           cachePrimeiro: cachePrimeiro);
     }
@@ -236,16 +225,6 @@ class _TabCustomState extends State<TabCustom>
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
     _atualizar();
   }
-
-  void _alternarTamanhoPizza(ModeloTamanhosPizza tamanho) {
-    final desmarcando = _provedorCardapio.tamanhosPizza?.id == tamanho.id;
-    _provedorCardapio.tamanhosPizza = desmarcando ? null : tamanho;
-    if (_scrollController.hasClients) _scrollController.jumpTo(0);
-    unawaited(_atualizar());
-  }
-
-  bool _produtoDoTipoPizza(Modelowordprodutos produto) =>
-      produto.habilTipo.trim().toLowerCase() == 'pizza';
 
   Future<void> _alternarFavorito(String id) async {
     final favoritos = widget.favoritos;
@@ -278,19 +257,15 @@ class _TabCustomState extends State<TabCustom>
     return ListenableBuilder(
       listenable: Listenable.merge([
         provedor,
-        _provedorCardapio,
         if (widget.favoritos != null) widget.favoritos!,
         if (_sincronizador != null) _sincronizador,
       ]),
       builder: (context, _) {
-        final produtosFiltradosPorFavorito = _somenteFavoritos
+        final produtos = _somenteFavoritos
             ? provedor.produtos
                 .where((p) => widget.favoritos?.contem(p.id) ?? false)
                 .toList()
             : provedor.produtos;
-        final produtos = _provedorCardapio.tamanhosPizza == null
-            ? produtosFiltradosPorFavorito
-            : produtosFiltradosPorFavorito.where(_produtoDoTipoPizza).toList();
         final aguardandoSincronizacao = produtos.isEmpty &&
             provedor.erro != null &&
             _sincronizador?.sincronizando == true;
@@ -425,11 +400,8 @@ class _TabCustomState extends State<TabCustom>
                             produtos.any(
                                 (p) => p.tamanhosPizza?.isNotEmpty ?? false)))
                       SliverToBoxAdapter(
-                          child: ListaTamanhosPizza(
-                        categoria: widget.categoria,
-                        provedor: _provedorCardapio,
-                        aoSelecionar: _alternarTamanhoPizza,
-                      )),
+                          child:
+                              ListaTamanhosPizza(categoria: widget.categoria)),
                     if (produtos.isEmpty)
                       SliverFillRemaining(
                         hasScrollBody: false,
