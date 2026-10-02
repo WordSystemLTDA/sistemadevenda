@@ -120,20 +120,18 @@ class ServicoClientes implements RepositorioClientes {
     }
     final idNormalizado = id.trim();
     final editando = idNormalizado.isNotEmpty;
-    final resposta = await _delivery.salvar(
-        editando
-            ? 'comandas/editar_cliente.php'
-            : 'comandas/inserir_cliente.php',
-        {
-          if (editando) ...{
-            'id': idNormalizado,
-            'idCliente': idNormalizado,
-          },
-          'nome': nome.trim(),
-          'celular': celular.trim(),
-          'email': email.trim(),
-          'obs': observacao.trim(),
-        });
+    // A API publicada usa esta mesma rota para INSERT e UPDATE; com ID válido
+    // ela atualiza o cliente existente e não executa o trecho de cadastro.
+    final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
+      if (editando) ...{
+        'id': idNormalizado,
+        'idCliente': idNormalizado,
+      },
+      'nome': nome.trim(),
+      'celular': celular.trim(),
+      'email': email.trim(),
+      'obs': observacao.trim(),
+    });
     return (
       sucesso: true,
       idcliente: resposta['idcliente']?.toString() ?? id,

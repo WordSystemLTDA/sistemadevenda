@@ -283,7 +283,8 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) <= 0 || nome.trim().isEmpty) {
       throw StateError('Confira o cliente e o nome informado.');
     }
-    await salvar('comandas/editar_cliente.php', {
+    // A API publicada seleciona o UPDATE nesta rota quando recebe o ID.
+    await salvar('comandas/inserir_cliente.php', {
       'id': id,
       'idCliente': id,
       'nome': nome.trim(),

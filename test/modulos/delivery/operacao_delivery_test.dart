@@ -129,7 +129,7 @@ class ServicoEdicaoClienteTeste extends ServicoEnderecoPadraoTeste {
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     final resposta = await super.salvar(rota, campos);
-    if (rota == 'comandas/editar_cliente.php') {
+    if (rota == 'comandas/inserir_cliente.php' && campos['id'] == '4') {
       dadosCliente.addAll({
         'nome': campos['nome'],
         'nome_puro': campos['nome'],
@@ -996,7 +996,9 @@ void main() {
       findsOneWidget,
     );
     final gravacaoCliente = s.gravacoes
-        .where((registro) => registro.$1 == 'comandas/editar_cliente.php')
+        .where((registro) =>
+            registro.$1 == 'comandas/inserir_cliente.php' &&
+            registro.$2['id'] == '4')
         .single;
     expect(gravacaoCliente.$2['id'], '4');
     expect(gravacaoCliente.$2['idCliente'], '4');

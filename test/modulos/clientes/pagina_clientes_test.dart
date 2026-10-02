@@ -220,7 +220,7 @@ void main() {
     expect(pesquisa.controller?.text, 'filtro mantido');
   });
 
-  test('servico usa rota exclusiva e envia o id ao editar', () async {
+  test('servico usa rota publicada e envia os ids ao editar', () async {
     final delivery = _ServicoDeliveryGravacaoTeste();
     final repositorio = ServicoClientes(delivery);
 
@@ -234,7 +234,7 @@ void main() {
 
     expect(resposta.idcliente, '10');
     expect(delivery.gravacoes, hasLength(1));
-    expect(delivery.gravacoes.single.$1, 'comandas/editar_cliente.php');
+    expect(delivery.gravacoes.single.$1, 'comandas/inserir_cliente.php');
     expect(delivery.gravacoes.single.$2['id'], '10');
     expect(delivery.gravacoes.single.$2['idCliente'], '10');
   });
