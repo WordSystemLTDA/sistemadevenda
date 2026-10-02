@@ -167,8 +167,6 @@ class _PaginaClientesState extends State<PaginaClientes> {
       ),
     );
     if (!mounted || resultado == null) return;
-    final nome = resultado['nomecliente']?.toString().trim() ?? '';
-    if (nome.isNotEmpty) _pesquisaController.text = nome;
     await _carregarClientes();
   }
 

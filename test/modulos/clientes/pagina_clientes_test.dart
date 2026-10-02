@@ -10,6 +10,9 @@ class _RepositorioClientesTeste implements RepositorioClientes {
 
   final List<EnderecoClienteCadastro>? enderecos;
   String ultimaPesquisa = '';
+  int cadastros = 0;
+  int edicoes = 0;
+  String? ultimoIdEditado;
 
   @override
   ServicoDelivery get servicoEndereco => throw UnimplementedError();
@@ -53,13 +56,15 @@ class _RepositorioClientesTeste implements RepositorioClientes {
     String celular,
     String email,
     String observacao,
-  ) async =>
-      (
-        sucesso: true,
-        idcliente: '11',
-        nomecliente: nome,
-        mensagem: 'Salvo',
-      );
+  ) async {
+    cadastros++;
+    return (
+      sucesso: true,
+      idcliente: '11',
+      nomecliente: nome,
+      mensagem: 'Salvo',
+    );
+  }
 
   @override
   Future<ResultadoSalvarCliente> editarCliente(
@@ -68,13 +73,31 @@ class _RepositorioClientesTeste implements RepositorioClientes {
     String celular,
     String email,
     String observacao,
-  ) async =>
-      (
-        sucesso: true,
-        idcliente: id,
-        nomecliente: nome,
-        mensagem: 'Salvo',
-      );
+  ) async {
+    edicoes++;
+    ultimoIdEditado = id;
+    return (
+      sucesso: true,
+      idcliente: id,
+      nomecliente: nome,
+      mensagem: 'Salvo',
+    );
+  }
+}
+
+class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
+  final gravacoes = <(String, Map<String, dynamic>)>[];
+
+  @override
+  Future<Map<String, dynamic>> salvar(
+      String rota, Map<String, dynamic> campos) async {
+    gravacoes.add((rota, campos));
+    return {
+      'sucesso': true,
+      'idcliente': campos['id'] ?? '11',
+      'nomecliente': campos['nome'],
+    };
+  }
 }
 
 void main() {
@@ -156,5 +179,61 @@ void main() {
     final posicaoComum =
         tester.getTopLeft(find.byKey(const ValueKey('endereco-10-30')));
     expect(posicaoPadrao.dy, lessThan(posicaoComum.dy));
+  });
+
+  testWidgets('edita o mesmo cliente e conserva o filtro', (tester) async {
+    final repositorio = _RepositorioClientesTeste();
+    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('pesquisa-clientes')),
+      'filtro mantido',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('editar-cliente-10')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('cliente-nome')),
+      'Bruno Atualizado',
+    );
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+
+    expect(repositorio.edicoes, 1);
+    expect(repositorio.cadastros, 0);
+    expect(repositorio.ultimoIdEditado, '10');
+    final pesquisa = tester.widget<TextField>(
+      find.byKey(const ValueKey('pesquisa-clientes')),
+    );
+    expect(pesquisa.controller?.text, 'filtro mantido');
+  });
+
+  test('servico usa rota exclusiva e envia o id ao editar', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    final repositorio = ServicoClientes(delivery);
+
+    final resposta = await repositorio.editarCliente(
+      '10',
+      'Bruno Atualizado',
+      '(44) 99921-3336',
+      'bruno@example.com',
+      '',
+    );
+
+    expect(resposta.idcliente, '10');
+    expect(delivery.gravacoes, hasLength(1));
+    expect(delivery.gravacoes.single.$1, 'comandas/editar_cliente.php');
+    expect(delivery.gravacoes.single.$2['id'], '10');
+    expect(delivery.gravacoes.single.$2['idCliente'], '10');
   });
 }

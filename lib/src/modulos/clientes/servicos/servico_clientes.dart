@@ -118,21 +118,30 @@ class ServicoClientes implements RepositorioClientes {
         mensagem: 'Informe o nome do cliente',
       );
     }
-    final resposta = await _delivery.salvar('comandas/inserir_cliente.php', {
-      if (id.trim().isNotEmpty) 'id': id.trim(),
-      'nome': nome.trim(),
-      'celular': celular.trim(),
-      'email': email.trim(),
-      'obs': observacao.trim(),
-    });
+    final idNormalizado = id.trim();
+    final editando = idNormalizado.isNotEmpty;
+    final resposta = await _delivery.salvar(
+        editando
+            ? 'comandas/editar_cliente.php'
+            : 'comandas/inserir_cliente.php',
+        {
+          if (editando) ...{
+            'id': idNormalizado,
+            'idCliente': idNormalizado,
+          },
+          'nome': nome.trim(),
+          'celular': celular.trim(),
+          'email': email.trim(),
+          'obs': observacao.trim(),
+        });
     return (
       sucesso: true,
       idcliente: resposta['idcliente']?.toString() ?? id,
       nomecliente: resposta['nomecliente']?.toString() ?? nome.trim(),
       mensagem: resposta['mensagem']?.toString() ??
-          (id.isEmpty
-              ? 'Cliente cadastrado com sucesso'
-              : 'Cliente atualizado com sucesso'),
+          (editando
+              ? 'Cliente atualizado com sucesso'
+              : 'Cliente cadastrado com sucesso'),
     );
   }
 }

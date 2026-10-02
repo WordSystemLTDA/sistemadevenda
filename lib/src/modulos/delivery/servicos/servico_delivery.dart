@@ -283,8 +283,9 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) <= 0 || nome.trim().isEmpty) {
       throw StateError('Confira o cliente e o nome informado.');
     }
-    await salvar('comandas/inserir_cliente.php', {
+    await salvar('comandas/editar_cliente.php', {
       'id': id,
+      'idCliente': id,
       'nome': nome.trim(),
       'celular': celular.trim(),
       'email': email.trim(),
