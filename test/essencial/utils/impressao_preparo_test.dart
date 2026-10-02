@@ -389,7 +389,7 @@ void main() {
     expect((opcoes.last as Map)['titulo'], 'Adicionais');
     final ingredientes = montagem['dados'] as List;
     expect(ingredientes, hasLength(1));
-    expect(ingredientes.single['nome'], 'POUCO Feijao (SEPARADO)');
+    expect(ingredientes.single['nome'], 'Pouco - Feijao - Embalar Separado');
     expect(ingredientes.single['montagemCardapio']['acao'], 'pouco');
     expect(ingredientes.single['montagemCardapio']['separado'], isTrue);
     expect(
@@ -430,12 +430,39 @@ void main() {
         ),
       ];
 
+    final antes = jsonEncode(almoco.toMap());
     final dados = DadosImpressaoPreparo.produto(almoco);
     final grupo = (dados['opcoesPacotesListaFinal'] as List).single as Map;
     final nomes =
         (grupo['dados'] as List).map((item) => (item as Map)['nome']).toList();
 
-    expect(nomes, ['SEM Arroz', 'POUCO Feijao', 'MAIS Carne']);
+    expect(nomes, ['Sem   - Arroz', 'Pouco - Feijao', 'Mais  - Carne']);
+    expect(jsonEncode(almoco.toMap()), antes);
+    final reaberto = Modelowordprodutos.fromMap(jsonDecode(jsonEncode(dados)));
+    expect(
+      reaberto.opcoesPacotesListaFinal!.single.dados!
+          .map((item) => item.montagemCardapio!.nomeOriginal),
+      ['Arroz', 'Feijao', 'Carne'],
+    );
+  });
+
+  test('texto de impressao conserva troca e separado sem mudar descricao salva', () {
+    const montagem = MontagemIngredienteCardapio(
+      nomeOriginal: 'Bife',
+      acao: AcaoIngredienteCardapio.trocar,
+      destinoNome: 'Ovo Frito',
+      quantidadeTroca: 2,
+      separado: true,
+    );
+    expect(montagem.descricaoImpressao,
+        'Trocar - Bife por 2x Ovo Frito - Embalar Separado');
+    expect(montagem.descricao, 'TROCAR Bife POR 2x Ovo Frito (SEPARADO)');
+    expect(montagem.copyWith(acao: AcaoIngredienteCardapio.sem).descricaoImpressao,
+        'Sem   - Bife');
+    expect(
+      montagem.copyWith(acao: AcaoIngredienteCardapio.normal).descricaoImpressao,
+      'Bife - Embalar Separado',
+    );
   });
 
   test('preparo omite grupo de cardapio quando tudo esta normal', () {
@@ -488,7 +515,7 @@ void main() {
     final ingredientes = (opcoes.single as Map)['dados'] as List;
 
     expect(ingredientes, hasLength(1));
-    expect(ingredientes.single['nome'], 'SEM Feijão');
+    expect(ingredientes.single['nome'], 'Sem   - Feijão');
     expect(ingredientes.single['montagemCardapio']['nomeOriginal'], 'Feijão');
     expect(ingredientes.single['montagemCardapio']['acao'], 'sem');
     expect(jsonEncode(dados), isNot(contains('Arroz')));

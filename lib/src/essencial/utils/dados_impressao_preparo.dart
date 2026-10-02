@@ -172,7 +172,7 @@ class DadosImpressaoPreparo {
       if (montagemCardapio && montagem != null) {
         // Mantem o texto pronto tambem para centrais de impressao antigas,
         // sem depender apenas da leitura do bloco estruturado abaixo.
-        mapa['nome'] = montagem.descricao;
+        mapa['nome'] = montagem.descricaoImpressao;
         mapa['montagemCardapio'] = montagem.toMap();
       }
       return mapa;

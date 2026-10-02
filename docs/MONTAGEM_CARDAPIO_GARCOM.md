@@ -1,5 +1,22 @@
 # Montagem do cardapio no garcom
 
+## Impressao compacta (02/10/2026)
+
+O payload de preparo passa a enviar `Mais  - Bife`, `Sem   - Refogado` e
+`Pouco - Feijao`, com acao e ingrediente juntos. Troca conserva destino e
+quantidade; separado aparece como `- Embalar Separado`. Os campos estruturados
+`montagemCardapio`, inclusive a tarifa salva, permanecem intactos. O texto e
+exclusivo da impressao; nao modifica produto/carrinho, tela ou dados enviados
+para gravar o pedido. Normal sem alteracao continua omitido.
+
+O papel e gerado pelo `sistemarestaurante`, cujo formatador compartilhado
+tambem foi atualizado para preparo, consumo e entregador. Atualizar o app e
+as centrais de impressao juntos: uma central anterior que usa o JSON
+estruturado ainda pode imprimir em duas linhas. Nao ha alteracao PHP/schema
+nem mudanca nos IDs, filas, destinos ou confirmacoes da impressao.
+Testes verificam texto, serializacao/reabertura, snapshot e fluxo de envio;
+nenhuma impressora fisica foi acionada.
+
 ## Correcao de 17/09/2026
 
 O produto Almoço Livre (id 436, codigo 151, empresa 32) possui

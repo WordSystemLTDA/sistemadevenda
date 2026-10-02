@@ -139,6 +139,20 @@ class MontagemIngredienteCardapio {
     return texto;
   }
 
+  /// Texto exclusivo dos comprovantes; nao altera o snapshot salvo nem a UI.
+  String get descricaoImpressao {
+    var texto = acao == AcaoIngredienteCardapio.normal
+        ? nomeOriginal
+        : '${acao.rotulo.padRight(5)} - $nomeOriginal';
+    final destino = destinoNome?.trim() ?? '';
+    if (acao == AcaoIngredienteCardapio.trocar && destino.isNotEmpty) {
+      texto = '$texto por ${quantidadeTroca}x $destino';
+    }
+    return separado && acao != AcaoIngredienteCardapio.sem
+        ? '$texto - $rotuloEmbalagemSeparada'
+        : texto;
+  }
+
   String? get detalheVisualizacao {
     final texto = switch (acao) {
       AcaoIngredienteCardapio.normal => null,
