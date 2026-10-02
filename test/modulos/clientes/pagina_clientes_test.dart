@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RepositorioClientesTeste implements RepositorioClientes {
+  _RepositorioClientesTeste({this.enderecos});
+
+  final List<EnderecoClienteCadastro>? enderecos;
   String ultimaPesquisa = '';
 
   @override
@@ -28,19 +31,20 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   @override
   Future<List<EnderecoClienteCadastro>> listarEnderecos(
       String idCliente) async {
-    return [
-      EnderecoClienteCadastro.fromMap({
-        'id': '31',
-        'endereco': 'Rua Luiz Roncalha',
-        'numero': '169',
-        'bairro': 'Centro',
-        'cidade': 'Santa Fé',
-        'estado': 'PR',
-        'cep': '86770-000',
-        'padrao': 'Sim',
-        'tipolocalentrega': 'Normal',
-      }),
-    ];
+    return enderecos ??
+        [
+          EnderecoClienteCadastro.fromMap({
+            'id': '31',
+            'endereco': 'Rua Luiz Roncalha',
+            'numero': '169',
+            'bairro': 'Centro',
+            'cidade': 'Santa Fé',
+            'estado': 'PR',
+            'cep': '86770-000',
+            'padrao': 'Sim',
+            'tipolocalentrega': 'Normal',
+          }),
+        ];
   }
 
   @override
@@ -120,5 +124,37 @@ void main() {
     expect(repositorio.ultimaPesquisa, '99921');
     expect(
         find.byKey(const ValueKey('novo-cliente-flutuante')), findsOneWidget);
+  });
+
+  testWidgets('mostra o endereco padrao antes dos demais', (tester) async {
+    final repositorio = _RepositorioClientesTeste(enderecos: [
+      EnderecoClienteCadastro.fromMap({
+        'id': '30',
+        'endereco': 'Rua Comum',
+        'numero': '10',
+        'padrao': 'Não',
+      }),
+      EnderecoClienteCadastro.fromMap({
+        'id': '31',
+        'endereco': 'Rua Padrão',
+        'numero': '20',
+        'padrao': 'Sim',
+      }),
+    ]);
+    tester.view.physicalSize = const Size(430, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+
+    final posicaoPadrao =
+        tester.getTopLeft(find.byKey(const ValueKey('endereco-10-31')));
+    final posicaoComum =
+        tester.getTopLeft(find.byKey(const ValueKey('endereco-10-30')));
+    expect(posicaoPadrao.dy, lessThan(posicaoComum.dy));
   });
 }

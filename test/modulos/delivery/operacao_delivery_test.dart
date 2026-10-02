@@ -33,10 +33,12 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
   final List<Map<String, dynamic>> enderecos;
   final String requeridoEndereco;
   final String ativarCardapioDigital;
+  final Map<String, dynamic>? configuracaoEndereco;
   ServicoEnderecoPadraoTeste(
     this.enderecos, {
     this.requeridoEndereco = 'Sim',
     this.ativarCardapioDigital = 'Almoço',
+    this.configuracaoEndereco,
   });
 
   @override
@@ -46,6 +48,12 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
       return enderecos;
     }
     if (rota == 'config_clientes/listar_cliente.php') {
+      if (configuracaoEndereco != null) {
+        return {
+          ...configuracaoEndereco!,
+          'requerido_endereco': requeridoEndereco,
+        };
+      }
       final resposta = await super.consultar(rota, campos);
       return {
         if (resposta is Map) ...Map<String, dynamic>.from(resposta),
@@ -750,6 +758,10 @@ void main() {
       cliente: '4',
     )));
     await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), 'Rua Nova');
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-numero')), '100');
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
     expect(
@@ -772,6 +784,10 @@ void main() {
       cliente: '4',
     )));
     await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), 'Rua Nova');
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-numero')), '100');
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
 
@@ -805,6 +821,10 @@ void main() {
       cliente: '4',
     )));
     await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), 'Rua Nova');
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-numero')), '100');
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
 
@@ -826,8 +846,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('novo endereco exige campos quando configuracao obriga endereco',
-      (tester) async {
+  testWidgets('novo endereco exige somente rua e numero', (tester) async {
     final s = ServicoEnderecoPadraoTeste([]);
     await tester.pumpWidget(MaterialApp(
         home: EnderecoDelivery(
@@ -837,26 +856,37 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Salvar endereço'));
     await tester.pumpAndSettle();
-    expect(find.text('Campo obrigatório'), findsWidgets);
+    expect(find.text('Campo obrigatório'), findsNWidgets(2));
     expect(s.gravacoes, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'novo endereco permite salvar campos vazios quando endereco nao e obrigatorio',
+  testWidgets('novo endereco salva sem cep, bairro, cidade e uf',
       (tester) async {
-    final s = ServicoEnderecoPadraoTeste([], requeridoEndereco: 'Não');
+    final s = ServicoEnderecoPadraoTeste(
+      [],
+      configuracaoEndereco: const {'bloquear_edicao_cidade': 'Não'},
+    );
     await tester.pumpWidget(MaterialApp(
         home: EnderecoDelivery(
       servico: s,
       cliente: '4',
     )));
     await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), 'Rua das Flores');
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-numero')), '123');
     await tester.tap(find.text('Salvar endereço'));
     await tester.pumpAndSettle();
     expect(find.text('Campo obrigatório'), findsNothing);
     expect(s.gravacoes, hasLength(1));
     expect(s.gravacoes.single.$1, 'clientes/inserir_endereco.php');
+    expect(s.gravacoes.single.$2['cep'], isEmpty);
+    expect(s.gravacoes.single.$2['bairro'], isEmpty);
+    expect(s.gravacoes.single.$2['cidade'], isEmpty);
+    expect(s.gravacoes.single.$2['uf'], isEmpty);
+    expect(s.gravacoes.single.$2['podeInserirNovaCidade'], isTrue);
     expect(tester.takeException(), isNull);
   });
 

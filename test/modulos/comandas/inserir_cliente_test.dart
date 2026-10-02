@@ -4,16 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _ServicoEnderecoTeste extends Fake implements ServicoDelivery {
+  _ServicoEnderecoTeste({
+    this.configuracaoEndereco = const {
+      'padrao_nome_cidade': 'Lobato',
+      'padrao_estado': 'PR',
+      'requerido_endereco': 'Sim',
+    },
+  });
+
+  final Map<String, dynamic> configuracaoEndereco;
   final gravacoes = <Map<String, dynamic>>[];
 
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
-    return {
-      'padrao_nome_cidade': 'Lobato',
-      'padrao_estado': 'PR',
-      'requerido_endereco': 'Sim',
-    };
+    return configuracaoEndereco;
   }
 
   @override
@@ -64,6 +69,49 @@ void main() {
     expect(servico.gravacoes.single['cidade'], 'Lobato');
     expect(servico.gravacoes.single['uf'], 'PR');
     expect(servico.gravacoes.single['tipoLocalEntrega'], 'Normal');
+    expect(servico.gravacoes.single['podeInserirNovaCidade'], isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cadastro exige somente rua e numero do endereco',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(600, 2000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final servico = _ServicoEnderecoTeste(configuracaoEndereco: const {});
+    await tester.pumpWidget(MaterialApp(
+      home: InserirCliente(
+        servicoEndereco: servico,
+        aoCadastrarCliente: (nome, celular, email, observacao) async => (
+          sucesso: true,
+          idcliente: '9',
+          nomecliente: nome,
+          mensagem: 'Cliente cadastrado',
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Cliente Teste');
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Campo obrigatório'), findsNWidgets(2));
+    expect(servico.gravacoes, isEmpty);
+
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-endereco')), 'Avenida Brasil');
+    await tester.enterText(find.byKey(const ValueKey('cliente-numero')), '25');
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+
+    expect(servico.gravacoes, hasLength(1));
+    expect(servico.gravacoes.single['cep'], isEmpty);
+    expect(servico.gravacoes.single['bairro'], isEmpty);
+    expect(servico.gravacoes.single['cidade'], isEmpty);
+    expect(servico.gravacoes.single['uf'], isEmpty);
     expect(tester.takeException(), isNull);
   });
 

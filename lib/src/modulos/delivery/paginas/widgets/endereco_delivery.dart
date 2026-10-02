@@ -32,7 +32,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       _carregandoPadrao = true;
   bool _temOutroEnderecoPadrao = false;
   List<Map<String, dynamic>> _outrosEnderecosPadrao = [];
-  bool _bloquearCidade = false, _enderecoObrigatorio = true;
+  bool _bloquearCidade = false;
   String? _erro;
 
   @override
@@ -90,7 +90,6 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             _preencherSeVazio('cidade', configuracao.cidade);
             _preencherSeVazio('uf', configuracao.uf);
             _bloquearCidade = configuracao.bloquearCidade;
-            _enderecoObrigatorio = configuracao.enderecoObrigatorio;
           }
           if (outrosEnderecosPadrao != null) {
             _outrosEnderecosPadrao = outrosEnderecosPadrao;
@@ -187,7 +186,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
           ? 'Sitio'
           : 'Normal',
       'substituirPadrao': false,
-      'podeInserirNovaCidade': false,
+      'podeInserirNovaCidade': true,
     });
   }
 
@@ -222,7 +221,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
         'padrao': salvarComoPadrao ? 'Sim' : 'Não',
         'tipoLocalEntrega': _sitio ? 'Sitio' : 'Normal',
         'substituirPadrao': substituirPadrao,
-        'podeInserirNovaCidade': false,
+        'podeInserirNovaCidade': true,
       });
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -277,13 +276,14 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                             ('endereco', 'Rua / avenida', true),
                             ('numero', 'Número', true),
                             ('complemento', 'Complemento', false),
-                            ('bairro', 'Bairro', true),
-                            ('cidade', 'Cidade', true),
-                            ('uf', 'UF', true)
+                            ('bairro', 'Bairro', false),
+                            ('cidade', 'Cidade', false),
+                            ('uf', 'UF', false)
                           ])
                             Padding(
                                 padding: const EdgeInsets.only(bottom: 16),
                                 child: TextFormField(
+                                  key: ValueKey('endereco-${campo.$1}'),
                                   controller: _campos[campo.$1],
                                   enabled: !_salvando && !_carregandoPadrao,
                                   readOnly: _bloquearCidade &&
@@ -297,11 +297,10 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                                   onTapOutside: (_) => FocusManager
                                       .instance.primaryFocus
                                       ?.unfocus(),
-                                  validator: (v) => campo.$3 &&
-                                          _enderecoObrigatorio &&
-                                          (v?.trim().isEmpty ?? true)
-                                      ? 'Campo obrigatório'
-                                      : null,
+                                  validator: (v) =>
+                                      campo.$3 && (v?.trim().isEmpty ?? true)
+                                          ? 'Campo obrigatório'
+                                          : null,
                                   decoration: InputDecoration(
                                       labelText: campo.$2,
                                       border: const OutlineInputBorder()),

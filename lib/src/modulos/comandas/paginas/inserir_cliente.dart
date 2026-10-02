@@ -50,8 +50,6 @@ class _InserirClienteState extends State<InserirCliente> {
   bool _salvando = false;
   bool _carregandoEndereco = false;
   bool _enderecoEmSitio = false;
-  ConfiguracaoEnderecoCliente _configuracaoEndereco =
-      const ConfiguracaoEnderecoCliente();
   String? _idClienteCriado;
   String? _nomeClienteCriado;
   String? _mensagemClienteCriado;
@@ -103,7 +101,6 @@ class _InserirClienteState extends State<InserirCliente> {
       final configuracao = ConfiguracaoEnderecoCliente.fromResposta(resposta);
       if (!mounted) return;
       setState(() {
-        _configuracaoEndereco = configuracao;
         _preencherEnderecoSeVazio('cep', configuracao.cep);
         _preencherEnderecoSeVazio('cidade', configuracao.cidade);
         _preencherEnderecoSeVazio('uf', configuracao.uf);
@@ -165,7 +162,7 @@ class _InserirClienteState extends State<InserirCliente> {
       'idCliente': idCliente,
       'padrao': 'Sim',
       'tipoLocalEntrega': _enderecoEmSitio ? 'Sitio' : 'Normal',
-      'podeInserirNovaCidade': false,
+      'podeInserirNovaCidade': true,
     });
   }
 
@@ -244,10 +241,8 @@ class _InserirClienteState extends State<InserirCliente> {
   }
 
   String? _validarEndereco(String campo, String? valor) {
-    if (!_incluiEndereco || !_configuracaoEndereco.enderecoObrigatorio) {
-      return null;
-    }
-    const obrigatorios = {'endereco', 'numero', 'bairro'};
+    if (!_incluiEndereco) return null;
+    const obrigatorios = {'endereco', 'numero'};
     return obrigatorios.contains(campo) && (valor?.trim().isEmpty ?? true)
         ? 'Campo obrigatório'
         : null;
@@ -370,8 +365,8 @@ class _InserirClienteState extends State<InserirCliente> {
                     _LabelCampo(
                       icone: campo.$3,
                       texto: campo.$2,
-                      obrigatorio: campo.$1 != 'cep' &&
-                          _configuracaoEndereco.enderecoObrigatorio,
+                      obrigatorio:
+                          campo.$1 == 'endereco' || campo.$1 == 'numero',
                     ),
                     const SizedBox(height: 8),
                     _CampoTexto(

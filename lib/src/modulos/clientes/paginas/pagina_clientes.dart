@@ -95,7 +95,11 @@ class _PaginaClientesState extends State<PaginaClientes> {
     try {
       final enderecos = await _repositorio.listarEnderecos(idCliente);
       if (!mounted || versaoEsperada != _versaoConsulta) return;
-      setState(() => _enderecos[idCliente] = enderecos);
+      final enderecosOrdenados = [
+        ...enderecos.where((endereco) => endereco.padrao),
+        ...enderecos.where((endereco) => !endereco.padrao),
+      ];
+      setState(() => _enderecos[idCliente] = enderecosOrdenados);
     } catch (erro) {
       if (!mounted || versaoEsperada != _versaoConsulta) return;
       setState(() {
