@@ -73,6 +73,9 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'delivery/notificarenviarchavepix.php') {
+      return {'sucesso': true, 'ignorado': true};
+    }
     if (rota == 'permissoes_bigchef/listar_permissoes_bigchef.php') {
       return {
         'formacobrancaentregadelivery': '2',
@@ -697,6 +700,7 @@ void main() {
     ]);
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 31));
   });
 
   testWidgets('finalizacao aguarda a confirmacao do WhatsApp antes de sair',
@@ -726,6 +730,7 @@ void main() {
 
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 31));
   });
 
   testWidgets('falha do WhatsApp nao desfaz a finalizacao do delivery',
@@ -753,6 +758,7 @@ void main() {
     expect(find.textContaining('Pedido finalizado, mas a confirmação não foi'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 31));
   });
 
   testWidgets('desabilitar confirmacao salva a opcao e para os envios',
@@ -779,6 +785,7 @@ void main() {
     expect(m.delivery.confirmacoesWhatsApp, 0);
     expect(find.byType(PaginaFinalizarFormaPagamento), findsNothing);
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 31));
   });
 
   testWidgets('controles de WhatsApp nao aparecem fora do delivery',
@@ -827,6 +834,7 @@ void main() {
     m.delivery.consultaFinalBloqueada!.complete();
     await tester.pump();
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 31));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

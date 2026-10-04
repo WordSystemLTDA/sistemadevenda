@@ -565,14 +565,18 @@ class ServicoDelivery {
         'valor_da_entrega': valorEntrega,
       });
 
-  Future<void> concluir(PedidoDelivery pedido) async {
+  Future<void> concluir(PedidoDelivery pedido,
+      {bool enviarChavePix = true}) async {
     if (FilaDeliveryOffline.local(pedido.id)) {
       await (await _exigirFilaLocal()).concluir(pedido.id);
       return;
     }
-    await salvar('delivery/finalizar_pedido_delivery.php',
-        {'id_delivery': pedido.id, 'cliente': pedido.cliente});
-    unawaited(_enviarChavePixAutomaticamente(pedido.id));
+    await salvar('delivery/finalizar_pedido_delivery.php', {
+      'id_delivery': pedido.id,
+      'cliente': pedido.cliente,
+      'enviarChavePix': enviarChavePix
+    });
+    if (enviarChavePix) unawaited(_enviarChavePixAutomaticamente(pedido.id));
   }
 
   Future<void> _enviarChavePixAutomaticamente(String id) async {

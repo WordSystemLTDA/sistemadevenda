@@ -75,7 +75,8 @@ class _DeliveryContaTeste extends ServicoDelivery {
   }
 
   @override
-  Future<void> concluir(PedidoDelivery pedido) async {
+  Future<void> concluir(PedidoDelivery pedido,
+      {bool enviarChavePix = true}) async {
     conclusoes++;
   }
 

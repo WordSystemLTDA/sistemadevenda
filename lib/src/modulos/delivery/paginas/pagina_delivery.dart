@@ -474,7 +474,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       if (!mounted) return false;
       var preparoPersistido = false;
       if (alvo.impressao == '3' && !conferido.encerrado) {
-        await _provedor.servico.concluir(conferido);
+        await _provedor.servico.concluir(conferido, enviarChavePix: false);
       }
       if (destino != null) {
         final res = await _provedor.servico.avancar(conferido, alvo,
