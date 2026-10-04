@@ -126,6 +126,9 @@ class _PaginaFinalizarContaAtendimentoState
   int get _pessoasPagasDivisao => _dados?.pessoasPagasDivisao ?? 0;
   bool get _divisaoIniciada =>
       (_valorBaseDivisaoCentavos ?? 0) > 0 || _pessoasPagasDivisao > 0;
+  bool get _divisaoLegada =>
+      (_valorBaseDivisaoCentavos ?? 0) <= 0 &&
+      (_dados?.quantidadePessoas ?? 1) > 1;
 
   String _chaveProduto(Modelowordprodutos produto, int indice) =>
       produto.iditensvenda?.trim().isNotEmpty == true
@@ -152,6 +155,7 @@ class _PaginaFinalizarContaAtendimentoState
           pessoas: _quantidadePessoas,
           valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
           pessoasPagasDivisao: _pessoasPagasDivisao,
+          divisaoLegada: _divisaoLegada,
         );
       case ModoRecebimentoAtendimento.porProduto:
         return math.min(
@@ -289,6 +293,7 @@ class _PaginaFinalizarContaAtendimentoState
       tipoEntrega: _dados!.tipodeentrega ?? '0',
       valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
       pessoasPagasDivisao: _pessoasPagasDivisao,
+      divisaoLegada: _divisaoLegada,
     );
 
     setState(() => _avancando = true);

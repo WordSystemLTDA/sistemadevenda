@@ -25,6 +25,7 @@ class FluxoFinalizacaoAtendimento {
   final String tipoEntrega;
   final int? valorBaseDivisaoCentavos;
   final int pessoasPagasDivisao;
+  final bool divisaoLegada;
 
   const FluxoFinalizacaoAtendimento({
     required this.idAtendimento,
@@ -45,6 +46,7 @@ class FluxoFinalizacaoAtendimento {
     this.tipoEntrega = '0',
     this.valorBaseDivisaoCentavos,
     this.pessoasPagasDivisao = 0,
+    this.divisaoLegada = false,
   });
 
   int get valorTotalCentavos => math.max(
@@ -65,6 +67,7 @@ class FluxoFinalizacaoAtendimento {
           pessoas: quantidadePessoas,
           valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
           pessoasPagasDivisao: pessoasPagasDivisao,
+          divisaoLegada: divisaoLegada,
         );
       case ModoRecebimentoAtendimento.porProduto:
         return math.min(
@@ -97,6 +100,7 @@ class FluxoFinalizacaoAtendimento {
       tipoEntrega: tipoEntrega,
       valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
       pessoasPagasDivisao: pessoasPagasDivisao,
+      divisaoLegada: divisaoLegada,
     );
   }
 }

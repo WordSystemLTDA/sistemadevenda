@@ -31,6 +31,24 @@ Modelowordprodutos produto({
     );
 
 void main() {
+  test('nova divisao usa o saldo e continua apos recebimentos parciais', () {
+    int valor(int total, int pago, {int? base, int pagas = 0}) =>
+        parcelaDivisaoPersistidaEmCentavos(
+          totalAtualCentavos: total,
+          pagoCentavos: pago,
+          pessoas: 2,
+          valorBaseDivisaoCentavos: base,
+          pessoasPagasDivisao: pagas,
+        );
+
+    expect(valor(6000, 4000), 1000);
+    expect(valor(6000, 6000), 0);
+    expect(valor(6000, 7000), 0);
+    expect(valor(6000, 4500, base: 2000), 500);
+    expect(valor(6000, 5000, base: 2000, pagas: 1), 1000);
+    expect(valor(7200, 5000, base: 2000, pagas: 1), 2200);
+  });
+
   test('divide por pessoa preservando os centavos na ultima cota', () {
     expect(
         parcelaAtualEmCentavos(
@@ -44,6 +62,18 @@ void main() {
         parcelaAtualEmCentavos(
             totalCentavos: 1000, pagoCentavos: 666, pessoas: 3),
         334);
+  });
+
+  test('divisao legada conserva pagamentos anteriores na cota atual', () {
+    expect(
+      parcelaDivisaoPersistidaEmCentavos(
+        totalAtualCentavos: 8500,
+        pagoCentavos: 2000,
+        pessoas: 2,
+        divisaoLegada: true,
+      ),
+      2250,
+    );
   });
 
   test('novo produto fica somente com a pessoa atual da divisao', () {
@@ -101,6 +131,7 @@ void main() {
       valorDescontoCentavos: 0,
       valorAcrescimoCentavos: 0,
       valorTaxaServico: '0',
+      divisaoLegada: true,
     ).comAjustes(descontoCentavos: 1000, acrescimoCentavos: 500);
 
     expect(fluxo.valorTotalCentavos, 9500);

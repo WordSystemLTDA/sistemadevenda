@@ -45,20 +45,23 @@ int parcelaAtualEmCentavos({
 /// Calcula a parcela da pessoa atual sem redistribuir produtos adicionados
 /// depois que a divisao da conta comecou.
 ///
-/// [valorBaseDivisaoCentavos] e o total congelado no primeiro recebimento e
-/// [pessoasPagasDivisao] e a quantidade de cotas originais ja concluidas. Na
-/// ausencia desses dados, mantem o calculo legado para atendimentos antigos.
+/// [valorBaseDivisaoCentavos] e o saldo congelado no primeiro recebimento e
+/// [pessoasPagasDivisao] e a quantidade de cotas originais ja concluidas.
+/// [divisaoLegada] conserva a regra de contas antigas sem base persistida.
 int parcelaDivisaoPersistidaEmCentavos({
   required int totalAtualCentavos,
   required int pagoCentavos,
   required int pessoas,
   int? valorBaseDivisaoCentavos,
   int pessoasPagasDivisao = 0,
+  bool divisaoLegada = false,
 }) {
   if (valorBaseDivisaoCentavos == null || valorBaseDivisaoCentavos <= 0) {
     return parcelaAtualEmCentavos(
-      totalCentavos: totalAtualCentavos,
-      pagoCentavos: pagoCentavos,
+      totalCentavos: divisaoLegada
+          ? totalAtualCentavos
+          : math.max(0, totalAtualCentavos - pagoCentavos),
+      pagoCentavos: divisaoLegada ? pagoCentavos : 0,
       pessoas: pessoas,
     );
   }

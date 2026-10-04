@@ -25,6 +25,9 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   bool divisaoPersistida = false;
   int quantidadeDivisao = 3;
   int pessoasPagasDivisao = 1;
+  String totalInicial = '85.00';
+  String pagoInicial = '20.00';
+  int quantidadeInicial = 2;
 
   Modeloworddadoscardapio _atendimento({
     required String id,
@@ -47,10 +50,12 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
       dataAbertura: '2026-09-24T18:00:00',
       numeroPedido: '44',
       status: status,
-      valorTotal: divisaoPersistida ? '123.00' : '85.00',
-      somaValorHistorico:
-          pagamentoCompleto ? '85.00' : (divisaoPersistida ? '37.00' : '20.00'),
-      quantidadePessoas: divisaoPersistida ? quantidadeDivisao : 2,
+      valorTotal: divisaoPersistida ? '123.00' : totalInicial,
+      somaValorHistorico: pagamentoCompleto
+          ? '85.00'
+          : (divisaoPersistida ? '37.00' : pagoInicial),
+      quantidadePessoas:
+          divisaoPersistida ? quantidadeDivisao : quantidadeInicial,
       valorBaseDivisao: divisaoPersistida ? '111.00' : null,
       pessoasPagasDivisao: divisaoPersistida ? pessoasPagasDivisao : 0,
       nomelancamento: [
@@ -176,6 +181,9 @@ class _ServidorFinalizacaoFake extends Fake implements Server {
 class _PagamentoFinalizacaoFake extends Fake
     implements ServicoFinalizarPagamento {
   int pagamentos = 0;
+  double? ultimoValorAPagar;
+  double? ultimoValorOriginal;
+  int? ultimaQuantidadePessoas;
 
   @override
   Future<BancosAtivosPdvModelo> listarBancos() async => BancosAtivosPdvModelo(
@@ -231,6 +239,9 @@ class _PagamentoFinalizacaoFake extends Fake
     String valorAcrescimo = '0',
   }) async {
     pagamentos++;
+    ultimoValorAPagar = valorAPagar;
+    ultimoValorOriginal = valorOriginal;
+    ultimaQuantidadePessoas = quantidadePessoas;
     return (
       sucesso: true,
       mensagem: 'Pagamento registrado.',
@@ -324,6 +335,34 @@ void main() {
     await tester.scrollUntilVisible(find.text('Movimentos realizados'), 180,
         scrollable: lista.first);
     expect(find.text('Movimentos realizados'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('nova divisao cobra dez por pessoa depois de quarenta pagos',
+      (tester) async {
+    cardapio
+      ..totalInicial = '60.00'
+      ..pagoInicial = '40.00'
+      ..quantidadeInicial = 1;
+    await abrir(tester);
+    await tester.tap(find.text('Por pessoa'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('10,00'), findsWidgets);
+
+    for (final chave in [
+      'avancar_finalizacao_atendimento',
+      'avancar_acrescimos_atendimento',
+      'avancar_forma_pagamento_atendimento',
+      'finalizar_pagamento_atendimento',
+    ]) {
+      await tester.tap(find.byKey(ValueKey(chave)));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.widgetWithText(FilledButton, 'Confirmar'));
+    await tester.pumpAndSettle();
+    expect(pagamento.ultimoValorAPagar, 10);
+    expect(pagamento.ultimoValorOriginal, 60);
+    expect(pagamento.ultimaQuantidadePessoas, 2);
     expect(tester.takeException(), isNull);
   });
 
