@@ -529,49 +529,22 @@ class _CardCarrinhoState extends State<CardCarrinho>
                           itemCount: dadosVisiveis.length,
                           itemBuilder: (context, index) {
                             final dado = dadosVisiveis[index];
-                            final detalhe = montagemCardapio
-                                ? dado.alteracaoMontagemCardapio
-                                    ?.detalheVisualizacao
-                                : null;
-
                             return LinhaValor(
                               descricao: Padding(
                                 padding: EdgeInsets.only(
                                     left: montagemCardapio || adicionaisCardapio
                                         ? 16
                                         : 0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _descricaoOpcaoCarrinho(
-                                        e.id,
-                                        dado,
-                                        dadosVisiveis.length,
-                                        montagemCardapio: montagemCardapio,
-                                        quantidadeEntreParenteses:
-                                            adicionaisCardapio,
-                                      ),
-                                      style: const TextStyle(fontSize: 15),
-                                    ),
-                                    if (detalhe != null) ...[
-                                      const SizedBox(height: 2),
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 10),
-                                        child: Text(
-                                          detalhe,
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                child: Text(
+                                  _descricaoOpcaoCarrinho(
+                                    e.id,
+                                    dado,
+                                    dadosVisiveis.length,
+                                    montagemCardapio: montagemCardapio,
+                                    quantidadeEntreParenteses:
+                                        adicionaisCardapio,
+                                  ),
+                                  style: const TextStyle(fontSize: 15),
                                 ),
                               ),
                               valor: Text(
@@ -643,7 +616,7 @@ class _CardCarrinhoState extends State<CardCarrinho>
     bool quantidadeEntreParenteses = false,
   }) {
     if (montagemCardapio) {
-      return dado.alteracaoMontagemCardapio?.nomeOriginal ?? dado.nome;
+      return dado.alteracaoMontagemCardapio?.descricaoVisualizacao ?? dado.nome;
     }
 
     if (idOpcao == 10) {

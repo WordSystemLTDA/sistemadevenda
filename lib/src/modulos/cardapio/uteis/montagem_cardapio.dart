@@ -6,20 +6,35 @@ class MontagemCardapio {
     ModeloDadosOpcoesPacotes ingrediente,
     MontagemIngredienteCardapio montagem,
   ) {
-    final valorEmbalagem = double.tryParse(
-          montagem.valorEmbalagemSeparada.replaceAll(',', '.'),
-        ) ??
+    final precoMais = double.tryParse(
+            (ingrediente.valorAdicionalMais ?? montagem.valorAdicionalMais)
+                .replaceAll(',', '.')) ??
         0;
-    final cobrarEmbalagem = montagem.separado &&
-        montagem.acao != AcaoIngredienteCardapio.sem &&
-        valorEmbalagem > 0;
+    final valorMais = montagem.acao == AcaoIngredienteCardapio.mais &&
+            precoMais.isFinite &&
+            precoMais > 0
+        ? precoMais
+        : 0.0;
+    final precoEmbalagem =
+        double.tryParse(montagem.valorEmbalagemSeparada.replaceAll(',', '.')) ??
+            0;
+    final valorEmbalagem = montagem.separado &&
+            montagem.acao != AcaoIngredienteCardapio.sem &&
+            precoEmbalagem.isFinite &&
+            precoEmbalagem > 0
+        ? precoEmbalagem
+        : 0.0;
+    montagem =
+        montagem.copyWith(valorAdicionalMais: valorMais.toStringAsFixed(2));
     return ModeloDadosOpcoesPacotes.fromMap({
       ...ingrediente.toMap(),
       'nome': montagem.descricao,
       'montagemCardapio': montagem.toMap(),
       'estaSelecionado': true,
       'quantidade': 1,
-      'valor': cobrarEmbalagem ? montagem.valorEmbalagemSeparada : '0',
+      'valor': valorMais + valorEmbalagem > 0
+          ? (valorMais + valorEmbalagem).toStringAsFixed(2)
+          : '0',
     });
   }
 
@@ -64,6 +79,8 @@ class MontagemCardapio {
         : salvo.permissoesMontagemCardapio;
     final atualizado = ModeloDadosOpcoesPacotes.fromMap({
       ...salvo.toMap(),
+      if (disponivel.valorAdicionalMais != null)
+        'valorAdicionalMais': disponivel.valorAdicionalMais,
       if (permissoes.isNotEmpty) 'permissoesMontagemCardapio': permissoes,
     });
     final montagem = atualizado.montagemCardapio;

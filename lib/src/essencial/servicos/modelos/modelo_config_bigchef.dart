@@ -42,6 +42,9 @@ class ModeloConfigBigchef {
   final String imprimirnumerooperacionalconsumacao;
   final String imprimirnumerooperacionalpreparo;
   final String imprimirpreparocomprovanteconsumacao;
+  final String aumentarfontenumeropedidoentregador;
+  final String aumentarfontetotaisentregador;
+  final String aumentarfontepagamentoentregador;
   final String? modeloValorAdicionalPizza;
   final String permitireditarquantidadeappaposfinalizar;
   final String permitireditarobservacaoappaposfinalizar;
@@ -83,6 +86,9 @@ class ModeloConfigBigchef {
     this.imprimirnumerooperacionalconsumacao = '',
     this.imprimirnumerooperacionalpreparo = '',
     this.imprimirpreparocomprovanteconsumacao = 'Não',
+    this.aumentarfontenumeropedidoentregador = 'Não',
+    this.aumentarfontetotaisentregador = 'Não',
+    this.aumentarfontepagamentoentregador = 'Não',
     this.modeloValorAdicionalPizza,
     this.permitireditarquantidadeappaposfinalizar = 'Não',
     this.permitireditarobservacaoappaposfinalizar = 'Não',
@@ -160,6 +166,10 @@ class ModeloConfigBigchef {
       'saborlimitedeborda': saborlimitedeborda,
       'autenticarcomtag': autenticarcomtag,
       'numerodopedidodestaquecomprovante': numerodopedidodestaquecomprovante,
+      'aumentarfontenumeropedidoentregador':
+          aumentarfontenumeropedidoentregador,
+      'aumentarfontetotaisentregador': aumentarfontetotaisentregador,
+      'aumentarfontepagamentoentregador': aumentarfontepagamentoentregador,
       'numerodopedidodestaquepreparo': numerodopedidodestaquepreparo,
       'ativarnumerooperacionalpedido': ativarnumerooperacionalpedido,
       'imprimirnumerooperacionalentregador':
@@ -225,6 +235,16 @@ class ModeloConfigBigchef {
       autenticarcomtag: _texto(map, 'autenticarcomtag'),
       numerodopedidodestaquecomprovante:
           _texto(map, 'numerodopedidodestaquecomprovante', 'Não'),
+      aumentarfontenumeropedidoentregador: _textoConfig(
+          map,
+          'aumentarfontenumeropedidoentregador',
+          'aumentar_fonte_numero_pedido_entregador'),
+      aumentarfontetotaisentregador: _textoConfig(map,
+          'aumentarfontetotaisentregador', 'aumentar_fonte_totais_entregador'),
+      aumentarfontepagamentoentregador: _textoConfig(
+          map,
+          'aumentarfontepagamentoentregador',
+          'aumentar_fonte_pagamento_entregador'),
       numerodopedidodestaquepreparo:
           _texto(map, 'numerodopedidodestaquepreparo', 'Não'),
       ativarnumerooperacionalpedido:

@@ -274,6 +274,18 @@ class Impressao {
     // ).call();
   }
 
+  static Map<String, String> _fontesEntregador(UsuarioProvedor usuario) {
+    final config = usuario.configbigchef;
+    if (config == null) return const {};
+    return {
+      'aumentarfontenumeropedidoentregador':
+          config.aumentarfontenumeropedidoentregador,
+      'aumentarfontetotaisentregador': config.aumentarfontetotaisentregador,
+      'aumentarfontepagamentoentregador':
+          config.aumentarfontepagamentoentregador,
+    };
+  }
+
   static void comprovanteDoEntregador({
     List<Modelowordprodutos> produtos = const [],
     List<ModeloNomeLancamento> nomelancamento = const [],
@@ -316,6 +328,7 @@ class Impressao {
             'idRequisicao': _gerarIdentificadorRequisicao(),
             'tipo': TipoCardapio.delivery.nome,
             'tipoImpressao': '3',
+            ..._fontesEntregador(usuario),
             'nomedopc': grupo.key,
             'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
             'produtos': grupo.value.map((e) => e.toMap()).toList(),
@@ -351,6 +364,7 @@ class Impressao {
         'idRequisicao': _gerarIdentificadorRequisicao(),
         'tipo': TipoCardapio.delivery.nome,
         'tipoImpressao': '3',
+        ..._fontesEntregador(usuario),
         'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
         'produtos': produtos.map((e) => e.toMap()).toList(),
         'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),

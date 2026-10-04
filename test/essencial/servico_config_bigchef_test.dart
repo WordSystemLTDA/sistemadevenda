@@ -24,6 +24,9 @@ class _AdaptadorConfigAntiga implements HttpClientAdapter {
           ? {
               'clientecompedidosdecorrentes': 'Sim',
               'valorembalagemseparada': '5.00',
+              'aumentarfontenumeropedidoentregador': 'Sim',
+              'aumentarfontetotaisentregador': 'Não',
+              'aumentarfontepagamentoentregador': 'Sim',
             }
           : {'valordaentrega': '4.00'}),
       200,
@@ -40,7 +43,7 @@ class _AdaptadorConfigAntiga implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  for (final versaoApi in ['api1', 'api37']) {
+  for (final versaoApi in ['api1', 'api6', 'api37', 'api38']) {
     test(
         'completa recorrentes e tarifa pelo desktop quando $versaoApi local e antiga',
         () async {
@@ -60,6 +63,10 @@ void main() {
 
       expect(config?.valorembalagemseparada, '5.00');
       expect(config?.recorrentesHabilitados, isTrue);
+      expect(config?.aumentarfontenumeropedidoentregador, 'Sim');
+      expect(config?.aumentarfontetotaisentregador, 'Não');
+      expect(config?.aumentarfontepagamentoentregador, 'Sim');
+      expect(usuario.configbigchef?.aumentarfontepagamentoentregador, 'Sim');
       expect(adaptador.chamadas.map((e) => e.uri.path), [
         '/sistema/apis_restaurantes/api_restaurantes_venda/$versaoApi/config_bigchef/listar.php',
         '/sistema/apis_restaurantes/api_desktop/1.0.01/config_bigchef/listar.php',

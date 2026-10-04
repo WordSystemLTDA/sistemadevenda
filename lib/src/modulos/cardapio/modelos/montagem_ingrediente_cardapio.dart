@@ -27,6 +27,7 @@ class MontagemIngredienteCardapio {
   final int quantidadeTroca;
   final bool separado;
   final String valorEmbalagemSeparada;
+  final String valorAdicionalMais;
 
   const MontagemIngredienteCardapio({
     required this.nomeOriginal,
@@ -37,6 +38,7 @@ class MontagemIngredienteCardapio {
     this.quantidadeTroca = 1,
     this.separado = false,
     this.valorEmbalagemSeparada = '0.00',
+    this.valorAdicionalMais = '0.00',
   });
 
   bool get possuiAlteracao =>
@@ -108,6 +110,7 @@ class MontagemIngredienteCardapio {
     int? quantidadeTroca,
     bool? separado,
     String? valorEmbalagemSeparada,
+    String? valorAdicionalMais,
     bool limparDestino = false,
   }) {
     return MontagemIngredienteCardapio(
@@ -118,6 +121,7 @@ class MontagemIngredienteCardapio {
       destinoTipo: limparDestino ? null : destinoTipo ?? this.destinoTipo,
       quantidadeTroca: quantidadeTroca ?? this.quantidadeTroca,
       separado: separado ?? this.separado,
+      valorAdicionalMais: valorAdicionalMais ?? this.valorAdicionalMais,
       valorEmbalagemSeparada:
           valorEmbalagemSeparada ?? this.valorEmbalagemSeparada,
     );
@@ -144,6 +148,20 @@ class MontagemIngredienteCardapio {
     var texto = acao == AcaoIngredienteCardapio.normal
         ? nomeOriginal
         : '${acao.rotulo.padRight(5)} - $nomeOriginal';
+    final destino = destinoNome?.trim() ?? '';
+    if (acao == AcaoIngredienteCardapio.trocar && destino.isNotEmpty) {
+      texto = '$texto por ${quantidadeTroca}x $destino';
+    }
+    return separado && acao != AcaoIngredienteCardapio.sem
+        ? '$texto - $rotuloEmbalagemSeparada'
+        : texto;
+  }
+
+  /// Resumo do pedido, separado da descricao persistida e dos comprovantes.
+  String get descricaoVisualizacao {
+    var texto = acao == AcaoIngredienteCardapio.normal
+        ? nomeOriginal
+        : '${acao.rotulo} - $nomeOriginal';
     final destino = destinoNome?.trim() ?? '';
     if (acao == AcaoIngredienteCardapio.trocar && destino.isNotEmpty) {
       texto = '$texto por ${quantidadeTroca}x $destino';
@@ -180,6 +198,7 @@ class MontagemIngredienteCardapio {
       'quantidadeTroca': quantidadeTroca,
       'separado': separado,
       'valorEmbalagemSeparada': valorEmbalagemSeparada,
+      'valorAdicionalMais': valorAdicionalMais,
     };
   }
 
@@ -191,6 +210,9 @@ class MontagemIngredienteCardapio {
         AcaoIngredienteCardapio.normal;
 
     return MontagemIngredienteCardapio(
+      valorAdicionalMais:
+          (map['valorAdicionalMais'] ?? map['valor_adicional_mais'] ?? '0.00')
+              .toString(),
       nomeOriginal: map['nomeOriginal']?.toString() ??
           map['nome_original']?.toString() ??
           '',

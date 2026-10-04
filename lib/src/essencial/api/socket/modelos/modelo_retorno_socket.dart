@@ -37,6 +37,9 @@ class ModeloRetornoSocket {
   final String? valordesconto;
   final String? valoracrescimo;
   final String? tipodeentrega;
+  final String? aumentarfontenumeropedidoentregador;
+  final String? aumentarfontetotaisentregador;
+  final String? aumentarfontepagamentoentregador;
   final String? numerodopedidodestaquecomprovante;
   final String? numerodopedidodestaquepreparo;
   final String? ativarnumerooperacionalpedido;
@@ -91,6 +94,9 @@ class ModeloRetornoSocket {
     this.valordesconto,
     this.valoracrescimo,
     this.tipodeentrega,
+    this.aumentarfontenumeropedidoentregador,
+    this.aumentarfontetotaisentregador,
+    this.aumentarfontepagamentoentregador,
     this.numerodopedidodestaquecomprovante,
     this.numerodopedidodestaquepreparo,
     this.ativarnumerooperacionalpedido,
@@ -146,6 +152,13 @@ class ModeloRetornoSocket {
       'valordesconto': valordesconto,
       'valoracrescimo': valoracrescimo,
       'tipodeentrega': tipodeentrega,
+      if (aumentarfontenumeropedidoentregador != null)
+        'aumentarfontenumeropedidoentregador':
+            aumentarfontenumeropedidoentregador,
+      if (aumentarfontetotaisentregador != null)
+        'aumentarfontetotaisentregador': aumentarfontetotaisentregador,
+      if (aumentarfontepagamentoentregador != null)
+        'aumentarfontepagamentoentregador': aumentarfontepagamentoentregador,
       'numerodopedidodestaquecomprovante': numerodopedidodestaquecomprovante,
       'numerodopedidodestaquepreparo': numerodopedidodestaquepreparo,
       'ativarnumerooperacionalpedido': ativarnumerooperacionalpedido,
@@ -229,6 +242,12 @@ class ModeloRetornoSocket {
       valoracrescimo: map['valoracrescimo']?.toString(),
       tipodeentrega:
           map['tipodeentrega'] != null ? map['tipodeentrega'] as String : null,
+      aumentarfontenumeropedidoentregador:
+          map['aumentarfontenumeropedidoentregador']?.toString(),
+      aumentarfontetotaisentregador:
+          map['aumentarfontetotaisentregador']?.toString(),
+      aumentarfontepagamentoentregador:
+          map['aumentarfontepagamentoentregador']?.toString(),
       numerodopedidodestaquecomprovante:
           map['numerodopedidodestaquecomprovante']?.toString(),
       numerodopedidodestaquepreparo:

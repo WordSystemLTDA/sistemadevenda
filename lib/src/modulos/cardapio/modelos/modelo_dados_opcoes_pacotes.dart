@@ -44,6 +44,7 @@ class ModeloDadosOpcoesPacotes {
   final String? idProduto;
   final String imprimirCodigoProdutoPreparo;
   final String? valor;
+  final String? valorAdicionalMais;
   final String? valorOriginal;
   final String? foto;
   final String? idtamanhospizza;
@@ -65,6 +66,7 @@ class ModeloDadosOpcoesPacotes {
     this.idProduto,
     this.imprimirCodigoProdutoPreparo = 'Não',
     this.valor,
+    this.valorAdicionalMais,
     this.valorOriginal,
     this.foto,
     this.idtamanhospizza,
@@ -94,6 +96,7 @@ class ModeloDadosOpcoesPacotes {
       'idProduto': idProduto,
       'imprimirCodigoProdutoPreparo': imprimirCodigoProdutoPreparo,
       'valor': valor,
+      if (valorAdicionalMais != null) 'valorAdicionalMais': valorAdicionalMais,
       if (valorOriginal != null) 'valorOriginal': valorOriginal,
       'foto': foto,
       'idtamanhospizza': idtamanhospizza,
@@ -126,6 +129,9 @@ class ModeloDadosOpcoesPacotes {
       codigo: map['codigo']?.toString(),
       idProduto: map['idProduto']?.toString() ?? map['id_produto']?.toString(),
       valor: map['valor']?.toString(),
+      valorAdicionalMais:
+          (map['valorAdicionalMais'] ?? map['valor_adicional_mais'])
+              ?.toString(),
       valorOriginal: map['valorOriginal']?.toString(),
       foto: map['foto']?.toString(),
       idtamanhospizza: map['idtamanhospizza']?.toString(),

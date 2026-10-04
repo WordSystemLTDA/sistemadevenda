@@ -646,9 +646,8 @@ class _PaginaEditarProdutoCarrinhoState
     }).toList();
     if (alterados.isEmpty) return 'Montagem padrão';
     return alterados
-        .map((dado) => dado.montagemCardapio?.detalheVisualizacao == null
-            ? dado.nome
-            : '${dado.montagemCardapio!.nomeOriginal}: ${dado.montagemCardapio!.detalheVisualizacao}')
+        .map(
+            (dado) => dado.montagemCardapio?.descricaoVisualizacao ?? dado.nome)
         .join(', ');
   }
 }

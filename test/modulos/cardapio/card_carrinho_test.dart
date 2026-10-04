@@ -432,13 +432,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cardápio:'), findsOneWidget);
-    expect(find.text('Arroz'), findsOneWidget);
-    expect(find.text('Embalar Separado'), findsOneWidget);
+    expect(find.text('Arroz - Embalar Separado'), findsOneWidget);
     expect(find.text(5.0.obterReal()), findsOneWidget);
-    expect(find.text('Salada'), findsOneWidget);
-    expect(find.text('Sem'), findsOneWidget);
-    expect(find.text('Carne de Panela'), findsOneWidget);
-    expect(find.text('Trocar por 1x Ovo'), findsOneWidget);
+    expect(find.text('Sem - Salada'), findsOneWidget);
+    expect(find.text('Trocar - Carne de Panela por 1x Ovo'), findsOneWidget);
+    expect(find.text('Sem'), findsNothing);
     expect(find.text('Adicionais:'), findsOneWidget);
     expect(find.text('(1x) Ovo'), findsOneWidget);
     expect(find.text('Observação:'), findsOneWidget);

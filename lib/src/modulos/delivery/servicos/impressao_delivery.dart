@@ -603,6 +603,11 @@ class ImpressaoDelivery {
     return {
       'numerodopedidodestaquecomprovante':
           config.numerodopedidodestaquecomprovante,
+      'aumentarfontenumeropedidoentregador':
+          config.aumentarfontenumeropedidoentregador,
+      'aumentarfontetotaisentregador': config.aumentarfontetotaisentregador,
+      'aumentarfontepagamentoentregador':
+          config.aumentarfontepagamentoentregador,
       'numerodopedidodestaquepreparo': config.numerodopedidodestaquepreparo,
       if (config.controlaNumeroOperacionalPedido) ...{
         'ativarnumerooperacionalpedido': config.ativarnumerooperacionalpedido,

@@ -244,6 +244,9 @@ class ConfigDelivery {
       motivoCancelamentoObrigatorio;
   final String entregadorFixo, valorEntrega, cobrancaEntrega;
   final String numerodopedidodestaquecomprovante;
+  final String aumentarfontenumeropedidoentregador;
+  final String aumentarfontetotaisentregador;
+  final String aumentarfontepagamentoentregador;
   final String numerodopedidodestaquepreparo;
   final String ativarnumerooperacionalpedido;
   final String imprimirnumerooperacionalentregador;
@@ -260,6 +263,9 @@ class ConfigDelivery {
       this.valorEntrega = '0',
       this.cobrancaEntrega = '0',
       this.numerodopedidodestaquecomprovante = 'Não',
+      this.aumentarfontenumeropedidoentregador = 'Não',
+      this.aumentarfontetotaisentregador = 'Não',
+      this.aumentarfontepagamentoentregador = 'Não',
       this.numerodopedidodestaquepreparo = 'Não',
       this.ativarnumerooperacionalpedido = '',
       this.imprimirnumerooperacionalentregador = '',
@@ -286,6 +292,20 @@ class ConfigDelivery {
         cobrancaEntrega: '${map['formacobrancaentregadelivery'] ?? '0'}',
         numerodopedidodestaquecomprovante:
             '${map['numerodopedidodestaquecomprovante'] ?? 'Não'}',
+        aumentarfontenumeropedidoentregador:
+            (map['aumentarfontenumeropedidoentregador'] ??
+                    map['aumentar_fonte_numero_pedido_entregador'] ??
+                    'Não')
+                .toString(),
+        aumentarfontetotaisentregador: (map['aumentarfontetotaisentregador'] ??
+                map['aumentar_fonte_totais_entregador'] ??
+                'Não')
+            .toString(),
+        aumentarfontepagamentoentregador:
+            (map['aumentarfontepagamentoentregador'] ??
+                    map['aumentar_fonte_pagamento_entregador'] ??
+                    'Não')
+                .toString(),
         numerodopedidodestaquepreparo:
             '${map['numerodopedidodestaquepreparo'] ?? 'Não'}',
         ativarnumerooperacionalpedido:

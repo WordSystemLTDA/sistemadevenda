@@ -101,7 +101,10 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
           continue;
         }
 
-        final valorItem = _valor(item.valor);
+        final valorMais = montagem.acao == AcaoIngredienteCardapio.mais
+            ? _valor(montagem.valorAdicionalMais)
+            : 0.0;
+        final valorItem = math.max(0.0, _valor(item.valor) - valorMais);
         final valorSnapshot = _valor(montagem.valorEmbalagemSeparada);
         final tarifa = valorSnapshot > 0
             ? valorSnapshot
@@ -111,12 +114,15 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
         if (tarifa <= 0) continue;
 
         valorAusente += math.max(0, tarifa - valorItem);
-        dados[indice] = MontagemCardapio.aplicar(
-          item,
-          montagem.copyWith(
-            valorEmbalagemSeparada: tarifa.toStringAsFixed(2),
-          ),
+        final snapshot = montagem.copyWith(
+          valorEmbalagemSeparada: tarifa.toStringAsFixed(2),
         );
+        dados[indice] = ModeloDadosOpcoesPacotes.fromMap({
+          ...item.toMap(),
+          'nome': snapshot.descricao,
+          'valor': (valorMais + tarifa).toStringAsFixed(2),
+          'montagemCardapio': snapshot.toMap(),
+        });
       }
     }
     return valorAusente;
@@ -354,6 +360,20 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
             novosComoNormal: true,
           );
           selecionadas[indiceSelecionada] = mesclada;
+        } else if (_ehMontagemCardapio(opcao)) {
+          final salva = selecionadas[indiceSelecionada];
+          salva.dados = (salva.dados ?? []).map((dado) {
+            final atual = (opcao.dados ?? [])
+                .where((item) => item.id == dado.id)
+                .firstOrNull;
+            return ModeloDadosOpcoesPacotes.fromMap({
+              ...dado.toMap(),
+              if (atual?.valorAdicionalMais != null)
+                'valorAdicionalMais': atual!.valorAdicionalMais,
+              if (atual != null && atual.permissoesMontagemCardapio.isNotEmpty)
+                'permissoesMontagemCardapio': atual.permissoesMontagemCardapio,
+            });
+          }).toList();
         }
       }
       final correcaoEmbalagemSeparada =

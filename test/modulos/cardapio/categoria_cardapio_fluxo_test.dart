@@ -36,6 +36,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
   bool omitirMontagem = false;
   bool omitirCategoriaNoDetalhe = false;
   bool semIngredientes = false;
+  String? precoMais;
   bool? ultimaConsultaModeloRecorrente;
   Completer<void>? esperaDetalhe;
   final produtoCardapio = Modelowordprodutos(
@@ -89,6 +90,7 @@ class ProdutosCategoriaCardapioTeste extends fixture.ProdutosTeste {
                       id: '1',
                       nome: 'Arroz',
                       valor: '0',
+                      valorAdicionalMais: precoMais,
                       idCategoriaCardapio: '9',
                     ),
                     ModeloDadosOpcoesPacotes(
@@ -154,6 +156,46 @@ void main() {
     Modular.destroy();
     cardapio.dispose();
     usuario.dispose();
+  });
+
+  testWidgets('Mais atualiza total, reverte e envia o adicional ao carrinho',
+      (tester) async {
+    produtos.precoMais = '2.75';
+    cardapio.tipo = TipoCardapio.comanda;
+    cardapio.idComanda = '4';
+    await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
+    await tester.pumpWidget(
+        MaterialApp(home: PaginaProduto(produto: produtos.produtoCardapio)));
+    await tester.pumpAndSettle();
+    final arroz = find.ancestor(
+        of: find.text('Arroz'),
+        matching: find.byType(CardIngredientesCardapio));
+    await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+        contains('47,75'));
+    await tester.tap(find.descendant(of: arroz, matching: find.text('Normal')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+        contains('45,00'));
+    await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adicionar_produto_carrinho')));
+    await tester.pumpAndSettle();
+    final item = Modular.get<ProvedorCarrinho>()
+        .itensCarrinho
+        .listaComandosPedidos
+        .single;
+    expect(item.valorVenda, '47.75');
+    final salvo = item.opcoesPacotesListaFinal!
+        .singleWhere((grupo) => grupo.tipo == 8)
+        .dados!
+        .first;
+    expect(salvo.montagemCardapio!.valorAdicionalMais, '2.75');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -588,8 +630,8 @@ void main() {
       final grupoImpresso = (impressao['opcoesPacotesListaFinal'] as List)
           .singleWhere((g) => g['tipo'] == 8);
       expect(grupoImpresso['dados'][0]['nome'],
-          'TROCAR Carne de Panela POR 1x Arroz');
-      expect(grupoImpresso['dados'][1]['nome'], 'POUCO Feijão');
+          'Trocar - Carne de Panela por 1x Arroz');
+      expect(grupoImpresso['dados'][1]['nome'], 'Pouco - Feijão');
       await tester.pumpWidget(RepaintBoundary(
         key: const ValueKey('captura'),
         child: MaterialApp(
@@ -610,8 +652,8 @@ void main() {
       await tester.tap(find.byTooltip('Mostrar detalhes'));
       await tester.pumpAndSettle();
       expect(find.text('Cardápio:'), findsOneWidget);
-      expect(find.text('Trocar por 1x Arroz'), findsOneWidget);
-      expect(find.text('Pouco'), findsOneWidget);
+      expect(find.text('Trocar - Carne de Panela por 1x Arroz'), findsOneWidget);
+      expect(find.text('Pouco - Feijão'), findsOneWidget);
       expect(find.textContaining('TROCAR Carne'), findsNothing);
       await capturarTela(tester, 'almoco_carrinho_${largura.toInt()}');
       expect(tester.takeException(), isNull);

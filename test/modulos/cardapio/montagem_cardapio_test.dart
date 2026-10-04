@@ -10,6 +10,73 @@ import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Mais cobra uma vez por ingrediente e reverte sem perder embalagem', () {
+    var item = ModeloDadosOpcoesPacotes.fromMap(
+        {'id': '1', 'nome': 'Arroz', 'valor_adicional_mais': '2.75'});
+    var montagem = const MontagemIngredienteCardapio(
+        nomeOriginal: 'Arroz', acao: AcaoIngredienteCardapio.mais);
+    item = MontagemCardapio.aplicar(item, montagem);
+    expect(item.valor, '2.75');
+    expect(item.montagemCardapio!.valorAdicionalMais, '2.75');
+    item = MontagemCardapio.aplicar(item, item.montagemCardapio!);
+    expect(item.valor, '2.75');
+    montagem = item.montagemCardapio!
+        .copyWith(separado: true, valorEmbalagemSeparada: '5.00');
+    item = MontagemCardapio.aplicar(item, montagem);
+    expect(item.valor, '7.75');
+    final salvo = ModeloDadosOpcoesPacotes.fromJson(item.toJson());
+    expect(salvo.montagemCardapio!.valorAdicionalMais, '2.75');
+    expect(salvo.valorAdicionalMais, '2.75');
+    for (final acao in [
+      AcaoIngredienteCardapio.normal,
+      AcaoIngredienteCardapio.pouco,
+      AcaoIngredienteCardapio.trocar
+    ]) {
+      final removido =
+          MontagemCardapio.aplicar(item, montagem.copyWith(acao: acao));
+      expect(removido.valor, '5.00');
+      expect(removido.montagemCardapio!.valorAdicionalMais, '0.00');
+    }
+    final gratuito =
+        ModeloDadosOpcoesPacotes.fromMap({'id': '2', 'nome': 'Feijão'});
+    expect(
+        MontagemCardapio.aplicar(
+                gratuito,
+                const MontagemIngredienteCardapio(
+                    nomeOriginal: 'Feijão', acao: AcaoIngredienteCardapio.mais))
+            .valor,
+        '0');
+  });
+
+  test('reabrir pedido conserva snapshot e permite Mais com preco do catalogo',
+      () {
+    final disponivel = ModeloDadosOpcoesPacotes.fromMap(
+        {'id': '1', 'nome': 'Arroz', 'valorAdicionalMais': '4.00'});
+    final normalSalvo = MontagemCardapio.iniciar([
+      ModeloDadosOpcoesPacotes.fromMap({'id': '1', 'nome': 'Arroz'})
+    ]).single;
+    final normalReaberto =
+        MontagemCardapio.iniciar([disponivel], salvos: [normalSalvo]).single;
+    final mais = MontagemCardapio.aplicar(
+        normalReaberto,
+        normalReaberto.montagemCardapio!
+            .copyWith(acao: AcaoIngredienteCardapio.mais));
+    expect(mais.valor, '4.00');
+    final antigo = ModeloDadosOpcoesPacotes.fromMap({
+      'id': '1',
+      'nome': 'MAIS Arroz',
+      'valor': '2.75',
+      'montagemCardapio': {
+        'acao': 'mais',
+        'nomeOriginal': 'Arroz',
+        'valorAdicionalMais': '2.75'
+      }
+    });
+    expect(
+        MontagemCardapio.iniciar([disponivel], salvos: [antigo]).single.valor,
+        '2.75');
+  });
+
   List<ModeloDadosOpcoesPacotes> ingredientes() => [
         ModeloDadosOpcoesPacotes(
           id: '1',

@@ -78,6 +78,12 @@ class ServicoConfigBigchef {
       dados.containsKey('mostrar_apenas_produtos_ativo_venda');
 
   bool _precisaCompletarComDesktop(Map<String, dynamic> dados) =>
+      !(dados.containsKey('aumentarfontenumeropedidoentregador') ||
+          dados.containsKey('aumentar_fonte_numero_pedido_entregador')) ||
+      !(dados.containsKey('aumentarfontetotaisentregador') ||
+          dados.containsKey('aumentar_fonte_totais_entregador')) ||
+      !(dados.containsKey('aumentarfontepagamentoentregador') ||
+          dados.containsKey('aumentar_fonte_pagamento_entregador')) ||
       !_possuiValorEmbalagemSeparada(dados) ||
       !_possuiConfiguracaoRecorrentes(dados) ||
       !_possuiFiltroProdutosPersonalizados(dados);
@@ -91,7 +97,7 @@ class ServicoConfigBigchef {
     if (baseGarcom.isEmpty) return null;
     final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
     final desktop = normalizada.replaceFirst(
-      RegExp(r'/api_restaurantes_venda/api(?:1|6|37)/'),
+      RegExp(r'/api_restaurantes_venda/api(?:1|6|37|38)/'),
       '/api_desktop/1.0.01/',
     );
     return desktop == normalizada ? null : desktop;

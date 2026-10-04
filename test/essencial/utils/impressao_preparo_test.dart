@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
@@ -446,7 +447,8 @@ void main() {
     );
   });
 
-  test('texto de impressao conserva troca e separado sem mudar descricao salva', () {
+  test('texto de impressao conserva troca e separado sem mudar descricao salva',
+      () {
     const montagem = MontagemIngredienteCardapio(
       nomeOriginal: 'Bife',
       acao: AcaoIngredienteCardapio.trocar,
@@ -457,10 +459,13 @@ void main() {
     expect(montagem.descricaoImpressao,
         'Trocar - Bife por 2x Ovo Frito - Embalar Separado');
     expect(montagem.descricao, 'TROCAR Bife POR 2x Ovo Frito (SEPARADO)');
-    expect(montagem.copyWith(acao: AcaoIngredienteCardapio.sem).descricaoImpressao,
+    expect(
+        montagem.copyWith(acao: AcaoIngredienteCardapio.sem).descricaoImpressao,
         'Sem   - Bife');
     expect(
-      montagem.copyWith(acao: AcaoIngredienteCardapio.normal).descricaoImpressao,
+      montagem
+          .copyWith(acao: AcaoIngredienteCardapio.normal)
+          .descricaoImpressao,
       'Bife - Embalar Separado',
     );
   });
@@ -694,6 +699,29 @@ void main() {
     });
 
     tearDown(Modular.destroy);
+
+    for (final computador in <String?>[null, 'CAIXA']) {
+      test('entregador envia fontes da empresa com destino $computador', () {
+        Modular.get<UsuarioProvedor>().setConfigBigChef(
+          ModeloConfigBigchef.fromMap({
+            'aumentarfontenumeropedidoentregador': 'Sim',
+            'aumentarfontetotaisentregador': 'Não',
+            'aumentarfontepagamentoentregador': 'Sim',
+          }),
+        );
+        Impressao.comprovanteDoEntregador(
+          produtos: [produto(computador: computador)],
+          numeroPedido: '499',
+          total: '50.00',
+        );
+        final mensagem = servidor.mensagens.single;
+        expect(mensagem['tipoImpressao'], '3');
+        expect(mensagem['idEmpresa'], '31');
+        expect(mensagem['aumentarfontenumeropedidoentregador'], 'Sim');
+        expect(mensagem['aumentarfontetotaisentregador'], 'Não');
+        expect(mensagem['aumentarfontepagamentoentregador'], 'Sim');
+      });
+    }
 
     test('preserva destinos validos e nao enfileira produto sem impressora',
         () async {

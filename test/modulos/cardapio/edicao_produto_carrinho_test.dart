@@ -17,6 +17,7 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/lista_tamanhos_pizza.da
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_itens_comanda.dart';
+import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:app/src/modulos/itens_recorrentes/paginas/widgets/card_carrinho_itens_recorrentes.dart';
 import 'package:app/src/modulos/itens_recorrentes/provedores/provedor_itens_recorrentes.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_editar_produto_carrinho.dart';
@@ -532,6 +533,91 @@ void main() {
     );
     expect(reaberta.valorUnitario, 50);
     expect((await reaberta.concluir()).valorVenda, '50.00');
+  });
+
+  test('editar Mais conserva historico e reverte a taxa sem duplicar separado',
+      () async {
+    ModeloOpcoesPacotes grupoMontagem(ModeloDadosOpcoesPacotes ingrediente) =>
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [ingrediente],
+        );
+    final ingrediente = ModeloDadosOpcoesPacotes(
+      id: '65',
+      nome: 'Arroz',
+      valor: '0',
+      idCategoriaCardapio: '70',
+      valorAdicionalMais: '4.00',
+    );
+    final catalogo = Modelowordprodutos(
+      id: '151',
+      nome: 'Almoço',
+      codigo: '151',
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: '45.00',
+      categoria: 'Almoço',
+      nomeCategoria: 'Almoço',
+      habilTipo: 'Pacote',
+      idCategoriaCardapio: '70',
+      ingredientes: const [],
+      opcoesPacotes: [grupoMontagem(ingrediente)],
+    );
+    final salvoAnterior = ModeloDadosOpcoesPacotes.fromMap({
+      ...ingrediente.toMap(),
+      'valorAdicionalMais': '2.75',
+    });
+    final original = Modelowordprodutos.fromMap(catalogo.toMap())
+      ..quantidade = 2
+      ..valorVenda = '52.75'
+      ..opcoesPacotesListaFinal = [
+        grupoMontagem(MontagemCardapio.aplicar(
+          salvoAnterior,
+          const MontagemIngredienteCardapio(
+              nomeOriginal: 'Arroz',
+              acao: AcaoIngredienteCardapio.mais,
+              separado: true,
+              valorEmbalagemSeparada: '5.00'),
+        ))
+      ];
+    api.respostaPersonalizada = catalogo;
+    final edicao = criar(original);
+    addTearDown(edicao.dispose);
+    await edicao.carregar(
+        configuracao:
+            ModeloConfigBigchef.fromMap({'valor_embalagem_separada': '5.00'}));
+    expect(edicao.valorUnitario, 52.75);
+    expect(edicao.total, 105.50);
+    final grupo = edicao.produto.opcoesPacotesListaFinal
+        .singleWhere((opcao) => opcao.tipo == 8);
+    final atual = grupo.dados!.single;
+    expect(atual.valorAdicionalMais, '4.00');
+    expect(atual.montagemCardapio!.valorAdicionalMais, '2.75');
+    grupo.dados = [
+      MontagemCardapio.aplicar(
+          atual,
+          atual.montagemCardapio!
+              .copyWith(acao: AcaoIngredienteCardapio.normal))
+    ];
+    edicao.produto.calcularValorVenda(false, '0');
+    expect(edicao.valorUnitario, 50);
+    expect(edicao.total, 100);
+    grupo.dados = [
+      MontagemCardapio.aplicar(
+          grupo.dados!.single,
+          grupo.dados!.single.montagemCardapio!
+              .copyWith(acao: AcaoIngredienteCardapio.mais))
+    ];
+    edicao.produto.calcularValorVenda(false, '0');
+    expect(edicao.valorUnitario, 54);
+    expect(edicao.total, 108);
+    expect((await edicao.concluir()).valorVenda, '54.00');
   });
 
   test('nao aplica tarifa de separado fora de produto vinculado ao cardapio',

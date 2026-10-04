@@ -569,42 +569,20 @@ class _CardProdutoAcompanharState extends State<CardProdutoAcompanhar>
                           itemBuilder: (context, index) {
                             final dado = e.dados![index];
                             final montagemCardapio = _grupoMontagemCardapio(e);
-                            final detalhe = montagemCardapio
-                                ? dado.montagemCardapio?.detalheVisualizacao
-                                : null;
-
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        montagemCardapio
-                                            ? dado.montagemCardapio
-                                                    ?.nomeOriginal ??
-                                                dado.nome
-                                            : dado.quantimaximaselecao != null
-                                                ? '(${dado.quantimaximaselecao}) ${dado.nome}'
-                                                : '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
-                                        style: const TextStyle(fontSize: 15),
-                                      ),
-                                      if (detalhe != null) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          detalhe,
-                                          style: TextStyle(
-                                            fontSize: 12.5,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                  child: Text(
+                                    montagemCardapio
+                                        ? (dado.alteracaoMontagemCardapio ??
+                                                    dado.montagemCardapio)
+                                                ?.descricaoVisualizacao ??
+                                            dado.nome
+                                        : dado.quantimaximaselecao != null
+                                            ? '(${dado.quantimaximaselecao}) ${dado.nome}'
+                                            : '${dado.quantidade != null ? '${dado.quantidade}x ' : ''}${dado.nome}',
+                                    style: const TextStyle(fontSize: 15),
                                   ),
                                 ),
                                 const SizedBox(width: 8),

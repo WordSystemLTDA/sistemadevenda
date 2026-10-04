@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
@@ -928,7 +929,7 @@ void main() {
     expect(pedido.texto('numeroCliente'), '5');
     expect(pedido.texto('bairroCliente'), 'Centro');
   });
-  test('comprovante envia configuracao do numero operacional ao servidor', () {
+  test('comprovante envia configuracao do numero e das fontes ao servidor', () {
     final s = ServicoDeliveryTeste();
     final mensagens = ImpressaoDelivery.comprovantes(
       s,
@@ -941,6 +942,9 @@ void main() {
         imprimirnumerooperacionalpreparo: 'Sim',
         numerodopedidodestaquecomprovante: 'Sim',
         numerodopedidodestaquepreparo: 'Não',
+        aumentarfontenumeropedidoentregador: 'Sim',
+        aumentarfontetotaisentregador: 'Não',
+        aumentarfontepagamentoentregador: 'Sim',
       ),
     );
     final json = jsonDecode(mensagens.single) as Map;
@@ -950,6 +954,27 @@ void main() {
     expect(json['imprimirnumerooperacionalpreparo'], 'Sim');
     expect(json['numerodopedidodestaquecomprovante'], 'Sim');
     expect(json['numerodopedidodestaquepreparo'], 'Não');
+    expect(json['aumentarfontenumeropedidoentregador'], 'Sim');
+    expect(json['aumentarfontetotaisentregador'], 'Não');
+    expect(json['aumentarfontepagamentoentregador'], 'Sim');
+    final socket = ModeloRetornoSocket.fromMap(Map<String, dynamic>.from(json));
+    expect(socket.toMap()['aumentarfontenumeropedidoentregador'], 'Sim');
+    expect(socket.toMap()['aumentarfontetotaisentregador'], 'Não');
+    expect(socket.toMap()['aumentarfontepagamentoentregador'], 'Sim');
+  });
+  test('fontes do comprovante iniciam desativadas em configuracao antiga', () {
+    final config = ConfigDelivery.fromMap({});
+    expect(config.aumentarfontenumeropedidoentregador, 'Não');
+    expect(config.aumentarfontetotaisentregador, 'Não');
+    expect(config.aumentarfontepagamentoentregador, 'Não');
+    final outraConfig = ConfigDelivery.fromMap({
+      'aumentar_fonte_numero_pedido_entregador': 'Sim',
+      'aumentar_fonte_totais_entregador': 'Sim',
+      'aumentar_fonte_pagamento_entregador': 'Não',
+    });
+    expect(outraConfig.aumentarfontenumeropedidoentregador, 'Sim');
+    expect(outraConfig.aumentarfontetotaisentregador, 'Sim');
+    expect(outraConfig.aumentarfontepagamentoentregador, 'Não');
   });
   test('comprovante do entregador preserva detalhes quando unifica preparo',
       () {
