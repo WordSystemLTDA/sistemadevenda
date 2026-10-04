@@ -933,7 +933,10 @@ void main() {
     final s = ServicoDeliveryTeste();
     final mensagens = ImpressaoDelivery.comprovantes(
       s,
-      pedidoTeste(),
+      pedidoTeste(campos: {
+        'numeroPedido': '233',
+        'nomeCliente': 'Bruno Masson 3 De 8 8'
+      }),
       [impressao.produto(computador: 'CAIXA')],
       config: const ConfigDelivery(
         ativarnumerooperacionalpedido: 'Sim',
@@ -948,6 +951,8 @@ void main() {
       ),
     );
     final json = jsonDecode(mensagens.single) as Map;
+    expect(json['numeroPedido'], '233');
+    expect(json['nomeCliente'], 'Bruno Masson 3 De 8 8');
     expect(json['ativarnumerooperacionalpedido'], 'Sim');
     expect(json['imprimirnumerooperacionalentregador'], 'Sim');
     expect(json['imprimirnumerooperacionalconsumacao'], 'Não');
@@ -961,6 +966,9 @@ void main() {
     expect(socket.toMap()['aumentarfontenumeropedidoentregador'], 'Sim');
     expect(socket.toMap()['aumentarfontetotaisentregador'], 'Não');
     expect(socket.toMap()['aumentarfontepagamentoentregador'], 'Sim');
+    expect(socket.toMap()['ativarnumerooperacionalpedido'], 'Sim');
+    expect(socket.toMap()['imprimirnumerooperacionalentregador'], 'Sim');
+    expect(socket.toMap()['numerodopedidodestaquecomprovante'], 'Sim');
   });
   test('fontes do comprovante iniciam desativadas em configuracao antiga', () {
     final config = ConfigDelivery.fromMap({});

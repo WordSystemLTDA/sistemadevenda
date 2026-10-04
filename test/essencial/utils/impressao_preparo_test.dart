@@ -701,17 +701,23 @@ void main() {
     tearDown(Modular.destroy);
 
     for (final computador in <String?>[null, 'CAIXA']) {
-      test('entregador envia fontes da empresa com destino $computador', () {
+      test(
+          'entregador envia numero, cliente e preferencias com destino $computador',
+          () {
         Modular.get<UsuarioProvedor>().setConfigBigChef(
           ModeloConfigBigchef.fromMap({
             'aumentarfontenumeropedidoentregador': 'Sim',
             'aumentarfontetotaisentregador': 'Não',
             'aumentarfontepagamentoentregador': 'Sim',
+            'ativarnumerooperacionalpedido': 'Sim',
+            'imprimirnumerooperacionalentregador': 'Sim',
+            'numerodopedidodestaquecomprovante': 'Sim',
           }),
         );
         Impressao.comprovanteDoEntregador(
           produtos: [produto(computador: computador)],
           numeroPedido: '499',
+          nomeCliente: 'Bruno Masson 3 De 8 8',
           total: '50.00',
         );
         final mensagem = servidor.mensagens.single;
@@ -720,6 +726,11 @@ void main() {
         expect(mensagem['aumentarfontenumeropedidoentregador'], 'Sim');
         expect(mensagem['aumentarfontetotaisentregador'], 'Não');
         expect(mensagem['aumentarfontepagamentoentregador'], 'Sim');
+        expect(mensagem['ativarnumerooperacionalpedido'], 'Sim');
+        expect(mensagem['imprimirnumerooperacionalentregador'], 'Sim');
+        expect(mensagem['numerodopedidodestaquecomprovante'], 'Sim');
+        expect(mensagem['numeroPedido'], '499');
+        expect(mensagem['nomeCliente'], 'Bruno Masson 3 De 8 8');
       });
     }
 

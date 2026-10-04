@@ -274,7 +274,7 @@ class Impressao {
     // ).call();
   }
 
-  static Map<String, String> _fontesEntregador(UsuarioProvedor usuario) {
+  static Map<String, String> _preferenciasEntregador(UsuarioProvedor usuario) {
     final config = usuario.configbigchef;
     if (config == null) return const {};
     return {
@@ -283,6 +283,11 @@ class Impressao {
       'aumentarfontetotaisentregador': config.aumentarfontetotaisentregador,
       'aumentarfontepagamentoentregador':
           config.aumentarfontepagamentoentregador,
+      'ativarnumerooperacionalpedido': config.ativarnumerooperacionalpedido,
+      'imprimirnumerooperacionalentregador':
+          config.imprimirnumerooperacionalentregador,
+      'numerodopedidodestaquecomprovante':
+          config.numerodopedidodestaquecomprovante,
     };
   }
 
@@ -328,7 +333,7 @@ class Impressao {
             'idRequisicao': _gerarIdentificadorRequisicao(),
             'tipo': TipoCardapio.delivery.nome,
             'tipoImpressao': '3',
-            ..._fontesEntregador(usuario),
+            ..._preferenciasEntregador(usuario),
             'nomedopc': grupo.key,
             'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
             'produtos': grupo.value.map((e) => e.toMap()).toList(),
@@ -364,7 +369,7 @@ class Impressao {
         'idRequisicao': _gerarIdentificadorRequisicao(),
         'tipo': TipoCardapio.delivery.nome,
         'tipoImpressao': '3',
-        ..._fontesEntregador(usuario),
+        ..._preferenciasEntregador(usuario),
         'nomeConexao': usuario.usuario?.nome ?? 'Sem Nome',
         'produtos': produtos.map((e) => e.toMap()).toList(),
         'nomelancamento': nomelancamento.map((e) => e.toMap()).toList(),
