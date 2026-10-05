@@ -1,3 +1,4 @@
+import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +13,7 @@ class FiltrosDelivery extends StatefulWidget {
 class _FiltrosDeliveryState extends State<FiltrosDelivery> {
   late DateTimeRange _periodo = widget.provedor.periodo;
   late String _tipo = widget.provedor.tipo;
+  late OrdenacaoPedidosDelivery _ordenacao = widget.provedor.ordenacao;
   late String _inicio = widget.provedor.horaInicio,
       _fim = widget.provedor.horaFim;
   Future<void> _hora(bool inicio) async {
@@ -99,6 +101,27 @@ class _FiltrosDeliveryState extends State<FiltrosDelivery> {
                         DropdownMenuItem(value: '3', child: Text('No local'))
                       ],
                       onChanged: (v) => setState(() => _tipo = v!)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<OrdenacaoPedidosDelivery>(
+                    key: const ValueKey('ordenacao-delivery'),
+                    initialValue: _ordenacao,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Ordenação',
+                      prefixIcon: Icon(Icons.sort_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final opcao in OrdenacaoPedidosDelivery.values)
+                        DropdownMenuItem(
+                          value: opcao,
+                          child: Text(opcao.rotulo),
+                        ),
+                    ],
+                    onChanged: (valor) {
+                      if (valor != null) setState(() => _ordenacao = valor);
+                    },
+                  ),
                 ])),
         actions: [
           TextButton(
@@ -110,6 +133,7 @@ class _FiltrosDeliveryState extends State<FiltrosDelivery> {
                 widget.provedor.tipo = _tipo;
                 widget.provedor.horaInicio = _inicio;
                 widget.provedor.horaFim = _fim;
+                widget.provedor.ordenacao = _ordenacao;
                 Navigator.pop(context, true);
               },
               child: const Text('Aplicar'))

@@ -57,6 +57,14 @@ bool _pedidoOperacional(dynamic pedido) {
   return !{'modelo recorrente', 'rascunho aplicativo'}.contains(status);
 }
 
+enum OrdenacaoPedidosDelivery {
+  maisRecente('Mais recente'),
+  maisAntigo('Mais antigo');
+
+  const OrdenacaoPedidosDelivery(this.rotulo);
+  final String rotulo;
+}
+
 class EtapaDelivery {
   final String id, nome, botao, impressao, cor;
   final bool selecionarEntregador;

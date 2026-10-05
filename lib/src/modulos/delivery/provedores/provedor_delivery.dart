@@ -11,6 +11,15 @@ class ProvedorDelivery extends ChangeNotifier {
   ConfigDelivery? config;
   bool carregando = false;
   String? erro;
+  OrdenacaoPedidosDelivery _ordenacao = OrdenacaoPedidosDelivery.maisRecente;
+  OrdenacaoPedidosDelivery get ordenacao => _ordenacao;
+  set ordenacao(OrdenacaoPedidosDelivery valor) {
+    if (_ordenacao == valor) return;
+    _ordenacao = valor;
+    etapas = _ordenarEtapas(etapas);
+    notifyListeners();
+  }
+
   String pesquisa = '',
       tipo = '0',
       horaInicio = '05:00:00',
@@ -43,7 +52,7 @@ class ProvedorDelivery extends ChangeNotifier {
             pesquisa: pesquisa,
             tipo: tipo);
         if (_descartado || consulta != _consulta) return;
-        etapas = _mesclarPedidosRecentes(lista);
+        etapas = _ordenarEtapas(_mesclarPedidosRecentes(lista));
         // Os rascunhos precisam continuar acessiveis mesmo se a configuracao
         // ainda nao foi preparada. Operacoes remotas consultam-na antes de agir.
         final configuracao = await configuracaoFutura;
@@ -71,7 +80,7 @@ class ProvedorDelivery extends ChangeNotifier {
       {Duration validade = const Duration(seconds: 45)}) {
     _pedidosRecentes[pedido.id] =
         (pedido: pedido, ate: DateTime.now().add(validade));
-    etapas = _mesclarPedidosRecentes(etapas);
+    etapas = _ordenarEtapas(_mesclarPedidosRecentes(etapas));
     notifyListeners();
   }
 
@@ -89,6 +98,41 @@ class ProvedorDelivery extends ChangeNotifier {
         ),
     ];
     notifyListeners();
+  }
+
+  List<EtapaDelivery> _ordenarEtapas(List<EtapaDelivery> origem) => [
+        for (final etapa in origem)
+          EtapaDelivery.comPedidos(
+            etapa,
+            [...etapa.pedidos]..sort(_compararPedidos),
+          ),
+      ];
+
+  int _compararPedidos(PedidoDelivery a, PedidoDelivery b) {
+    final aberturaA = a.abertura;
+    final aberturaB = b.abertura;
+    // Datas ausentes ficam ao fim; códigos desempatam horários iguais.
+    if (aberturaA == null && aberturaB != null) return 1;
+    if (aberturaA != null && aberturaB == null) return -1;
+    var comparacao = aberturaA != null && aberturaB != null
+        ? aberturaA.compareTo(aberturaB)
+        : 0;
+    if (comparacao == 0) {
+      final idA = int.tryParse(a.id);
+      final idB = int.tryParse(b.id);
+      if (idA != null && idB != null) {
+        comparacao = idA.compareTo(idB);
+      } else if (idA != null) {
+        comparacao = -1;
+      } else if (idB != null) {
+        comparacao = 1;
+      } else {
+        comparacao = a.id.compareTo(b.id);
+      }
+    }
+    return _ordenacao == OrdenacaoPedidosDelivery.maisRecente
+        ? -comparacao
+        : comparacao;
   }
 
   List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {

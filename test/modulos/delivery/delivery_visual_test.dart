@@ -27,24 +27,28 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
       pedidoTeste(campos: {
         'id': '101',
         'numeroPedido': '101',
+        'dataAbertura': '2026-10-04T12:00:00',
         'idopcoescarrossel': '1',
         'quantidadeprodutos': '1',
       }),
       pedidoTeste(campos: {
         'id': '102',
         'numeroPedido': '102',
+        'dataAbertura': '2026-10-04T11:00:00',
         'idopcoescarrossel': '1',
         'quantidadeprodutos': '1',
       }),
       pedidoTeste(campos: {
         'id': '103',
         'numeroPedido': '103',
+        'dataAbertura': '2026-10-04T10:00:00',
         'idopcoescarrossel': '1',
         'quantidadeprodutos': '0',
       }),
       pedidoTeste(campos: {
         'id': 'delivery-local:104',
         'numeroPedido': '104',
+        'dataAbertura': '2026-10-04T09:00:00',
         'idopcoescarrossel': '1',
         'quantidadeprodutos': '1',
       }),
@@ -489,7 +493,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
       expect(p.pesquisa, 'Bruno');
-      await tester.tap(find.byTooltip('Filtrar período e entrega'));
+      await tester.tap(find.byTooltip('Filtrar e ordenar pedidos'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'delivery_filtros_$nome');

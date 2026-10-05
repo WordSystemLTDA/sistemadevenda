@@ -829,7 +829,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                     ),
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
-                        tooltip: 'Filtrar período e entrega',
+                        tooltip: 'Filtrar e ordenar pedidos',
                         icon: const Icon(Icons.tune),
                         onPressed: _ocupado == null && !_processandoLote
                             ? () async {
