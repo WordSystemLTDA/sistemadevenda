@@ -43,16 +43,19 @@ class ServicoClientes implements RepositorioClientes {
   Future<List<ClienteCadastro>> listarClientes(String pesquisa) async {
     final resposta = await _delivery.consultar(
       'comandas/listar_clientes.php',
-      {'pesquisa': pesquisa.trim()},
+      {'pesquisa': pesquisa.trim(), 'ordenacao': 'recentes'},
     );
     if (resposta is! List) {
       throw StateError('Não foi possível consultar os clientes.');
     }
-    return [
+    final clientes = [
       for (final item in resposta)
         if (item is Map)
           ClienteCadastro.fromMap(Map<String, dynamic>.from(item)),
     ];
+    clientes.sort(
+        (a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
+    return clientes;
   }
 
   @override

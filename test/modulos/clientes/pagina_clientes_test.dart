@@ -6,9 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RepositorioClientesTeste implements RepositorioClientes {
-  _RepositorioClientesTeste({this.enderecos});
+  _RepositorioClientesTeste({
+    this.enderecos,
+    this.clientes,
+    this.omitirClienteCadastrado = false,
+  });
 
   final List<EnderecoClienteCadastro>? enderecos;
+  final List<ClienteCadastro>? clientes;
+  ClienteCadastro? clienteCadastrado;
+  bool omitirClienteCadastrado;
   final _servicoEndereco = _ServicoEnderecoClientesTeste();
   String ultimaPesquisa = '';
   int cadastros = 0;
@@ -23,13 +30,18 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   Future<List<ClienteCadastro>> listarClientes(String pesquisa) async {
     ultimaPesquisa = pesquisa;
     return [
-      ClienteCadastro.fromMap({
-        'id': '10',
-        'nome_puro': 'Bruno Masson',
-        'celular': '(44) 99921-3336',
-        'email': 'bruno@example.com',
-        'obs': '',
-      }),
+      ...(clientes ??
+          [
+            ClienteCadastro.fromMap({
+              'id': '10',
+              'nome_puro': 'Bruno Masson',
+              'celular': '(44) 99921-3336',
+              'email': 'bruno@example.com',
+              'obs': '',
+            }),
+          ]),
+      if (clienteCadastrado != null && !omitirClienteCadastrado)
+        clienteCadastrado!,
     ];
   }
 
@@ -60,6 +72,13 @@ class _RepositorioClientesTeste implements RepositorioClientes {
     String observacao,
   ) async {
     cadastros++;
+    clienteCadastrado = ClienteCadastro.fromMap({
+      'id': '11',
+      'nome_puro': nome,
+      'celular': celular,
+      'email': email,
+      'obs': observacao,
+    });
     return (
       sucesso: true,
       idcliente: '11',
@@ -102,7 +121,19 @@ class _ServicoEnderecoClientesTeste extends Fake implements ServicoDelivery {
 
 class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
   final gravacoes = <(String, Map<String, dynamic>)>[];
+  final consultas = <(String, Map<String, dynamic>)>[];
   String? idClienteResposta;
+
+  @override
+  Future<dynamic> consultar(String rota,
+      [Map<String, dynamic> campos = const {}]) async {
+    consultas.add((rota, campos));
+    return [
+      {'id': '9', 'nome_puro': 'Ana'},
+      {'id': '100', 'nome_puro': 'Zeca'},
+      {'id': '10', 'nome_puro': 'Bruno'},
+    ];
+  }
 
   @override
   Future<Map<String, dynamic>> salvar(
@@ -243,9 +274,16 @@ void main() {
     expect(repositorio.ultimaPesquisa, isEmpty);
   });
 
-  testWidgets('cadastro limpa o filtro e recarrega todos os clientes',
+  testWidgets(
+      'cadastro mostra cliente salvo primeiro e volta ao topo sem filtro',
       (tester) async {
-    final repositorio = _RepositorioClientesTeste();
+    final repositorio = _RepositorioClientesTeste(
+      omitirClienteCadastrado: true,
+      clientes: [
+        for (var id = 20; id < 40; id++)
+          ClienteCadastro.fromMap({'id': '$id', 'nome_puro': 'Cliente $id'}),
+      ],
+    );
     tester.view.physicalSize = const Size(600, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -262,6 +300,11 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 450));
     await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ListView>(find.byType(ListView)).controller!.offset,
+        greaterThan(0));
 
     await tester.tap(find.byKey(const ValueKey('novo-cliente-flutuante')));
     await tester.pumpAndSettle();
@@ -286,6 +329,34 @@ void main() {
     );
     expect(pesquisa.controller?.text, isEmpty);
     expect(repositorio.ultimaPesquisa, isEmpty);
+    final lista = tester.widget<ListView>(find.byType(ListView));
+    expect(lista.controller!.offset, 0);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('cliente-11'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-20'))).dy),
+    );
+
+    repositorio.omitirClienteCadastrado = false;
+    await tester.tap(find.byTooltip('Atualizar clientes'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('cliente-11')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('cliente-11'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-20'))).dy),
+    );
+  });
+
+  test('consulta prioriza os clientes recentes e ordena os ids numericamente',
+      () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    final repositorio = ServicoClientes(delivery);
+
+    final clientes = await repositorio.listarClientes('  cliente  ');
+
+    expect(delivery.consultas.single.$1, 'comandas/listar_clientes.php');
+    expect(delivery.consultas.single.$2,
+        {'pesquisa': 'cliente', 'ordenacao': 'recentes'});
+    expect(clientes.map((cliente) => cliente.id), ['100', '10', '9']);
   });
 
   test('servico confirma a API e envia operacao explicita ao editar', () async {

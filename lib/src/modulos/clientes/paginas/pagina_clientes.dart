@@ -18,6 +18,7 @@ class PaginaClientes extends StatefulWidget {
 
 class _PaginaClientesState extends State<PaginaClientes> {
   final _pesquisaController = TextEditingController();
+  final _listaController = ScrollController();
   late final RepositorioClientes _repositorio;
   Timer? _debounce;
   List<ClienteCadastro> _clientes = const [];
@@ -26,6 +27,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
   final Map<String, String> _errosEnderecos = {};
   bool _carregando = true;
   String? _erro;
+  ClienteCadastro? _clienteRecemCadastrado;
   int _versaoConsulta = 0;
 
   @override
@@ -39,6 +41,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
   void dispose() {
     _debounce?.cancel();
     _pesquisaController.dispose();
+    _listaController.dispose();
     super.dispose();
   }
 
@@ -58,15 +61,24 @@ class _PaginaClientesState extends State<PaginaClientes> {
       final clientes =
           await _repositorio.listarClientes(_pesquisaController.text);
       if (!mounted || versao != _versaoConsulta) return;
-      final ids = clientes.map((cliente) => cliente.id).toSet();
+      final recente = _clienteRecemCadastrado;
+      final clientesOrdenados = [
+        ...clientes.where((cliente) => cliente.id == recente?.id),
+        if (recente != null &&
+            _pesquisaController.text.trim().isEmpty &&
+            !clientes.any((cliente) => cliente.id == recente.id))
+          recente,
+        ...clientes.where((cliente) => cliente.id != recente?.id),
+      ];
+      final ids = clientesOrdenados.map((cliente) => cliente.id).toSet();
       setState(() {
-        _clientes = clientes;
+        _clientes = clientesOrdenados;
         _enderecos.removeWhere((id, _) => !ids.contains(id));
         _errosEnderecos.removeWhere((id, _) => !ids.contains(id));
         _carregandoEnderecos.removeWhere((id) => !ids.contains(id));
         _carregando = false;
       });
-      for (final cliente in clientes) {
+      for (final cliente in clientesOrdenados) {
         unawaited(_carregarEnderecos(cliente.id, versao: versao));
       }
     } catch (erro) {
@@ -147,7 +159,20 @@ class _PaginaClientesState extends State<PaginaClientes> {
       ),
     );
     if (!mounted || resultado == null) return;
+    if (resultado['idcliente']?.toString().trim().isNotEmpty == true) {
+      _clienteRecemCadastrado = ClienteCadastro.fromMap({
+        ...resultado,
+        'id': resultado['idcliente'],
+        'nome_puro': resultado['nomecliente'],
+      });
+    }
     await _recarregarTodosClientes();
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _listaController.hasClients) {
+        _listaController.jumpTo(0);
+      }
+    });
   }
 
   Future<void> _editarCliente(ClienteCadastro cliente) async {
@@ -208,6 +233,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: MediaQuery.sizeOf(context).width < 620
           ? FloatingActionButton.extended(
               key: const ValueKey('novo-cliente-flutuante'),
@@ -268,6 +294,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
     return RefreshIndicator(
       onRefresh: _carregarClientes,
       child: ListView.separated(
+        controller: _listaController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 104),
         itemCount: _clientes.length,

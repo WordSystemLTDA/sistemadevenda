@@ -10,7 +10,8 @@
       "type": "dart",
       "cwd": "${workspaceFolder}",
       "program": "lib/main.dart",
-      //"deviceId": "00008150-000634503488401C"
+      "deviceId": "43F51EC6-173E-4579-BD42-43AE429711BD",
+      "flutterMode": "debug"
     },
     {
       "name": "app (profile mode)",
