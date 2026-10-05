@@ -8,12 +8,23 @@ typedef ResultadoSalvarCliente = ({
   String mensagem,
 });
 
+typedef VerificacaoExclusaoCliente = ({
+  bool podeExcluir,
+  bool vendas,
+  bool contasReceber,
+  String mensagem,
+});
+
 abstract class RepositorioClientes {
   ServicoDelivery get servicoEndereco;
 
   Future<List<ClienteCadastro>> listarClientes(String pesquisa);
 
   Future<List<EnderecoClienteCadastro>> listarEnderecos(String idCliente);
+
+  Future<VerificacaoExclusaoCliente> verificarExclusaoCliente(String id);
+
+  Future<String> excluirCliente(String id);
 
   Future<ResultadoSalvarCliente> cadastrarCliente(
     String nome,
@@ -73,6 +84,56 @@ class ServicoClientes implements RepositorioClientes {
         if (item is Map)
           EnderecoClienteCadastro.fromMap(Map<String, dynamic>.from(item)),
     ];
+  }
+
+  String _idParaExclusao(String id) {
+    final normalizado = id.trim();
+    if ((int.tryParse(normalizado) ?? 0) <= 0) {
+      throw StateError('Cliente não identificado para exclusão.');
+    }
+    return normalizado;
+  }
+
+  @override
+  Future<VerificacaoExclusaoCliente> verificarExclusaoCliente(String id) async {
+    final idNormalizado = _idParaExclusao(id);
+    final resposta = await _delivery.salvar('comandas/excluir_cliente.php', {
+      'acao': 'consultar',
+      'id': idNormalizado,
+    });
+    final vendas = resposta['vendas'];
+    final contas = resposta['contas_receber'];
+    final podeExcluir = resposta['pode_excluir'];
+    // Respostas incompletas ou contraditórias não liberam a exclusão.
+    if (resposta['operacao'] != 'consulta_exclusao_cliente' ||
+        resposta['idcliente']?.toString() != idNormalizado ||
+        vendas is! bool ||
+        contas is! bool ||
+        podeExcluir is! bool ||
+        podeExcluir != (!vendas && !contas)) {
+      throw StateError('O servidor não confirmou os vínculos do cliente.');
+    }
+    return (
+      podeExcluir: podeExcluir,
+      vendas: vendas,
+      contasReceber: contas,
+      mensagem: resposta['mensagem']?.toString() ??
+          'Não foi possível verificar os vínculos do cliente.',
+    );
+  }
+
+  @override
+  Future<String> excluirCliente(String id) async {
+    final idNormalizado = _idParaExclusao(id);
+    final resposta = await _delivery.salvar('comandas/excluir_cliente.php', {
+      'acao': 'excluir',
+      'id': idNormalizado,
+    });
+    if (resposta['operacao'] != 'cliente_excluido' ||
+        resposta['idcliente']?.toString() != idNormalizado) {
+      throw StateError('O servidor não confirmou a exclusão do cliente.');
+    }
+    return resposta['mensagem']?.toString() ?? 'Cliente excluído com sucesso.';
   }
 
   @override

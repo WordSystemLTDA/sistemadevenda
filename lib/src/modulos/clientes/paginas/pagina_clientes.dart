@@ -25,6 +25,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
   final Map<String, List<EnderecoClienteCadastro>> _enderecos = {};
   final Set<String> _carregandoEnderecos = {};
   final Map<String, String> _errosEnderecos = {};
+  final Set<String> _clientesEmExclusao = {};
   bool _carregando = true;
   String? _erro;
   ClienteCadastro? _clienteRecemCadastrado;
@@ -217,6 +218,89 @@ class _PaginaClientesState extends State<PaginaClientes> {
     await _carregarEnderecos(cliente.id);
   }
 
+  Future<void> _avisoExclusao(String titulo, String mensagem) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(titulo),
+        content: Text(mensagem),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Entendi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _excluirCliente(ClienteCadastro cliente) async {
+    if (_clientesEmExclusao.contains(cliente.id)) return;
+    setState(() => _clientesEmExclusao.add(cliente.id));
+    try {
+      // A consulta informa os vínculos antes de oferecer a confirmação.
+      final verificacao =
+          await _repositorio.verificarExclusaoCliente(cliente.id);
+      if (!mounted) return;
+      if (!verificacao.podeExcluir) {
+        await _avisoExclusao('Exclusão bloqueada', verificacao.mensagem);
+        return;
+      }
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          final cs = Theme.of(context).colorScheme;
+          return AlertDialog(
+            title: const Text('Excluir cliente?'),
+            content: Text(
+              'Deseja excluir "${cliente.nome}"? O cadastro e seus endereços serão excluídos.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                key: const ValueKey('confirmar-exclusao-cliente'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: cs.error,
+                  foregroundColor: cs.onError,
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Excluir'),
+              ),
+            ],
+          );
+        },
+      );
+      if (!mounted || confirmar != true) return;
+      final mensagem = await _repositorio.excluirCliente(cliente.id);
+      if (!mounted) return;
+      ++_versaoConsulta;
+      setState(() {
+        _clientes = _clientes.where((item) => item.id != cliente.id).toList();
+        if (_clienteRecemCadastrado?.id == cliente.id) {
+          _clienteRecemCadastrado = null;
+        }
+        _enderecos.remove(cliente.id);
+        _errosEnderecos.remove(cliente.id);
+        _carregandoEnderecos.remove(cliente.id);
+      });
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensagem)));
+      await _carregarClientes();
+    } catch (erro) {
+      if (!mounted) return;
+      await _avisoExclusao(
+        'Não foi possível excluir',
+        _mensagemErro(erro,
+            'Não foi possível verificar os vínculos ou excluir o cliente. Verifique a conexão e tente novamente.'),
+      );
+    } finally {
+      if (mounted) setState(() => _clientesEmExclusao.remove(cliente.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -306,7 +390,9 @@ class _PaginaClientesState extends State<PaginaClientes> {
             enderecos: _enderecos[cliente.id] ?? const [],
             carregandoEnderecos: _carregandoEnderecos.contains(cliente.id),
             erroEnderecos: _errosEnderecos[cliente.id],
+            excluindoCliente: _clientesEmExclusao.contains(cliente.id),
             onEditarCliente: () => _editarCliente(cliente),
+            onExcluirCliente: () => _excluirCliente(cliente),
             onNovoEndereco: () => _abrirEndereco(cliente),
             onEditarEndereco: (endereco) => _abrirEndereco(cliente, endereco),
             onTentarEnderecos: () => _carregarEnderecos(cliente.id),
@@ -419,7 +505,9 @@ class _CartaoCliente extends StatelessWidget {
     required this.enderecos,
     required this.carregandoEnderecos,
     required this.erroEnderecos,
+    required this.excluindoCliente,
     required this.onEditarCliente,
+    required this.onExcluirCliente,
     required this.onNovoEndereco,
     required this.onEditarEndereco,
     required this.onTentarEnderecos,
@@ -429,7 +517,9 @@ class _CartaoCliente extends StatelessWidget {
   final List<EnderecoClienteCadastro> enderecos;
   final bool carregandoEnderecos;
   final String? erroEnderecos;
+  final bool excluindoCliente;
   final VoidCallback onEditarCliente;
+  final VoidCallback onExcluirCliente;
   final VoidCallback onNovoEndereco;
   final ValueChanged<EnderecoClienteCadastro> onEditarEndereco;
   final VoidCallback onTentarEnderecos;
@@ -503,8 +593,25 @@ class _CartaoCliente extends StatelessWidget {
                 IconButton.filledTonal(
                   key: ValueKey('editar-cliente-${cliente.id}'),
                   tooltip: 'Editar nome e celular',
-                  onPressed: onEditarCliente,
+                  onPressed: excluindoCliente ? null : onEditarCliente,
                   icon: const Icon(Icons.edit_outlined),
+                ),
+                const SizedBox(width: 4),
+                IconButton.filledTonal(
+                  key: ValueKey('excluir-cliente-${cliente.id}'),
+                  tooltip: 'Excluir cliente',
+                  style: IconButton.styleFrom(
+                    backgroundColor: cs.errorContainer,
+                    foregroundColor: cs.onErrorContainer,
+                  ),
+                  onPressed: excluindoCliente ? null : onExcluirCliente,
+                  icon: excluindoCliente
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.delete_outline_rounded),
                 ),
               ],
             ),
@@ -522,7 +629,7 @@ class _CartaoCliente extends StatelessWidget {
               ),
               TextButton.icon(
                 key: ValueKey('novo-endereco-${cliente.id}'),
-                onPressed: onNovoEndereco,
+                onPressed: excluindoCliente ? null : onNovoEndereco,
                 icon: const Icon(Icons.add_location_alt_outlined, size: 19),
                 label: const Text('Adicionar'),
               ),

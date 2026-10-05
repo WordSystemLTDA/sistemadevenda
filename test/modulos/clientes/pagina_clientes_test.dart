@@ -22,6 +22,12 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   int edicoes = 0;
   String? ultimoIdEditado;
   bool falharEdicao = false;
+  bool vendasVinculadas = false;
+  bool contasVinculadas = false;
+  bool falharVerificacao = false;
+  String? erroAoExcluir;
+  int verificacoes = 0;
+  final excluidos = <String>[];
 
   @override
   ServicoDelivery get servicoEndereco => _servicoEndereco;
@@ -42,7 +48,32 @@ class _RepositorioClientesTeste implements RepositorioClientes {
           ]),
       if (clienteCadastrado != null && !omitirClienteCadastrado)
         clienteCadastrado!,
+    ].where((cliente) => !excluidos.contains(cliente.id)).toList();
+  }
+
+  @override
+  Future<VerificacaoExclusaoCliente> verificarExclusaoCliente(String id) async {
+    verificacoes++;
+    if (falharVerificacao) throw Exception('Sem conexão');
+    final motivos = [
+      if (vendasVinculadas) 'vendas',
+      if (contasVinculadas) 'contas a receber',
     ];
+    return (
+      podeExcluir: motivos.isEmpty,
+      vendas: vendasVinculadas,
+      contasReceber: contasVinculadas,
+      mensagem: motivos.isEmpty
+          ? 'Sem vínculos'
+          : 'Este cliente possui ${motivos.join(' e ')} vinculadas e não pode ser excluído.',
+    );
+  }
+
+  @override
+  Future<String> excluirCliente(String id) async {
+    if (erroAoExcluir != null) throw StateError(erroAoExcluir!);
+    excluidos.add(id);
+    return 'Cliente excluído com sucesso.';
   }
 
   @override
@@ -123,6 +154,7 @@ class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
   final gravacoes = <(String, Map<String, dynamic>)>[];
   final consultas = <(String, Map<String, dynamic>)>[];
   String? idClienteResposta;
+  Map<String, dynamic>? respostaExclusao;
 
   @override
   Future<dynamic> consultar(String rota,
@@ -139,6 +171,20 @@ class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     gravacoes.add((rota, campos));
+    if (rota == 'comandas/excluir_cliente.php') {
+      return respostaExclusao ??
+          {
+            'sucesso': true,
+            'operacao': campos['acao'] == 'consultar'
+                ? 'consulta_exclusao_cliente'
+                : 'cliente_excluido',
+            'idcliente': campos['id'],
+            'pode_excluir': true,
+            'vendas': false,
+            'contas_receber': false,
+            'mensagem': 'Confirmado',
+          };
+    }
     if (campos['acao'] == 'verificar_edicao_cliente') {
       return {
         'sucesso': true,
@@ -152,6 +198,12 @@ class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
       if (campos['acao'] == 'editar') 'operacao': 'cliente_editado',
     };
   }
+}
+
+Future<void> _aguardarDialogoExclusao(WidgetTester tester) async {
+  // A consulta mantém o indicador ativo enquanto o usuário decide no diálogo.
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
@@ -174,6 +226,7 @@ void main() {
     expect(find.text('Centro · Santa Fé · PR\nCEP 86770-000'), findsOneWidget);
     expect(find.text('Padrão'), findsOneWidget);
     expect(find.byKey(const ValueKey('editar-cliente-10')), findsOneWidget);
+    expect(find.byKey(const ValueKey('excluir-cliente-10')), findsOneWidget);
     expect(find.byKey(const ValueKey('novo-endereco-10')), findsOneWidget);
     expect(find.byKey(const ValueKey('editar-endereco-10-31')), findsOneWidget);
   });
@@ -344,6 +397,132 @@ void main() {
       tester.getTopLeft(find.byKey(const ValueKey('cliente-11'))).dy,
       lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-20'))).dy),
     );
+    await tester.tap(find.byKey(const ValueKey('excluir-cliente-11')));
+    await _aguardarDialogoExclusao(tester);
+    await tester.tap(find.byKey(const ValueKey('confirmar-exclusao-cliente')));
+    await tester.pumpAndSettle();
+    expect(repositorio.excluidos, ['11']);
+    expect(find.byKey(const ValueKey('cliente-11')), findsNothing);
+    await tester.tap(find.byTooltip('Atualizar clientes'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('cliente-11')), findsNothing);
+  });
+
+  for (final caso in [
+    (vendas: true, contas: false, motivo: 'vendas'),
+    (vendas: false, contas: true, motivo: 'contas a receber'),
+    (vendas: true, contas: true, motivo: 'vendas e contas a receber'),
+  ]) {
+    testWidgets('bloqueia exclusão com ${caso.motivo} vinculadas',
+        (tester) async {
+      final repositorio = _RepositorioClientesTeste()
+        ..vendasVinculadas = caso.vendas
+        ..contasVinculadas = caso.contas;
+      await tester.pumpWidget(MaterialApp(
+        home: PaginaClientes(repositorio: repositorio),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('excluir-cliente-10')));
+      await _aguardarDialogoExclusao(tester);
+
+      expect(find.text('Exclusão bloqueada'), findsOneWidget);
+      expect(find.textContaining(caso.motivo), findsOneWidget);
+      expect(find.byKey(const ValueKey('confirmar-exclusao-cliente')),
+          findsNothing);
+      expect(repositorio.excluidos, isEmpty);
+      expect(find.text('Bruno Masson'), findsOneWidget);
+    });
+  }
+
+  testWidgets('cancelar confirmação mantém o cliente', (tester) async {
+    final repositorio = _RepositorioClientesTeste();
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('excluir-cliente-10')));
+    await _aguardarDialogoExclusao(tester);
+    expect(find.text('Excluir cliente?'), findsOneWidget);
+    expect(repositorio.excluidos, isEmpty);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(repositorio.excluidos, isEmpty);
+    expect(find.text('Bruno Masson'), findsOneWidget);
+  });
+
+  testWidgets('falha na consulta nunca permite confirmar a exclusão',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste()..falharVerificacao = true;
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('excluir-cliente-10')));
+    await _aguardarDialogoExclusao(tester);
+    expect(find.text('Não foi possível excluir'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('confirmar-exclusao-cliente')), findsNothing);
+    expect(repositorio.excluidos, isEmpty);
+  });
+
+  testWidgets(
+      'novo vínculo encontrado ao excluir mantém cliente e informa motivo',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste()
+      ..erroAoExcluir =
+          'Este cliente possui contas a receber vinculadas e não pode ser excluído.';
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('excluir-cliente-10')));
+    await _aguardarDialogoExclusao(tester);
+    await tester.tap(find.byKey(const ValueKey('confirmar-exclusao-cliente')));
+    await _aguardarDialogoExclusao(tester);
+    expect(find.textContaining('contas a receber vinculadas'), findsOneWidget);
+    expect(find.text('Bruno Masson'), findsOneWidget);
+    expect(repositorio.excluidos, isEmpty);
+  });
+
+  test('serviço consulta vínculos e exclui apenas com confirmação do servidor',
+      () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    final repositorio = ServicoClientes(delivery);
+    final verificacao = await repositorio.verificarExclusaoCliente('10');
+    expect(verificacao.podeExcluir, isTrue);
+    expect(verificacao.vendas, isFalse);
+    expect(verificacao.contasReceber, isFalse);
+    expect(delivery.gravacoes.single.$2, {'acao': 'consultar', 'id': '10'});
+    await repositorio.excluirCliente('10');
+    expect(delivery.gravacoes.last.$2, {'acao': 'excluir', 'id': '10'});
+    expect(delivery.gravacoes.last.$1, 'comandas/excluir_cliente.php');
+  });
+
+  test('serviço rejeita verificação incompleta ou contraditória', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    final repositorio = ServicoClientes(delivery);
+    for (final resposta in [
+      {'sucesso': true},
+      {
+        'operacao': 'consulta_exclusao_cliente',
+        'idcliente': '10',
+        'pode_excluir': true,
+        'vendas': true,
+        'contas_receber': false
+      },
+    ]) {
+      delivery.respostaExclusao = resposta;
+      await expectLater(
+          repositorio.verificarExclusaoCliente('10'), throwsStateError);
+    }
+  });
+
+  test('serviço rejeita exclusão sem operação e cliente correspondentes',
+      () async {
+    final delivery = _ServicoDeliveryGravacaoTeste()
+      ..respostaExclusao = {'operacao': 'cliente_excluido', 'idcliente': '20'};
+    await expectLater(
+        ServicoClientes(delivery).excluirCliente('10'), throwsStateError);
   });
 
   test('consulta prioriza os clientes recentes e ordena os ids numericamente',
