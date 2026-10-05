@@ -391,6 +391,7 @@ class ServicoDelivery {
       'tipoentrega': tipo,
       'obs': observacao,
       'idDeliveryEmEspera': '0',
+      'origemPedido': 'garcom',
     });
     final id = (res['dados'] as Map?)?['idDelivery']?.toString();
     if (id == null || id.isEmpty || id == '0') {
@@ -638,6 +639,7 @@ class ServicoDelivery {
       salvar('delivery/acoes_pedido.php', {
         ...campos,
         'acao': acao,
+        if (acao == 'clonarCompleto') 'origemPedido': 'garcom',
         'id': pedido.id,
         'statusOrigem': pedido.etapa,
       });

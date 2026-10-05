@@ -1210,12 +1210,41 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                   const SizedBox(width: 4),
                                                 ],
                                                 Expanded(
-                                                    child: Text('#${p.numero}',
-                                                        style: TextStyle(
-                                                            color: cs.primary,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold))),
+                                                  child: Tooltip(
+                                                    message: p.nomeOrigemPedido
+                                                            .isEmpty
+                                                        ? 'Número do pedido'
+                                                        : 'Origem do pedido: ${p.nomeOrigemPedido}',
+                                                    child: Text.rich(
+                                                      TextSpan(children: [
+                                                        TextSpan(
+                                                            text:
+                                                                '#${p.numero}'),
+                                                        if (p.nomeOrigemPedido
+                                                            .isNotEmpty)
+                                                          TextSpan(
+                                                            text:
+                                                                ' · ${p.nomeOrigemPedido}',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .normal,
+                                                              color: cs
+                                                                  .onSurfaceVariant,
+                                                            ),
+                                                          ),
+                                                      ]),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                          color: cs.primary,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ),
                                                 Icon(
                                                     p.tipoEntrega == '1'
                                                         ? Icons.delivery_dining

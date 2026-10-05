@@ -61,6 +61,7 @@ class FilaDeliveryOffline {
       todos[id] = {
         'id': id,
         'cliente': cliente,
+        'origemPedido': 'garcom',
         'endereco': endereco,
         'tipoentrega': tipo,
         'obs': observacao,
@@ -353,6 +354,7 @@ class FilaDeliveryOffline {
         'empresa': empresa,
         'id_usuario': usuario,
         'tipo': 'delivery',
+        'origemPedido': 'garcom',
         for (final campo in [
           'cliente',
           'endereco',
@@ -436,6 +438,7 @@ class FilaDeliveryOffline {
       'id': id,
       'idVenda': '0',
       'numeroPedido': recibo['numeroPedido']?.toString() ?? '',
+      'origemPedido': 'garcom',
       'idCliente': r['cliente'],
       'idendereco': r['endereco'],
       'tipodeentrega': r['tipoentrega'],

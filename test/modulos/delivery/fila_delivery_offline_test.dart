@@ -90,6 +90,8 @@ void main() {
     fila = criarFila();
     final pedido = (await fila.listar()).single;
     expect(pedido.id, id);
+    expect(pedido.origemPedido, 'garcom');
+    expect(pedido.nomeOrigemPedido, 'Garçom');
     expect(pedido.nome, 'Cliente de teste');
     expect(pedido.possuiCelularCliente, isTrue);
     expect(pedido.endereco, 'Rua A');
@@ -209,6 +211,7 @@ void main() {
         jsonDecode((await banco.operacoes(escopo)).single['dados'] as String)
             as Map;
     expect(dados['valor_desconto'], '5.00');
+    expect(dados['origemPedido'], 'garcom');
     expect(dados['valor_acrescimo'], '2.00');
     expect(dados['pagamentos'], isEmpty);
     expect(dados['pagamento_pendente'], isTrue);

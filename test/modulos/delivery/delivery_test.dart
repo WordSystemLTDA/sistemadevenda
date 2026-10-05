@@ -825,6 +825,20 @@ void main() {
             cliente: '0', endereco: '0', tipo: '2', observacao: 'Retirar'),
         '25');
     expect(s.gravacoes.single.$2['tipoentrega'], '2');
+    expect(s.gravacoes.single.$2['origemPedido'], 'garcom');
+  });
+
+  test('origem do pedido permanece ao mudar etapa ou modalidade', () {
+    final pedido = pedidoTeste(campos: {'origemPedido': 'delivery'});
+    expect(pedido.nomeOrigemPedido, 'Delivery');
+    expect(pedido.comEtapa('2').origemPedido, 'delivery');
+    expect(pedido.comEntrega(tipo: '2', endereco: '0', taxa: 0).origemPedido,
+        'delivery');
+    expect(pedidoTeste(campos: {'origemPedido': 'painel'}).nomeOrigemPedido,
+        'Painel');
+    expect(pedidoTeste(campos: {'origem_pedido': 'garcom'}).nomeOrigemPedido,
+        'Garçom');
+    expect(pedidoTeste().nomeOrigemPedido, isEmpty);
   });
   test('nao insere produtos em pedido concluido nem envia lista vazia',
       () async {

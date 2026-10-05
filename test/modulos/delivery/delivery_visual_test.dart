@@ -442,6 +442,43 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('origem preserva tamanho do card de delivery em $nome',
+        (tester) async {
+      var origem = '';
+      final s = ServicoDeliveryTeste()
+        ..respostaLista = () async => [
+              EtapaDelivery.comPedidos(etapasTeste().first, [
+                pedidoTeste(
+                    campos: {'numeroPedido': '1', 'origemPedido': origem})
+              ]),
+            ];
+      final p = ProvedorDelivery(s);
+      addTearDown(p.dispose);
+      await abrir(tester, PaginaDelivery(provedor: p));
+      final card = find
+          .ancestor(
+              of: find.byTooltip('Opções do pedido #1'),
+              matching: find.byType(InkWell))
+          .first;
+      final tamanhoOriginal = tester.getSize(card);
+
+      for (final (codigo, rotulo) in [
+        ('painel', 'Painel'),
+        ('garcom', 'Garçom'),
+        ('delivery', 'Delivery')
+      ]) {
+        origem = codigo;
+        await p.listar();
+        await tester.pumpAndSettle();
+        expect(find.text('#1 · $rotulo'), findsOneWidget);
+        expect(find.byTooltip('Origem do pedido: $rotulo'), findsOneWidget);
+        expect(tester.getSize(card), tamanhoOriginal);
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('carrossel de delivery em $nome', (tester) async {
       final s = ServicoDeliveryTeste();
       final p = ProvedorDelivery(s);

@@ -125,6 +125,14 @@ class PedidoDelivery {
           ? 'Aguardando'
           : id;
   String get etapa => texto('idopcoescarrossel');
+  String get origemPedido =>
+      texto('origemPedido', texto('origem_pedido')).trim().toLowerCase();
+  String get nomeOrigemPedido => switch (origemPedido) {
+        'painel' => 'Painel',
+        'garcom' || 'garçom' => 'Garçom',
+        'delivery' => 'Delivery',
+        _ => '',
+      };
   String get cliente => texto('idCliente', '0');
   bool get possuiCelularCliente =>
       celularDeliveryValido(dados['celularCliente']);
