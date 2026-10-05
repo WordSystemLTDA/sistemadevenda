@@ -27,6 +27,11 @@ class _PaginaClientesState extends State<PaginaClientes> {
   final Map<String, String> _errosEnderecos = {};
   final Set<String> _clientesEmExclusao = {};
   bool _carregando = true;
+  bool _carregandoMais = false;
+  bool _temMais = false;
+  String? _proximoId;
+  String _pesquisaAtual = '';
+  String? _erroCarregarMais;
   String? _erro;
   ClienteCadastro? _clienteRecemCadastrado;
   int _versaoConsulta = 0;
@@ -35,6 +40,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
   void initState() {
     super.initState();
     _repositorio = widget.repositorio ?? Modular.get<RepositorioClientes>();
+    _listaController.addListener(_verificarProximaPagina);
     unawaited(_carregarClientes());
   }
 
@@ -51,22 +57,30 @@ class _PaginaClientesState extends State<PaginaClientes> {
   }
 
   Future<void> _carregarClientes() async {
+    _debounce?.cancel();
     final versao = ++_versaoConsulta;
+    final pesquisa = _pesquisaController.text.trim();
+    _pesquisaAtual = pesquisa;
     if (mounted) {
       setState(() {
         _carregando = true;
+        _carregandoMais = false;
+        _temMais = false;
+        _proximoId = null;
+        _erroCarregarMais = null;
+        _carregandoEnderecos.clear();
         _erro = null;
       });
     }
     try {
-      final clientes =
-          await _repositorio.listarClientes(_pesquisaController.text);
+      final pagina = await _repositorio.listarClientes(pesquisa);
       if (!mounted || versao != _versaoConsulta) return;
+      final clientes = pagina.clientes;
       final recente = _clienteRecemCadastrado;
       final clientesOrdenados = [
         ...clientes.where((cliente) => cliente.id == recente?.id),
         if (recente != null &&
-            _pesquisaController.text.trim().isEmpty &&
+            pesquisa.isEmpty &&
             !clientes.any((cliente) => cliente.id == recente.id))
           recente,
         ...clientes.where((cliente) => cliente.id != recente?.id),
@@ -78,10 +92,19 @@ class _PaginaClientesState extends State<PaginaClientes> {
         _errosEnderecos.removeWhere((id, _) => !ids.contains(id));
         _carregandoEnderecos.removeWhere((id) => !ids.contains(id));
         _carregando = false;
+        _temMais = pagina.temMais;
+        _proximoId = pagina.proximoId;
       });
       for (final cliente in clientesOrdenados) {
         unawaited(_carregarEnderecos(cliente.id, versao: versao));
       }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || versao != _versaoConsulta) return;
+        if (_listaController.hasClients) {
+          _listaController.jumpTo(0);
+        }
+        _verificarProximaPagina();
+      });
     } catch (erro) {
       if (!mounted || versao != _versaoConsulta) return;
       setState(() {
@@ -89,6 +112,64 @@ class _PaginaClientesState extends State<PaginaClientes> {
         _erro = _mensagemErro(
           erro,
           'Não foi possível carregar os clientes.',
+        );
+      });
+    }
+  }
+
+  void _verificarProximaPagina() {
+    if (_listaController.hasClients &&
+        _listaController.position.extentAfter <= 320 &&
+        _erroCarregarMais == null) {
+      unawaited(_carregarMaisClientes());
+    }
+  }
+
+  Future<void> _carregarMaisClientes() async {
+    if (!mounted ||
+        _carregando ||
+        _carregandoMais ||
+        !_temMais ||
+        _proximoId == null ||
+        _pesquisaController.text.trim() != _pesquisaAtual) {
+      return;
+    }
+    final versao = _versaoConsulta;
+    final pesquisa = _pesquisaAtual;
+    final cursor = _proximoId!;
+    setState(() {
+      _carregandoMais = true;
+      _erroCarregarMais = null;
+    });
+    try {
+      final pagina =
+          await _repositorio.listarClientes(pesquisa, antesId: cursor);
+      if (!mounted || versao != _versaoConsulta) return;
+      final ids = _clientes.map((cliente) => cliente.id).toSet();
+      final novos =
+          pagina.clientes.where((cliente) => ids.add(cliente.id)).toList();
+      setState(() {
+        _clientes = [..._clientes, ...novos];
+        _carregandoMais = false;
+        _temMais = pagina.temMais;
+        _proximoId = pagina.proximoId;
+      });
+      for (final cliente in novos) {
+        unawaited(_carregarEnderecos(cliente.id, versao: versao));
+      }
+      // Completa a tela automaticamente se os cartões não preencherem a área.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && versao == _versaoConsulta) {
+          _verificarProximaPagina();
+        }
+      });
+    } catch (erro) {
+      if (!mounted || versao != _versaoConsulta) return;
+      setState(() {
+        _carregandoMais = false;
+        _erroCarregarMais = _mensagemErro(
+          erro,
+          'Não foi possível carregar mais clientes.',
         );
       });
     }
@@ -130,6 +211,15 @@ class _PaginaClientesState extends State<PaginaClientes> {
 
   void _aoPesquisar(String _) {
     _debounce?.cancel();
+    // Descarta imediatamente respostas da pesquisa anterior, inclusive páginas.
+    ++_versaoConsulta;
+    setState(() {
+      _carregando = true;
+      _carregandoMais = false;
+      _temMais = false;
+      _erro = null;
+      _erroCarregarMais = null;
+    });
     _debounce = Timer(const Duration(milliseconds: 400), _carregarClientes);
   }
 
@@ -338,6 +428,7 @@ class _PaginaClientesState extends State<PaginaClientes> {
                   controller: _pesquisaController,
                   carregando: _carregando,
                   total: _clientes.length,
+                  temMais: _temMais,
                   onChanged: _aoPesquisar,
                   onLimpar: _limparPesquisa,
                   onNovo: _abrirCadastro,
@@ -379,11 +470,14 @@ class _PaginaClientesState extends State<PaginaClientes> {
       onRefresh: _carregarClientes,
       child: ListView.separated(
         controller: _listaController,
+        physics: const AlwaysScrollableScrollPhysics(),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 104),
-        itemCount: _clientes.length,
+        itemCount: _clientes.length +
+            (_temMais || _erroCarregarMais != null || _erro != null ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, indice) {
+          if (indice == _clientes.length) return _rodapeLista();
           final cliente = _clientes[indice];
           return _CartaoCliente(
             cliente: cliente,
@@ -401,6 +495,35 @@ class _PaginaClientesState extends State<PaginaClientes> {
       ),
     );
   }
+
+  Widget _rodapeLista() {
+    final erro = _erro ?? _erroCarregarMais;
+    if (erro != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Text(erro, textAlign: TextAlign.center),
+            TextButton.icon(
+              key: const ValueKey('tentar-mais-clientes'),
+              onPressed:
+                  _erro != null ? _carregarClientes : _carregarMaisClientes,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_carregandoMais) {
+      return const Padding(
+        key: ValueKey('carregando-mais-clientes'),
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return const SizedBox(height: 32);
+  }
 }
 
 class _CabecalhoClientes extends StatelessWidget {
@@ -408,6 +531,7 @@ class _CabecalhoClientes extends StatelessWidget {
     required this.controller,
     required this.carregando,
     required this.total,
+    required this.temMais,
     required this.onChanged,
     required this.onLimpar,
     required this.onNovo,
@@ -416,6 +540,7 @@ class _CabecalhoClientes extends StatelessWidget {
   final TextEditingController controller;
   final bool carregando;
   final int total;
+  final bool temMais;
   final ValueChanged<String> onChanged;
   final VoidCallback onLimpar;
   final VoidCallback onNovo;
@@ -478,7 +603,8 @@ class _CabecalhoClientes extends StatelessWidget {
                 size: 17, color: cs.onSurfaceVariant),
             const SizedBox(width: 7),
             Text(
-              '$total ${total == 1 ? 'cliente encontrado' : 'clientes encontrados'}',
+              '$total ${total == 1 ? 'cliente' : 'clientes'} '
+              '${temMais ? (total == 1 ? 'carregado' : 'carregados') : (total == 1 ? 'encontrado' : 'encontrados')}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,

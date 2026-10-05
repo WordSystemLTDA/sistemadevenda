@@ -49,6 +49,32 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   int notificacoes = 0;
   int consultasRecorrencia = 0;
   int alteracoesEntrega = 0;
+  int cadastrosEndereco = 0;
+  bool falharCadastroEndereco = false;
+  bool falharAlteracaoEntrega = false;
+  bool devolverIdEndereco = true;
+  bool cadastrarOutroEnderecoSimultaneo = false;
+  Map<String, dynamic>? camposEnderecoCadastrado;
+  final enderecosCliente = <Map<String, dynamic>>[
+    {
+      'id': '17',
+      'endereco': 'Rua Atual',
+      'numero': '10',
+      'bairro': 'Centro',
+      'cidade': 'Cidade',
+      'padrao': 'Sim',
+      'valortaxabairro': '4.00',
+    },
+    {
+      'id': '18',
+      'endereco': 'Rua Nova',
+      'numero': '20',
+      'bairro': 'Bairro 2',
+      'cidade': 'Cidade',
+      'padrao': 'Não',
+      'valortaxabairro': '7.00',
+    },
+  ];
   MensagemClienteDelivery? ultimaMensagem;
   PedidoDelivery? ultimoPedidoConfirmadoWhatsApp;
   String? formaPagamentoConfirmadaWhatsApp;
@@ -69,10 +95,14 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   Completer<void>? esperaEnvio;
   Completer<void>? esperaConfirmacaoWhatsApp;
   Completer<void>? consultaFinalBloqueada;
+  Completer<void>? esperaEnderecosAposSelecao;
 
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
+    if (rota == 'config_clientes/listar_cliente.php') {
+      return <String, dynamic>{};
+    }
     if (rota == 'delivery/notificarenviarchavepix.php') {
       return {'sucesso': true, 'ignorado': true};
     }
@@ -85,26 +115,10 @@ class _DeliveryFinalizacao extends ServicoDelivery {
     }
     if (rota == 'enderecos_clientes/listar_por_cliente.php') {
       expect(campos['cliente'], '209');
-      return [
-        {
-          'id': '17',
-          'endereco': 'Rua Atual',
-          'numero': '10',
-          'bairro': 'Centro',
-          'cidade': 'Cidade',
-          'padrao': 'Sim',
-          'valortaxabairro': '4.00',
-        },
-        {
-          'id': '18',
-          'endereco': 'Rua Nova',
-          'numero': '20',
-          'bairro': 'Bairro 2',
-          'cidade': 'Cidade',
-          'padrao': 'Não',
-          'valortaxabairro': '7.00',
-        },
-      ];
+      if (enderecoSelecionado == '19') {
+        await esperaEnderecosAposSelecao?.future;
+      }
+      return enderecosCliente;
     }
     expect(rota, 'delivery/listar_opcoes_por_id.php');
     consultas++;
@@ -143,6 +157,32 @@ class _DeliveryFinalizacao extends ServicoDelivery {
   @override
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
+    if (rota == 'clientes/inserir_endereco.php') {
+      if (falharCadastroEndereco) {
+        throw StateError('Não foi possível salvar o endereço.');
+      }
+      camposEnderecoCadastrado = Map<String, dynamic>.from(campos);
+      final id = '${19 + cadastrosEndereco++}';
+      enderecosCliente.add({
+        ...campos,
+        'id': id,
+        'taxaentregacalculada': '9.50',
+        'valortaxabairro': '2.00',
+      });
+      if (cadastrarOutroEnderecoSimultaneo) {
+        enderecosCliente.insert(0, {
+          'id': '999',
+          'endereco': 'Outro cadastro',
+          'numero': '999',
+          'padrao': 'Não',
+          'valortaxabairro': '20.00',
+        });
+      }
+      return {
+        'sucesso': true,
+        if (devolverIdEndereco) 'dados': {'idEndereco': id},
+      };
+    }
     if (rota == 'delivery/inserir_produtos.php') {
       expect(campos['id_delivery'], '10118');
       expect(campos['produtos'], hasLength(1));
@@ -172,6 +212,9 @@ class _DeliveryFinalizacao extends ServicoDelivery {
       return {'sucesso': true};
     }
     if (rota == 'delivery/acoes_pedido.php' && campos['acao'] == 'entrega') {
+      if (falharAlteracaoEntrega) {
+        throw StateError('Não foi possível atualizar o Delivery.');
+      }
       expect(campos['id'], '10118');
       expect(campos['statusOrigem'], '10');
       tipoEntrega = campos['tipo']?.toString() ?? tipoEntrega;
@@ -345,6 +388,208 @@ void main() {
                 find.byType(PaginaSelecionarPagamento))
             .totalReceber,
         14);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  Future<void> cadastrarEndereco(WidgetTester tester,
+      {String rua = 'Rua Cadastrada'}) async {
+    await tester.tap(find.byKey(const ValueKey('novo-endereco-finalizacao')));
+    await tester.pumpAndSettle();
+    expect(find.text('Novo endereço'), findsOneWidget);
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), rua);
+    await tester.enterText(find.byKey(const ValueKey('endereco-numero')), '30');
+    await tester.drag(find.byType(ListView), const Offset(0, -650));
+    await tester.pumpAndSettle();
+    expect(
+        find.widgetWithText(SwitchListTile, 'Endereço padrão'), findsNothing);
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+  }
+
+  for (final noPagamento in [false, true]) {
+    testWidgets(
+        'novo endereço na ${noPagamento ? 'forma de pagamento' : 'tela de descontos'} seleciona só nesta venda e mantém seleção entre telas',
+        (tester) async {
+      final m = await abrir(tester);
+      tester.view.physicalSize = const Size(440, 956);
+      await tester.tap(find.text('Finalizar'));
+      await tester.pumpAndSettle();
+      if (noPagamento) {
+        await tester.tap(find.text('Avançar'));
+        await tester.pumpAndSettle();
+      }
+      final botao = find.byKey(const ValueKey('novo-endereco-finalizacao'));
+      expect(botao, findsOneWidget);
+      expect(tester.getCenter(botao).dy,
+          closeTo(tester.getCenter(find.text('Opções de Endereço')).dy, 12));
+      await cadastrarEndereco(tester);
+
+      expect(m.delivery.cadastrosEndereco, 1);
+      expect(m.delivery.camposEnderecoCadastrado!['idCliente'], '209');
+      expect(m.delivery.camposEnderecoCadastrado!['padrao'], 'Não');
+      expect(m.delivery.camposEnderecoCadastrado!['substituirPadrao'], isFalse);
+      expect(m.delivery.enderecosCliente.first['padrao'], 'Sim');
+      expect(m.delivery.enderecosCliente.last['padrao'], 'Não');
+      expect(m.delivery.enderecoSelecionado, '19');
+      expect(m.delivery.taxaEntrega, 9.5);
+      expect(m.delivery.alteracoesEntrega, 1);
+      final pagamento = Modular.get<ProvedorFinalizarPagamento>();
+      expect(pagamento.pedidoDelivery!.texto('idendereco'), '19');
+      expect(pagamento.ultimoEnderecoDelivery, '19');
+      expect(pagamento.valor, 19.5);
+      expect(find.textContaining('Rua Cadastrada, 30'), findsOneWidget);
+      expect(find.textContaining('19,50'), findsWidgets);
+
+      if (noPagamento) {
+        await tester.pageBack();
+      } else {
+        await tester.tap(find.text('Avançar'));
+      }
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Rua Cadastrada, 30'), findsOneWidget);
+      expect(find.textContaining('19,50'), findsWidgets);
+      await tester
+          .tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-2')));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-1')));
+      await tester.pumpAndSettle();
+      expect(m.delivery.enderecoSelecionado, '19');
+      expect(m.delivery.taxaEntrega, 9.5);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('cancelar novo endereço mantém endereço e total atuais',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('novo-endereco-finalizacao')));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(m.delivery.cadastrosEndereco, 0);
+    expect(m.delivery.alteracoesEntrega, 0);
+    expect(m.delivery.enderecoSelecionado, '17');
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 14);
+    expect(
+        tester
+            .widget<IconButton>(
+                find.byKey(const ValueKey('novo-endereco-finalizacao')))
+            .onPressed,
+        isNotNull);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('consulta lenta da tela anterior não restaura modalidade antiga',
+      (tester) async {
+    final m = await abrir(tester);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Avançar'));
+    await tester.pumpAndSettle();
+    final espera = Completer<void>();
+    m.delivery.esperaEnderecosAposSelecao = espera;
+    await cadastrarEndereco(tester);
+    expect(m.delivery.enderecoSelecionado, '19');
+    await tester.tap(find.byKey(const ValueKey('tipo-entrega-finalizacao-2')));
+    await tester.pumpAndSettle();
+    espera.complete();
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Sem taxa de entrega'), findsOneWidget);
+    expect(m.cardapio.tipodeentrega, '2');
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 10);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('primeiro endereço do cliente fica selecionado sem virar padrão',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.enderecosCliente.clear();
+    m.delivery.tipoEntrega = '2';
+    m.delivery.taxaEntrega = 0;
+    m.delivery.enderecoSelecionado = '0';
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await cadastrarEndereco(tester);
+    expect(m.delivery.enderecosCliente.single['padrao'], 'Não');
+    expect(m.delivery.tipoEntrega, '1');
+    expect(m.delivery.enderecoSelecionado, '19');
+    expect(m.delivery.taxaEntrega, 9.5);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('seleciona endereço salvo mesmo com outro cadastro simultâneo',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.cadastrarOutroEnderecoSimultaneo = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await cadastrarEndereco(tester);
+    expect(m.delivery.enderecosCliente.first['id'], '999');
+    expect(m.delivery.enderecoSelecionado, '19');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('seleciona novo endereço com API que não devolve o código salvo',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.devolverIdEndereco = false;
+    m.delivery.cadastrarOutroEnderecoSimultaneo = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await cadastrarEndereco(tester);
+    expect(m.delivery.enderecoSelecionado, '19');
+    expect(m.delivery.alteracoesEntrega, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('falha no cadastro mantém formulário e não altera a venda',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.falharCadastroEndereco = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await cadastrarEndereco(tester);
+    expect(find.text('Não foi possível salvar o endereço.'), findsOneWidget);
+    expect(m.delivery.cadastrosEndereco, 0);
+    expect(m.delivery.alteracoesEntrega, 0);
+    expect(m.delivery.enderecoSelecionado, '17');
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 14);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+      'falha ao selecionar endereço salvo mantém venda e permite tentar',
+      (tester) async {
+    final m = await abrir(tester);
+    m.delivery.falharAlteracaoEntrega = true;
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    await cadastrarEndereco(tester);
+    expect(m.delivery.cadastrosEndereco, 1);
+    expect(find.text('Não foi possível atualizar o Delivery.'), findsOneWidget);
+    expect(m.delivery.enderecoSelecionado, '17');
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 14);
+    m.delivery.falharAlteracaoEntrega = false;
+    await tester.tap(find.byKey(const ValueKey('opcoes-endereco-finalizacao')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Rua Cadastrada').hitTestable().last);
+    await tester.pumpAndSettle();
+    expect(m.delivery.enderecoSelecionado, '19');
+    expect(Modular.get<ProvedorFinalizarPagamento>().valor, 19.5);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

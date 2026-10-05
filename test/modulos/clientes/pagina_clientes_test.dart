@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/modulos/clientes/modelos/cliente_cadastro.dart';
 import 'package:app/src/modulos/clientes/paginas/pagina_clientes.dart';
 import 'package:app/src/modulos/clientes/servicos/servico_clientes.dart';
@@ -28,14 +30,30 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   String? erroAoExcluir;
   int verificacoes = 0;
   final excluidos = <String>[];
+  final consultas = <({String pesquisa, String? antesId})>[];
+  final consultasEnderecos = <String>[];
+  Completer<PaginaClientesCadastro>? paginaPendente;
+  bool falharProximaPagina = false;
+  bool filtrarPesquisa = false;
 
   @override
   ServicoDelivery get servicoEndereco => _servicoEndereco;
 
   @override
-  Future<List<ClienteCadastro>> listarClientes(String pesquisa) async {
+  Future<PaginaClientesCadastro> listarClientes(
+    String pesquisa, {
+    String? antesId,
+  }) async {
     ultimaPesquisa = pesquisa;
-    return [
+    consultas.add((pesquisa: pesquisa, antesId: antesId));
+    if (antesId != null && falharProximaPagina) {
+      falharProximaPagina = false;
+      throw Exception('Falha simulada');
+    }
+    if (antesId != null && paginaPendente != null) {
+      return paginaPendente!.future;
+    }
+    final encontrados = [
       ...(clientes ??
           [
             ClienteCadastro.fromMap({
@@ -48,7 +66,21 @@ class _RepositorioClientesTeste implements RepositorioClientes {
           ]),
       if (clienteCadastrado != null && !omitirClienteCadastrado)
         clienteCadastrado!,
-    ].where((cliente) => !excluidos.contains(cliente.id)).toList();
+    ]
+        .where((cliente) =>
+            !excluidos.contains(cliente.id) &&
+            (antesId == null || int.parse(cliente.id) < int.parse(antesId)) &&
+            (!filtrarPesquisa ||
+                cliente.nome.toLowerCase().contains(pesquisa.toLowerCase())))
+        .toList()
+      ..sort((a, b) => int.parse(b.id).compareTo(int.parse(a.id)));
+    final pagina = encontrados.take(15).toList();
+    final temMais = encontrados.length > 15;
+    return (
+      clientes: pagina,
+      temMais: temMais,
+      proximoId: temMais ? pagina.last.id : null,
+    );
   }
 
   @override
@@ -79,6 +111,7 @@ class _RepositorioClientesTeste implements RepositorioClientes {
   @override
   Future<List<EnderecoClienteCadastro>> listarEnderecos(
       String idCliente) async {
+    consultasEnderecos.add(idCliente);
     return enderecos ??
         [
           EnderecoClienteCadastro.fromMap({
@@ -155,16 +188,22 @@ class _ServicoDeliveryGravacaoTeste extends Fake implements ServicoDelivery {
   final consultas = <(String, Map<String, dynamic>)>[];
   String? idClienteResposta;
   Map<String, dynamic>? respostaExclusao;
+  dynamic respostaConsulta;
 
   @override
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
     consultas.add((rota, campos));
-    return [
-      {'id': '9', 'nome_puro': 'Ana'},
-      {'id': '100', 'nome_puro': 'Zeca'},
-      {'id': '10', 'nome_puro': 'Bruno'},
-    ];
+    return respostaConsulta ??
+        {
+          'dados': [
+            {'id': '9', 'nome_puro': 'Ana'},
+            {'id': '100', 'nome_puro': 'Zeca'},
+            {'id': '10', 'nome_puro': 'Bruno'},
+          ],
+          'tem_mais': false,
+          'proximo_id': null,
+        };
   }
 
   @override
@@ -206,7 +245,170 @@ Future<void> _aguardarDialogoExclusao(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 400));
 }
 
+List<ClienteCadastro> _clientesNumerados(int quantidade) => [
+      for (var id = 1; id <= quantidade; id++)
+        ClienteCadastro.fromMap({'id': '$id', 'nome_puro': 'Cliente $id'}),
+    ];
+
+Future<void> _irAoFinalDaLista(WidgetTester tester) async {
+  final controller = tester.widget<ListView>(find.byType(ListView)).controller!;
+  controller.jumpTo(controller.position.maxScrollExtent);
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('carrega 35 clientes em páginas e para no último registro',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste(
+      clientes: _clientesNumerados(35),
+      enderecos: [],
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('15 clientes carregados'), findsOneWidget);
+    expect(repositorio.consultas, [(pesquisa: '', antesId: null)]);
+    expect(repositorio.consultasEnderecos, hasLength(15));
+
+    await _irAoFinalDaLista(tester);
+    expect(find.text('30 clientes carregados'), findsOneWidget);
+    expect(repositorio.consultas.last.antesId, '21');
+    expect(repositorio.consultasEnderecos, hasLength(30));
+
+    await _irAoFinalDaLista(tester);
+    expect(find.text('35 clientes encontrados'), findsOneWidget);
+    expect(repositorio.consultas.last.antesId, '6');
+    expect(repositorio.consultasEnderecos.toSet(), hasLength(35));
+    expect(repositorio.consultasEnderecos, hasLength(35));
+    await _irAoFinalDaLista(tester);
+    await _irAoFinalDaLista(tester);
+    expect(repositorio.consultas, hasLength(3));
+    expect(find.byKey(const ValueKey('cliente-1')), findsOneWidget);
+  });
+
+  testWidgets('não solicita outra página enquanto a anterior está carregando',
+      (tester) async {
+    final pendente = Completer<PaginaClientesCadastro>();
+    final repositorio = _RepositorioClientesTeste(
+      clientes: _clientesNumerados(20),
+      enderecos: [],
+    )..paginaPendente = pendente;
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(repositorio.consultas, hasLength(2));
+    expect(
+        find.byKey(const ValueKey('carregando-mais-clientes')), findsOneWidget);
+    pendente.complete((
+      clientes: _clientesNumerados(5).reversed.toList(),
+      temMais: false,
+      proximoId: null,
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('20 clientes encontrados'), findsOneWidget);
+    await _irAoFinalDaLista(tester);
+    expect(repositorio.consultas, hasLength(2));
+  });
+
+  testWidgets(
+      'falha na próxima página mantém clientes e permite tentar novamente',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste(
+      clientes: _clientesNumerados(20),
+      enderecos: [],
+    )..falharProximaPagina = true;
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    await _irAoFinalDaLista(tester);
+    expect(find.text('15 clientes carregados'), findsOneWidget);
+    expect(
+        find.text('Não foi possível carregar mais clientes.'), findsOneWidget);
+    expect(repositorio.consultas, hasLength(2));
+    await _irAoFinalDaLista(tester);
+    expect(repositorio.consultas, hasLength(2));
+    await tester.tap(find.byKey(const ValueKey('tentar-mais-clientes')));
+    await tester.pumpAndSettle();
+    expect(repositorio.consultas.last.antesId, '6');
+    expect(find.text('20 clientes encontrados'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tentar-mais-clientes')), findsNothing);
+  });
+
+  testWidgets('pesquisa reinicia a paginação e descarta página antiga pendente',
+      (tester) async {
+    final pendente = Completer<PaginaClientesCadastro>();
+    final repositorio = _RepositorioClientesTeste(
+      clientes: _clientesNumerados(35),
+      enderecos: [],
+    )
+      ..paginaPendente = pendente
+      ..filtrarPesquisa = true;
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    final controller =
+        tester.widget<ListView>(find.byType(ListView)).controller!;
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('pesquisa-clientes')),
+      'Cliente 35',
+    );
+    // Até no intervalo do debounce a página anterior deve ser descartada.
+    pendente.complete((
+      clientes: _clientesNumerados(20).reversed.take(15).toList(),
+      temMais: true,
+      proximoId: '6',
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('30 clientes carregados'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(repositorio.consultas.last, (pesquisa: 'Cliente 35', antesId: null));
+    expect(find.text('1 cliente encontrado'), findsOneWidget);
+    expect(find.byKey(const ValueKey('cliente-35')), findsOneWidget);
+    expect(controller.offset, 0);
+    repositorio.paginaPendente = null;
+    await tester.tap(find.byTooltip('Limpar pesquisa'));
+    await tester.pumpAndSettle();
+    expect(repositorio.consultas.last, (pesquisa: '', antesId: null));
+    expect(find.text('15 clientes carregados'), findsOneWidget);
+    await _irAoFinalDaLista(tester);
+    expect(repositorio.consultas.last, (pesquisa: '', antesId: '21'));
+    expect(find.text('30 clientes carregados'), findsOneWidget);
+  });
+
+  testWidgets('atualizar depois de várias páginas reinicia a lista no topo',
+      (tester) async {
+    final repositorio = _RepositorioClientesTeste(
+      clientes: _clientesNumerados(35),
+      enderecos: [],
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: PaginaClientes(repositorio: repositorio),
+    ));
+    await tester.pumpAndSettle();
+    await _irAoFinalDaLista(tester);
+    expect(find.text('30 clientes carregados'), findsOneWidget);
+    await tester.tap(find.byTooltip('Atualizar clientes'));
+    await tester.pumpAndSettle();
+    expect(repositorio.consultas.last.antesId, isNull);
+    expect(find.text('15 clientes carregados'), findsOneWidget);
+    expect(
+        tester.widget<ListView>(find.byType(ListView)).controller!.offset, 0);
+    expect(find.byKey(const ValueKey('cliente-35')), findsOneWidget);
+  });
+
   testWidgets('lista cliente com celular, endereço e ações rápidas',
       (tester) async {
     final repositorio = _RepositorioClientesTeste();
@@ -386,7 +588,7 @@ void main() {
     expect(lista.controller!.offset, 0);
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('cliente-11'))).dy,
-      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-20'))).dy),
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-39'))).dy),
     );
 
     repositorio.omitirClienteCadastrado = false;
@@ -395,7 +597,7 @@ void main() {
     expect(find.byKey(const ValueKey('cliente-11')), findsOneWidget);
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('cliente-11'))).dy,
-      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-20'))).dy),
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('cliente-39'))).dy),
     );
     await tester.tap(find.byKey(const ValueKey('excluir-cliente-11')));
     await _aguardarDialogoExclusao(tester);
@@ -530,12 +732,87 @@ void main() {
     final delivery = _ServicoDeliveryGravacaoTeste();
     final repositorio = ServicoClientes(delivery);
 
-    final clientes = await repositorio.listarClientes('  cliente  ');
+    final pagina = await repositorio.listarClientes('  cliente  ');
 
     expect(delivery.consultas.single.$1, 'comandas/listar_clientes.php');
     expect(delivery.consultas.single.$2,
-        {'pesquisa': 'cliente', 'ordenacao': 'recentes'});
-    expect(clientes.map((cliente) => cliente.id), ['100', '10', '9']);
+        {'pesquisa': 'cliente', 'ordenacao': 'recentes', 'paginado': '1'});
+    expect(pagina.clientes.map((cliente) => cliente.id), ['100', '10', '9']);
+    expect(pagina.temMais, isFalse);
+  });
+
+  test('consulta envia último id para buscar a próxima página', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste()
+      ..respostaConsulta = {
+        'dados': [
+          {'id': '10', 'nome_puro': 'Bruno'}
+        ],
+        'tem_mais': true,
+        'proximo_id': '10',
+      };
+    final pagina = await ServicoClientes(delivery)
+        .listarClientes('  Bruno  ', antesId: '21');
+    expect(delivery.consultas.single.$2, {
+      'pesquisa': 'Bruno',
+      'ordenacao': 'recentes',
+      'paginado': '1',
+      'antes_id': '21',
+    });
+    expect(pagina.proximoId, '10');
+    expect(pagina.temMais, isTrue);
+  });
+
+  test('rejeita paginação incompleta, repetida ou sem avanço', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste();
+    for (final resposta in [
+      [
+        {'id': '10'}
+      ],
+      {'dados': [], 'tem_mais': true, 'proximo_id': '10'},
+      {
+        'dados': [
+          {'id': '10'}
+        ],
+        'tem_mais': true,
+        'proximo_id': '11'
+      },
+      {
+        'dados': [
+          {'id': '21'}
+        ],
+        'tem_mais': true,
+        'proximo_id': '21'
+      },
+      {
+        'dados': [
+          {'id': '10'},
+          {'id': '10'}
+        ],
+        'tem_mais': false,
+        'proximo_id': null
+      },
+      {
+        'dados': [
+          {'id': ''}
+        ],
+        'tem_mais': false,
+        'proximo_id': null
+      },
+      {
+        'dados': [
+          {'id': '10'}
+        ],
+        'tem_mais': false,
+        'proximo_id': '10'
+      },
+      {'dados': [], 'tem_mais': false},
+    ]) {
+      delivery.respostaConsulta = resposta;
+      await expectLater(
+        ServicoClientes(delivery).listarClientes('', antesId: '21'),
+        throwsStateError,
+      );
+    }
   });
 
   test('servico confirma a API e envia operacao explicita ao editar', () async {

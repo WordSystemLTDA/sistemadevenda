@@ -114,9 +114,13 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                       size: 18, color: cs.onPrimaryContainer),
                 ),
                 const SizedBox(width: 10),
-                const Text('Acréscimo e Descontos',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Expanded(
+                  child: Text('Acréscimo e Descontos',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
           ),
@@ -370,9 +374,11 @@ class _PaginaFinalizarAcrescimoState extends State<PaginaFinalizarAcrescimo> {
                         Icon(Icons.local_offer_outlined,
                             size: 18, color: cs.primary),
                         const SizedBox(width: 8),
-                        const Text('Aplicar desconto ou acréscimo',
-                            style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w700)),
+                        const Expanded(
+                          child: Text('Aplicar desconto ou acréscimo',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700)),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),

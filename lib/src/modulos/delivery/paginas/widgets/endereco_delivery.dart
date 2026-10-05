@@ -6,8 +6,16 @@ class EnderecoDelivery extends StatefulWidget {
   final ServicoDelivery servico;
   final String cliente;
   final Map<String, dynamic>? endereco;
-  const EnderecoDelivery(
-      {super.key, required this.servico, required this.cliente, this.endereco});
+  final bool permitirDefinirPadrao;
+  final ValueChanged<Map<String, dynamic>>? aoSalvar;
+  const EnderecoDelivery({
+    super.key,
+    required this.servico,
+    required this.cliente,
+    this.endereco,
+    this.permitirDefinirPadrao = true,
+    this.aoSalvar,
+  });
   @override
   State<EnderecoDelivery> createState() => _EnderecoDeliveryState();
 }
@@ -79,7 +87,9 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     }
 
     try {
-      outrosEnderecosPadrao = await _buscarOutrosEnderecosPadrao();
+      if (widget.permitirDefinirPadrao) {
+        outrosEnderecosPadrao = await _buscarOutrosEnderecosPadrao();
+      }
     } catch (_) {
       // Se a consulta falhar, mantem a escolha manual do usuario.
     } finally {
@@ -95,7 +105,10 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             _outrosEnderecosPadrao = outrosEnderecosPadrao;
             _temOutroEnderecoPadrao = outrosEnderecosPadrao.isNotEmpty;
           }
-          if (outrosEnderecosPadrao?.isEmpty == true) _padrao = true;
+          if (widget.permitirDefinirPadrao &&
+              outrosEnderecosPadrao?.isEmpty == true) {
+            _padrao = true;
+          }
           _carregandoPadrao = false;
         });
       }
@@ -194,9 +207,9 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     if (_salvando || _carregandoPadrao || !_form.currentState!.validate()) {
       return;
     }
-    var salvarComoPadrao = _padrao;
+    var salvarComoPadrao = widget.permitirDefinirPadrao && _padrao;
     var substituirPadrao = false;
-    if (_padrao && _temOutroEnderecoPadrao) {
+    if (salvarComoPadrao && _temOutroEnderecoPadrao) {
       substituirPadrao = await _confirmarTrocaEnderecoPadrao();
       if (!mounted) return;
       salvarComoPadrao = substituirPadrao;
@@ -213,7 +226,7 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
           await _salvarEnderecoExistenteComoNaoPadrao(endereco);
         }
       }
-      await widget.servico.salvar('clientes/inserir_endereco.php', {
+      final campos = <String, dynamic>{
         for (final e in _campos.entries) e.key: e.value.text.trim(),
         'uf': _campos['uf']!.text.trim().toUpperCase(),
         'id': widget.endereco?['id']?.toString() ?? '',
@@ -222,8 +235,18 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
         'tipoLocalEntrega': _sitio ? 'Sitio' : 'Normal',
         'substituirPadrao': substituirPadrao,
         'podeInserirNovaCidade': true,
+      };
+      final resposta =
+          await widget.servico.salvar('clientes/inserir_endereco.php', campos);
+      if (!mounted) return;
+      final dados = resposta['dados'];
+      widget.aoSalvar?.call({
+        ...campos,
+        'id': (dados is Map ? dados['idEndereco'] : null)?.toString() ??
+            widget.endereco?['id']?.toString() ??
+            '',
       });
-      if (mounted) Navigator.pop(context, true);
+      Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -305,13 +328,14 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
                                       labelText: campo.$2,
                                       border: const OutlineInputBorder()),
                                 )),
-                          SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Endereço padrão'),
-                              value: _padrao,
-                              onChanged: _salvando || _carregandoPadrao
-                                  ? null
-                                  : (v) => setState(() => _padrao = v)),
+                          if (widget.permitirDefinirPadrao)
+                            SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Endereço padrão'),
+                                value: _padrao,
+                                onChanged: _salvando || _carregandoPadrao
+                                    ? null
+                                    : (v) => setState(() => _padrao = v)),
                           SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               secondary: const Icon(Icons.agriculture_outlined),

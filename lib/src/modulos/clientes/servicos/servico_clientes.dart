@@ -15,10 +15,19 @@ typedef VerificacaoExclusaoCliente = ({
   String mensagem,
 });
 
+typedef PaginaClientesCadastro = ({
+  List<ClienteCadastro> clientes,
+  bool temMais,
+  String? proximoId,
+});
+
 abstract class RepositorioClientes {
   ServicoDelivery get servicoEndereco;
 
-  Future<List<ClienteCadastro>> listarClientes(String pesquisa);
+  Future<PaginaClientesCadastro> listarClientes(
+    String pesquisa, {
+    String? antesId,
+  });
 
   Future<List<EnderecoClienteCadastro>> listarEnderecos(String idCliente);
 
@@ -51,22 +60,49 @@ class ServicoClientes implements RepositorioClientes {
   ServicoDelivery get servicoEndereco => _delivery;
 
   @override
-  Future<List<ClienteCadastro>> listarClientes(String pesquisa) async {
+  Future<PaginaClientesCadastro> listarClientes(
+    String pesquisa, {
+    String? antesId,
+  }) async {
     final resposta = await _delivery.consultar(
       'comandas/listar_clientes.php',
-      {'pesquisa': pesquisa.trim(), 'ordenacao': 'recentes'},
+      {
+        'pesquisa': pesquisa.trim(),
+        'ordenacao': 'recentes',
+        'paginado': '1',
+        if (antesId != null) 'antes_id': antesId,
+      },
     );
-    if (resposta is! List) {
+    if (resposta is! Map ||
+        resposta['dados'] is! List ||
+        resposta['tem_mais'] is! bool ||
+        !resposta.containsKey('proximo_id')) {
       throw StateError('Não foi possível consultar os clientes.');
     }
+    final dados = resposta['dados'] as List;
+    if (dados.any((item) => item is! Map)) {
+      throw StateError('O servidor retornou uma lista de clientes inválida.');
+    }
     final clientes = [
-      for (final item in resposta)
-        if (item is Map)
-          ClienteCadastro.fromMap(Map<String, dynamic>.from(item)),
+      for (final item in dados)
+        ClienteCadastro.fromMap(Map<String, dynamic>.from(item as Map)),
     ];
     clientes.sort(
         (a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0));
-    return clientes;
+    final temMais = resposta['tem_mais'] as bool;
+    final proximoId = resposta['proximo_id']?.toString();
+    final limite = antesId == null ? null : int.tryParse(antesId);
+    final ids = clientes.map((cliente) => int.tryParse(cliente.id)).toList();
+    if (ids.any((id) => id == null || id <= 0) ||
+        ids.toSet().length != ids.length ||
+        (antesId != null &&
+            (limite == null || ids.any((id) => id! >= limite))) ||
+        (temMais && (clientes.isEmpty || proximoId != clientes.last.id)) ||
+        (!temMais && proximoId != null)) {
+      throw StateError(
+          'O servidor retornou uma paginação de clientes inválida.');
+    }
+    return (clientes: clientes, temMais: temMais, proximoId: proximoId);
   }
 
   @override

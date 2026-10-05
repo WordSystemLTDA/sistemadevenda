@@ -1,6 +1,7 @@
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/widgets/endereco_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/modulos/finalizar_pagamento/provedores/provedor_finalizar_pagamento.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -35,6 +36,9 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
   String? _erro;
   bool _carregando = true;
   bool _salvando = false;
+  bool _cadastrandoEndereco = false;
+  bool _enderecosExpandidos = false;
+  int _versaoCarregamento = 0;
 
   @override
   void initState() {
@@ -60,6 +64,13 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
         if (id.isNotEmpty && id != '0') _enderecoSelecionado = id;
       }
     });
+    if (_carregando ||
+        (pedido.tipoEntrega == '1' &&
+            _enderecoSelecionado != null &&
+            !_enderecos.any(
+                (endereco) => _idEndereco(endereco) == _enderecoSelecionado))) {
+      _carregar();
+    }
   }
 
   String _idEndereco(Map<String, dynamic> endereco) =>
@@ -71,6 +82,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
   }
 
   Future<void> _carregar() async {
+    final versao = ++_versaoCarregamento;
     if (_cardapio.tipo != TipoCardapio.delivery) {
       if (mounted) setState(() => _carregando = false);
       return;
@@ -84,7 +96,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
     try {
       final pedido = _pagamento.pedidoDelivery ??
           await _servico.pedido(_pagamento.idVenda);
-      if (!mounted) return;
+      if (!mounted || versao != _versaoCarregamento) return;
       setState(() {
         _pedido = pedido;
         if (pedido.tipoEntrega == '1') {
@@ -96,16 +108,10 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
         _pagamento.atualizarPedidoDelivery(pedido);
       }
       final config = await _servico.configuracao();
-      final resposta = (int.tryParse(pedido.cliente) ?? 0) > 0
-          ? await _servico.consultar(
-              'enderecos_clientes/listar_por_cliente.php',
-              {'cliente': pedido.cliente, 'pesquisa': ''},
-            )
-          : const <dynamic>[];
-      final enderecos = [
-        for (final item in resposta as List)
-          Map<String, dynamic>.from(item as Map),
-      ];
+      final enderecos = (int.tryParse(pedido.cliente) ?? 0) > 0
+          ? await _listarEnderecos(pedido.cliente)
+          : <Map<String, dynamic>>[];
+      if (!mounted || versao != _versaoCarregamento) return;
       final enderecoPedido =
           pedido.tipoEntrega == '1' ? pedido.texto('idendereco').trim() : '';
       final ultimoEndereco = _pagamento.ultimoEnderecoDelivery ?? '';
@@ -130,7 +136,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
         _cardapio.tipodeentrega = pedido.tipoEntrega;
       }
     } catch (erro) {
-      if (!mounted) return;
+      if (!mounted || versao != _versaoCarregamento) return;
       setState(() {
         _carregando = false;
         _erro = erro is StateError
@@ -143,6 +149,94 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
   Map<String, dynamic>? get _enderecoAtual => _enderecos
       .where((item) => _idEndereco(item) == _enderecoSelecionado)
       .firstOrNull;
+
+  Future<List<Map<String, dynamic>>> _listarEnderecos(String cliente) async {
+    final resposta = await _servico.consultar(
+      'enderecos_clientes/listar_por_cliente.php',
+      {'cliente': cliente, 'pesquisa': ''},
+    );
+    if (resposta is! List || resposta.any((item) => item is! Map)) {
+      throw StateError('Não foi possível carregar os endereços do cliente.');
+    }
+    return [
+      for (final item in resposta) Map<String, dynamic>.from(item as Map),
+    ];
+  }
+
+  Future<void> _cadastrarEndereco() async {
+    final pedido = _pedido;
+    if (pedido == null ||
+        _carregando ||
+        _salvando ||
+        _cadastrandoEndereco ||
+        (int.tryParse(pedido.cliente) ?? 0) <= 0) {
+      return;
+    }
+    final idsAnteriores = _enderecos.map(_idEndereco).toSet();
+    Map<String, dynamic>? enderecoSalvo;
+    setState(() => _cadastrandoEndereco = true);
+    widget.aoAlterarCarregamento?.call(true);
+    try {
+      final salvo = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'CadastrarEnderecoFinalizacao'),
+          builder: (_) => EnderecoDelivery(
+            servico: _servico,
+            cliente: pedido.cliente,
+            permitirDefinirPadrao: false,
+            aoSalvar: (endereco) => enderecoSalvo = endereco,
+          ),
+        ),
+      );
+      if (!mounted || salvo != true || enderecoSalvo == null) return;
+      if (_pedido?.id != pedido.id || _pedido?.cliente != pedido.cliente) {
+        throw StateError(
+            'O pedido foi alterado. Confira o endereço da entrega.');
+      }
+      final enderecos = await _listarEnderecos(pedido.cliente);
+      if (!mounted) return;
+      if (_pedido?.id != pedido.id || _pedido?.cliente != pedido.cliente) {
+        throw StateError(
+            'O pedido foi alterado. Confira o endereço da entrega.');
+      }
+      final idSalvo = enderecoSalvo!['id']?.toString() ?? '';
+      final novos = enderecos.where((endereco) {
+        if (idSalvo.isNotEmpty) return _idEndereco(endereco) == idSalvo;
+        // APIs anteriores podem confirmar o cadastro sem devolver o código.
+        return !idsAnteriores.contains(_idEndereco(endereco)) &&
+            ['endereco', 'numero', 'cep', 'complemento'].every((campo) =>
+                (endereco[campo]?.toString().trim() ?? '') ==
+                (enderecoSalvo![campo]?.toString().trim() ?? ''));
+      }).toList();
+      setState(() => _enderecos = enderecos);
+      if (novos.length != 1) {
+        throw StateError(
+            'Endereço cadastrado. Selecione o novo endereço nas opções de entrega.');
+      }
+      final novo = novos.single;
+      final taxa = _taxaDoEndereco(novo);
+      if (taxa == null) {
+        throw StateError('Não foi possível calcular a taxa de entrega.');
+      }
+      await _salvar(tipo: '1', endereco: novo, taxa: taxa);
+    } catch (erro) {
+      if (!mounted) return;
+      setState(() => _erro = erro is StateError
+          ? erro.message.toString()
+          : 'Não foi possível selecionar o novo endereço.');
+    } finally {
+      if (mounted) setState(() => _cadastrandoEndereco = false);
+      widget.aoAlterarCarregamento?.call(false);
+    }
+  }
+
+  double? _taxaDoEndereco(Map<String, dynamic> endereco) {
+    final calculada = endereco['taxaentregacalculada'];
+    final taxa = calculada != null && calculada.toString().trim().isNotEmpty
+        ? double.tryParse(calculada.toString().replaceAll(',', '.'))
+        : _config?.taxaEntrega(endereco['valortaxabairro']);
+    return taxa != null && taxa.isFinite && taxa >= 0 ? taxa : null;
+  }
 
   String _textoEndereco(Map<String, dynamic> endereco) {
     final linha = [
@@ -169,7 +263,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
       _controladorEnderecos.expand();
       return;
     }
-    final taxa = _config?.taxaEntrega(endereco['valortaxabairro']);
+    final taxa = _taxaDoEndereco(endereco);
     if (taxa == null) {
       setState(() => _erro = 'Não foi possível calcular a taxa de entrega.');
       return;
@@ -181,7 +275,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
     if (_salvando || _pedido?.tipoEntrega != '1') return;
     final id = _idEndereco(endereco);
     if (id == _enderecoSelecionado) return;
-    final taxa = _config?.taxaEntrega(endereco['valortaxabairro']);
+    final taxa = _taxaDoEndereco(endereco);
     if (taxa == null) {
       setState(() => _erro = 'Não foi possível calcular a taxa de entrega.');
       return;
@@ -226,7 +320,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
           ? erro.message.toString()
           : 'Não foi possível atualizar o Delivery.');
     } finally {
-      widget.aoAlterarCarregamento?.call(false);
+      widget.aoAlterarCarregamento?.call(_cadastrandoEndereco);
       if (mounted) setState(() => _salvando = false);
     }
   }
@@ -246,7 +340,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
         : 'Disponível ao selecionar Entrega';
 
     return AbsorbPointer(
-      absorbing: _salvando,
+      absorbing: _salvando || _cadastrandoEndereco,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Icon(Icons.delivery_dining_outlined, size: 19, color: cs.primary),
@@ -255,7 +349,7 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
             child: Text('Tipo de entrega',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
           ),
-          if (_salvando)
+          if (_salvando || _cadastrandoEndereco)
             const SizedBox.square(
               dimension: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
@@ -299,6 +393,8 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
             enabled: !_carregando && pedido != null,
             initiallyExpanded: false,
             maintainState: true,
+            onExpansionChanged: (expandido) =>
+                setState(() => _enderecosExpandidos = expandido),
             tilePadding: const EdgeInsets.symmetric(horizontal: 12),
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             leading: Icon(Icons.location_on_outlined, color: cs.primary),
@@ -310,6 +406,21 @@ class _OpcoesEntregaFinalizacaoState extends State<OpcoesEntregaFinalizacao> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              if ((int.tryParse(pedido?.cliente ?? '') ?? 0) > 0)
+                IconButton(
+                  key: const ValueKey('novo-endereco-finalizacao'),
+                  tooltip: 'Novo endereço',
+                  onPressed: _carregando || _salvando || _cadastrandoEndereco
+                      ? null
+                      : _cadastrarEndereco,
+                  icon: Icon(Icons.add_location_alt_outlined,
+                      size: 21, color: cs.primary),
+                ),
+              Icon(_enderecosExpandidos
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded),
+            ]),
             children: [
               if (tipo != '1')
                 Padding(
