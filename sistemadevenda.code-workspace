@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../sistemarestaurante"
+		},
+		{
+			"path": "../restaurantes_entregadores"
 		}
 	],
 	"settings": {
