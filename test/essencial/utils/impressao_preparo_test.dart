@@ -203,6 +203,46 @@ void main() {
     });
   }
 
+  test('permissao global imprime codigo de todos os sabores da pizza', () {
+    final pizza = produto(nome: 'Pizza', imprimirCodigo: 'Não')
+      ..habilTipo = 'Pizza'
+      ..opcoesPacotesListaFinal = [saboresPizza()];
+
+    final dados = DadosImpressaoPreparo.produto(
+      pizza,
+      imprimirCodigoSaboresPizza: true,
+    );
+    final opcoes = dados['opcoesPacotesListaFinal'] as List;
+    final sabores = opcoes.single['dados'] as List;
+
+    expect(sabores.map((sabor) => sabor['nome']), [
+      '7 - (1/2) Calabresa',
+      '28 - (1/2) Chocolate',
+    ]);
+    expect(
+      DadosImpressaoPreparo.produto(
+        produto(imprimirCodigo: 'Não'),
+        imprimirCodigoSaboresPizza: true,
+      )['nome'],
+      'Porcao inteira',
+    );
+  });
+
+  test('configuracao global de codigo aceita camelCase e snake_case', () {
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'imprimircodigoprodutopreparo': 'Sim',
+      }).imprimeCodigoSaboresPizza,
+      isTrue,
+    );
+    expect(
+      ModeloConfigBigchef.fromMap({
+        'imprimir_codigo_produto_preparo': 'Sim',
+      }).imprimeCodigoSaboresPizza,
+      isTrue,
+    );
+  });
+
   test('bordas da pizza imprimem titulo curto e proporcao de cada sabor', () {
     final pizza = produto(nome: 'Pizza')
       ..opcoesPacotesListaFinal = [

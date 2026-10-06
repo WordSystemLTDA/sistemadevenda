@@ -77,6 +77,10 @@ class ServicoConfigBigchef {
       dados.containsKey('mostrarapenasprodutosativovenda') ||
       dados.containsKey('mostrar_apenas_produtos_ativo_venda');
 
+  bool _possuiCodigoSaboresPizza(Map<String, dynamic> dados) =>
+      dados.containsKey('imprimircodigoprodutopreparo') ||
+      dados.containsKey('imprimir_codigo_produto_preparo');
+
   bool _precisaCompletarComDesktop(Map<String, dynamic> dados) =>
       !(dados.containsKey('aumentarfontenumeropedidoentregador') ||
           dados.containsKey('aumentar_fonte_numero_pedido_entregador')) ||
@@ -86,7 +90,8 @@ class ServicoConfigBigchef {
           dados.containsKey('aumentar_fonte_pagamento_entregador')) ||
       !_possuiValorEmbalagemSeparada(dados) ||
       !_possuiConfiguracaoRecorrentes(dados) ||
-      !_possuiFiltroProdutosPersonalizados(dados);
+      !_possuiFiltroProdutosPersonalizados(dados) ||
+      !_possuiCodigoSaboresPizza(dados);
 
   String _chaveCache(RequestOptions requisicao, String empresa) {
     final base = requisicao.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
@@ -97,7 +102,7 @@ class ServicoConfigBigchef {
     if (baseGarcom.isEmpty) return null;
     final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
     final desktop = normalizada.replaceFirst(
-      RegExp(r'/api_restaurantes_venda/api(?:1|6|37|38)/'),
+      RegExp(r'/api_restaurantes_venda/api(?:1|6|37|38|39)/'),
       '/api_desktop/1.0.01/',
     );
     return desktop == normalizada ? null : desktop;

@@ -42,6 +42,7 @@ class ModeloConfigBigchef {
   final String imprimirnumerooperacionalconsumacao;
   final String imprimirnumerooperacionalpreparo;
   final String imprimirpreparocomprovanteconsumacao;
+  final String imprimircodigoprodutopreparo;
   final String aumentarfontenumeropedidoentregador;
   final String aumentarfontetotaisentregador;
   final String aumentarfontepagamentoentregador;
@@ -86,6 +87,7 @@ class ModeloConfigBigchef {
     this.imprimirnumerooperacionalconsumacao = '',
     this.imprimirnumerooperacionalpreparo = '',
     this.imprimirpreparocomprovanteconsumacao = 'Não',
+    this.imprimircodigoprodutopreparo = 'Não',
     this.aumentarfontenumeropedidoentregador = 'Não',
     this.aumentarfontetotaisentregador = 'Não',
     this.aumentarfontepagamentoentregador = 'Não',
@@ -139,6 +141,7 @@ class ModeloConfigBigchef {
       _permiteNumeroOperacional(imprimirnumerooperacionalpreparo);
   bool get imprimePreparoNoComprovanteConsumacao =>
       _sim(imprimirpreparocomprovanteconsumacao);
+  bool get imprimeCodigoSaboresPizza => _sim(imprimircodigoprodutopreparo);
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -179,6 +182,7 @@ class ModeloConfigBigchef {
       'imprimirnumerooperacionalpreparo': imprimirnumerooperacionalpreparo,
       'imprimirpreparocomprovanteconsumacao':
           imprimirpreparocomprovanteconsumacao,
+      'imprimircodigoprodutopreparo': imprimircodigoprodutopreparo,
       'modelo_valor_adicional_pizza': modeloValorAdicionalPizza,
       'permitireditarquantidadeappaposfinalizar':
           permitireditarquantidadeappaposfinalizar,
@@ -259,6 +263,8 @@ class ModeloConfigBigchef {
           map,
           'imprimirpreparocomprovanteconsumacao',
           'imprimir_preparo_comprovante_consumacao'),
+      imprimircodigoprodutopreparo: _textoConfig(map,
+          'imprimircodigoprodutopreparo', 'imprimir_codigo_produto_preparo'),
       modeloValorAdicionalPizza: (map['modelo_valor_adicional_pizza'] ??
               map['modelovaloradicionalpizza'])
           ?.toString(),

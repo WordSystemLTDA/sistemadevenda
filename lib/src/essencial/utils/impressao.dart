@@ -105,6 +105,9 @@ class Impressao {
                         produto,
                         modeloValorBorda: usuario
                             .usuario?.configuracoes?.modelovaloradicionalpizza,
+                        imprimirCodigoSaboresPizza:
+                            usuario.configbigchef?.imprimeCodigoSaboresPizza ??
+                                false,
                       ))
                   .toList(),
               'comanda': comanda,

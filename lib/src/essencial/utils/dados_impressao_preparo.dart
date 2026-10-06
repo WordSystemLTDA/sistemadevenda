@@ -54,12 +54,15 @@ class DadosImpressaoPreparo {
   static Map<String, dynamic> produto(
     Modelowordprodutos produto, {
     String? modeloValorBorda,
+    bool imprimirCodigoSaboresPizza = false,
   }) {
     final dados = produto.toMap();
     final opcoes =
         produto.opcoesPacotesListaFinal ?? produto.opcoesPacotes ?? [];
     final temSaboresPizza = opcoes
         .any((opcao) => opcao.id == 10 && (opcao.dados?.isNotEmpty ?? false));
+    final imprimirCodigoNosSabores = imprimirCodigoSaboresPizza &&
+        (produto.habilTipo.trim().toLowerCase() == 'pizza' || temSaboresPizza);
 
     // Na pizza montada, o codigo pertence a cada sabor, nao ao cabecalho.
     if (!temSaboresPizza) {
@@ -81,11 +84,13 @@ class DadosImpressaoPreparo {
         ? _opcoesParaPreparo(
             produto.opcoesPacotes,
             modeloValorBorda: modeloValorBorda,
+            imprimirCodigoSaboresPizza: imprimirCodigoNosSabores,
           )
         : null;
     dados['opcoesPacotesListaFinal'] = _opcoesParaPreparo(
       opcoesFinais,
       modeloValorBorda: modeloValorBorda,
+      imprimirCodigoSaboresPizza: imprimirCodigoNosSabores,
     );
     return dados;
   }
@@ -93,6 +98,7 @@ class DadosImpressaoPreparo {
   static List<Map<String, dynamic>>? _opcoesParaPreparo(
     List<ModeloOpcoesPacotes>? opcoes, {
     String? modeloValorBorda,
+    bool imprimirCodigoSaboresPizza = false,
   }) {
     if (opcoes == null) return null;
     final resultado = <Map<String, dynamic>>[];
@@ -109,6 +115,7 @@ class DadosImpressaoPreparo {
           opcao,
           dadosFiltrados: alteracoes,
           modeloValorBorda: modeloValorBorda,
+          imprimirCodigoSaboresPizza: imprimirCodigoSaboresPizza,
         ));
         continue;
       }
@@ -116,6 +123,7 @@ class DadosImpressaoPreparo {
       resultado.add(_opcao(
         opcao,
         modeloValorBorda: modeloValorBorda,
+        imprimirCodigoSaboresPizza: imprimirCodigoSaboresPizza,
       ));
     }
 
@@ -149,6 +157,7 @@ class DadosImpressaoPreparo {
     ModeloOpcoesPacotes opcao, {
     List<ModeloDadosOpcoesPacotes>? dadosFiltrados,
     String? modeloValorBorda,
+    bool imprimirCodigoSaboresPizza = false,
   }) {
     final dados = opcao.toMap();
     final dadosOpcao = dadosFiltrados ?? opcao.dados;
@@ -160,11 +169,13 @@ class DadosImpressaoPreparo {
         ?.map((item) => produto(
               item,
               modeloValorBorda: modeloValorBorda,
+              imprimirCodigoSaboresPizza: imprimirCodigoSaboresPizza,
             ))
         .toList();
     dados['opcoesPacote'] = _opcoesParaPreparo(
       opcao.opcoesPacote,
       modeloValorBorda: modeloValorBorda,
+      imprimirCodigoSaboresPizza: imprimirCodigoSaboresPizza,
     );
     dados['dados'] = dadosOpcao?.map((item) {
       final mapa = item.toMap();
@@ -184,7 +195,9 @@ class DadosImpressaoPreparo {
           'nome': _nomeSabor(
             sabor.nome,
             sabor.codigo,
-            sabor.imprimirCodigoProdutoPreparo,
+            imprimirCodigoSaboresPizza
+                ? 'Sim'
+                : sabor.imprimirCodigoProdutoPreparo,
             sabor.quantimaximaselecao,
           ),
           'quantimaximaselecao': null,
