@@ -334,6 +334,7 @@ class PendenciasSincronizacao extends StatelessWidget {
                       (dados['detalhe'] is Map
                           ? 'Abertura: ${dados['detalhe']['nome']}'
                           : null) ??
+                      (op['acao'] == 'delivery' ? 'Pedido Delivery' : null) ??
                       'Atendimento ${op['atendimento']}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
@@ -341,6 +342,12 @@ class PendenciasSincronizacao extends StatelessWidget {
                   ? (op['erro']?.toString() ??
                       'Confira este pedido com o responsavel.')
                   : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
+              if (!conflito && !rascunho && erroOperacao)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(op['erro'].toString(),
+                      style: TextStyle(color: cs.error)),
+                ),
               if (definitivo)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),

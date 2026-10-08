@@ -25,6 +25,10 @@ import 'seguranca_pendencias.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
+  static const _falhaEnvio =
+      'Nao foi possivel enviar os pedidos. Verifique o servidor.';
+  static const _envioPendente =
+      'O envio ficou pendente. Os pedidos continuam salvos.';
   final DioCliente api;
   final UsuarioProvedor usuario;
   final Server socket;
@@ -656,10 +660,10 @@ class Sincronizador extends ChangeNotifier {
           if (CacheConsultas.falhaDeConexao(e)) {
             online = false;
           } else {
-            erro = 'Nao foi possivel enviar os pedidos. Verifique o servidor.';
+            erro = _falhaEnvio;
           }
         } catch (_) {
-          erro = 'O envio ficou pendente. Os pedidos continuam salvos.';
+          erro = _envioPendente;
         }
       } while (_envioSolicitado && !_descartado);
     } finally {
@@ -1139,6 +1143,14 @@ class Sincronizador extends ChangeNotifier {
             'proxima': DateTime.now()
                 .add(Duration(milliseconds: segundos * 1000 + jitter))
                 .millisecondsSinceEpoch,
+            'erro': mensagem is Map &&
+                    mensagem['protocolo'] == 1 &&
+                    mensagem['sucesso'] == false
+                ? mensagem['mensagem']?.toString() ??
+                    'A API nao confirmou o pedido. O envio sera tentado novamente.'
+                : CacheConsultas.falhaDeConexao(e)
+                    ? 'Sem conexao com a API. O pedido continua salvo no aparelho.'
+                    : 'A API nao confirmou o pedido. O envio sera tentado novamente.',
           });
           rethrow;
         }
@@ -1182,6 +1194,11 @@ class Sincronizador extends ChangeNotifier {
           'codigo_erro': null,
           'proxima': 0
         });
+        if (alvo == escopo && usuario.usuario != null && !_descartado) {
+          online = true;
+          api.cache?.confirmarConexao();
+          if (erro == _falhaEnvio || erro == _envioPendente) erro = null;
+        }
       }
       if (alvo != escopo || usuario.usuario == null) return;
       final atual =
@@ -1232,6 +1249,10 @@ class Sincronizador extends ChangeNotifier {
       // Impressao possui fila duravel e processamento proprio. Ela comeca
       // agora, mas nunca segura o POST da proxima mesa, comanda ou pedido.
       unawaited(socket.processarImpressoesPendentes());
+      // O servidor nao devolve o aviso WebSocket ao aparelho que o enviou.
+      // Atualiza a tela de origem somente depois de persistir o recibo e
+      // liberar o pedido local; assim o Delivery ja entra em Aguardando.
+      if (op['acao'] == 'delivery') aoAtualizarTelas?.call();
     }
   }
 

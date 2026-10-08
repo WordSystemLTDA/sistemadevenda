@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:app/src/app_widget.dart' as app;
 import 'package:app/src/modulos/balcao/provedores/provedor_balcao.dart';
@@ -315,7 +316,12 @@ void main() {
   Future<_ModuloDelivery> abrir(WidgetTester tester,
       {TipoCardapio tipo = TipoCardapio.delivery,
       String celularCliente = '(44) 99999-9999'}) async {
-    SharedPreferences.setMockInitialValues({});
+    // O socket da fixture representa o servidor Local, incluindo os ACKs.
+    // Preferencias vazias usam Online e exigem o escopo do canal da empresa.
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': 'Cozinha', 'porta': '9980'})
+    });
     const fonte = String.fromEnvironment('FONTE_TESTE');
     tester.view.physicalSize = Size(fonte.isEmpty ? 800 : 440, 956);
     tester.view.devicePixelRatio = 1;

@@ -11,6 +11,7 @@ import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
+import 'package:app/src/modulos/delivery/servicos/fila_delivery_offline.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
@@ -69,6 +70,8 @@ void main() {
   Completer<void>? liberarResposta;
   var reciboVendaIncompleto = false;
   var impressaoPersistidaApi = false;
+  var falhaServidorDelivery = false;
+  var reciboDeliveryIncompleto = false;
   final aplicados = <String>{};
   final tentativas = <Map<String, dynamic>>[];
   const contexto = ContextoCarrinho(
@@ -87,6 +90,8 @@ void main() {
     liberarResposta = null;
     reciboVendaIncompleto = false;
     impressaoPersistidaApi = false;
+    falhaServidorDelivery = false;
+    reciboDeliveryIncompleto = false;
     aplicados.clear();
     tentativas.clear();
     SharedPreferences.setMockInitialValues({
@@ -122,6 +127,18 @@ void main() {
         return;
       }
       if (pedido != null) {
+        if (pedido['acao'] == 'delivery' && falhaServidorDelivery) {
+          handler.reject(DioException(
+              requestOptions: options,
+              type: DioExceptionType.badResponse,
+              response:
+                  Response(requestOptions: options, statusCode: 503, data: {
+                'protocolo': 1,
+                'sucesso': false,
+                'mensagem': 'Servidor indisponivel para sincronizacao.',
+              })));
+          return;
+        }
         if (rota.endsWith('inserir_mesa_ocupada.php') ||
             rota.endsWith('inserir_comanda_ocupada.php')) {
           handler.resolve(Response(
@@ -174,6 +191,11 @@ void main() {
           if (pedido['acao'] == 'venda' && !reciboVendaIncompleto) ...{
             'idVenda': '301',
             'numeroPedido': '32'
+          },
+          if (pedido['acao'] == 'delivery' && !reciboDeliveryIncompleto) ...{
+            'idDelivery': '401',
+            'idVenda': '301',
+            'numeroPedido': '33',
           },
           if (pedido['acao'] == 'editar_item') ...{
             'id_itens_venda': pedido['dados']['id_itens_venda'],
@@ -258,7 +280,88 @@ void main() {
     await sync.enviarPendentes();
   }
 
+  Future<FilaDeliveryOffline> guardarDelivery() async {
+    final estado = jsonDecode(await banco.ler('estado:${sync.escopo}') ?? '{}')
+        as Map<String, dynamic>;
+    await banco.gravar('estado:${sync.escopo}',
+        jsonEncode({...estado, 'offline_delivery': 1}));
+    final fila = FilaDeliveryOffline(banco,
+        escopo: sync.escopo,
+        empresa: '32',
+        usuario: '1',
+        destino: sync.destino);
+    final id = await fila.criar(
+        cliente: '8', endereco: '9', tipo: '1', observacao: 'Portao azul');
+    final item = produto(id: '5', nome: 'Produto de teste')..valorVenda = '5';
+    await ArmazenamentoCarrinhos.instancia.alterar(
+        ContextoCarrinho(empresa: '32', tipo: 'delivery', idAtendimento: id),
+        (itens) => itens.add(item));
+    await fila.inserirProdutos(id, [item]);
+    await fila.pagar(id, {
+      'chavePagamento': 'pagamento-unico',
+      'pagamentoSelecionado': 1,
+      'valor_lancamento': '5.00',
+      'valortroco': '0.00',
+      'valordesconto': '0.00',
+      'valoracrescimo': '0.00',
+    });
+    await fila.concluir(id);
+    await fila.confirmar(id);
+    return fila;
+  }
+
   for (final online in [false, true]) {
+    test(
+        'Delivery pago (${online ? 'Online' : 'Local'}) atualiza celular e PC somente apos recibo',
+        () async {
+      if (online) {
+        await (await SharedPreferences.getInstance()).setString(
+            'conexao',
+            jsonEncode({
+              'tipoConexao': 'online',
+              'servidor': 'cozinha',
+              'porta': '9980'
+            }));
+        await sync.configurar();
+        await banco.gravar(
+            'estado:${sync.escopo}', jsonEncode({'caixa_id': '0'}));
+      }
+      final fila = await guardarDelivery();
+      final pedido = (await banco.operacoes(sync.escopo)).single;
+      var atualizacoes = 0;
+      Future<void>? consultaTela;
+      sync.aoAtualizarTelas = () {
+        atualizacoes++;
+        consultaTela = () async {
+          expect(await fila.listar(), isEmpty);
+          expect(await banco.operacoes(sync.escopo), isEmpty);
+        }();
+      };
+      await sync.enviarPendentes();
+      expect(await fila.listar(), hasLength(1));
+      expect(atualizacoes, 0);
+      expect(socket.mensagens.where((e) => e['tipo'] == 'Delivery'), isEmpty);
+
+      conectado = true;
+      await banco.atualizarOperacao(pedido['id'] as String, {'proxima': 0});
+      await sync.enviarPendentes();
+      await consultaTela;
+      expect(atualizacoes, 1);
+      expect(
+          socket.mensagens.where((e) => e['tipo'] == 'Delivery'), hasLength(1));
+      final confirmado = (await banco.db
+              .query('operacoes', where: 'id = ?', whereArgs: [pedido['id']]))
+          .single;
+      expect(jsonDecode(confirmado['resposta'] as String)['idDelivery'], '401');
+      expect(
+          jsonDecode(confirmado['resposta'] as String)['numeroPedido'], '33');
+      expect(confirmado['erro'], isNull);
+      expect(sync.online, isTrue);
+      await sync.enviarPendentes();
+      expect(aplicados, {pedido['id']});
+      expect(atualizacoes, 1);
+    });
+
     test(
         'preparo assumido pela API (${online ? 'Online' : 'Local'}) nao duplica via no socket',
         () async {
@@ -322,6 +425,65 @@ void main() {
       expect(await banco.operacoes(sync.escopo), isEmpty);
     });
   }
+
+  test('Delivery sem identidade no recibo nao libera pedido nem avisa o PC',
+      () async {
+    final fila = await guardarDelivery();
+    conectado = true;
+    reciboDeliveryIncompleto = true;
+    var atualizacoes = 0;
+    sync.aoAtualizarTelas = () => atualizacoes++;
+    await sync.enviarPendentes();
+    expect(await fila.listar(), hasLength(1));
+    expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
+    expect(atualizacoes, 0);
+    expect(socket.mensagens.where((e) => e['tipo'] == 'Delivery'), isEmpty);
+  });
+
+  test('falha na API conserva Delivery e reenvia a mesma identidade', () async {
+    final fila = await guardarDelivery();
+    conectado = true;
+    falhaServidorDelivery = true;
+    await sync.enviarPendentes();
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(pendente['estado'], 'pendente');
+    expect(pendente['erro'], 'Servidor indisponivel para sincronizacao.');
+    expect(await fila.listar(), hasLength(1));
+    falhaServidorDelivery = false;
+    await banco.atualizarOperacao(pendente['id'] as String, {'proxima': 0});
+    await sync.enviarPendentes();
+    expect(await fila.listar(), isEmpty);
+    expect(sync.erro, isNull);
+    expect(tentativas.map((e) => e['id_operacao']).toSet(), {pendente['id']});
+    expect(tentativas.map((e) => jsonEncode(e['dados'])).toSet(), hasLength(1));
+  });
+
+  testWidgets('pendencia Delivery mostra motivo sem expor ID local',
+      (tester) async {
+    sync.pendencias = [
+      {
+        'id': 'operacao-pendente',
+        'acao': 'delivery',
+        'atendimento': 'delivery-local:operacao-pendente',
+        'estado': 'pendente',
+        'erro': 'Servidor indisponivel para sincronizacao.',
+        'dados': jsonEncode({
+          'produtos': [
+            {'nome': 'Produto de teste', 'quantidade': 1}
+          ],
+        }),
+        'impressoes': '[]',
+      }
+    ];
+    await tester.pumpWidget(
+        MaterialApp(home: PendenciasSincronizacao(sincronizador: sync)));
+    expect(find.text('Pedido Delivery'), findsOneWidget);
+    expect(
+        find.text('Servidor indisponivel para sincronizacao.'), findsOneWidget);
+    expect(find.textContaining('delivery-local:'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   test('falha na API nao impede recuperacao automatica do canal da cozinha',
       () async {

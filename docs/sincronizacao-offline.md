@@ -54,6 +54,21 @@ Uma vez enfileirado, o pedido nao e editado silenciosamente. Reenviar o mesmo ID
 recupera o recibo, inclusive quando a resposta do primeiro envio se perdeu.
 Clientes, enderecos e formas de pagamento precisam ter sido preparados enquanto
 conectado. Dados novos de outro aparelho nao podem ser consultados durante uma queda.
+Em 08/10/2026, a finalizacao quitada do Delivery na API39 passa a preencher
+explicitamente os campos obrigatorios de `vendas`, inclusive quando nao ha nota
+fiscal. O INSERT anterior omitia `id_consulta` e outros campos sem DEFAULT:
+com SQL estrito, a transacao era rejeitada e o pedido ficava `No aparelho`.
+Endereco e observacao do pedido acompanham a venda. Nenhuma estrutura do banco
+ou regra de pagamento foi alterada.
+
+Depois de gravar o recibo valido, a fila libera o Delivery local e solicita uma
+atualizacao imediata da tela de origem, alem do aviso `Delivery` ao PC pela rede.
+O pedido confirmado fica `Pendente` na primeira etapa ativa da empresa
+(Aguardando na configuracao apresentada). Recibos incompletos e falhas HTTP
+mantem o pedido duravel; o motivo da ultima falha fica visivel na pendencia.
+O reenvio conserva a identidade e os dados originais. O erro temporario de envio
+e removido quando a API confirma, sem esconder outros erros de sincronizacao.
+
 O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
 o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
 carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
@@ -244,6 +259,14 @@ Filas de impressao agora carregam o escopo Online para impedir envio pela
 conexao Local ou por outra empresa/API. Recompilar os dois apps e publicar
 o pacote `build/correcoes/api39_online_pedidos_impressao_20261008.zip`.
 
+Para a confirmacao de Delivery quitado, publicar
+`api_restaurantes_venda/api39/sincronizacao/delivery.php` do pacote
+`build/correcoes/api39_delivery_confirmacao_online_20261008.zip` e instalar
+o app do garcom recompilado. O desktop conserva o protocolo existente; nesta
+correcao foi acrescentada cobertura de teste do aviso Delivery. Depois da
+publicacao, usar Tentar novamente na pendencia existente para recuperar o
+mesmo pedido. Nao recriar nem registrar manualmente o pedido pendente.
+
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
 O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando
 o codigo do conflito as operacoes ja existentes; carrinhos, recibos e filas sao mantidos.
@@ -260,6 +283,17 @@ complementos, concorrencia, mesa/comanda e resposta repetida apos fechamento.
 Tambem cobre abertura offline, recurso reutilizado, vendas, pagamentos parciais,
 cancelamento e mudanca de caixa. A suite Flutter verifica a ordem das dependencias,
 compatibilidade online com API antiga, perda de resposta e recibos incompletos.
+
+`apis_restaurantes/tests/executar_delivery_mysql_test.py --mysql-base
+/Applications/XAMPP/xamppfiles` provisiona uma instancia temporaria exclusiva
+a partir do schema canonico e executa `sincronizacao_delivery_mysql_test.php`.
+Exige MariaDB/PHP nessa instalacao, usa apenas socket Unix e encerra/remove a
+fixture ao terminar. O PHP recusa outro datadir e nunca carrega conexao.php.
+Cobre quitacao em SQL estrito/permissivo, entrada em Aguardando, dados da venda,
+recibo repetido sem duplicar financeiro/preparo, pagar depois e rollback.
+Os testes Flutter exercitam confirmacao e atualizacao em Online/Local, falha 503,
+recibo incompleto e reenvio do mesmo snapshot. O desktop usa WebSockets de
+loopback reais para verificar o aviso Delivery e o isolamento da empresa.
 
 Homologacao manual obrigatoria: desligar Wi-Fi apos carregar o atendimento; montar
 pizza completa e finalizar; reiniciar o app; reconectar; conferir um unico lancamento
