@@ -30,6 +30,7 @@ class ServicoCancelamentoTeste extends ServicoDeliveryTeste {
 }
 
 class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
+  bool falharEnderecos = false;
   final List<Map<String, dynamic>> enderecos;
   final String requeridoEndereco;
   final String ativarCardapioDigital;
@@ -45,6 +46,7 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
   Future<dynamic> consultar(String rota,
       [Map<String, dynamic> campos = const {}]) async {
     if (rota == 'enderecos_clientes/listar_por_cliente.php') {
+      if (falharEnderecos) throw StateError('HTTP 500');
       return enderecos;
     }
     if (rota == 'config_clientes/listar_cliente.php') {
@@ -1054,6 +1056,77 @@ void main() {
 
     expect(find.text('Editar endereço'), findsOneWidget);
     expect(find.text('Rua Luiz Roncalha'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'novo delivery seleciona endereco padrao mesmo com outros enderecos',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '20',
+        'endereco': 'Rua Alternativa',
+        'numero': '2',
+        'padrao': 'Não'
+      },
+      {
+        'id': '10',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'bairro': 'Centro',
+        'cidade': 'Santa Fé',
+        'padrao': 'Sim'
+      },
+    ]);
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      clonar: pedidoTeste(campos: {'idCliente': '24433', 'idendereco': ''}),
+    )));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Rua Luiz Roncalha, 169'), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Padrão do cliente'), findsOneWidget);
+    final tile = find.ancestor(
+        of: find.text('Rua Luiz Roncalha, 169'),
+        matching: find.byType(ListTile));
+    expect(tester.widget<ListTile>(tile).selected, isTrue);
+    expect(find.text('Nenhum endereço cadastrado'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'falha na consulta nao informa ausencia de endereco e atualizar recupera o padrao',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([
+      {
+        'id': '10',
+        'endereco': 'Rua Luiz Roncalha',
+        'numero': '169',
+        'padrao': 'Sim'
+      },
+    ])
+      ..falharEnderecos = true;
+    await tester.pumpWidget(MaterialApp(
+        home: PaginaNovoDelivery(
+      servico: s,
+      clonar: pedidoTeste(campos: {'idendereco': ''}),
+    )));
+    await tester.pumpAndSettle();
+    final erro = find.text(
+        'Não foi possível carregar os endereços. Toque em atualizar para tentar novamente.');
+    await tester.ensureVisible(erro);
+    await tester.pumpAndSettle();
+    expect(erro, findsOneWidget);
+    expect(find.text('Nenhum endereço cadastrado'), findsNothing);
+    s.falharEnderecos = false;
+    final atualizar = find.byTooltip('Atualizar endereços');
+    await tester.ensureVisible(atualizar);
+    await tester.tap(atualizar);
+    await tester.pumpAndSettle();
+    expect(erro, findsNothing);
+    expect(find.text('Rua Luiz Roncalha, 169'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

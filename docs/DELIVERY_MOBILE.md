@@ -1,7 +1,7 @@
 # Delivery no aplicativo
 
-Implementacao exclusiva do `sistemadevenda`. O projeto `sistemarestaurante` e o PHP
-existente foram usados somente como referencia, sem alteracoes.
+Implementacao mobile no `sistemadevenda`, integrada ao contrato da API39.
+O projeto `sistemarestaurante` fornece os mesmos cadastros e regras de entrega.
 
 ## Fluxo
 
@@ -24,10 +24,24 @@ existente foram usados somente como referencia, sem alteracoes.
 
 ## Integracao
 
-`ServicoDelivery` usa `/sistema/apis_restaurantes/api_desktop/1.0.01/` no mesmo
-servidor configurado para o aplicativo, com empresa e usuario da sessao atual.
-Essa API precisa estar publicada e acessivel tambem quando a conexao for online.
-Consultas operacionais nao usam cache offline e operacoes exigem conexao.
+`ServicoDelivery` usa a API de venda configurada no aplicativo, atualmente
+`/sistema/apis_restaurantes/api_restaurantes_venda/api39/`, com empresa e usuario
+da sessao. Em Online usa a hospedagem; em Local usa o servidor configurado.
+As consultas de enderecos podem usar o cache offline e sao renovadas pela API.
+
+Em 08/10/2026, `enderecos_clientes/listar_por_cliente.php` Online retornava
+HTTP 500 porque `api_desktop/1.0.01/funcoes/taxa_entrega.php` nao estava publicado.
+A API39 agora acompanha `funcoes/taxa_entrega.php`, reutilizando o desktop
+quando presente e oferecendo o mesmo calculo quando ausente. A listagem
+mantem os enderecos da mesma empresa/cliente, prioriza o marcado como padrao
+e conserva dados de bairro, cidade e taxa. A tela seleciona esse endereco;
+falha na consulta passa a aparecer junto da secao de enderecos, com tentativa
+pelo botao Atualizar, em vez de informar que nao existe endereco cadastrado.
+
+Publicar o pacote `build/correcoes/api39_endereco_padrao_delivery_20261008.zip`
+na hospedagem, preservando a estrutura de pastas, e atualizar o aplicativo.
+O pacote inclui o helper e os recebimentos que calculam taxa na API39.
+Nao substitui `conexao.php`, nao altera cadastros nem cria estrutura de banco.
 
 Endpoints principais: `delivery/listar_opcoes.php`, `listar_opcoes_por_id.php`,
 `inserir.php`, `inserir_produtos.php`, `mudar_status_delivery.php`,
@@ -59,6 +73,13 @@ continuam disponiveis no desktop. Os botoes de voz permanecem inalterados.
 contratos sem gravar no banco real, saldo/troco, bloqueios, corrida de consultas,
 mudanca de etapa e layouts de celular/tablet. Capturas opcionais usam os mesmos
 parametros `CAPTURAR_TELAS` e `FONTE_TESTE` dos demais testes visuais.
+
+Na correcao de enderecos de 08/10/2026 passaram 64 testes Flutter de Delivery,
+retomada offline e cadastro de clientes. O teste PHP de publicacao executa a
+listagem sem helper desktop e confere endereco padrao/alternativo, pesquisa,
+isolamento por cliente/empresa e calculos de taxa identicos ao modo Local.
+Analise Dart e lint dos seis PHP aprovados; suites PHP de catalogo e
+sincronizacao em publicacao isolada tambem aprovadas.
 
 Homologar no estabelecimento: cliente/endereco reais de teste, novo pedido,
 preparo, pagamento parcial/completo, entregador, conclusao e impressao fisica.

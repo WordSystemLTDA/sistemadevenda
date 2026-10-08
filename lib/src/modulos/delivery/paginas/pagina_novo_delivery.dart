@@ -51,6 +51,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
   bool _carregando = false, _salvando = false, _carregandoCliente = false;
   bool _exibirErroRecorrencia = false;
   String? _erro;
+  String? _erroEnderecos;
   String? _idCriado;
   MensagemClienteDelivery? _mensagemEnviando;
   bool _cardapioEnviando = false;
@@ -309,6 +310,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       _dadosCliente = Map<String, dynamic>.from(resultado);
       _endereco = null;
       _enderecos = [];
+      _erroEnderecos = null;
       if (widget.recorrente) {
         _recorrencia = _recorrencia
             .copyWith(enderecoModo: 'padrao', enderecosPorDia: const {});
@@ -376,6 +378,7 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
     final consulta = ++_consulta;
     final cliente = _cliente;
     setState(() {
+      _erroEnderecos = null;
       _carregando = true;
       _erro = null;
     });
@@ -407,7 +410,8 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
       });
     } catch (_) {
       if (mounted && consulta == _consulta) {
-        setState(() => _erro = 'Não foi possível carregar os endereços.');
+        setState(() => _erroEnderecos =
+            'Não foi possível carregar os endereços. Toque em atualizar para tentar novamente.');
       }
     } finally {
       if (mounted && consulta == _consulta) setState(() => _carregando = false);
@@ -905,6 +909,13 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                     ]),
                                     if (_carregando)
                                       const LinearProgressIndicator()
+                                    else if (_erroEnderecos != null)
+                                      Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          child: Text(_erroEnderecos!,
+                                              style:
+                                                  TextStyle(color: cs.error)))
                                     else if (_enderecos.isEmpty)
                                       Padding(
                                           padding: const EdgeInsets.symmetric(
