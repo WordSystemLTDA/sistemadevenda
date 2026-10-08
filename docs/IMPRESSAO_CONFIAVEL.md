@@ -8,6 +8,11 @@ empresa e usando o mesmo dominio da API. UDP 9982 e WebSocket TCP 9980 sao as
 portas padrao; o IP/porta salvos sao alternativa quando a descoberta nao funciona.
 Dados e imagens continuam online, independentemente do IP do socket.
 
+Na tela de configuracao, o modo Online permite salvar sem IP e porta locais.
+Quando esses campos estiverem preenchidos, a conexao do socket ocorre em segundo
+plano e sua falha nao mostra o aviso de indisponibilidade da API. O modo Local
+continua exigindo IP e porta e informa quando o computador nao responde.
+
 Esse canal e exclusivamente de atualizacao de telas. Nao transporta comandos
 de impressao, pedidos completos nem confirma vias. Filas existentes permanecem
 salvas, sem adocao ou envio por esse canal. O funcionamento de impressao no modo

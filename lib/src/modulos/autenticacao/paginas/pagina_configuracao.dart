@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
@@ -32,64 +32,69 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
 
     if (mounted) {
       setState(() {
-        tipoConexaoController.text = conexao.tipoConexao;
+        tipoConexaoController.text =
+            conexao.tipoConexao == 'online' ? 'online' : 'localhost';
         servidorController.text = conexao.servidor;
         portaController.text = conexao.porta;
       });
     }
   }
 
-  void verificar() async {
-    setState(() => isLoading = true);
-
-    // Future.delayed(const Duration(seconds: 10)).then((value) {
-    //   if (mounted) {
-    //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-    //       content: Text('Não foi possível conectar a esse Servidor.'),
-    //       showCloseIcon: true,
-    //       backgroundColor: Colors.red,
-    //     ));
-    //     setState(() => isLoading = false);
-    //   }
-    // });
-
-    if (tipoConexaoController.text.isEmpty || servidorController.text.isEmpty || portaController.text.isEmpty) {
+  Future<void> verificar() async {
+    if (isLoading) return;
+    final tipoConexao = tipoConexaoController.text;
+    final online = tipoConexao == 'online';
+    final servidor = servidorController.text.trim();
+    final porta = portaController.text.trim();
+    if (tipoConexao.isEmpty ||
+        (!online && (servidor.isEmpty || porta.isEmpty))) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Campos precisam ser preenchidos'),
         showCloseIcon: true,
       ));
-      setState(() => isLoading = false);
       return;
     }
 
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() => isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'conexao',
+        jsonEncode({
+          'tipoConexao': tipoConexao,
+          'servidor': servidor,
+          'porta': porta,
+        }),
+      );
 
-    await prefs.setString(
-      'conexao',
-      jsonEncode({
-        'tipoConexao': tipoConexaoController.text,
-        'servidor': servidorController.text,
-        'porta': portaController.text,
-      }),
-    );
-
-    await prefs.reload();
-
-    DioCliente().configurar(servidor: 'http://${servidorController.text}/sistema/apis_restaurantes/api_restaurantes_venda/');
-
-    // if (tipoConexaoController.text == 'localhost') {
-    await conectarAoServidor(servidorController.text, portaController.text);
-    // }
-
-    if (mounted) {
-      setState(() => isLoading = false);
-      var usuario = await UsuarioServico.pegarUsuario(context);
-      if (mounted) {
-        context.read<UsuarioProvedor>().setUsuario(usuario);
-        Navigator.pop(context);
+      final server = Modular.get<Server>();
+      await server.disconnect();
+      if (!mounted) return;
+      if (online) {
+        // O socket online recebe apenas avisos; sua indisponibilidade nao
+        // impede salvar a conexao nem consultar a API HTTPS do cardapio.
+        if (servidor.isNotEmpty && porta.isNotEmpty) {
+          unawaited(server.connect(servidor, porta));
+        }
+      } else {
+        await conectarAoServidor(servidor, porta);
       }
+
+      if (!mounted) return;
+      final usuario = await UsuarioServico.pegarUsuario(context);
+      if (!mounted) return;
+      context.read<UsuarioProvedor>().setUsuario(usuario);
+      Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível salvar a conexão. Tente novamente.'),
+          showCloseIcon: true,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -101,7 +106,8 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
         if (mounted) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Não foi possível conectar ao servidor $ip:$porta, mude a conexão e a porta e tente novamente'),
+            content: Text(
+                'Não foi possível conectar ao servidor $ip:$porta, mude a conexão e a porta e tente novamente'),
             backgroundColor: Colors.red,
             showCloseIcon: true,
             duration: const Duration(hours: 1),
@@ -127,6 +133,14 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
   }
 
   @override
+  void dispose() {
+    tipoConexaoController.dispose();
+    servidorController.dispose();
+    portaController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -144,8 +158,11 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
           child: ListView(
             children: [
               DropdownMenu(
+                key: ValueKey(tipoConexaoController.text),
+                enabled: !isLoading,
                 width: MediaQuery.of(context).size.width - 20,
-                onSelected: (value) => setState(() => tipoConexaoController.text = value ?? ''),
+                onSelected: (value) =>
+                    setState(() => tipoConexaoController.text = value ?? ''),
                 label: const Text('Conexão'),
                 initialSelection: tipoConexaoController.text,
                 dropdownMenuEntries: const [
@@ -153,23 +170,30 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                   DropdownMenuEntry(value: 'online', label: 'Online'),
                 ],
                 inputDecorationTheme: const InputDecorationTheme(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
-              // if (tipoConexaoController.text == 'localhost') ...[
+              if (tipoConexaoController.text == 'online') ...[
+                const Text(
+                    'A conexão Online usa a API pela internet. IP e porta são opcionais para receber atualizações de um computador na rede local.'),
+                const SizedBox(height: 10),
+              ],
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: servidorController,
                       onSubmitted: (a) => verificar(),
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.all(12),
-                        labelText: 'IP do Servidor Local',
-                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.all(12),
+                        labelText: tipoConexaoController.text == 'online'
+                            ? 'IP local (opcional)'
+                            : 'IP do Servidor Local',
+                        hintStyle: const TextStyle(fontWeight: FontWeight.w300),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -179,34 +203,40 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                     child: TextField(
                       controller: portaController,
                       onSubmitted: (a) => verificar(),
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.all(12),
-                        labelText: '9980',
-                        hintStyle: TextStyle(fontWeight: FontWeight.w300),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.all(12),
+                        labelText: tipoConexaoController.text == 'online'
+                            ? 'Porta (opcional)'
+                            : 'Porta',
+                        hintText: '9980',
+                        hintStyle: const TextStyle(fontWeight: FontWeight.w300),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
                 ],
               ),
-              // ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
                   style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(Theme.of(context).colorScheme.inversePrimary),
+                    backgroundColor: WidgetStateProperty.all(
+                        Theme.of(context).colorScheme.inversePrimary),
                     side: const WidgetStatePropertyAll(BorderSide.none),
                     shape: const WidgetStatePropertyAll(
                       RoundedRectangleBorder(
                         borderRadius: BorderRadius.all(Radius.circular(5)),
                       ),
                     ),
-                    textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
+                    textStyle:
+                        const WidgetStatePropertyAll(TextStyle(fontSize: 18)),
                   ),
-                  onPressed: () => verificar(),
-                  child: isLoading ? const CircularProgressIndicator() : const Text('Salvar'),
+                  onPressed: isLoading ? null : verificar,
+                  child: isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text('Salvar'),
                 ),
               ),
             ],
