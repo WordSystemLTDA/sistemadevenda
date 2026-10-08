@@ -20,10 +20,24 @@ class SaidaSemResposta extends Fake implements WebSocketSink {
       fechamento.future;
 }
 
+Future<void> aguardarSockets(List<WebSocket> sockets, int quantidade) async {
+  final prazo = DateTime.now().add(const Duration(seconds: 2));
+  while (sockets.length < quantidade && DateTime.now().isBefore(prazo)) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  expect(sockets.length, greaterThanOrEqualTo(quantidade));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({
+        'tipoConexao': 'local',
+        'servidor': '127.0.0.1',
+        'porta': '9980',
+      })
+    });
     final anterior = HttpOverrides.current;
     HttpOverrides.global = null;
     addTearDown(() => HttpOverrides.global = anterior);
@@ -55,6 +69,7 @@ void main() {
     expect(server.connected, isTrue);
     expect(server.channel, isNot(same(antigo)));
     expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
+    await aguardarSockets(sockets, 1);
     expect(sockets, hasLength(1));
     final recebeuDados = Completer<void>();
     server.addListener(() {
@@ -149,7 +164,6 @@ void main() {
     final local = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final sockets = <WebSocket>[];
     final reconectou = Completer<void>();
-    final canalPronto = Completer<void>();
     final atualizou = Completer<String>();
     local.listen((request) async {
       final socket = await WebSocketTransformer.upgrade(request);
@@ -158,11 +172,6 @@ void main() {
       if (sockets.length == 2) reconectou.complete();
     });
     final server = Server();
-    server.addListener(() {
-      if (sockets.length == 2 && server.connected && !canalPronto.isCompleted) {
-        canalPronto.complete();
-      }
-    });
     addTearDown(() async {
       server.dispose();
       for (final socket in sockets) {
@@ -171,9 +180,14 @@ void main() {
       await local.close(force: true);
     });
     expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
+    await aguardarSockets(sockets, 1);
     await sockets.first.close();
     await reconectou.future.timeout(const Duration(seconds: 6));
-    await canalPronto.future.timeout(const Duration(seconds: 2));
+    final prazo = DateTime.now().add(const Duration(seconds: 2));
+    while (!server.connected && DateTime.now().isBefore(prazo)) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(server.connected, isTrue);
     // A reconexao ja publica uma reconciliacao de todas as telas. Este teste
     // verifica a mensagem recebida depois, nao o primeiro evento sintetico.
     server.aoAtualizarDados = (tipo) {
@@ -212,6 +226,7 @@ void main() {
       await local.close(force: true);
     });
     expect(await server.connect('127.0.0.1', '${local.port}'), isTrue);
+    await aguardarSockets(sockets, 1);
     final desconectou = Completer<void>();
     server.addListener(() {
       if (!server.connected && !desconectou.isCompleted) desconectou.complete();
@@ -222,6 +237,7 @@ void main() {
         .processarImpressoesPendentes(reconectarAgora: true)
         .timeout(const Duration(seconds: 1));
     expect(server.connected, isTrue);
+    await aguardarSockets(sockets, 2);
     expect(sockets, hasLength(2));
     await server.disconnect();
     await server.processarImpressoesPendentes(reconectarAgora: true);

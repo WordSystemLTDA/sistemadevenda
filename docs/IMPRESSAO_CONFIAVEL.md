@@ -1,5 +1,19 @@
 # Impressao da cozinha
 
+## Canal de atualizacao online (08/10/2026)
+
+Com conexao `Online`, o app atualizado descobre o desktop `sistemarestaurante`
+na mesma rede Wi-Fi, desde que ele esteja em `SERVIDOR`, autenticado na mesma
+empresa e usando o mesmo dominio da API. UDP 9982 e WebSocket TCP 9980 sao as
+portas padrao; o IP/porta salvos sao alternativa quando a descoberta nao funciona.
+Dados e imagens continuam online, independentemente do IP do socket.
+
+Esse canal e exclusivamente de atualizacao de telas. Nao transporta comandos
+de impressao, pedidos completos nem confirma vias. Filas existentes permanecem
+salvas, sem adocao ou envio por esse canal. O funcionamento de impressao no modo
+local permanece igual. Atualizar os dois apps para usar o novo protocolo;
+nao exige publicar PHP, executar SQL nem expor portas na internet.
+
 ## Revisao de 22/09/2026
 
 Esta revisao substitui o limite de tentativas/consultas do historico abaixo.

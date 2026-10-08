@@ -8,6 +8,9 @@ class UrlImagem {
   static String? _baseHostCache;
 
   static Future<String> obterBaseHostImagens() async {
+    final conexao = await ConfigSharedPreferences().getConexao();
+    // O socket online transporta avisos de tela; imagens continuam na API.
+    if (conexao?.tipoConexao == 'online') return 'https://bigchef.com.br';
     if (_baseHostCache != null && _baseHostCache!.isNotEmpty) {
       return _baseHostCache!;
     }
@@ -17,13 +20,6 @@ class UrlImagem {
 
     if (servidorSocket.connected && hostSocket.isNotEmpty) {
       _baseHostCache = 'http://$hostSocket';
-      return _baseHostCache!;
-    }
-
-    final conexao = await ConfigSharedPreferences().getConexao();
-
-    if (conexao?.tipoConexao == 'online') {
-      _baseHostCache = 'https://bigchef.com.br';
       return _baseHostCache!;
     }
 
