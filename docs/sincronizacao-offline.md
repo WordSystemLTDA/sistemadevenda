@@ -69,6 +69,22 @@ mantem o pedido duravel; o motivo da ultima falha fica visivel na pendencia.
 O reenvio conserva a identidade e os dados originais. O erro temporario de envio
 e removido quando a API confirma, sem esconder outros erros de sincronizacao.
 
+Na correcao do reenvio em 08/10/2026, `delivery/inserir_produtos.php` gera o
+hash dos itens do envio transacional com random_bytes. A hospedagem pode
+conservar seu conexao.php antigo sem a funcao gerarHash; essa ausencia causava
+HTTP 503 durante a insercao. A rota direta continua usando o gerador Local.
+O teste MariaDB agora nao injeta gerarHash no bootstrap, cobrindo essa publicacao.
+O botao Reenviar consulta o estado persistido depois da tentativa e informa
+confirmacao ou pendencia. Identidade, snapshot e pagamentos nao sao substituidos.
+
+`sincronizacao/falha_operacao.php` preserva os conflitos de negocio e classifica
+falhas internas de estrutura, dependencia e banco ocupado. Uma referencia
+aleatoria correlaciona a mensagem da tela com o error_log da hospedagem.
+O log inclui codigo SQL, campo rejeitado e arquivo/linha quando disponiveis,
+sem SQL, parametros ou dados do pedido. A rota de operacao anuncia o header
+`X-Garcom-Sincronizacao: api39-20261008-reenvio-2`, permitindo conferir a
+publicacao sem enviar um pedido real. Nao executa DDL ou reparo no banco.
+
 O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
 o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
 carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
@@ -266,6 +282,16 @@ o app do garcom recompilado. O desktop conserva o protocolo existente; nesta
 correcao foi acrescentada cobertura de teste do aviso Delivery. Depois da
 publicacao, usar Tentar novamente na pendencia existente para recuperar o
 mesmo pedido. Nao recriar nem registrar manualmente o pedido pendente.
+
+O pacote `build/correcoes/api39_delivery_reenvio_servidor_20261008.zip`
+substitui o pacote de confirmacao para esse fluxo. Publicar os quatro PHP juntos:
+`sincronizacao/{operacao,falha_operacao,delivery}.php` e
+`delivery/inserir_produtos.php`, preservando o conexao.php da hospedagem.
+Atualizar o app do garcom conservando os dados locais e reenviar a pendencia
+existente. O teste de falhas PHP verifica status, correlacao da referencia e
+ausencia de dados privados nas respostas/logs; 118 testes Flutter validam o
+reenvio com falha/recibo incompleto e confirmacao Online/Local, alem dos fluxos
+de finalizacao, fila duravel e atualizacao da tela.
 
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
 O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando

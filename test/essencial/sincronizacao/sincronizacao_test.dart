@@ -343,8 +343,7 @@ void main() {
       expect(socket.mensagens.where((e) => e['tipo'] == 'Delivery'), isEmpty);
 
       conectado = true;
-      await banco.atualizarOperacao(pedido['id'] as String, {'proxima': 0});
-      await sync.enviarPendentes();
+      expect(await sync.reenviarParaServidor(pedido['id'] as String), isTrue);
       await consultaTela;
       expect(atualizacoes, 1);
       expect(
@@ -438,6 +437,9 @@ void main() {
     expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
     expect(atualizacoes, 0);
     expect(socket.mensagens.where((e) => e['tipo'] == 'Delivery'), isEmpty);
+    final pendente = (await banco.operacoes(sync.escopo)).single;
+    expect(await sync.reenviarParaServidor(pendente['id'] as String), isFalse);
+    expect(await fila.listar(), hasLength(1));
   });
 
   test('falha na API conserva Delivery e reenvia a mesma identidade', () async {
@@ -449,9 +451,10 @@ void main() {
     expect(pendente['estado'], 'pendente');
     expect(pendente['erro'], 'Servidor indisponivel para sincronizacao.');
     expect(await fila.listar(), hasLength(1));
+    expect(await sync.reenviarParaServidor(pendente['id'] as String), isFalse);
+    expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
     falhaServidorDelivery = false;
-    await banco.atualizarOperacao(pendente['id'] as String, {'proxima': 0});
-    await sync.enviarPendentes();
+    expect(await sync.reenviarParaServidor(pendente['id'] as String), isTrue);
     expect(await fila.listar(), isEmpty);
     expect(sync.erro, isNull);
     expect(tentativas.map((e) => e['id_operacao']).toSet(), {pendente['id']});

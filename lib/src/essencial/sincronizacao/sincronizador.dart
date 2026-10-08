@@ -896,10 +896,10 @@ class Sincronizador extends ChangeNotifier {
     _notificar();
   }
 
-  Future<void> reenviarParaServidor(String id) async {
-    if (_descartado) return;
+  Future<bool> reenviarParaServidor(String id) async {
+    if (_descartado) return false;
     await configurar();
-    if (escopo.isEmpty || _descartado) return;
+    if (escopo.isEmpty || _descartado) return false;
     final alvo = escopo;
     await _operacaoExclusiva(() async {
       if (alvo != escopo || _descartado) return;
@@ -938,6 +938,13 @@ class Sincronizador extends ChangeNotifier {
     await _recarregarPendencias();
     _notificar();
     await enviarPendentes();
+    if (alvo != escopo || _descartado) return false;
+    final resultado = await banco.db.query('operacoes',
+        columns: ['estado'],
+        where: 'id = ? AND escopo = ?',
+        whereArgs: [id, alvo],
+        limit: 1);
+    return resultado.firstOrNull?['estado'] == 'concluido';
   }
 
   Future<void> voltarPedidoParaCarrinho(String id) async {

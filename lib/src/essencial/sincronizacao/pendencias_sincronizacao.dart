@@ -403,13 +403,14 @@ class PendenciasSincronizacao extends StatelessWidget {
                             ? null
                             : () async {
                                 try {
-                                  await sincronizador
+                                  final confirmado = await sincronizador
                                       .reenviarParaServidor(idOperacao);
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context)
-                                      .showSnackBar(const SnackBar(
-                                    content: Text(
-                                        'Reenvio solicitado. Se o servidor ainda recusar, o pedido continua salvo nesta tela.'),
+                                      .showSnackBar(SnackBar(
+                                    content: Text(confirmado
+                                        ? 'Pedido confirmado no servidor.'
+                                        : 'O pedido continua pendente. Confira o motivo nesta tela.'),
                                   ));
                                 } catch (_) {
                                   if (!context.mounted) return;
