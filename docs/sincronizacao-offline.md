@@ -183,7 +183,7 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
    no `schema.sql` da API, incluindo `garcom_operacoes`. Se a instalacao ainda nao
    as possui, provisionar somente essas estruturas pelo processo controlado.
    Nao executar o schema completo sobre um banco existente. Nenhum endpoint faz DDL.
-2. Publicar `sincronizacao/{estado,operacao,operacoes,recibo,delivery}.php` e os arquivos alterados:
+2. Publicar `sincronizacao/{estado,operacao,operacoes,recibo,delivery,versao_atendimento}.php` e os arquivos alterados:
    `comandas/inserir_produtos.php`, `mesas/inserir_produtos.php`,
    `funcoes/sabores/inserir.php`, `cardapio/listar_por_id_comanda.php` e
    `categorias/listar.php`, todos em `api_restaurantes_venda/api37/`.
@@ -200,6 +200,10 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
    atualizar somente o repositorio Flutter nao atualiza o servidor PHP.
 3. Se a conexao usar `api6` (URL online do aplicativo), disponibilizar o mesmo contrato
    nessa versao. Essa arvore nao esta presente neste checkout e nao foi publicada.
+   A leitura de mesas e comandas usa `sincronizacao/versao_atendimento.php` para
+   calcular a versao sem carregar o modulo de operacoes ou a fila de impressao.
+   Publicar esse helper junto com `cardapio/listar_por_id_comanda.php`.
+   A versao calculada conserva o contrato usado na validacao do envio de pedidos.
 4. Manter o servidor desktop com recibos/confirmacoes duraveis do protocolo de impressao 2.
 5. Instalar o app atualizado, entrar conectado e aguardar a preparacao do catalogo.
    Um servidor sem o novo contrato nao recebe lancamentos pela fila.
