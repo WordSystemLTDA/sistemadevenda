@@ -85,6 +85,37 @@ sem SQL, parametros ou dados do pedido. A rota de operacao anuncia o header
 `X-Garcom-Sincronizacao: api39-20261008-reenvio-2`, permitindo conferir a
 publicacao sem enviar um pedido real. Nao executa DDL ou reparo no banco.
 
+Na correcao seguinte de 08/10/2026, o pedido com Marmita, Mais e Ovo reproduziu
+outras duas falhas na gravacao dos complementos. A montagem ainda chamava
+`gerarHash()` no helper compartilhado, mesmo quando o item principal ja tinha
+hash independente do conexao.php. O helper agora conserva o gerador Local
+quando existe e usa random_bytes quando ausente. Os adicionais recebiam kit
+null interpolado como string vazia, recusada por MariaDB em modo estrito.
+`inserirPacotes` normaliza produto avulso para kit zero e preserva IDs de kits.
+
+Falhas de ingrediente e adicional conservam a excecao original ate o protocolo
+transacional. Assim, erros SQL chegam ao log com sua causa e rejeicoes de
+tarifa chegam como validacao, sem serem substituidos por falha generica.
+Chamadores diretos continuam recebendo sucesso/mensagem e conservam o fluxo
+existente. Nao ha alteracao de schema, valores ou dados de pedidos ja salvos.
+
+A suite MariaDB descartavel reproduziu as duas falhas antes das correcoes e
+confirmou depois a Marmita de R$ 20,00 + Mais R$ 5,00 + Ovo R$ 3,00 na etapa
+Aguardando, com os tres ingredientes, adicional, pagamento e preparo no
+mesmo recibo. Cobre SQL estrito/permissivo, Mais gratuito, kits, reenvio sem
+duplicacao e rollback de complemento invalido. O teste Local verifica que o
+gerador existente continua sendo utilizado. 117 testes Flutter de fila,
+finalizacao, confirmacao Online/Local e atualizacao da tela passaram.
+
+Publicar os arquivos do pacote
+`build/correcoes/api39_delivery_montagem_aguardando_20261008.zip`, com backup
+e conservando conexao.php. O header passa a informar
+`X-Garcom-Sincronizacao: api39-20261008-delivery-montagem-3`. Reenviar a mesma
+pendencia existente depois da publicacao; nao recriar o pedido. Esta correcao
+e no PHP e nao exige mudanca adicional no app ja atualizado. As referencias
+836bf2bd061b8659 e 04adc6a4573ead8e nao estavam nos logs locais; nao houve
+acesso ao error_log remoto nem publicacao na hospedagem nesta verificacao.
+
 O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
 o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
 carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
