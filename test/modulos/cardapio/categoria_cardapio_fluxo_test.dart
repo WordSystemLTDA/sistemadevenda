@@ -158,45 +158,51 @@ void main() {
     usuario.dispose();
   });
 
-  testWidgets('Mais atualiza total, reverte e envia o adicional ao carrinho',
-      (tester) async {
-    produtos.precoMais = '2.75';
-    cardapio.tipo = TipoCardapio.comanda;
-    cardapio.idComanda = '4';
-    await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
-        tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
-    await tester.pumpWidget(
-        MaterialApp(home: PaginaProduto(produto: produtos.produtoCardapio)));
-    await tester.pumpAndSettle();
-    final arroz = find.ancestor(
-        of: find.text('Arroz'),
-        matching: find.byType(CardIngredientesCardapio));
-    await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
-        contains('47,75'));
-    await tester.tap(find.descendant(of: arroz, matching: find.text('Normal')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
-        contains('45,00'));
-    await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(BotaoAcaoPedido));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('adicionar_produto_carrinho')));
-    await tester.pumpAndSettle();
-    final item = Modular.get<ProvedorCarrinho>()
-        .itensCarrinho
-        .listaComandosPedidos
-        .single;
-    expect(item.valorVenda, '47.75');
-    final salvo = item.opcoesPacotesListaFinal!
-        .singleWhere((grupo) => grupo.tipo == 8)
-        .dados!
-        .first;
-    expect(salvo.montagemCardapio!.valorAdicionalMais, '2.75');
-    expect(tester.takeException(), isNull);
-  });
+  for (final caso in [(20.0, '5.00'), (45.0, '2.75'), (20.0, '0.00')]) {
+    testWidgets(
+        'Mais ${caso.$2} atualiza total, reverte e envia o adicional ao carrinho',
+        (tester) async {
+      produtos.precoMais = caso.$2;
+      produtos.produtoCardapio.valorVenda = caso.$1.toStringAsFixed(2);
+      final total = caso.$1 + double.parse(caso.$2);
+      cardapio.tipo = TipoCardapio.comanda;
+      cardapio.idComanda = '4';
+      await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
+          tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
+      await tester.pumpWidget(
+          MaterialApp(home: PaginaProduto(produto: produtos.produtoCardapio)));
+      await tester.pumpAndSettle();
+      final arroz = find.ancestor(
+          of: find.text('Arroz'),
+          matching: find.byType(CardIngredientesCardapio));
+      await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+          contains(total.toStringAsFixed(2).replaceAll('.', ',')));
+      await tester
+          .tap(find.descendant(of: arroz, matching: find.text('Normal')));
+      await tester.pumpAndSettle();
+      expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+          contains(caso.$1.toStringAsFixed(2).replaceAll('.', ',')));
+      await tester.tap(find.descendant(of: arroz, matching: find.text('Mais')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(BotaoAcaoPedido));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('adicionar_produto_carrinho')));
+      await tester.pumpAndSettle();
+      final item = Modular.get<ProvedorCarrinho>()
+          .itensCarrinho
+          .listaComandosPedidos
+          .single;
+      expect(item.valorVenda, total.toStringAsFixed(2));
+      final salvo = item.opcoesPacotesListaFinal!
+          .singleWhere((grupo) => grupo.tipo == 8)
+          .dados!
+          .first;
+      expect(salvo.montagemCardapio!.valorAdicionalMais, caso.$2);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets(
       'produto com categoria_cardapio abre montagem antes dos adicionais',
@@ -248,6 +254,7 @@ void main() {
               id: '1',
               nome: 'Arroz',
               valor: '0',
+              valorAdicionalMais: '0.00',
               idCategoriaCardapio: '9',
             ),
           ],
@@ -275,6 +282,127 @@ void main() {
     final montagem = tester
         .widget<EtapaMontagemCardapio>(find.byType(EtapaMontagemCardapio));
     expect(montagem.ingredientes.map((item) => item.nome), ['Arroz']);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('API39 completa tarifa ausente no catalogo antes de montar Mais',
+      (tester) async {
+    final catalogo = Modelowordprodutos.fromMap({
+      ...produtos.produtoCardapio.toMap(),
+      'id': '23601',
+      'nome': 'Marmita P',
+      'valorVenda': '20.00',
+      'idCategoriaCardapio': '4',
+      'opcoesPacotes': [
+        ModeloOpcoesPacotes(
+          id: 12,
+          titulo: 'Ingredientes do Cardápio',
+          tipo: 8,
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(
+              id: '70',
+              nome: 'Arroz',
+              valor: '0',
+              idCategoriaCardapio: '4',
+              diaSemana: 'quinta',
+              permissoesMontagemCardapio: const {
+                'sem': true,
+                'pouco': true,
+                'normal': true,
+                'mais': true,
+                'trocar': true,
+              },
+            ),
+          ],
+        ).toMap(),
+      ],
+    });
+    final consultas = <RequestOptions>[];
+    final aguardarPreco = Completer<void>();
+    final api = DioCliente(
+        servidor:
+            'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api39/');
+    addTearDown(() => api.cliente.close(force: true));
+    api.cliente.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        consultas.add(options);
+        final consultaPreco =
+            options.uri.path.endsWith('/listar_ingredientes_dia.php');
+        if (consultaPreco) await aguardarPreco.future;
+        handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: consultaPreco
+                ? {
+                    'ingredientes': [
+                      {
+                        'idIngredienteCardapio': '70',
+                        'valorAdicionalMais': '5.00'
+                      }
+                    ]
+                  }
+                : catalogo.toMap()));
+      },
+    ));
+    usuario.setUsuario(UsuarioModelo(
+      empresa: '2',
+      configuracoes: fixture.ConfiguracoesTeste('media'),
+    ));
+    produtos.servicoReal = ServicoProduto(api, usuario);
+    cardapio.tipo = TipoCardapio.comanda;
+    cardapio.idComanda = '4';
+    await Modular.get<ProvedorCarrinho>().selecionarAtendimento(
+        tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: CardProduto(
+          estaPesquisando: false,
+          item: catalogo,
+          categoria: null,
+          finalizar: false,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(CardProduto));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byKey(const ValueKey('carregando-detalhes-produto')),
+        findsOneWidget);
+    expect(find.byType(CardIngredientesCardapio), findsNothing);
+    aguardarPreco.complete();
+    await tester.pumpAndSettle();
+    expect(consultas, hasLength(2));
+    expect(consultas.first.uri.path,
+        '/sistema/apis_restaurantes/api_restaurantes_venda/api39/produtos/listar_por_id.php');
+    expect(consultas.first.uri.queryParameters['id'], '23601');
+    expect(consultas.last.uri.path,
+        '/sistema/apis_restaurantes/api_desktop_versao/1.1.87/cardapio/vincular_cardapio/listar_ingredientes_dia.php');
+    expect(consultas.last.uri.queryParameters['empresa'], '2');
+    expect(consultas.last.uri.queryParameters['id_categoria_cardapio'], '4');
+    expect(consultas.last.uri.queryParameters['dia_semana'], 'quinta');
+    await tester.tap(find.text('Mais'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+        contains('25,00'));
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('adicionar_produto_carrinho')));
+    await tester.pumpAndSettle();
+    final item = Modular.get<ProvedorCarrinho>()
+        .itensCarrinho
+        .listaComandosPedidos
+        .single;
+    expect(item.valorVenda, '25.00');
+    expect(
+        item.opcoesPacotesListaFinal!
+            .singleWhere((g) => g.tipo == 8)
+            .dados!
+            .single
+            .montagemCardapio!
+            .valorAdicionalMais,
+        '5.00');
     expect(tester.takeException(), isNull);
   });
 
@@ -652,7 +780,8 @@ void main() {
       await tester.tap(find.byTooltip('Mostrar detalhes'));
       await tester.pumpAndSettle();
       expect(find.text('Cardápio:'), findsOneWidget);
-      expect(find.text('Trocar - Carne de Panela por 1x Arroz'), findsOneWidget);
+      expect(
+          find.text('Trocar - Carne de Panela por 1x Arroz'), findsOneWidget);
       expect(find.text('Pouco - Feijão'), findsOneWidget);
       expect(find.textContaining('TROCAR Carne'), findsNothing);
       await capturarTela(tester, 'almoco_carrinho_${largura.toInt()}');

@@ -7,6 +7,7 @@ import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
+import 'package:app/src/modulos/cardapio/uteis/montagem_cardapio.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,10 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
   final Map<String, dynamic> almoco;
   final chamadas = <RequestOptions>[];
   bool manterVinculoNoCatalogo = false;
+  bool detalheComMontagem = false;
+  bool omitirPrecoMais = false;
+  bool precoEmSnakeCase = false;
+  final precosMais = {'6': '5.00', '10': '0.00', '7': '1.75'};
   Completer<void>? bloquearDetalhe;
   final detalheIniciado = Completer<void>();
 
@@ -34,16 +39,27 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
       ..['idCategoriaCardapio'] = null
       ..['id_categoria_cardapio'] = null
       ..['opcoesPacotes'] = [desktopAntigo['opcoesPacotes'][1]];
+    final detalhe = detalheComMontagem
+        ? jsonDecode(jsonEncode(almoco)) as Map<String, dynamic>
+        : quebrado;
+    if (omitirPrecoMais) {
+      for (final grupo in detalhe['opcoesPacotes'] as List) {
+        if (grupo['tipo'] != 8) continue;
+        for (final dado in grupo['dados'] as List) {
+          (dado as Map).remove('valorAdicionalMais');
+        }
+      }
+    }
 
     if (RegExp(
-            r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_id\.php$')
+            r'/api_restaurantes_venda/api(?:1|37|39)/produtos/listar_por_id\.php$')
         .hasMatch(caminho)) {
       if (!detalheIniciado.isCompleted) detalheIniciado.complete();
       await bloquearDetalhe?.future;
-      return _json(quebrado);
+      return _json(detalhe);
     }
     if (RegExp(
-            r'/api_restaurantes_venda/api(?:1|37)/produtos/listar_por_categoria\.php$')
+            r'/api_restaurantes_venda/api(?:1|37|39)/produtos/listar_por_categoria\.php$')
         .hasMatch(caminho)) {
       final produtoCatalogo = Map<String, dynamic>.from(quebrado);
       if (manterVinculoNoCatalogo) {
@@ -55,16 +71,20 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
       }
       return _json([produtoCatalogo]);
     }
-    if (caminho
-        .endsWith('/api_desktop/1.0.01/produtos/listar_por_categoria.php')) {
+    if (RegExp(
+            r'/(?:api_desktop/1\.0\.01|api_desktop_versao/1\.1\.87)/produtos/listar_por_categoria\.php$')
+        .hasMatch(caminho)) {
       return _json([desktopAntigo]);
     }
-    if (caminho.endsWith(
-        '/api_desktop/1.0.01/cardapio/vincular_cardapio/listar_ingredientes_dia.php')) {
+    if (RegExp(
+            r'/(?:api_desktop/1\.0\.01|api_desktop_versao/1\.1\.87)/cardapio/vincular_cardapio/listar_ingredientes_dia\.php$')
+        .hasMatch(caminho)) {
       return _json({
         'ingredientes': [
           {
             'idIngredienteCardapio': '6',
+            precoEmSnakeCase ? 'valor_adicional_mais' : 'valorAdicionalMais':
+                precosMais['6'],
             'permitirSem': 'Não',
             'permitirPouco': 'Sim',
             'permitirNormal': 'Sim',
@@ -73,6 +93,8 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
           },
           {
             'idIngredienteCardapio': '10',
+            precoEmSnakeCase ? 'valor_adicional_mais' : 'valorAdicionalMais':
+                precosMais['10'],
             'permitirSem': 'Sim',
             'permitirPouco': 'Sim',
             'permitirNormal': 'Sim',
@@ -81,6 +103,8 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
           },
           {
             'idIngredienteCardapio': '7',
+            precoEmSnakeCase ? 'valor_adicional_mais' : 'valorAdicionalMais':
+                precosMais['7'],
             'permitirSem': 'Sim',
             'permitirPouco': 'Sim',
             'permitirNormal': 'Sim',
@@ -107,6 +131,82 @@ class _AdapterCardapioFallback implements HttpClientAdapter {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  for (final caso in [
+    ('https://bigchef.com.br', 'api39', 'api_desktop_versao/1.1.87'),
+    ('http://cozinha', 'api39', 'api_desktop/1.0.01'),
+    ('http://cozinha', 'api37', 'api_desktop/1.0.01'),
+  ]) {
+    test(
+        'recupera preco Mais ausente com permissoes completas: ${caso.$1}/${caso.$2}',
+        () async {
+      final almoco = jsonDecode(File('test/fixtures/almoco_livre_cardapio.json')
+          .readAsStringSync()) as Map<String, dynamic>;
+      final api = DioCliente(
+          servidor:
+              '${caso.$1}/sistema/apis_restaurantes/api_restaurantes_venda/${caso.$2}/');
+      addTearDown(() => api.cliente.close(force: true));
+      final adapter = _AdapterCardapioFallback(almoco)
+        ..detalheComMontagem = true
+        ..omitirPrecoMais = true
+        ..precoEmSnakeCase = caso.$2 == 'api37';
+      api.cliente.httpClientAdapter = adapter;
+      final usuario = UsuarioProvedor()
+        ..setUsuario(UsuarioModelo(id: '1', empresa: '32'));
+      addTearDown(usuario.dispose);
+      final produto =
+          await ServicoProduto(api, usuario).listarPorId('436', '0');
+      final ingredientes = produto!.opcoesPacotes!.first.dados!;
+      expect(ingredientes.map((i) => i.valorAdicionalMais),
+          ['5.00', '0.00', '1.75']);
+      expect(
+          ingredientes.first
+              .permiteMontagemCardapio(AcaoIngredienteCardapio.sem),
+          isFalse);
+      final montagem = MontagemCardapio.iniciar(ingredientes);
+      for (var i = 0; i < montagem.length; i++) {
+        final mais = MontagemCardapio.aplicar(
+            montagem[i],
+            montagem[i]
+                .montagemCardapio!
+                .copyWith(acao: AcaoIngredienteCardapio.mais));
+        expect(double.parse(mais.valor!), [5.0, 0.0, 1.75][i]);
+      }
+      expect(adapter.chamadas, hasLength(2));
+      expect(adapter.chamadas.last.uri.path,
+          '/sistema/apis_restaurantes/${caso.$3}/cardapio/vincular_cardapio/listar_ingredientes_dia.php');
+      expect(adapter.chamadas.last.uri.queryParameters['empresa'], '32');
+      expect(adapter.chamadas.last.uri.queryParameters['id_categoria_cardapio'],
+          '3');
+      expect(adapter.chamadas.last.uri.queryParameters['dia_semana'], 'quinta');
+    });
+  }
+
+  test(
+      'preco Mais zero informado pela API permanece zero ao completar permissoes',
+      () async {
+    final almoco = jsonDecode(
+            File('test/fixtures/almoco_livre_cardapio.json').readAsStringSync())
+        as Map<String, dynamic>;
+    for (final dado in almoco['opcoesPacotes'][0]['dados'] as List) {
+      dado['valorAdicionalMais'] = '0.00';
+      (dado as Map).remove('permissoesMontagemCardapio');
+    }
+    final api = DioCliente(
+        servidor:
+            'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api39/');
+    addTearDown(() => api.cliente.close(force: true));
+    final adapter = _AdapterCardapioFallback(almoco)..detalheComMontagem = true;
+    api.cliente.httpClientAdapter = adapter;
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '1', empresa: '32'));
+    addTearDown(usuario.dispose);
+    final produto = await ServicoProduto(api, usuario).listarPorId('436', '0');
+    expect(
+        produto!.opcoesPacotes!.first.dados!.map((i) => i.valorAdicionalMais),
+        everyElement('0.00'));
+    expect(adapter.chamadas, hasLength(2));
+  });
 
   test('consulta comum nao solicita ingredientes de outros dias', () async {
     final almoco = jsonDecode(

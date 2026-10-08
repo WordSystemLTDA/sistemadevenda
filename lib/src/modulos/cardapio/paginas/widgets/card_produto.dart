@@ -101,8 +101,9 @@ class _CardProdutoState extends State<CardProduto> {
     // A listagem atual da API ja pode trazer toda a montagem do dia. Nesse
     // caso abrir outra consulta deixa um atraso perceptivel sem acrescentar
     // informacao. So reutilize quando o grupo de Cardapio estiver claramente
-    // identificado e possuir ingredientes; adicionais comuns nunca entram
-    // neste atalho.
+    // identificado e possuir ingredientes com as tarifas de Mais, inclusive
+    // zero. Sem a tarifa, consultar o detalhe antes de permitir a montagem.
+    // Adicionais comuns nunca entram neste atalho.
     return (item.opcoesPacotes ?? const []).any((grupo) {
       final dados = grupo.dados ?? const [];
       final grupoCardapio = grupo.tipo == 8 ||
@@ -110,7 +111,13 @@ class _CardProdutoState extends State<CardProduto> {
           dados.any(
             (dado) => _idCardapioValido(dado.idCategoriaCardapio),
           );
-      return grupoCardapio && dados.isNotEmpty;
+      return grupoCardapio &&
+          dados.isNotEmpty &&
+          dados.every((dado) {
+            final preco = double.tryParse(
+                (dado.valorAdicionalMais ?? '').replaceAll(',', '.'));
+            return preco != null && preco.isFinite && preco >= 0;
+          });
     });
   }
 

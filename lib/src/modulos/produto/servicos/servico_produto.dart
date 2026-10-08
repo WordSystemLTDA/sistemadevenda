@@ -404,8 +404,9 @@ class ServicoProduto {
         .expand((grupo) => grupo.dados ?? const <ModeloDadosOpcoesPacotes>[])
         .toList();
     if (ingredientes.isEmpty ||
-        ingredientes
-            .every((item) => item.permissoesMontagemCardapio.isNotEmpty)) {
+        ingredientes.every((item) =>
+            item.permissoesMontagemCardapio.isNotEmpty &&
+            _precoMais(item.valorAdicionalMais) != null)) {
       return produto;
     }
 
@@ -443,6 +444,7 @@ class ServicoProduto {
       if (lista is! List) return produto;
 
       final permissoesPorIngrediente = <String, Map<String, bool>>{};
+      final precosPorIngrediente = <String, String>{};
       for (final bruto in lista) {
         if (bruto is! Map) continue;
         final mapa = Map<String, dynamic>.from(bruto);
@@ -451,6 +453,9 @@ class ServicoProduto {
                 mapa['id'])
             ?.toString();
         if (id == null || id.isEmpty) continue;
+        final preco = _precoMais(
+            mapa['valorAdicionalMais'] ?? mapa['valor_adicional_mais']);
+        if (preco != null) precosPorIngrediente[id] = preco;
         permissoesPorIngrediente[id] = {
           'sem': _permissaoAtiva(mapa['permitirSem'] ?? mapa['permitir_sem']),
           'pouco':
@@ -468,12 +473,16 @@ class ServicoProduto {
         final dados = grupo.dados;
         if (dados == null) continue;
         for (var i = 0; i < dados.length; i++) {
-          if (dados[i].permissoesMontagemCardapio.isNotEmpty) continue;
+          final item = dados[i];
           final permissoes = permissoesPorIngrediente[dados[i].id];
-          if (permissoes == null) continue;
+          final preco = precosPorIngrediente[item.id];
+          if (permissoes == null && preco == null) continue;
           dados[i] = ModeloDadosOpcoesPacotes.fromMap({
-            ...dados[i].toMap(),
-            'permissoesMontagemCardapio': permissoes,
+            ...item.toMap(),
+            if (item.permissoesMontagemCardapio.isEmpty && permissoes != null)
+              'permissoesMontagemCardapio': permissoes,
+            if (_precoMais(item.valorAdicionalMais) == null && preco != null)
+              'valorAdicionalMais': preco,
           });
         }
       }
@@ -481,6 +490,14 @@ class ServicoProduto {
       return produto;
     }
     return produto;
+  }
+
+  String? _precoMais(Object? valor) {
+    final numero = double.tryParse('${valor ?? ''}'.replaceAll(',', '.'));
+    // Zero e um preco cadastrado valido, diferente de um campo ausente.
+    return numero != null && numero.isFinite && numero >= 0
+        ? numero.toStringAsFixed(2)
+        : null;
   }
 
   bool _permissaoAtiva(Object? valor) {
@@ -499,9 +516,13 @@ class ServicoProduto {
   String? _baseDesktop(String baseGarcom) {
     if (baseGarcom.isEmpty) return null;
     final normalizada = baseGarcom.endsWith('/') ? baseGarcom : '$baseGarcom/';
+    // A API39 Online usa a API desktop publicada na hospedagem. O servidor
+    // Local e as APIs antigas conservam o caminho desktop existente.
+    final desktopOnline = Uri.tryParse(normalizada)?.scheme == 'https' &&
+        normalizada.contains('/api_restaurantes_venda/api39/');
     final desktop = normalizada.replaceFirst(
-      RegExp(r'/api_restaurantes_venda/api(?:1|6|37)/'),
-      '/api_desktop/1.0.01/',
+      RegExp(r'/api_restaurantes_venda/api(?:1|6|37|38|39)/'),
+      desktopOnline ? '/api_desktop_versao/1.1.87/' : '/api_desktop/1.0.01/',
     );
     return desktop == normalizada ? null : desktop;
   }
