@@ -13,11 +13,32 @@ Quando esses campos estiverem preenchidos, a conexao do socket ocorre em segundo
 plano e sua falha nao mostra o aviso de indisponibilidade da API. O modo Local
 continua exigindo IP e porta e informa quando o computador nao responde.
 
-Esse canal e exclusivamente de atualizacao de telas. Nao transporta comandos
-de impressao, pedidos completos nem confirma vias. Filas existentes permanecem
-salvas, sem adocao ou envio por esse canal. O funcionamento de impressao no modo
-local permanece igual. Atualizar os dois apps para usar o novo protocolo;
-nao exige publicar PHP, executar SQL nem expor portas na internet.
+O canal tambem recebe comprovantes e confirmacoes de impressao da mesma
+empresa/API, incluindo consultas de status e cancelamento no protocolo 2.
+O pedido continua sendo confirmado pela API HTTP. A sincronizacao e automatica:
+quando o telefone fica sem rede, conserva o pedido e retoma o mesmo ID ao reconectar.
+Online nao depende de um servidor PHP/MySQL na rede local para gravar pedidos.
+
+Para preparo com `impressao_persistida: true`, o computador consulta a outbox da
+API39 online, persiste o lote no disco e so entao confirma o recebimento HTTP.
+A fila do computador inicia a impressao e atualiza as telas. Avisos
+`PreparoPendente` antecipam essa consulta; o polling recupera avisos perdidos.
+Comprovantes de consumo e outras impressoes seguem pelo socket da rede.
+Filas Local/Online ou de outra empresa/dominio nao sao adotadas entre modos.
+Consulta de ACK perdido usa o mesmo ID, sem repetir uma via ja confirmada.
+
+Atualizar ambos os apps e publicar os PHP da API39 do pacote
+`build/correcoes/api39_online_pedidos_impressao_20261008.zip` na hospedagem.
+Nao substituir `conexao.php`. O banco deve estar provisionado conforme o
+schema oficial; esta correcao nao acrescenta DDL nem altera dados da empresa.
+A API geral e as imagens do desktop continuam no endereco online habitual.
+
+
+Validacao de 08/10/2026: 227 testes do celular (sincronizacao, impressoes,
+configuracao e catalogo), 81 testes distintos do desktop (servidor, recuperacao,
+roteamento Online, impressao e atualizacao) e testes PHP de publicacao isolada
+com rollback, replay, empresa/executor e ACK. Analises Dart e lint PHP aprovados.
+A hospedagem e a impressora fisica nao foram atualizadas/acionadas pelos testes.
 
 ## Revisao de 22/09/2026
 

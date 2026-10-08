@@ -16,7 +16,10 @@ import 'impressao_preparo_test.dart'
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() => SharedPreferences.setMockInitialValues({
+        'conexao': jsonEncode(
+            {'tipoConexao': 'local', 'servidor': 'cozinha', 'porta': '9980'})
+      }));
 
   test(
       'produto e combo sem impressora nao criam fila; destinos validos permanecem',

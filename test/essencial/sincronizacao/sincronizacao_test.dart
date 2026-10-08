@@ -258,36 +258,70 @@ void main() {
     await sync.enviarPendentes();
   }
 
-  test('preparo assumido pela API nao cria outra via no socket do garcom',
-      () async {
-    await guardar();
-    conectado = true;
-    impressaoPersistidaApi = true;
-    await sync.tentarNovamente();
-    expect(await banco.operacoes(sync.escopo), isEmpty);
-    expect(socket.filaImpressao.itens, isEmpty);
-    expect(socket.mensagens.where((e) => e['tipo'] == 'PreparoPendente'),
-        hasLength(1));
-    await sync.tentarNovamente();
-    expect(aplicados, hasLength(1));
-  });
+  for (final online in [false, true]) {
+    test(
+        'preparo assumido pela API (${online ? 'Online' : 'Local'}) nao duplica via no socket',
+        () async {
+      if (online) {
+        final estado = await banco.ler('estado:${sync.escopo}');
+        await (await SharedPreferences.getInstance()).setString(
+            'conexao',
+            jsonEncode({
+              'tipoConexao': 'online',
+              'servidor': 'cozinha',
+              'porta': '9980'
+            }));
+        await sync.configurar();
+        await banco.gravar('estado:${sync.escopo}', estado!);
+      }
+      await guardar();
+      conectado = true;
+      impressaoPersistidaApi = true;
+      await sync.tentarNovamente();
+      expect(await banco.operacoes(sync.escopo), isEmpty);
+      expect(socket.filaImpressao.itens, isEmpty);
+      expect(socket.mensagens.where((e) => e['tipo'] == 'PreparoPendente'),
+          hasLength(1));
+      await sync.tentarNovamente();
+      expect(aplicados, hasLength(1));
+    });
 
-  test('API assume preparo e conserva comprovante de consumo no envio local',
-      () async {
-    await guardar();
-    final operacao = (await banco.operacoes(sync.escopo)).single;
-    final impressoes =
-        List<String>.from(jsonDecode(operacao['impressoes'] as String));
-    impressoes
-        .add(jsonEncode({'idRequisicao': 'consumo-104', 'tipoImpressao': '2'}));
-    await banco.atualizarOperacao(
-        operacao['id'] as String, {'impressoes': jsonEncode(impressoes)});
-    conectado = true;
-    impressaoPersistidaApi = true;
-    await sync.tentarNovamente();
-    expect(socket.filaImpressao.itens.single.id, 'consumo-104');
-    expect(await banco.operacoes(sync.escopo), isEmpty);
-  });
+    test(
+        'API (${online ? 'Online' : 'Local'}) confirma pedido e libera consumo na conexao atual',
+        () async {
+      if (online) {
+        final estado = await banco.ler('estado:${sync.escopo}');
+        await (await SharedPreferences.getInstance()).setString(
+            'conexao',
+            jsonEncode({
+              'tipoConexao': 'online',
+              'servidor': 'cozinha',
+              'porta': '9980'
+            }));
+        await sync.configurar();
+        await banco.gravar('estado:${sync.escopo}', estado!);
+      }
+      await guardar();
+      final operacao = (await banco.operacoes(sync.escopo)).single;
+      final impressoes =
+          List<String>.from(jsonDecode(operacao['impressoes'] as String));
+      impressoes.add(jsonEncode({
+        'idRequisicao': 'consumo-104',
+        'idEmpresa': '32',
+        'tipoImpressao': '2',
+        'protocoloImpressao': 2
+      }));
+      await banco.atualizarOperacao(
+          operacao['id'] as String, {'impressoes': jsonEncode(impressoes)});
+      conectado = true;
+      impressaoPersistidaApi = true;
+      await sync.tentarNovamente();
+      expect(socket.filaImpressao.itens.single.id, 'consumo-104');
+      expect(socket.filaImpressao.itens.single.dados['escopoAtualizacao'],
+          online ? 'online|bigchef.com.br|32' : isNull);
+      expect(await banco.operacoes(sync.escopo), isEmpty);
+    });
+  }
 
   test('falha na API nao impede recuperacao automatica do canal da cozinha',
       () async {

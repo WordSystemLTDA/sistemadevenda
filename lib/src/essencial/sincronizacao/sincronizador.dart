@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/api/socket/canal_atualizacao_online.dart';
 import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -43,6 +44,7 @@ class Sincronizador extends ChangeNotifier {
   String escopo = '';
   String servidor = '';
   String destino = '';
+  String? _escopoImpressaoOnline;
   String? erro;
   bool online = false;
   bool catalogoPronto = false;
@@ -73,6 +75,8 @@ class Sincronizador extends ChangeNotifier {
   int get impressoesPendentes => socket.filaImpressao.itens
       .where((p) =>
           p.servidor == destino &&
+          p.dados[CanalAtualizacaoOnline.chaveEscopo] ==
+              _escopoImpressaoOnline &&
           p.dados['idEmpresa']?.toString() == usuario.usuario?.empresa)
       .length;
 
@@ -89,6 +93,7 @@ class Sincronizador extends ChangeNotifier {
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
+    _escopoImpressaoOnline = null;
     _retentativaEnvio?.cancel();
     _retentativaEnvio = null;
     _cancelamentoPreparacao?.cancel('A conta mudou.');
@@ -157,6 +162,7 @@ class Sincronizador extends ChangeNotifier {
     final conta = usuario.usuario;
     if (conta == null) {
       escopo = '';
+      _escopoImpressaoOnline = null;
       api.cache?.escopo = '';
       pendencias = [];
       return;
@@ -165,6 +171,9 @@ class Sincronizador extends ChangeNotifier {
     final conexao = await ConfigSharedPreferences().getConexao();
     if (!identical(conta, usuario.usuario) || _descartado) return;
     final novo = BancoLocal.escopo(url, conta.empresa ?? '', conta.id ?? '');
+    _escopoImpressaoOnline = conexao?.tipoConexao == 'online'
+        ? CanalAtualizacaoOnline.criarEscopo(url, conta.empresa ?? '')
+        : null;
     if (novo == escopo) return;
     escopo = novo;
     ultimaAtualizacao = null;
@@ -1186,6 +1195,9 @@ class Sincronizador extends ChangeNotifier {
                   jsonDecode(mensagem)['tipoImpressao']?.toString() != '1')
               .map((mensagem) {
         final dados = jsonDecode(mensagem) as Map<String, dynamic>;
+        if (_escopoImpressaoOnline != null) {
+          dados[CanalAtualizacaoOnline.chaveEscopo] = _escopoImpressaoOnline;
+        }
         final numeroPedido =
             numeroPedidoOperacionalConfirmado(recibo['numeroPedido']);
         if (numeroPedido != null) {

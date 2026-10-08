@@ -229,6 +229,21 @@ a propria API do app, evitando erro 500 quando os helpers correspondentes do
 desktop nao foram publicados. As consultas continuam restritas a empresa da
 sessao e os filtros de produtos ativos e personalizados permanecem iguais.
 
+Para pedidos e impressao Online em 08/10/2026, publicar tambem
+`impressao/{fila_transacional,listar_pendentes,confirmar_recebimento}.php` e
+`funcoes/pedidos/sequencia_operacional.php` dentro da API39, junto com os
+recebimentos e `sincronizacao/operacoes.php` alterados. Os helpers usam a
+implementacao desktop quando presente e fornecem o mesmo contrato quando
+ela nao foi publicada. Nao mudam o fluxo Local nem criam tabelas na requisicao.
+
+O celular continua gravando pela API online, com recibo para retomar falhas.
+O PC no papel SERVIDOR consulta a outbox da API39 na mesma empresa autenticada,
+salva antes de confirmar o recebimento e processa a impressao automaticamente.
+As telas sao invalidadas por avisos da rede e pelos lotes recuperados da API.
+Filas de impressao agora carregam o escopo Online para impedir envio pela
+conexao Local ou por outra empresa/API. Recompilar os dois apps e publicar
+o pacote `build/correcoes/api39_online_pedidos_impressao_20261008.zip`.
+
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
 O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando
 o codigo do conflito as operacoes ja existentes; carrinhos, recibos e filas sao mantidos.

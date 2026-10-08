@@ -40,8 +40,7 @@ class Server extends ChangeNotifier {
     DateTime Function()? agora,
     Future<String?> Function()? obterEscopoOnline,
     DescobertaAtualizacaoOnline? descobertaOnline,
-  })
-      : _agora = agora ?? DateTime.now,
+  })  : _agora = agora ?? DateTime.now,
         _obterEscopoOnline = obterEscopoOnline,
         _descobertaOnline = descobertaOnline ?? DescobertaAtualizacaoOnline(),
         filaImpressao = filaImpressao ?? FilaImpressao() {
@@ -56,7 +55,7 @@ class Server extends ChangeNotifier {
       _retentativaImpressao = null;
       _consultasImpressao.clear();
       _fecharAvisoImpressao();
-    } else if (_escopoOnline == null && !_descartado && !_desconexaoIntencional) {
+    } else if (!_descartado && !_desconexaoIntencional) {
       _retentativaImpressao ??= Timer.periodic(
         const Duration(seconds: 5),
         (_) => unawaited(processarImpressoesPendentes()),
@@ -138,7 +137,7 @@ class Server extends ChangeNotifier {
 
   Future<void> enviarImpressoes(List<String> mensagens) async {
     if (mensagens.isEmpty) return;
-    await filaImpressao.registrar(mensagens,
+    await filaImpressao.registrar(await _identificarEscopoImpressoes(mensagens),
         servidor: hostname.isEmpty ? '' : '$hostname:$port');
     // Escrever no socket nao aguarda a impressora. Conectar fica em segundo plano.
     if (connected) {
@@ -147,10 +146,30 @@ class Server extends ChangeNotifier {
     if (!connected) _avisarImpressaoPendente();
   }
 
-  Future<void> prepararImpressoes(List<String> mensagens) =>
-      filaImpressao.registrar(mensagens,
+  Future<void> prepararImpressoes(List<String> mensagens) async =>
+      filaImpressao.registrar(await _identificarEscopoImpressoes(mensagens),
           servidor: hostname.isEmpty ? '' : '$hostname:$port',
           estado: EstadoImpressao.aguardandoPedido);
+
+  Future<List<String>> _identificarEscopoImpressoes(
+      List<String> mensagens) async {
+    final obterEscopo = _obterEscopoOnline;
+    final escopo = obterEscopo != null
+        ? await obterEscopo()
+        : await _resolverEscopoOnline();
+    if (escopo == null) return mensagens;
+    if (escopo.isEmpty) {
+      throw StateError('Entre na empresa para enviar a impressao.');
+    }
+    return mensagens.map((mensagem) {
+      final dados = Map<String, dynamic>.from(jsonDecode(mensagem) as Map);
+      final anterior = dados[CanalAtualizacaoOnline.chaveEscopo];
+      if (anterior != null && anterior != escopo) {
+        throw StateError('A impressao pertence a outra conexao.');
+      }
+      return jsonEncode({...dados, CanalAtualizacaoOnline.chaveEscopo: escopo});
+    }).toList();
+  }
 
   Future<void> limparImpressoes(List<String> ids) async {
     final cancelar = <String>{};
@@ -220,6 +239,9 @@ class Server extends ChangeNotifier {
   }
 
   bool _pertenceAConexao(ImpressaoPendente item) {
+    if (item.dados[CanalAtualizacaoOnline.chaveEscopo] != _escopoOnline) {
+      return false;
+    }
     if (item.servidor.isNotEmpty && item.servidor != '$hostname:$port') {
       return false;
     }
@@ -227,11 +249,11 @@ class Server extends ChangeNotifier {
   }
 
   Future<Set<String>> _adotarImpressoesNaoEnviadasNoServidorAtual() async {
-    if (_escopoOnline != null) return const <String>{};
     if (!connected || hostname.isEmpty || port <= 0) return const <String>{};
     final transferidas = await filaImpressao.transferirNaoEnviadasParaServidor(
       '$hostname:$port',
       empresa: usuarioProvedor.usuario?.empresa ?? '',
+      escopoOnline: _escopoOnline,
     );
     for (final id in transferidas) {
       _consultasImpressao.remove(id);
@@ -240,7 +262,6 @@ class Server extends ChangeNotifier {
   }
 
   Future<void> _enviarImpressoesAguardando() async {
-    if (_escopoOnline != null) return;
     await filaImpressao.carregar();
     var enviados = 0;
     // Envios novos nao aguardam as consultas dos pedidos anteriores.
@@ -445,14 +466,13 @@ class Server extends ChangeNotifier {
       // String vazia significa online ainda sem uma sessao de empresa valida.
       if (escopo == '') return false;
       if (escopo != null) {
-        _retentativaImpressao?.cancel();
-        _retentativaImpressao = null;
         _proximoLoteImpressao?.cancel();
         _proximoLoteImpressao = null;
         _empresaOnline = escopo.split('|').last;
         try {
           final descoberto = await _descobertaOnline.descobrir(
-            escopo: escopo, ipPreferencial: ip,
+            escopo: escopo,
+            ipPreferencial: ip,
           );
           if (!_tentativaConexaoAtual(geracao)) return false;
           if (descoberto != null) {
@@ -460,7 +480,8 @@ class Server extends ChangeNotifier {
             portaConvertida = descoberto.porta;
           }
         } catch (erro) {
-          log('Descoberta indisponivel; tentando o IP configurado', error: erro);
+          log('Descoberta indisponivel; tentando o IP configurado',
+              error: erro);
         }
         hostname = ip;
         port = portaConvertida;
@@ -469,10 +490,16 @@ class Server extends ChangeNotifier {
       cliente = HttpClient()..connectionTimeout = _timeoutConexao;
       _clienteConexao = cliente;
       final WebSocket socket = await WebSocket.connect(
-        Uri(scheme: 'ws', host: ip, port: portaConvertida,
-          queryParameters: escopo == null ? null : {
-            CanalAtualizacaoOnline.parametroEscopo: escopo,
-          }).toString(),
+        Uri(
+                scheme: 'ws',
+                host: ip,
+                port: portaConvertida,
+                queryParameters: escopo == null
+                    ? null
+                    : {
+                        CanalAtualizacaoOnline.parametroEscopo: escopo,
+                      })
+            .toString(),
         customClient: cliente,
       ).timeout(_timeoutConexao, onTimeout: () {
         cliente?.close(force: true);
@@ -483,7 +510,9 @@ class Server extends ChangeNotifier {
         unawaited(socket.close());
         return false;
       }
-      if (escopo != null && obterEscopo == null && escopo != await _resolverEscopoOnline()) {
+      if (escopo != null &&
+          obterEscopo == null &&
+          escopo != await _resolverEscopoOnline()) {
         unawaited(socket.close());
         return false;
       }
@@ -538,9 +567,7 @@ class Server extends ChangeNotifier {
       }
 
       try {
-        if (_escopoOnline == null) {
-          await _adotarImpressoesNaoEnviadasNoServidorAtual();
-        }
+        await _adotarImpressoesNaoEnviadasNoServidorAtual();
       } catch (erro, stack) {
         log('Falha ao transferir impressoes para o servidor conectado',
             error: erro, stackTrace: stack);
@@ -570,7 +597,9 @@ class Server extends ChangeNotifier {
     final config = await ConfigSharedPreferences().getConexao();
     if (config?.tipoConexao != 'online') return null;
     final empresa = usuarioProvedor.usuario?.empresa ?? '';
-    return CanalAtualizacaoOnline.criarEscopo((await Apis().getConexao()).servidor, empresa) ?? '';
+    return CanalAtualizacaoOnline.criarEscopo(
+            (await Apis().getConexao()).servidor, empresa) ??
+        '';
   }
 
   void _cancelarTentativaConexao() {
@@ -765,7 +794,8 @@ class Server extends ChangeNotifier {
 
   String _serializarMensagemEnvelope(Map<String, dynamic> mensagem) {
     return jsonEncode(<String, dynamic>{
-      if (_escopoOnline != null) CanalAtualizacaoOnline.chaveEscopo: _escopoOnline,
+      if (_escopoOnline != null)
+        CanalAtualizacaoOnline.chaveEscopo: _escopoOnline,
       'type': 'customMessage',
       'data': <String, dynamic>{
         'customType': 'modelo_retorno_socket',
@@ -882,10 +912,15 @@ class Server extends ChangeNotifier {
       final dynamic mensagemDecodificada = jsonDecode(mensagem);
       if (mensagemDecodificada is Map && mensagemDecodificada['tipo'] != null) {
         if (_escopoOnline != null) {
-          if (mensagemDecodificada[CanalAtualizacaoOnline.chaveEscopo] != _escopoOnline) return false;
-          final aviso = CanalAtualizacaoOnline.aviso(Map<String, dynamic>.from(mensagemDecodificada));
-          if (aviso == null && mensagemDecodificada['tipo'] != 'Rede') return false;
-          mensagemParaEnviar = _serializarMensagemEnvelope(aviso ?? Map<String, dynamic>.from(mensagemDecodificada));
+          final escopoMensagem =
+              mensagemDecodificada[CanalAtualizacaoOnline.chaveEscopo];
+          if (escopoMensagem != null && escopoMensagem != _escopoOnline) {
+            return false;
+          }
+          final dados = CanalAtualizacaoOnline.mensagem(
+              Map<String, dynamic>.from(mensagemDecodificada), _escopoOnline!);
+          if (dados == null) return false;
+          mensagemParaEnviar = _serializarMensagemEnvelope(dados);
         } else {
           mensagemParaEnviar = _serializarMensagemEnvelope(
             Map<String, dynamic>.from(mensagemDecodificada),
@@ -912,13 +947,15 @@ class Server extends ChangeNotifier {
   bool write(String message) {
     if (_escopoOnline != null) {
       try {
-        if (_obterEscopoOnline == null && usuarioProvedor.usuario?.empresa != _empresaOnline) return false;
+        if (_obterEscopoOnline == null &&
+            usuarioProvedor.usuario?.empresa != _empresaOnline) {
+          return false;
+        }
         final dados = Map<String, dynamic>.from(jsonDecode(message) as Map);
-        final aviso = CanalAtualizacaoOnline.aviso(dados);
-        if (aviso == null && dados['tipo'] != 'Rede') return false;
+        final aviso = CanalAtualizacaoOnline.mensagem(dados, _escopoOnline!);
+        if (aviso == null) return false;
         message = jsonEncode({
-          ...?aviso,
-          if (aviso == null) ...dados,
+          ...aviso,
           CanalAtualizacaoOnline.chaveEscopo: _escopoOnline,
         });
       } catch (_) {
@@ -1018,7 +1055,8 @@ class Server extends ChangeNotifier {
           // Avisos antigos/de outra conta nao sao reemitidos no escopo novo.
           if (mapa?[CanalAtualizacaoOnline.chaveEscopo] != _escopoOnline) {
             // Filas locais/legadas permanecem salvas para seu transporte original.
-            if (mapa?[CanalAtualizacaoOnline.chaveEscopo] == null || mapa?['tipoImpressao'] != null) {
+            if (mapa?[CanalAtualizacaoOnline.chaveEscopo] == null ||
+                mapa?['tipoImpressao'] != null) {
               restantes.add(mensagem);
             }
             continue;
@@ -1045,7 +1083,7 @@ class Server extends ChangeNotifier {
           !_descartado &&
           connected &&
           (_novoEnvioSolicitado ||
-              (_escopoOnline == null && filaImpressao.itens.any((item) =>
+              (filaImpressao.itens.any((item) =>
                   item.estado == EstadoImpressao.aguardandoEnvio &&
                   _pertenceAConexao(item))))) {
         _proximoLoteImpressao ??= Timer(const Duration(milliseconds: 50), () {
@@ -1058,21 +1096,26 @@ class Server extends ChangeNotifier {
 
   Future<void> onData(dynamic data) async {
     try {
+      Map<String, dynamic>? mensagem;
       if (_escopoOnline != null) {
-        if (_obterEscopoOnline == null && usuarioProvedor.usuario?.empresa != _empresaOnline) return;
+        if (_obterEscopoOnline == null &&
+            usuarioProvedor.usuario?.empresa != _empresaOnline) {
+          return;
+        }
         final envelope = data is String ? jsonDecode(data) : data;
-        if (envelope is! Map || envelope[CanalAtualizacaoOnline.chaveEscopo] != _escopoOnline) return;
+        if (envelope is! Map ||
+            envelope[CanalAtualizacaoOnline.chaveEscopo] != _escopoOnline) {
+          return;
+        }
         final payload = envelope['data'];
         final mapa = payload is Map ? payload['customData'] : null;
         if (mapa is! Map) return;
-        final aviso = CanalAtualizacaoOnline.aviso(Map<String, dynamic>.from(mapa));
-        if (aviso == null) return;
-        final dados = ModeloRetornoSocket.fromMap(aviso);
-        aoAtualizarDados?.call(dados.tipo);
-        AtualizacaoDeTela().call(dados);
-        return;
+        mensagem = CanalAtualizacaoOnline.mensagem(
+            Map<String, dynamic>.from(mapa), _escopoOnline!,
+            aceitarResposta: true);
+      } else {
+        mensagem = _desserializarMensagem(data);
       }
-      final Map<String, dynamic>? mensagem = _desserializarMensagem(data);
       if (mensagem == null || mensagem['tipo'] == null) {
         return;
       }

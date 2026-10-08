@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/api/socket/canal_atualizacao_online.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 
 import 'package:flutter/foundation.dart';
@@ -354,7 +355,7 @@ class FilaImpressao extends ChangeNotifier {
   /// Itens sem confirmacao permanecem no servidor de origem para evitar uma
   /// segunda via acidental.
   Future<Set<String>> transferirNaoEnviadasParaServidor(String servidor,
-          {String empresa = ''}) =>
+          {String empresa = '', String? escopoOnline}) =>
       _executar(() async {
         await _carregar();
         final destino = servidor.trim();
@@ -372,6 +373,7 @@ class FilaImpressao extends ChangeNotifier {
               item.estado == EstadoImpressao.aguardandoEnvio ||
                   falhouAoEscrever;
           final deveTransferir = podeTransferir &&
+              item.dados[CanalAtualizacaoOnline.chaveEscopo] == escopoOnline &&
               item.servidor.isNotEmpty &&
               item.servidor != destino &&
               pertenceAEmpresa;

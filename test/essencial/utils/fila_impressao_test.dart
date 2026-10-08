@@ -48,7 +48,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('lote repetido nao regrava nem notifica fila; liberacao do pedido continua duravel', () async {
+  test(
+      'lote repetido nao regrava nem notifica fila; liberacao do pedido continua duravel',
+      () async {
     final armazenamento = ArmazenamentoContando();
     SharedPreferencesStorePlatform.instance = armazenamento;
     final fila = FilaImpressao();
@@ -70,7 +72,10 @@ void main() {
     addTearDown(restaurada.dispose);
     await restaurada.carregar();
     expect(restaurada.itens, hasLength(30));
-    expect(restaurada.itens.every((item) => item.estado == EstadoImpressao.aguardandoEnvio), isTrue);
+    expect(
+        restaurada.itens
+            .every((item) => item.estado == EstadoImpressao.aguardandoEnvio),
+        isTrue);
   });
 
   test('recupera antiga pausa por consultas mas conserva pausa do spooler',
@@ -310,6 +315,34 @@ void main() {
     expect(recuperada.tentativas, 0);
     expect(fila.itens.firstWhere((item) => item.id == 'outra-empresa').servidor,
         'cozinha-antiga:9980');
+  });
+
+  test('trocar para Online preserva a fila Local e a fila de outra empresa',
+      () async {
+    const escopo = 'online|bigchef.com.br|2';
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([
+      mensagem('local'),
+      jsonEncode({
+        ...jsonDecode(mensagem('online')) as Map,
+        'idEmpresa': '2',
+        'escopoAtualizacao': escopo
+      }),
+      jsonEncode({
+        ...jsonDecode(mensagem('outra')) as Map,
+        'idEmpresa': '3',
+        'escopoAtualizacao': 'online|bigchef.com.br|3'
+      }),
+    ], servidor: 'pc-anterior:9980');
+    expect(
+        await fila.transferirNaoEnviadasParaServidor('pc-atual:9980',
+            empresa: '2', escopoOnline: escopo),
+        {'online'});
+    expect(fila.itens.firstWhere((e) => e.id == 'local').servidor,
+        'pc-anterior:9980');
+    expect(fila.itens.firstWhere((e) => e.id == 'outra').servidor,
+        'pc-anterior:9980');
   });
 
   test('migra fila antiga sem reenviar pedidos de resultado desconhecido',

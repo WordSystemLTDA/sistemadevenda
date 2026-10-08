@@ -1,4 +1,4 @@
-/// Identifica avisos da mesma empresa e API; nunca transporta pedidos ou comandos.
+/// Isola atualizacoes e impressoes da mesma empresa/API na rede local.
 class CanalAtualizacaoOnline {
   static const chaveEscopo = 'escopoAtualizacao';
   static const parametroEscopo = 'escopo_atualizacao';
@@ -11,6 +11,7 @@ class CanalAtualizacaoOnline {
   }
 
   static const _tipos = {
+    'preparopendente',
     'mesa',
     'mesas',
     'comanda',
@@ -63,7 +64,7 @@ class CanalAtualizacaoOnline {
   };
 
   /// Retorna somente a invalidacao da tela. Dados comerciais, impressao,
-  /// respostas e comandos de banco nao pertencem a este canal.
+  /// respostas e comandos de banco nao sao avisos de tela.
   static Map<String, dynamic>? aviso(Map<String, dynamic> dados) {
     final tipo = (dados['tipo'] ?? '').toString().trim();
     final normalizado = tipo.toLowerCase();
@@ -77,5 +78,36 @@ class CanalAtualizacaoOnline {
         _ => tipo,
       }
     };
+  }
+
+  /// Pedidos e alteracoes de banco continuam pela API HTTP. O socket aceita
+  /// somente avisos e o protocolo de impressao da empresa autenticada.
+  static Map<String, dynamic>? mensagem(
+      Map<String, dynamic> dados, String escopo,
+      {bool aceitarResposta = false}) {
+    final avisoTela = aviso(dados);
+    if (avisoTela != null) return avisoTela;
+    if (dados['tipo'] == 'Rede') return dados;
+    final empresa = escopo.split('|').last;
+    if (dados['idEmpresa']?.toString() != empresa ||
+        (dados['idRequisicao']?.toString().trim().isEmpty ?? true)) {
+      return null;
+    }
+    final tipo = dados['tipo'];
+    if (aceitarResposta &&
+        tipo == 'RespostaImpressao' &&
+        dados['tipoResposta'] == 'impressao') {
+      return dados;
+    }
+    if (tipo == 'ConsultarImpressao' || tipo == 'CancelarImpressao') {
+      return dados['protocoloImpressao'] == 2 ? dados : null;
+    }
+    final impressao = dados['tipoImpressao']?.toString();
+    if (!const {'1', '2', '3', '4', '5', '6', '7'}.contains(impressao)) {
+      return null;
+    }
+    if (tipo == 'RespostaImpressao') return null;
+    if (impressao == '1' && dados['protocoloImpressao'] != 2) return null;
+    return dados;
   }
 }

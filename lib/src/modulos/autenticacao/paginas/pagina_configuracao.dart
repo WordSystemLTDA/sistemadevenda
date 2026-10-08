@@ -178,7 +178,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
               const SizedBox(height: 10),
               if (tipoConexaoController.text == 'online') ...[
                 const Text(
-                    'A conexão Online usa a API pela internet. IP e porta são opcionais para receber atualizações de um computador na rede local.'),
+                    'A conexão Online usa a API pela internet. IP e porta são opcionais para conectar ao computador da rede, atualizar as telas e imprimir os pedidos.'),
                 const SizedBox(height: 10),
               ],
               Row(

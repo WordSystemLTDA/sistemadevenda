@@ -11,7 +11,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': 'cozinha', 'porta': '9980'})
+    });
     app.usuarioProvedor = UsuarioProvedor();
   });
 

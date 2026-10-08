@@ -9,6 +9,7 @@ import 'package:app/src/essencial/api/socket/descoberta_atualizacao_online.dart'
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -137,6 +138,7 @@ void main() {
   });
 
   test('socket online usa PC descoberto sem mudar API ou imagens', () async {
+    app.usuarioProvedor.setUsuario(UsuarioModelo(id: '1', empresa: '2'));
     final prefs = await SharedPreferences.getInstance();
     final impressaoLegada = mensagem('fila-local-anterior');
     final impressaoSemId =
@@ -185,14 +187,39 @@ void main() {
     expect(aviso['data']['customData'], {'tipo': 'Mesa'});
     expect(server.write(jsonEncode({'tipo': 'Mesa', 'tipoImpressao': '1'})),
         isFalse);
-    await server.enviarImpressoes([mensagem('nao-imprimir-online')]);
+    final envioImpressao = entrada.firstWhere(
+        (e) => e['data']?['customData']?['idRequisicao'] == 'imprimir-online');
+    await server.enviarImpressoes([
+      jsonEncode({
+        ...jsonDecode(mensagem('imprimir-online')) as Map,
+        'idEmpresa': '2',
+        'protocoloImpressao': 2,
+      })
+    ]);
+    final impressao = await envioImpressao.timeout(const Duration(seconds: 3));
+    expect(impressao[CanalAtualizacaoOnline.chaveEscopo], escopo);
+    expect(impressao['data']['customData']['tipoImpressao'], '1');
+    await server.onData(jsonEncode({
+      'type': 'customMessage',
+      CanalAtualizacaoOnline.chaveEscopo: escopo,
+      'data': {
+        'customData': {
+          'tipo': 'RespostaImpressao',
+          'tipoResposta': 'impressao',
+          'protocoloImpressao': 2,
+          'idEmpresa': '2',
+          'idRequisicao': 'imprimir-online',
+          'statusResposta': 'sucesso',
+        }
+      },
+    }));
     final leituras = fila.leituras;
     await Future<void>.delayed(const Duration(milliseconds: 180));
     expect(fila.itens.map((item) => item.id),
-        unorderedEquals(['fila-local-anterior', 'nao-imprimir-online']));
+        unorderedEquals(['fila-local-anterior']));
     // Um lote anterior pode pedir uma unica continuacao enquanto o novo e salvo.
     expect(fila.leituras, lessThanOrEqualTo(leituras + 1),
-        reason: 'O canal de avisos nao deve repetir lotes de impressao.');
+        reason: 'Fila de outra conexao nao deve gerar ciclos de envio.');
     expect(prefs.getStringList('fila_mensagens_socket_pendentes'),
         [impressaoSemId]);
     expect((await Apis().getConexao()).servidor,
