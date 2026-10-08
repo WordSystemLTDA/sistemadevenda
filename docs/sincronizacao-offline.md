@@ -133,6 +133,41 @@ O teste de classificacao e privacidade passou. Essa instrumentacao nao
 declara resolvida a causa desta recusa; depende de obter o log ou a nova
 resposta da hospedagem. Nao houve publicacao automatica.
 
+Na verificacao das 16:39, a hospedagem ja respondeu com diagnostico-4. O
+reenvio da mesma operacao revelou RuntimeException em inserir_produtos.php,
+linha 363: o ramo usado quando o helper de complementos retorna falha sem
+a excecao original. As fontes atuais sempre preservam essa causa; o retorno
+indica que a hospedagem ainda carregava um helper com contrato anterior.
+
+API39 agora inclui em funcoes/cardapio seus proprios listar.php, inserir.php
+e montagem.php, com o mesmo contrato canonico de api_desktop/1.0.01. O wrapper
+usa essas copias, sem carregar a montagem desktop da hospedagem. A listagem,
+permissoes, tarifa Mais, validacao, snapshot e gravacao continuam iguais.
+Preserva gerarHash Local quando disponivel e usa random_bytes quando ausente.
+O pacote passa a concentrar todos os arquivos necessarios na propria API39.
+
+O recebimento conserva a mensagem interna de helpers antigos para extrair
+diagnosticos seguros de SQL e dependencia, sem expor SQL ou parametros. A
+inicializacao acontece dentro do tratamento de erro do protocolo. Avisos
+PHP nao entram no JSON; arquivos de montagem ausentes sao verificados antes
+do require para evitar encerramento fatal em PHP antigo. O pedido continua
+salvo e pode ser reenviado depois da correcao da publicacao.
+
+Publicar os dez PHP de
+build/correcoes/api39_delivery_complementos_online_20261008.zip, incluindo
+os tres arquivos novos de funcoes/cardapio. Publicar os helpers antes do
+wrapper e sincronizacao/operacao.php por ultimo. O header final e
+api39-20261008-delivery-complementos-5. Reenviar a pendencia existente depois
+de atualizar a hospedagem. O pacote conserva conexao.php e nao inclui SQL.
+
+MariaDB descartavel confirmou base 20 + Mais 5 + Ovo 3 = 28, status Pendente
+na etapa Aguardando, ingredientes, pagamento, preparo e reenvio sem duplicar,
+tanto no repositorio quanto na publicacao isolada contendo somente API39.
+Tambem cobriu Mais gratuito, kit, rollback e causas de falha preservadas.
+Publicacao SQLite e testes de montagem e diagnostico passaram, incluindo
+JSON valido quando falta um helper. A hospedagem ainda nao foi atualizada
+automaticamente; a ultima recusa real foi observada na versao diagnostico-4.
+
 O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
 o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
 carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
