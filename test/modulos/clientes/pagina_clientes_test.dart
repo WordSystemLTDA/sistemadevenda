@@ -866,6 +866,14 @@ void main() {
     expect(delivery.gravacoes.last.$2['acao'], 'editar');
   });
 
+  test('cadastro rejeita confirmacao sem um ID valido', () async {
+    final delivery = _ServicoDeliveryGravacaoTeste()..idClienteResposta = '';
+    await expectLater(
+        ServicoClientes(delivery).cadastrarCliente('Cliente', '', '', ''),
+        throwsStateError);
+    expect(delivery.gravacoes, hasLength(1));
+  });
+
   testWidgets('falha na edicao nunca mostra mensagem de cadastro',
       (tester) async {
     final repositorio = _RepositorioClientesTeste()..falharEdicao = true;

@@ -320,14 +320,14 @@ class ProvedorComanda extends ChangeNotifier {
           String nome, String celular, String email, String obs) async {
     try {
       return await _servico.inserirCliente(nome, celular, email, obs);
-    } catch (_) {
-      erro = _mensagemFalha;
+    } catch (falha) {
+      erro = falha is StateError ? falha.message.toString() : _mensagemFalha;
       notifyListeners();
       return (
         sucesso: false,
         idcliente: '',
         nomecliente: '',
-        mensagem: _mensagemFalha,
+        mensagem: erro!,
       );
     }
   }

@@ -187,6 +187,10 @@ class _InserirClienteState extends State<InserirCliente> {
           _mostrarMensagem(resposta.mensagem, sucesso: false);
           return;
         }
+        if ((int.tryParse(resposta.idcliente) ?? 0) <= 0 ||
+            (_editando && resposta.idcliente != widget.idCliente)) {
+          throw StateError('O servidor não confirmou os dados do cliente.');
+        }
         _idClienteSalvo = resposta.idcliente;
         _nomeClienteSalvo = resposta.nomecliente;
         _mensagemClienteSalvo = resposta.mensagem;

@@ -75,10 +75,17 @@ class ServicoEnderecoPadraoTeste extends ServicoDeliveryTeste {
 
 class ServicoNovoEnderecoTeste extends ServicoEnderecoPadraoTeste {
   ServicoNovoEnderecoTeste(super.enderecos, {super.requeridoEndereco});
+  bool falharNovoEndereco = false;
 
   @override
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
+    if (rota == 'clientes/inserir_endereco.php' &&
+        campos['id'] == '' &&
+        falharNovoEndereco) {
+      gravacoes.add((rota, campos));
+      throw StateError('Não foi possível salvar o endereço.');
+    }
     final resposta = await super.salvar(rota, campos);
     if (rota == 'clientes/inserir_endereco.php' && campos['id'] != '') {
       final endereco =
@@ -841,15 +848,44 @@ void main() {
     await tester.tap(find.text('Sim, alterar'));
     await tester.pumpAndSettle();
 
-    expect(s.gravacoes, hasLength(2));
-    expect(s.gravacoes.first.$2['id'], '10');
-    expect(s.gravacoes.first.$2['padrao'], 'Não');
+    expect(s.gravacoes, hasLength(1));
+    expect(s.gravacoes.single.$2['id'], '');
     expect(s.gravacoes.last.$2['padrao'], 'Sim');
     expect(s.gravacoes.last.$2['substituirPadrao'], isTrue);
     expect(s.enderecos.first['padrao'], 'Não');
     expect(s.enderecos.last['padrao'], 'Sim');
     expect(s.enderecos.where((endereco) => endereco['padrao'] == 'Sim'),
         hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('falha ao salvar novo endereco conserva o padrao anterior',
+      (tester) async {
+    final s = ServicoNovoEnderecoTeste([
+      {'id': '10', 'padrao': 'Sim'}
+    ], requeridoEndereco: 'Não')
+      ..falharNovoEndereco = true;
+    await tester.pumpWidget(
+        MaterialApp(home: EnderecoDelivery(servico: s, cliente: '4')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-endereco')), 'Rua Nova');
+    await tester.enterText(
+        find.byKey(const ValueKey('endereco-numero')), '100');
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Endereço padrão'));
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sim, alterar'));
+    await tester.pumpAndSettle();
+    expect(s.gravacoes, hasLength(1));
+    expect(s.gravacoes.single.$2['substituirPadrao'], isTrue);
+    expect(s.enderecos.single['padrao'], 'Sim');
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(find.text('Não foi possível salvar o endereço.'), findsOneWidget);
+    expect(find.text('Salvar endereço'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -928,6 +964,28 @@ void main() {
     expect(s.gravacoes.single.$2['id'], '10');
     expect(s.gravacoes.single.$2['endereco'], 'Rua Atualizada');
     expect(s.gravacoes.single.$2['padrao'], 'Sim');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('editar endereco nao padrao conserva a escolha anterior',
+      (tester) async {
+    final s = ServicoEnderecoPadraoTeste([]);
+    await tester.pumpWidget(MaterialApp(
+        home: EnderecoDelivery(
+      servico: s,
+      cliente: '4',
+      endereco: const {
+        'id': '10',
+        'endereco': 'Rua A',
+        'numero': '10',
+        'padrao': 'Não',
+      },
+    )));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar alterações'));
+    await tester.pumpAndSettle();
+    expect(s.gravacoes.single.$2['id'], '10');
+    expect(s.gravacoes.single.$2['padrao'], 'Não');
     expect(tester.takeException(), isNull);
   });
 

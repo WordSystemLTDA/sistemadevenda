@@ -195,9 +195,13 @@ class ServicoClientes implements RepositorioClientes {
       'email': email.trim(),
       'obs': observacao.trim(),
     });
+    final idCliente = resposta['idcliente']?.toString().trim() ?? '';
+    if ((int.tryParse(idCliente) ?? 0) <= 0) {
+      throw StateError('O servidor não confirmou o cadastro do cliente.');
+    }
     return (
       sucesso: true,
-      idcliente: resposta['idcliente']?.toString() ?? '',
+      idcliente: idCliente,
       nomecliente: resposta['nomecliente']?.toString() ?? nomeNormalizado,
       mensagem:
           resposta['mensagem']?.toString() ?? 'Cliente cadastrado com sucesso',

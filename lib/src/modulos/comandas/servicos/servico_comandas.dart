@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
@@ -235,6 +237,7 @@ class ServicoComandas {
     final response = await dio.cliente.post(
       url,
       data: {
+        'acao': 'cadastrar',
         'nome': nome,
         'celular': celular,
         'email': email,
@@ -243,10 +246,22 @@ class ServicoComandas {
       },
     );
 
-    bool sucesso = response.data['sucesso'];
-    String idcliente = response.data['idcliente'];
-    String nomecliente = response.data['nomecliente'];
-    String mensagem = response.data['mensagem'];
+    final dados = response.data is String
+        ? jsonDecode(response.data as String)
+        : response.data;
+    if (dados is! Map) {
+      throw StateError('O servidor não confirmou o cadastro do cliente.');
+    }
+    final sucesso = dados['sucesso'] == true;
+    final idcliente = dados['idcliente']?.toString().trim() ?? '';
+    final nomecliente = dados['nomecliente']?.toString() ?? nome.trim();
+    final mensagem = dados['mensagem']?.toString() ??
+        (sucesso
+            ? 'Cliente cadastrado com sucesso'
+            : 'Não foi possível cadastrar o cliente.');
+    if (sucesso && (int.tryParse(idcliente) ?? 0) <= 0) {
+      throw StateError('O servidor não confirmou o cadastro do cliente.');
+    }
 
     return (
       sucesso: sucesso,

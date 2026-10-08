@@ -14,6 +14,7 @@ class _ServicoEnderecoTeste extends Fake implements ServicoDelivery {
 
   final Map<String, dynamic> configuracaoEndereco;
   final gravacoes = <Map<String, dynamic>>[];
+  bool falharUmaVez = false;
 
   @override
   Future<dynamic> consultar(String rota,
@@ -25,11 +26,87 @@ class _ServicoEnderecoTeste extends Fake implements ServicoDelivery {
   Future<Map<String, dynamic>> salvar(
       String rota, Map<String, dynamic> campos) async {
     gravacoes.add(campos);
+    if (falharUmaVez) {
+      falharUmaVez = false;
+      throw StateError('Não foi possível salvar o endereço.');
+    }
     return {'sucesso': true};
   }
 }
 
 void main() {
+  testWidgets('recusa de cadastro exibe motivo e nao tenta cadastrar endereco',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(600, 2000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final servico = _ServicoEnderecoTeste();
+    await tester.pumpWidget(MaterialApp(
+      home: InserirCliente(
+        servicoEndereco: servico,
+        aoCadastrarCliente: (nome, celular, email, observacao) async => (
+          sucesso: false,
+          idcliente: '',
+          nomecliente: '',
+          mensagem: 'Este celular já está cadastrado.',
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Cliente');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-endereco')), 'Rua A');
+    await tester.enterText(find.byKey(const ValueKey('cliente-numero')), '10');
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Este celular já está cadastrado.'), findsOneWidget);
+    expect(servico.gravacoes, isEmpty);
+    expect(find.text('Salvar cliente e endereço'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('repetir apos falha no endereco usa o cliente ja cadastrado',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(600, 2000);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final servico = _ServicoEnderecoTeste()..falharUmaVez = true;
+    var cadastros = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: InserirCliente(
+        servicoEndereco: servico,
+        aoCadastrarCliente: (nome, celular, email, observacao) async {
+          cadastros++;
+          return (
+            sucesso: true,
+            idcliente: '7',
+            nomecliente: nome,
+            mensagem: 'Salvo'
+          );
+        },
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-nome')), 'Cliente');
+    await tester.enterText(
+        find.byKey(const ValueKey('cliente-endereco')), 'Rua A');
+    await tester.enterText(find.byKey(const ValueKey('cliente-numero')), '10');
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Não foi possível salvar o endereço.'), findsOneWidget);
+    await tester.tap(find.text('Salvar cliente e endereço'));
+    await tester.pumpAndSettle();
+    expect(cadastros, 1);
+    expect(servico.gravacoes, hasLength(2));
+    expect(
+        servico.gravacoes.every((dados) => dados['idCliente'] == '7'), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'cadastro do cliente oculta cidade e UF e conserva os valores padrao',
       (tester) async {

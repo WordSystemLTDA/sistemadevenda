@@ -39,7 +39,6 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       _sitio = false,
       _carregandoPadrao = true;
   bool _temOutroEnderecoPadrao = false;
-  List<Map<String, dynamic>> _outrosEnderecosPadrao = [];
   bool _bloquearCidade = false;
   String? _erro;
 
@@ -102,10 +101,10 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
             _bloquearCidade = configuracao.bloquearCidade;
           }
           if (outrosEnderecosPadrao != null) {
-            _outrosEnderecosPadrao = outrosEnderecosPadrao;
             _temOutroEnderecoPadrao = outrosEnderecosPadrao.isNotEmpty;
           }
           if (widget.permitirDefinirPadrao &&
+              !_editando &&
               outrosEnderecosPadrao?.isEmpty == true) {
             _padrao = true;
           }
@@ -182,27 +181,6 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
     controller.text = campo == 'uf' ? valor.toUpperCase() : valor;
   }
 
-  Future<void> _salvarEnderecoExistenteComoNaoPadrao(
-      Map<String, dynamic> endereco) async {
-    await widget.servico.salvar('clientes/inserir_endereco.php', {
-      'cep': _valor(endereco, ['cep']),
-      'endereco': _valor(endereco, ['endereco']),
-      'numero': _valor(endereco, ['numero']),
-      'bairro': _valor(endereco, ['bairro']),
-      'complemento': _valor(endereco, ['complemento']),
-      'cidade': _valor(endereco, ['cidade']),
-      'uf': _valor(endereco, ['estado', 'uf']).toUpperCase(),
-      'id': endereco['id']?.toString() ?? '',
-      'idCliente': widget.cliente,
-      'padrao': 'Não',
-      'tipoLocalEntrega': _valor(endereco, ['tipolocalentrega']) == 'Sitio'
-          ? 'Sitio'
-          : 'Normal',
-      'substituirPadrao': false,
-      'podeInserirNovaCidade': true,
-    });
-  }
-
   Future<void> _salvar() async {
     if (_salvando || _carregandoPadrao || !_form.currentState!.validate()) {
       return;
@@ -221,11 +199,8 @@ class _EnderecoDeliveryState extends State<EnderecoDelivery> {
       _erro = null;
     });
     try {
-      if (substituirPadrao) {
-        for (final endereco in _outrosEnderecosPadrao) {
-          await _salvarEnderecoExistenteComoNaoPadrao(endereco);
-        }
-      }
+      // A API39 troca o padrão na mesma transação que salva o endereço.
+      // Uma falha não deve desmarcar o endereço anterior em outra requisição.
       final campos = <String, dynamic>{
         for (final e in _campos.entries) e.key: e.value.text.trim(),
         'uf': _campos['uf']!.text.trim().toUpperCase(),
