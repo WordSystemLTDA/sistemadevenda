@@ -116,6 +116,23 @@ e no PHP e nao exige mudanca adicional no app ja atualizado. As referencias
 836bf2bd061b8659 e 04adc6a4573ead8e nao estavam nos logs locais; nao houve
 acesso ao error_log remoto nem publicacao na hospedagem nesta verificacao.
 
+Na verificacao do reenvio das 16:12, a hospedagem confirmou o header da
+versao delivery-montagem-3. A leitura do SQLite do simulador confirmou o
+snapshot de R$ 28,00, com Mais Arroz R$ 5,00 e Ovo R$ 3,00 e quantidades
+corretas. Reenviar exatamente a mesma operacao ainda devolveu HTTP 503;
+nao foi criado outro ID. As referencias 76b9d0a608766166 e
+894f5e575724145d permitem consultar o log remoto para identificar essa falha.
+
+`falha_operacao.php` agora inclui metadados restritos em `diagnostico` na
+resposta de falha interna: classe, arquivo, linha e, se disponiveis, codigo
+SQL, SQLSTATE, campo e funcao. Nao inclui SQL, parametros ou dados pessoais.
+O app conserva a mensagem apresentada; o diagnostico e tecnico. Publicar os
+dois PHP de `build/correcoes/api39_diagnostico_reenvio_20261008.zip` permite
+localizar a causa sem acesso ao log; o header passa a diagnostico-4.
+O teste de classificacao e privacidade passou. Essa instrumentacao nao
+declara resolvida a causa desta recusa; depende de obter o log ou a nova
+resposta da hospedagem. Nao houve publicacao automatica.
+
 O endpoint atual de busca de clientes retorna no maximo 15 resultados por consulta;
 o preparo inicial nao representa o cadastro inteiro. Consultas e enderecos ja
 carregados ficam disponiveis, e a busca local aceita nome, razao social, ID e celular
