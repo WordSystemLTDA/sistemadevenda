@@ -86,7 +86,7 @@ void main() {
     return jsonDecode(prefs.getString('conexao')!) as Map<String, dynamic>;
   }
 
-  testWidgets('online salva sem aguardar o servidor local e mantem api6',
+  testWidgets('online salva sem aguardar o servidor local e mantem api39',
       (tester) async {
     modulo.servidor.resposta = Completer<bool>();
     await abrir(tester);
@@ -97,7 +97,7 @@ void main() {
     expect(modulo.servidor.desconexoes, 1);
     expect((await configuracaoSalva())['tipoConexao'], 'online');
     expect((await Apis().getConexao()).servidor,
-        'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api6/');
+        'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api39/');
 
     modulo.servidor.resposta!.complete(false);
     await tester.pumpAndSettle();

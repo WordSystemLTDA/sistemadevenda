@@ -198,8 +198,9 @@ Referencia: [execucao em segundo plano no iOS](https://developer.apple.com/docum
    Essa extensao reutiliza `garcom_operacoes`; nao exige nova alteracao de schema.
    Na instalacao local atual, a API fica em um repositorio Git separado do aplicativo:
    atualizar somente o repositorio Flutter nao atualiza o servidor PHP.
-3. Se a conexao usar `api6` (URL online do aplicativo), disponibilizar o mesmo contrato
-   nessa versao. Essa arvore nao esta presente neste checkout e nao foi publicada.
+3. A conexao Online do aplicativo usa `api39` em `bigchef.com.br`.
+   Publicar o mesmo contrato nessa versao da hospedagem; atualizar o checkout
+   local nao publica a API online.
    A leitura de mesas e comandas usa `sincronizacao/versao_atendimento.php` para
    calcular a versao sem carregar o modulo de operacoes ou a fila de impressao.
    Publicar esse helper junto com `cardapio/listar_por_id_comanda.php`.
@@ -219,6 +220,14 @@ e `listar_tamanhos_pizza.php`. O helper e os endpoints devem ser publicados junt
 Em `conexao.php`, aplicar somente a remocao da consulta DNS desnecessaria,
 preservando as credenciais e configuracoes especificas do servidor de destino.
 Nao ha nova tabela, coluna ou migracao para essa otimizacao.
+
+Na `api39`, publicar juntos `funcoes/filtro_produtos_cardapio.php`,
+`funcoes/configuracao_cardapio.php`, `categorias/listar.php`,
+`produtos/listar.php`, `produtos/listar_por_categoria.php` e
+`config_bigchef/listar.php`. Os filtros e a leitura da configuracao acompanham
+a propria API do app, evitando erro 500 quando os helpers correspondentes do
+desktop nao foram publicados. As consultas continuam restritas a empresa da
+sessao e os filtros de produtos ativos e personalizados permanecem iguais.
 
 Nao foram alterados dados ou provisionadas tabelas no banco de producao nesta tarefa.
 O banco SQLite do aparelho migra da versao 1 para 2 automaticamente, apenas adicionando

@@ -9,8 +9,46 @@ import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/servicos_categoria.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('online api39 envia empresa 2 para categorias e produtos', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({
+        'tipoConexao': 'online',
+        'servidor': '192.168.2.113',
+        'porta': '9980',
+      }),
+    });
+    final api = DioCliente();
+    final adapter = _AdapterEmpresa2();
+    api.cliente.httpClientAdapter = adapter;
+    addTearDown(() => api.cliente.close(force: true));
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '123', empresa: '2'));
+    addTearDown(usuario.dispose);
+
+    final categorias = await ServicosCategoria(api, usuario).listar();
+    final produtos =
+        await ServicoProduto(api, usuario).listarPorCategoria('0', 1);
+
+    expect(categorias.map((categoria) => categoria.id), ['0', '1']);
+    expect(produtos.map((produto) => produto.id), ['15']);
+    expect(adapter.chamadas, hasLength(2));
+    for (final chamada in adapter.chamadas) {
+      expect(chamada.uri.scheme, 'https');
+      expect(chamada.uri.host, 'bigchef.com.br');
+      expect(
+          chamada.uri.path,
+          startsWith(
+              '/sistema/apis_restaurantes/api_restaurantes_venda/api39/'));
+      expect(chamada.uri.queryParameters['empresa'], '2');
+    }
+    expect(adapter.chamadas.last.uri.queryParameters['id_usuario'], '123');
+  });
+
   test('catalogo mostra somente produtos personalizados quando habilitado',
       () async {
     final api = DioCliente(servidor: 'http://localhost/api37/');
@@ -73,6 +111,28 @@ void main() {
 
     expect(categorias.map((categoria) => categoria.id), ['0', '12']);
   });
+}
+
+class _AdapterEmpresa2 implements HttpClientAdapter {
+  final chamadas = <RequestOptions>[];
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    chamadas.add(options);
+    final dados = options.uri.path.endsWith('/categorias/listar.php')
+        ? [
+            {'id': '0', 'nomeCategoria': 'Todos', 'quantidadeProdutos': '1'},
+            {'id': '1', 'nomeCategoria': 'Bebidas', 'quantidadeProdutos': '1'},
+          ]
+        : [_AdapterProdutos()._produto('15', 'Sim')];
+    return ResponseBody.fromString(jsonEncode(dados), 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class _AdapterProdutos implements HttpClientAdapter {
