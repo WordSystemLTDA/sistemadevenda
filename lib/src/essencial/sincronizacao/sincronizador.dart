@@ -109,6 +109,11 @@ class Sincronizador extends ChangeNotifier {
     solicitar();
   }
 
+  Future<void> prepararDeliveryNaRede(String id) async {
+    await configurar();
+    await _pedidosRede.prepararDelivery(id);
+  }
+
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';

@@ -407,7 +407,11 @@ class FilaDeliveryOffline {
         .ler(ProtocoloPedidosRede.chaveRota(escopo, op['id'] as String));
     if (texto == null) return op;
     final rede = jsonDecode(texto) as Map;
-    return {...op, 'recebidoNaRede': rede['recebido'] == true};
+    return {
+      ...op,
+      'recebidoNaRede': rede['recebido'] == true,
+      'etapaDeliveryRede': rede['etapaDelivery'] ?? 'aguardando'
+    };
   }
 
   Future<List<PedidoDelivery>> listar() async {
@@ -486,6 +490,7 @@ class FilaDeliveryOffline {
       'estadoSincronizacao': op?['estado'] ?? 'rascunho',
       'erroSincronizacao': op?['erro'],
       'recebidoNaRede': op?['recebidoNaRede'] == true,
+      'etapaDeliveryRede': op?['etapaDeliveryRede'] ?? 'aguardando',
     });
   }
 

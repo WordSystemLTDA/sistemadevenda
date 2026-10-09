@@ -17,7 +17,49 @@ class _Modulo extends Module {
 }
 
 void main() {
-  testWidgets('socket atualiza o mesmo delivery que esta visivel', (tester) async {
+  test(
+      'ACK do PC tira imediatamente o pedido da etapa local mesmo com outro rascunho',
+      () async {
+    final servico = ServicoDeliveryTeste();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    final pedido = pedidoTeste(campos: {
+      'id': 'delivery-local:rede',
+      'idopcoescarrossel': 'local',
+      'faseLocal': 'enfileirado'
+    });
+    servico.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': 'local',
+            'vendas': [pedido.dados]
+          })
+        ];
+    await provedor.listar();
+    provedor.atualizarPedido(pedido);
+    servico.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': 'local',
+            'vendas': [
+              pedidoTeste(campos: {'id': 'delivery-local:outro'}).dados
+            ]
+          }),
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'vendas': [
+              {
+                ...pedido.dados,
+                'recebidoNaRede': true,
+                'idopcoescarrossel': '1'
+              }
+            ]
+          }),
+        ];
+    await provedor.listar();
+    expect(provedor.etapas.first.pedidos.single.id, 'delivery-local:outro');
+    expect(provedor.etapas.last.pedidos.single.id, pedido.id);
+  });
+  testWidgets('socket atualiza o mesmo delivery que esta visivel',
+      (tester) async {
     final servico = ServicoDeliveryTeste();
     final provedor = ProvedorDelivery(servico);
     Modular.init(_Modulo(provedor));
@@ -26,8 +68,9 @@ void main() {
     await tester.pumpAndSettle();
     final antes = servico.consultas;
     servico.respostaLista = () async => [
-      EtapaDelivery.fromMap({'id': '99', 'nomeOpcao': 'Pedido recebido agora', 'vendas': []}),
-    ];
+          EtapaDelivery.fromMap(
+              {'id': '99', 'nomeOpcao': 'Pedido recebido agora', 'vendas': []}),
+        ];
     AtualizacaoDeTela().call(ModeloRetornoSocket(tipo: 'delivery'));
     await tester.pumpAndSettle();
     expect(servico.consultas, antes + 1);
@@ -36,16 +79,20 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  test('confirmacao remota libera imediatamente mudancas de outro terminal', () async {
+  test('confirmacao remota libera imediatamente mudancas de outro terminal',
+      () async {
     final servico = ServicoDeliveryTeste();
     final provedor = ProvedorDelivery(servico);
     addTearDown(provedor.dispose);
     var etapaAtual = '1';
     final pedido = pedidoTeste();
     servico.respostaLista = () async => [
-      for (final etapa in ['1', '2', '3'])
-        EtapaDelivery.fromMap({'id': etapa, 'vendas': [if (etapa == etapaAtual) pedido.comEtapa(etapa).dados]}),
-    ];
+          for (final etapa in ['1', '2', '3'])
+            EtapaDelivery.fromMap({
+              'id': etapa,
+              'vendas': [if (etapa == etapaAtual) pedido.comEtapa(etapa).dados]
+            }),
+        ];
     await provedor.listar();
     provedor.moverPedidoParaEtapa(pedido, '2');
     etapaAtual = '2';

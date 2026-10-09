@@ -23,6 +23,7 @@ class PedidosNaRede {
   bool _descartado = false;
   bool apiIndisponivel = false;
   String destino = '';
+  final _preparacoes = <String, Completer<void>>{};
 
   static String _prefixo(String alvo) => 'rota-pedido-rede:$alvo:';
   static String chave(String alvo, String id) =>
@@ -80,7 +81,14 @@ class PedidosNaRede {
     final alvo = op['escopo'] as String;
     final id = op['id'] as String;
     final salvo = await banco.ler(chave(alvo, id));
-    if (salvo != null) return jsonDecode(salvo)['executor'] as String;
+    if (salvo != null) {
+      // Migra tambem uma copia criada pela versao anterior, sem alterar o
+      // payload/id da venda nem o retrato imutavel salvo no PC.
+      if (op['acao'] == 'delivery' && op['impressoes'] != '[]') {
+        await banco.atualizarOperacao(id, {'impressoes': '[]'});
+      }
+      return jsonDecode(salvo)['executor'] as String;
+    }
     // Nao adotar operacoes ja tentadas: uma resposta perdida pode ter sido
     // impressa por outro PC antes de existir a reserva na API.
     if (_escopo == null ||
@@ -227,8 +235,15 @@ class PedidosNaRede {
       return null;
     }
     await banco.db.transaction((tx) async {
-      await tx.update('operacoes', {'impressoes': jsonEncode(mensagens)},
-          where: 'id = ? AND tentativas = 0', whereArgs: [id]);
+      // Delivery recebe apenas o retrato; o preparo nasce ao avancar a etapa.
+      await tx.update(
+          'operacoes',
+          {
+            'impressoes':
+                jsonEncode(tipo == 'delivery' ? <String>[] : mensagens)
+          },
+          where: 'id = ? AND tentativas = 0',
+          whereArgs: [id]);
       await BancoLocal.gravarDocumento(
           tx,
           chave(alvo, id),
@@ -240,6 +255,7 @@ class PedidosNaRede {
               'tipo': ProtocoloPedidosRede.pedido,
               'protocoloPedidoRede': 1,
               'idEmpresa': conta.empresa,
+              'idUsuario': conta.id,
               'executorImpressaoRede': executor,
               'idOperacaoRede': id,
               'pedido': pedido,
@@ -309,7 +325,26 @@ class PedidosNaRede {
           'idOperacaoRede': rota['id'],
           'executorImpressaoRede': rota['executor'],
           'conflito': conflito,
+          if (confirmado &&
+              rota['mensagem']?['pedido']?['tipoAtendimento'] == 'delivery')
+            'preparoSolicitado': rota['preparoSolicitado'] == true ||
+                rota['etapaDelivery'] == 'preparando',
+          if (confirmado)
+            'recibo': jsonDecode(op['resposta'] as String? ?? '{}'),
           if (conflito) 'erro': op['erro'] ?? 'Confira o pedido na API.',
+        });
+      } else if (rota['recebido'] == true &&
+          rota['mensagem']?['pedido']?['tipoAtendimento'] == 'delivery') {
+        socket.enviarPedidoRede({
+          'escopoAtualizacao': escopo,
+          'tipo': rota['preparoSolicitado'] == true &&
+                  rota['etapaDelivery'] != 'preparando'
+              ? ProtocoloPedidosRede.prepararDelivery
+              : ProtocoloPedidosRede.consultar,
+          'protocoloPedidoRede': 1,
+          'idEmpresa': escopo.split('|').last,
+          'idOperacaoRede': rota['id'],
+          'executorImpressaoRede': rota['executor'],
         });
       } else if (rota['recebido'] != true &&
           (apiIndisponivel ||
@@ -332,7 +367,7 @@ class PedidosNaRede {
       return false;
     }
     final key = chave(alvo, resposta['idOperacaoRede'].toString());
-    return banco.db.transaction((tx) async {
+    final mudou = await banco.db.transaction((tx) async {
       final texto = await BancoLocal.lerDocumento(tx, key);
       if (texto == null || _alvo != alvo || _escopo != escopo) return false;
       final rota = jsonDecode(texto) as Map;
@@ -342,6 +377,15 @@ class PedidosNaRede {
         return false;
       }
       if (resposta['estado'] == 'recebido') rota['recebido'] = true;
+      if (const {'aguardando', 'preparando'}
+          .contains(resposta['etapaDelivery'])) {
+        if (rota['etapaDelivery'] != 'preparando') {
+          rota['etapaDelivery'] = resposta['etapaDelivery'];
+        }
+        if (resposta['etapaDelivery'] == 'preparando') {
+          rota['preparoSolicitado'] = false;
+        }
+      }
       if (const {'confirmado', 'conflito'}.contains(resposta['estado'])) {
         rota['confirmacao'] = resposta['estado'];
       }
@@ -350,9 +394,48 @@ class PedidosNaRede {
       await BancoLocal.gravarDocumento(tx, key, jsonEncode(rota));
       return true;
     });
+    if (resposta['etapaDelivery'] == 'preparando') {
+      final texto = await banco.ler(key);
+      if (texto != null && jsonDecode(texto)['etapaDelivery'] == 'preparando') {
+        _preparacoes.remove(resposta['idOperacaoRede'])?.complete();
+      }
+    }
+    return mudou;
   }
 
   void dispose() {
     _descartado = true;
+  }
+
+  Future<void> prepararDelivery(String atendimento) async {
+    final id = atendimento.replaceFirst('delivery-local:', '');
+    final key = chave(_alvo, id);
+    await banco.db.transaction((tx) async {
+      final texto = await BancoLocal.lerDocumento(tx, key);
+      if (texto == null) {
+        throw StateError('Aguarde o recebimento do pedido pelo PC.');
+      }
+      final rota = jsonDecode(texto) as Map;
+      if (rota['recebido'] != true ||
+          rota['mensagem']?['pedido']?['tipoAtendimento'] != 'delivery') {
+        throw StateError('O PC ainda não recebeu este pedido.');
+      }
+      if (rota['etapaDelivery'] == 'preparando') return;
+      rota['preparoSolicitado'] = true;
+      await BancoLocal.gravarDocumento(tx, key, jsonEncode(rota));
+    });
+    final salvo = jsonDecode((await banco.ler(key))!) as Map;
+    if (salvo['etapaDelivery'] == 'preparando') return;
+    final espera = _preparacoes.putIfAbsent(id, () => Completer<void>());
+    // A intencao duravel sera retomada quando o mesmo PC reconectar.
+    unawaited(processar());
+    try {
+      await espera.future.timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      throw StateError(
+          'Preparação solicitada. Aguardando confirmação do PC pelo Wi-Fi.');
+    } finally {
+      if (identical(_preparacoes[id], espera)) _preparacoes.remove(id);
+    }
   }
 }

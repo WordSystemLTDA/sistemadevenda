@@ -149,7 +149,10 @@ class ProvedorDelivery extends ChangeNotifier {
           remoto.quantidade >= item.pedido.quantidade &&
           remoto.pago >= item.pedido.pago - 0.009 &&
           remoto.total >= item.pedido.total - 0.009;
-      return item.ate.isBefore(agora) || confirmado;
+      // O ACK do PC prevalece sobre a exibicao otimista do rascunho local.
+      return item.ate.isBefore(agora) ||
+          confirmado ||
+          remoto?.recebidoNaRede == true && item.pedido.salvoNoAparelho;
     });
     if (_pedidosRecentes.isEmpty) return origem;
     return [for (final etapa in origem) _mesclarPedidosDaEtapa(etapa)];

@@ -115,6 +115,10 @@ class PedidoDelivery {
   bool get salvoNoAparelho => id.startsWith('delivery-local:');
   bool get aguardandoSincronizacao =>
       salvoNoAparelho && texto('faseLocal') == 'enfileirado';
+  bool get recebidoNaRede =>
+      aguardandoSincronizacao && dados['recebidoNaRede'] == true && texto('estadoSincronizacao') != 'conflito';
+  bool get preparandoNaRede =>
+      recebidoNaRede && texto('etapaDeliveryRede') == 'preparando';
   bool get produtosConfirmadosLocal =>
       dados['produtosConfirmadosLocal'] == true;
   bool get possuiRascunhoLocal => dados['possuiRascunhoLocal'] == true;

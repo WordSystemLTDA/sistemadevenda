@@ -5,6 +5,8 @@ class ProtocoloPedidosRede {
   static const pedido = 'PedidoRedeSemInternet';
   static const confirmacao = 'ConfirmarPedidoRede';
   static const resposta = 'RespostaPedidoRede';
+  static const prepararDelivery = 'PrepararDeliveryRede';
+  static const consultar = 'ConsultarPedidoRede';
   static String chaveRota(String alvo, String id) =>
       'rota-pedido-rede:$alvo:$id';
 
@@ -29,7 +31,12 @@ class ProtocoloPedidosRede {
     }
     if (!operacaoValida(dados['idOperacaoRede'])) return null;
     if (tipo == resposta) return aceitarResposta ? dados : null;
-    if (tipo == pedido || tipo == confirmacao) return dados;
+    if (tipo == pedido ||
+        tipo == confirmacao ||
+        tipo == prepararDelivery ||
+        tipo == consultar) {
+      return dados;
+    }
     return null;
   }
 }

@@ -20,6 +20,7 @@ import 'package:app/src/modulos/finalizar_pagamento/modelos/parcelas_modelo_pdv.
 import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'fila_delivery_offline.dart';
+import 'etapas_delivery_rede.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -217,18 +218,16 @@ class ServicoDelivery {
                   .toLowerCase()
                   .contains(termo));
     }).toList();
-    return [
-      if (locais.isNotEmpty)
-        EtapaDelivery.fromMap({
-          'id': 'local',
-          'nomeOpcao': 'No aparelho',
-          'nomeBotao': 'Continuar pedido',
-          'tipodeimpressao': '0',
-          'vendas': locais.map((p) => p.dados).toList(),
-        }),
+    return mesclarEtapasDeliveryRede([
       for (final e in json['dados'] as List? ?? [])
         EtapaDelivery.fromMap(Map<String, dynamic>.from(e as Map))
-    ];
+    ], locais);
+  }
+
+  Future<void> prepararPelaRede(String id) async {
+    final sync = Sincronizador.instancia;
+    if (sync == null) throw StateError('Reconecte ao PC pelo Wi-Fi.');
+    await sync.prepararDeliveryNaRede(id);
   }
 
   Future<ConfigDelivery> configuracao() async =>
@@ -614,7 +613,8 @@ class ServicoDelivery {
       await (await _exigirFilaLocal())
           .confirmar(id, pagamentoPendente: pagarDepois);
       Sincronizador.instancia?.solicitar();
-      unawaited(Sincronizador.instancia?.enviarPendentes() ?? Future<void>.value());
+      unawaited(
+          Sincronizador.instancia?.enviarPendentes() ?? Future<void>.value());
       NotificadorAtualizacao.atendimento('Delivery');
       return;
     }

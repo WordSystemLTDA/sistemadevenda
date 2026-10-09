@@ -399,6 +399,26 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     String entregadorSelecionado = '',
   }) async {
     if (pedido.salvoNoAparelho) {
+      if (pedido.recebidoNaRede && !pedido.preparandoNaRede) {
+        if (_ocupado != null) return false;
+        setState(() => _ocupado = pedido.id);
+        try {
+          await _provedor.servico.prepararPelaRede(pedido.id);
+          return true;
+        } catch (erro) {
+          if (exibirFalha) {
+            _mensagem(erro is StateError
+                ? erro.message.toString()
+                : 'Não foi possível confirmar a preparação no PC.');
+          }
+          return false;
+        } finally {
+          if (mounted) {
+            setState(() => _ocupado = null);
+            await _provedor.listar();
+          }
+        }
+      }
       await _retomarLocal(pedido);
       return false;
     }
@@ -898,6 +918,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
                   : _abrir(PaginaDetalhesDelivery(
                       servico: _provedor.servico, id: p.id)),
               avancar: _avancar,
+              verSincronizacao: _retomarLocal,
               avancarLote: _avancarLote,
               progressoLote: _progressoLote,
               totalLote: _totalLote,
@@ -928,6 +949,7 @@ class _CarrosselDelivery extends StatefulWidget {
   final Future<void> Function(PedidoDelivery, EtapaDelivery) opcoes;
   final Future<void> Function(PedidoDelivery) excluir;
   final Future<void> Function(PedidoDelivery) imprimir;
+  final Future<void> Function(PedidoDelivery) verSincronizacao;
   final Future<bool> Function(PedidoDelivery, EtapaDelivery, EtapaDelivery?)
       avancar;
   final Future<Set<String>> Function(
@@ -949,6 +971,7 @@ class _CarrosselDelivery extends StatefulWidget {
       required this.encerrarSelecao,
       required this.excluir,
       required this.imprimir,
+      required this.verSincronizacao,
       required this.opcoes,
       this.ocupado,
       this.excluindo,
@@ -1125,21 +1148,25 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final idade = p.abertura == null
                                 ? ''
                                 : '${DateTime.now().difference(p.abertura!).inMinutes.clamp(0, 99999)} min';
-                            final label = p.salvoNoAparelho
-                                ? p.aguardandoSincronizacao
-                                    ? 'Ver sincronização'
-                                    : 'Continuar pedido'
-                                : p.quantidade == 0
-                                    ? 'Adicionar produtos'
-                                    : widget.config?.exigePagamento(
-                                                p, destino ?? etapa) ==
-                                            true
-                                        ? 'Receber ${p.restante.obterReal()}'
-                                        : etapa.impressao == '3'
-                                            ? 'Concluir pedido'
-                                            : etapa.botao;
-                            final podeAvancar = p.salvoNoAparelho ||
-                                p.podeAvancar(etapa) && destino != null;
+                            final label = p.recebidoNaRede &&
+                                    !p.preparandoNaRede
+                                ? 'Preparar'
+                                : p.salvoNoAparelho
+                                    ? p.aguardandoSincronizacao
+                                        ? 'Ver sincronização'
+                                        : 'Continuar pedido'
+                                    : p.quantidade == 0
+                                        ? 'Adicionar produtos'
+                                        : widget.config?.exigePagamento(
+                                                    p, destino ?? etapa) ==
+                                                true
+                                            ? 'Receber ${p.restante.obterReal()}'
+                                            : etapa.impressao == '3'
+                                                ? 'Concluir pedido'
+                                                : etapa.botao;
+                            final podeAvancar = p.salvoNoAparelho
+                                ? !p.preparandoNaRede
+                                : p.podeAvancar(etapa) && destino != null;
                             final selecionavel =
                                 _podeSelecionar(p, etapa, destino);
                             final selecionado = _selecionados.contains(p.id);
@@ -1273,7 +1300,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                         size: 20)),
                                               ]),
                                               const SizedBox(height: 10),
-                                              if (p.salvoNoAparelho)
+                                              if (p.salvoNoAparelho &&
+                                                  !p.recebidoNaRede)
                                                 Padding(
                                                   padding:
                                                       const EdgeInsets.only(
@@ -1394,6 +1422,28 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                             fontSize: 12,
                                                             color:
                                                                 cs.primary))),
+                                              if (p.recebidoNaRede)
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child: TextButton.icon(
+                                                    onPressed: () => widget
+                                                        .verSincronizacao(p),
+                                                    icon: Icon(Icons.wifi,
+                                                        size: 14,
+                                                        color: cs
+                                                            .onSurfaceVariant),
+                                                    label: Text('Via Wi-Fi',
+                                                        style: TextStyle(
+                                                            fontSize: 11,
+                                                            color: cs
+                                                                .onSurfaceVariant)),
+                                                    style: TextButton.styleFrom(
+                                                        visualDensity:
+                                                            VisualDensity
+                                                                .compact),
+                                                  ),
+                                                ),
                                               if (podeAvancar ||
                                                   podeImprimir) ...[
                                                 const SizedBox(height: 12),

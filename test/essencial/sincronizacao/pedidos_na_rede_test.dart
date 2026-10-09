@@ -230,8 +230,11 @@ void main() {
     final atual = (await banco.operacoes(alvo)).single;
     final preparos =
         List<String>.from(jsonDecode(atual['impressoes'] as String));
-    expect(preparos, hasLength(1));
-    final preparo = jsonDecode(preparos.single) as Map;
+    expect(preparos, isEmpty);
+    final rota = jsonDecode(
+            (await banco.ler(PedidosNaRede.chave(alvo, op['id'] as String)))!)
+        as Map;
+    final preparo = (rota['mensagem']['impressoes'] as List).single as Map;
     expect(preparo['idRequisicao'], 'rede-${op['id']}-0');
     expect(preparo['tipo'], 'Delivery');
     expect(preparo['nomedopc'], isNull);
@@ -239,5 +242,55 @@ void main() {
     expect(await rede.preparar(atual), executor);
     expect((await banco.operacoes(alvo)).single['impressoes'],
         atual['impressoes']);
+  });
+  test(
+      'Delivery so confirma preparo depois do ACK do PC e conserva intencao no reinicio',
+      () async {
+    op = {...op, 'acao': 'delivery', 'impressoes': '[]'};
+    await banco.db
+        .update('operacoes', op, where: 'id = ?', whereArgs: [op['id']]);
+    await rede.preparar(op);
+    final id = op['id'] as String;
+    final resposta = {
+      'idEmpresa': '2',
+      'idOperacaoRede': id,
+      'executorImpressaoRede': executor,
+      'estado': 'recebido',
+      'etapaDelivery': 'aguardando'
+    };
+    await rede.receber(resposta);
+    final futuro = rede.prepararDelivery('delivery-local:$id');
+    for (var i = 0;
+        i < 100 &&
+            !socket.envios.any((m) => m['tipo'] == 'PrepararDeliveryRede');
+        i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(socket.envios.last['tipo'], 'PrepararDeliveryRede');
+    final antes =
+        jsonDecode((await banco.ler(PedidosNaRede.chave(alvo, id)))!) as Map;
+    expect(antes['etapaDelivery'], 'aguardando');
+    expect(antes['preparoSolicitado'], isTrue);
+    // O POST pode confirmar a venda enquanto o ACK do preparo ainda esta em voo.
+    await banco.atualizarOperacao(id, {
+      'estado': 'concluido',
+      'resposta': '{"sucesso":true,"idDelivery":"77"}'
+    });
+    await rede.processar();
+    expect(socket.envios.last['tipo'], 'ConfirmarPedidoRede');
+    expect(socket.envios.last['preparoSolicitado'], isTrue);
+    await rede.receber({...resposta, 'etapaDelivery': 'preparando'});
+    await futuro;
+    await rede.processar();
+    expect(socket.envios.last['tipo'], 'ConfirmarPedidoRede');
+    final salvo =
+        jsonDecode((await banco.ler(PedidosNaRede.chave(alvo, id)))!) as Map;
+    expect(salvo['etapaDelivery'], 'preparando');
+    await rede.receber(resposta); // ACK antigo de Aguardando nao regride Preparo.
+    expect(jsonDecode((await banco.ler(PedidosNaRede.chave(alvo, id)))!)['etapaDelivery'], 'preparando');
+    expect((await banco.db.query('operacoes', where: 'id = ?', whereArgs: [id])).single['estado'], 'concluido');
+    final quantidade = socket.envios.length;
+    await rede.prepararDelivery('delivery-local:$id');
+    expect(socket.envios, hasLength(quantidade));
   });
 }
