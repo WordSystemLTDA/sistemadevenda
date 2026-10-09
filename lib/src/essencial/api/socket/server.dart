@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/socket/canal_atualizacao_online.dart';
+import 'package:app/src/essencial/api/socket/protocolo_pedidos_rede.dart';
 import 'package:app/src/essencial/api/socket/descoberta_atualizacao_online.dart';
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
@@ -34,6 +35,18 @@ class Server extends ChangeNotifier {
   final DescobertaAtualizacaoOnline _descobertaOnline;
   String? _escopoOnline;
   String? _empresaOnline;
+  String? executorPedidosRede;
+  String? get escopoPedidosRede => _escopoOnline;
+  void Function(Map<String, dynamic>)? aoResponderPedidoRede;
+
+  bool enviarPedidoRede(Map<String, dynamic> mensagem) =>
+      connected &&
+      _escopoOnline != null &&
+      mensagem[CanalAtualizacaoOnline.chaveEscopo] == _escopoOnline &&
+      _enviarMensagemNoCanal(jsonEncode({
+        ...mensagem,
+        CanalAtualizacaoOnline.chaveEscopo: _escopoOnline,
+      }));
 
   Server({
     FilaImpressao? filaImpressao,
@@ -630,6 +643,7 @@ class Server extends ChangeNotifier {
 
     channel = null;
     connected = false;
+    executorPedidosRede = null;
 
     if (haviaConexao && !_descartado) {
       notifyListeners();
@@ -1117,6 +1131,18 @@ class Server extends ChangeNotifier {
         mensagem = _desserializarMensagem(data);
       }
       if (mensagem == null || mensagem['tipo'] == null) {
+        return;
+      }
+
+      if (_escopoOnline != null &&
+          mensagem['tipo'] == ProtocoloPedidosRede.anuncio) {
+        executorPedidosRede = mensagem['executorImpressaoRede'] as String;
+        if (!_descartado) notifyListeners();
+        return;
+      }
+      if (_escopoOnline != null &&
+          mensagem['tipo'] == ProtocoloPedidosRede.resposta) {
+        aoResponderPedidoRede?.call(mensagem);
         return;
       }
 

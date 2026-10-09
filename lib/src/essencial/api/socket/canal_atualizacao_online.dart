@@ -1,3 +1,5 @@
+import 'protocolo_pedidos_rede.dart';
+
 /// Isola atualizacoes e impressoes da mesma empresa/API na rede local.
 class CanalAtualizacaoOnline {
   static const chaveEscopo = 'escopoAtualizacao';
@@ -80,14 +82,17 @@ class CanalAtualizacaoOnline {
     };
   }
 
-  /// Pedidos e alteracoes de banco continuam pela API HTTP. O socket aceita
-  /// somente avisos e o protocolo de impressao da empresa autenticada.
+  /// Gravacoes continuam pela API HTTP. A LAN aceita avisos, impressao e
+  /// copias provisorias de cozinha da mesma empresa, sem confirmar vendas.
   static Map<String, dynamic>? mensagem(
       Map<String, dynamic> dados, String escopo,
       {bool aceitarResposta = false}) {
     final avisoTela = aviso(dados);
     if (avisoTela != null) return avisoTela;
     if (dados['tipo'] == 'Rede') return dados;
+    final pedidoRede = ProtocoloPedidosRede.mensagem(dados, escopo,
+        aceitarResposta: aceitarResposta);
+    if (pedidoRede != null) return pedidoRede;
     final empresa = escopo.split('|').last;
     if (dados['idEmpresa']?.toString() != empresa ||
         (dados['idRequisicao']?.toString().trim().isEmpty ?? true)) {

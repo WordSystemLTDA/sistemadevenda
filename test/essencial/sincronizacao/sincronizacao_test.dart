@@ -29,8 +29,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../utils/impressao_preparo_test.dart' show produto;
 
 class SocketOfflineTeste extends Server {
+  @override
+  String? get escopoPedidosRede => 'online|bigchef.com.br|32';
   final recuperacoes = <bool>[];
   final mensagens = <Map<String, dynamic>>[];
+  final pedidosRede = <Map<String, dynamic>>[];
   Completer<void>? tentativaManual;
   Completer<void>? processamento;
 
@@ -40,6 +43,12 @@ class SocketOfflineTeste extends Server {
     recuperacoes.add(reconectarAgora);
     if (reconectarAgora) await tentativaManual?.future;
     await processamento?.future;
+  }
+
+  @override
+  bool enviarPedidoRede(Map<String, dynamic> mensagem) {
+    pedidosRede.add(mensagem);
+    return true;
   }
 
   @override
@@ -309,6 +318,38 @@ void main() {
     await fila.confirmar(id);
     return fila;
   }
+
+  test(
+      'Online reserva o mesmo PC antes do POST, envia pela LAN e reconcilia depois',
+      () async {
+    const executor = 'preparo-11111111111111111111111111111111';
+    await (await SharedPreferences.getInstance()).setString(
+        'conexao',
+        jsonEncode(
+            {'tipoConexao': 'online', 'servidor': 'cozinha', 'porta': '9980'}));
+    await sync.configurar();
+    socket.connected = true;
+    socket.executorPedidosRede = executor;
+    final estado =
+        jsonDecode(await banco.ler('estado:${sync.escopo}') ?? '{}') as Map;
+    await banco.gravar(
+        'estado:${sync.escopo}',
+        jsonEncode(
+            {...estado, 'caixa_id': '0', 'pedidos_rede_sem_internet': 1}));
+    await guardarDelivery();
+    final id = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    await sync.enviarPendentes();
+    expect(tentativas.single['executor_impressao_rede'], executor);
+    expect(socket.pedidosRede.single['tipo'], 'PedidoRedeSemInternet');
+    expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
+    conectado = true;
+    impressaoPersistidaApi = true;
+    await banco.atualizarOperacao(id, {'proxima': 0});
+    await sync.enviarPendentes();
+    expect(tentativas.last['executor_impressao_rede'], executor);
+    expect(socket.pedidosRede.last['tipo'], 'ConfirmarPedidoRede');
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
 
   for (final online in [false, true]) {
     test(

@@ -614,6 +614,7 @@ class ServicoDelivery {
       await (await _exigirFilaLocal())
           .confirmar(id, pagamentoPendente: pagarDepois);
       Sincronizador.instancia?.solicitar();
+      unawaited(Sincronizador.instancia?.enviarPendentes() ?? Future<void>.value());
       NotificadorAtualizacao.atendimento('Delivery');
       return;
     }

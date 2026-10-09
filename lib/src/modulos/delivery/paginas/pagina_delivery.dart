@@ -1283,7 +1283,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                             'conflito'
                                                         ? 'Sincronização precisa de conferência'
                                                         : p.aguardandoSincronizacao
-                                                            ? 'Salvo no aparelho · aguardando sincronização'
+                                                            ? p.dados['recebidoNaRede'] == true
+                                                                ? 'Recebido pelo PC via Wi-Fi · aguardando internet'
+                                                                : 'Salvo no aparelho · aguardando sincronização'
                                                             : 'Rascunho salvo no aparelho',
                                                     style: TextStyle(
                                                         color: cs.primary,

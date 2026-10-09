@@ -240,7 +240,57 @@ void main() {
     expect(atualizacoes, isEmpty);
     await server.onData(jsonEncode(envelope(escopo, 'Delivery')));
     expect(atualizacoes, ['Delivery']);
+    const executor = 'preparo-11111111111111111111111111111111';
+    final id = 'a' * 48;
+    Map<String, dynamic> envelopeRede(Map<String, dynamic> dados,
+            [String alvo = escopo]) =>
+        {
+          'type': 'customMessage',
+          CanalAtualizacaoOnline.chaveEscopo: alvo,
+          'data': {'customData': dados},
+        };
+    final anuncio = {
+      'tipo': 'CanalPedidosRede',
+      'protocoloPedidoRede': 1,
+      'idEmpresa': '2',
+      'executorImpressaoRede': executor
+    };
+    await server
+        .onData(jsonEncode(envelopeRede(anuncio, 'online|bigchef.com.br|3')));
+    expect(server.executorPedidosRede, isNull);
+    await server.onData(jsonEncode(envelopeRede(anuncio)));
+    expect(server.executorPedidosRede, executor);
+    final copia = entrada.firstWhere(
+        (m) => m['data']?['customData']?['tipo'] == 'PedidoRedeSemInternet');
+    expect(
+        server.enviarPedidoRede({
+          CanalAtualizacaoOnline.chaveEscopo: escopo,
+          'tipo': 'PedidoRedeSemInternet',
+          'protocoloPedidoRede': 1,
+          'idEmpresa': '2',
+          'idOperacaoRede': id,
+          'executorImpressaoRede': executor,
+          'pedido': {'produtos': []},
+          'impressoes': []
+        }),
+        isTrue);
+    expect(
+        (await copia.timeout(
+            const Duration(seconds: 3)))[CanalAtualizacaoOnline.chaveEscopo],
+        escopo);
+    Map<String, dynamic>? respostaRede;
+    server.aoResponderPedidoRede = (dados) => respostaRede = dados;
+    await server.onData(jsonEncode(envelopeRede({
+      'tipo': 'RespostaPedidoRede',
+      'protocoloPedidoRede': 1,
+      'idEmpresa': '2',
+      'idOperacaoRede': id,
+      'executorImpressaoRede': executor,
+      'estado': 'recebido'
+    })));
+    expect(respostaRede?['estado'], 'recebido');
     await server.disconnect();
+    expect(server.executorPedidosRede, isNull);
     expect(server.connected, isFalse);
   });
 }

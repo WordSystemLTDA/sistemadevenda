@@ -341,7 +341,9 @@ class PendenciasSincronizacao extends StatelessWidget {
               Text(conflito || rascunho
                   ? (op['erro']?.toString() ??
                       'Confira este pedido com o responsavel.')
-                  : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
+                  : op['recebidoNaRede'] == true
+                      ? 'Recebido pelo PC via Wi-Fi. Aguardando internet para confirmar na API.'
+                      : 'Salvo no aparelho. Aguardando confirmacao do servidor.'),
               if (!conflito && !rascunho && erroOperacao)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),

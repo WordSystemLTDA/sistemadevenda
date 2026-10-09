@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/api/socket/protocolo_pedidos_rede.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
@@ -395,12 +396,19 @@ class FilaDeliveryOffline {
     return _pedido(registro, op);
   }
 
-  Future<Map<String, Object?>?> _operacao(String id) async =>
-      (await banco.db.query('operacoes',
-              where: 'escopo = ? AND atendimento = ? AND acao = ?',
-              whereArgs: [escopo, id, 'delivery'],
-              limit: 1))
-          .firstOrNull;
+  Future<Map<String, Object?>?> _operacao(String id) async {
+    final op = (await banco.db.query('operacoes',
+            where: 'escopo = ? AND atendimento = ? AND acao = ?',
+            whereArgs: [escopo, id, 'delivery'],
+            limit: 1))
+        .firstOrNull;
+    if (op == null) return null;
+    final texto = await banco
+        .ler(ProtocoloPedidosRede.chaveRota(escopo, op['id'] as String));
+    if (texto == null) return op;
+    final rede = jsonDecode(texto) as Map;
+    return {...op, 'recebidoNaRede': rede['recebido'] == true};
+  }
 
   Future<List<PedidoDelivery>> listar() async {
     final todos = await _todos(banco.db);
@@ -477,6 +485,7 @@ class FilaDeliveryOffline {
       'faseLocal': r['fase'],
       'estadoSincronizacao': op?['estado'] ?? 'rascunho',
       'erroSincronizacao': op?['erro'],
+      'recebidoNaRede': op?['recebidoNaRede'] == true,
     });
   }
 

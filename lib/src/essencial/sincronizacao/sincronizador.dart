@@ -5,6 +5,7 @@ import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/api/socket/canal_atualizacao_online.dart';
+import 'package:app/src/essencial/api/socket/protocolo_pedidos_rede.dart';
 import 'package:app/src/essencial/api/socket/eventos_catalogo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
@@ -22,6 +23,7 @@ import 'atendimentos_locais.dart';
 import 'cache_consultas.dart';
 import 'execucao_segundo_plano.dart';
 import 'seguranca_pendencias.dart';
+import 'pedidos_na_rede.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
@@ -34,6 +36,8 @@ class Sincronizador extends ChangeNotifier {
   final Server socket;
   final BancoLocal banco;
   late final _preparacaoDelivery = PreparacaoDeliveryOffline(api);
+  late final _pedidosRede = PedidosNaRede(banco, socket, usuario);
+  Timer? _timerRede;
   Timer? _timer;
   Timer? _retentativaEnvio;
   Future<void>? _emAndamento;
@@ -89,8 +93,19 @@ class Sincronizador extends ChangeNotifier {
     usuario.addListener(_sessaoMudou);
     socket.addListener(_socketMudou);
     socket.aoAtualizarDados = _dadosMudaram;
+    socket.aoResponderPedidoRede = (resposta) =>
+        unawaited(_pedidosRede.receber(resposta).then((mudou) async {
+          if (!mudou || _descartado) return;
+          await _recarregarPendencias();
+          _notificar();
+          aoAtualizarTelas?.call();
+        }).catchError((Object erro) {
+          debugPrint('[PEDIDO_REDE] Confirmacao local pendente: $erro');
+        }));
     api.cache?.aoAtualizar = () => aoAtualizarTelas?.call();
     _timer ??= Timer.periodic(const Duration(seconds: 15), (_) => solicitar());
+    _timerRede ??= Timer.periodic(
+        const Duration(seconds: 5), (_) => unawaited(_pedidosRede.processar()));
     solicitar();
   }
 
@@ -98,6 +113,8 @@ class Sincronizador extends ChangeNotifier {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
     _escopoImpressaoOnline = null;
+    _pedidosRede.configurar('', null);
+    _pedidosRede.apiIndisponivel = false;
     _retentativaEnvio?.cancel();
     _retentativaEnvio = null;
     _cancelamentoPreparacao?.cancel('A conta mudou.');
@@ -137,6 +154,7 @@ class Sincronizador extends ChangeNotifier {
 
   bool _socketConectado = false;
   void _socketMudou() {
+    unawaited(_pedidosRede.processar());
     if (socket.connected && !_socketConectado) solicitar();
     _socketConectado = socket.connected;
   }
@@ -167,6 +185,7 @@ class Sincronizador extends ChangeNotifier {
     if (conta == null) {
       escopo = '';
       _escopoImpressaoOnline = null;
+      _pedidosRede.configurar('', null);
       api.cache?.escopo = '';
       pendencias = [];
       return;
@@ -178,11 +197,13 @@ class Sincronizador extends ChangeNotifier {
     _escopoImpressaoOnline = conexao?.tipoConexao == 'online'
         ? CanalAtualizacaoOnline.criarEscopo(url, conta.empresa ?? '')
         : null;
+    destino = conexao == null ? '' : '${conexao.servidor}:${conexao.porta}';
+    _pedidosRede.destino = destino;
+    _pedidosRede.configurar(novo, _escopoImpressaoOnline);
     if (novo == escopo) return;
     escopo = novo;
     ultimaAtualizacao = null;
     servidor = url;
-    destino = conexao == null ? '' : '${conexao.servidor}:${conexao.porta}';
     banco.servidor = url;
     await banco.migrarPreferencia(
         ArmazenamentoCarrinhos.chavePreferencias, banco.chaveCarrinhos);
@@ -659,6 +680,7 @@ class Sincronizador extends ChangeNotifier {
         } on DioException catch (e) {
           if (CacheConsultas.falhaDeConexao(e)) {
             online = false;
+            _pedidosRede.apiIndisponivel = true;
           } else {
             erro = _falhaEnvio;
           }
@@ -667,6 +689,7 @@ class Sincronizador extends ChangeNotifier {
         }
       } while (_envioSolicitado && !_descartado);
     } finally {
+      await _pedidosRede.processar();
       await _recarregarPendencias();
       _enviando = null;
       _notificar();
@@ -707,6 +730,7 @@ class Sincronizador extends ChangeNotifier {
         throw StateError('O servidor precisa da atualizacao de sincronizacao.');
       }
       online = true;
+      _pedidosRede.apiIndisponivel = false;
       erro = null;
       _registrarSucessoConsultaEstado();
       api.cache?.confirmarConexao();
@@ -742,6 +766,7 @@ class Sincronizador extends ChangeNotifier {
       _registrarFalhaConsultaEstado();
       if (CacheConsultas.falhaDeConexao(e)) {
         online = false;
+        _pedidosRede.apiIndisponivel = true;
       } else {
         erro = e.response?.statusCode == 401 || e.response?.statusCode == 403
             ? 'Acesso nao autorizado. Entre novamente.'
@@ -831,9 +856,22 @@ class Sincronizador extends ChangeNotifier {
     if (alvo.isEmpty || _descartado) return;
     try {
       final itens = await banco.operacoes(alvo);
+      final itensRede = <Map<String, Object?>>[];
+      for (final item in itens) {
+        final texto = await banco
+            .ler(ProtocoloPedidosRede.chaveRota(alvo, item['id'] as String));
+        final rede = texto == null ? null : jsonDecode(texto) as Map;
+        itensRede.add({
+          ...item,
+          if (rede != null) ...{
+            'recebidoNaRede': rede['recebido'] == true,
+            'erroRede': rede['erro'],
+          }
+        });
+      }
       final rascunhos = await rascunhosBloqueados();
       if (alvo == escopo && !_descartado) {
-        pendencias = itens;
+        pendencias = itensRede;
         _rascunhosParaConferir = rascunhos.length;
       }
     } catch (_) {
@@ -1047,8 +1085,14 @@ class Sincronizador extends ChangeNotifier {
   }
 
   Future<void> _enviarPendentes(String alvo, String url) async {
-    final bloqueados = <String>{};
+    // Uma operacao antiga aguardando a API nao segura a cozinha das seguintes.
     for (final op in await banco.operacoes(alvo)) {
+      if (_descartado || escopo != alvo) return;
+      if (op['estado'] == 'pendente') await _pedidosRede.preparar(op);
+    }
+    unawaited(_pedidosRede.processar());
+    final bloqueados = <String>{};
+    for (var op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
       final id = op['id'] as String;
       final atendimento = op['atendimento'] as String;
@@ -1096,6 +1140,12 @@ class Sincronizador extends ChangeNotifier {
         continue;
       }
       if (op['estado'] != 'registrado') {
+        final executorRede = await _pedidosRede.preparar(op);
+        if (_descartado || escopo != alvo || usuario.usuario == null) return;
+        // O preparo e a rota do PC sao persistidos antes da primeira tentativa.
+        op = (await banco.db
+                .query('operacoes', where: 'id = ?', whereArgs: [id]))
+            .single;
         var dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
         if (op['tentativas'] == 0) {
           final normalizados = _normalizarDadosOperacao(dados);
@@ -1115,6 +1165,8 @@ class Sincronizador extends ChangeNotifier {
                 'acao': op['acao'],
                 'empresa': dados['empresa'],
                 'id_usuario': dados['id_usuario'],
+                if (executorRede != null)
+                  'executor_impressao_rede': executorRede,
                 'impressoes': jsonDecode(op['impressoes'] as String),
                 'dados': dados
               }),
@@ -1159,6 +1211,7 @@ class Sincronizador extends ChangeNotifier {
                     ? 'Sem conexao com a API. O pedido continua salvo no aparelho.'
                     : 'A API nao confirmou o pedido. O envio sera tentado novamente.',
           });
+          unawaited(_pedidosRede.processar());
           rethrow;
         }
         final resultado = resposta.data;
@@ -1203,6 +1256,7 @@ class Sincronizador extends ChangeNotifier {
         });
         if (alvo == escopo && usuario.usuario != null && !_descartado) {
           online = true;
+          _pedidosRede.apiIndisponivel = false;
           api.cache?.confirmarConexao();
           if (erro == _falhaEnvio || erro == _envioPendente) erro = null;
         }
@@ -1240,6 +1294,7 @@ class Sincronizador extends ChangeNotifier {
             .registrar(mensagens, servidor: op['destino'] as String);
       }
       await banco.atualizarOperacao(id, {'estado': 'concluido', 'erro': null});
+      unawaited(_pedidosRede.processar());
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
         'tipo': op['acao'] == 'delivery'
@@ -1461,10 +1516,13 @@ class Sincronizador extends ChangeNotifier {
     _descartado = true;
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();
+    _timerRede?.cancel();
+    _pedidosRede.dispose();
     _retentativaEnvio?.cancel();
     usuario.removeListener(_sessaoMudou);
     socket.removeListener(_socketMudou);
     socket.aoAtualizarDados = null;
+    socket.aoResponderPedidoRede = null;
     api.cache?.aoAtualizar = null;
     if (identical(instancia, this)) instancia = null;
     revisaoCatalogo.dispose();
