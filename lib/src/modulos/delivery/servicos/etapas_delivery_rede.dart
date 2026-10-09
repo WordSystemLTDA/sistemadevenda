@@ -8,6 +8,11 @@ List<EtapaDelivery> mesclarEtapasDeliveryRede(
       .where((p) =>
           p.recebidoNaRede && p.texto('estadoSincronizacao') != 'conflito')
       .toList();
+  final oficiaisEmReconciliacao = rede
+      .where((p) => p.preparandoNaRede)
+      .map((p) => p.texto('idDeliveryConfirmado'))
+      .where((id) => id.isNotEmpty)
+      .toSet();
   final rascunhos = locais.where((p) => !rede.contains(p)).toList();
   final quadro = [...etapas];
   if (rede.isNotEmpty && quadro.isEmpty) {
@@ -40,7 +45,9 @@ List<EtapaDelivery> mesclarEtapasDeliveryRede(
       }),
     for (var i = 0; i < quadro.length; i++)
       EtapaDelivery.comPedidos(quadro[i], [
-        ...quadro[i].pedidos,
+        ...quadro[i]
+            .pedidos
+            .where((p) => !oficiaisEmReconciliacao.contains(p.id)),
         for (final p in rede)
           if ((p.preparandoNaRede ? preparo : aguardando) == i ||
               (p.preparandoNaRede ? preparo : aguardando) < 0 && i == 0)

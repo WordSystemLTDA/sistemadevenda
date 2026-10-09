@@ -85,3 +85,42 @@ por `UsuarioProvedor` ausente em Modular na modal ja existente; os arquivos da
 modal e esse teste nao foram alterados neste ajuste. As verificacoes focadas
 no novo fluxo, sincronizacao, impressao automatica e cache do quadro passaram.
 Impressao fisica no Windows e publicacao na hospedagem nao foram realizadas.
+
+## Correcao das duas vias e da etapa apos reconexao (09/10/2026)
+
+Ao preparar um Delivery recebido pelo Wi-Fi, a central grava juntos o preparo
+por destino e o comprovante de consumo/entregador. A via do comprovante usa a
+impressora do caixa e a ultima configuracao salva da mesma API/empresa/usuario,
+conservando itens, valores, pagamentos, telefone e endereco do retrato local.
+As vias possuem IDs diferentes e estaveis. Cada envio ao spooler tem etapa
+persistida; resultado incerto fica pausado para conferencia, sem reenvio cego.
+A referencia provisoria nao gera QR de pedido oficial. Mesa/Comanda e os
+caminhos normais Online/Local conservam seu transporte e momento de impressao.
+
+A central confirmava o preparo na API39, onde esse endpoint nao existia.
+Agora essa chamada usa API41 no mesmo host/IP. O celular tambem envia a
+intencao de preparo separada do payload financeiro congelado; API41 confirma
+a etapa na mesma transacao que cria/recupera o pedido e reserva o preparo ao
+PC original. O recibo guarda `etapa_rede_confirmada`. Repetir a operacao nao
+reinsere produtos nem regride etapas posteriores. O helper continua aceitando
+chamadas separadas da central e do celular, com reserva e IDs idempotentes.
+
+Para pedidos ja confirmados por versoes anteriores, o celular conserva o
+retrato em Preparando e deduplica o ID oficial em Aguardando ate a reconciliacao.
+A recuperacao tambem considera operacoes financeiras ja concluidas e avisa
+as telas depois de confirmar a etapa. Falha nessa recuperacao nao impede
+o envio dos pedidos novos. A central recupera copias preparadas antigas,
+incluindo a via faltante do comprovante; preparo ja confirmado na impressora
+continua deduplicado pelo mesmo ID.
+
+Aplicacao: recompilar/atualizar sistemadevenda e sistemarestaurante e publicar
+`apis_restaurantes/build/delivery_wifi_duas_vias_etapa_api41_20261009.zip`
+na raiz da instalacao correspondente. Abrir a central conectada uma vez para
+salvar a impressora do caixa e a configuracao antes de operar sem internet.
+O pacote nao contem credenciais, conexao.php, schema ou dados da empresa.
+
+Validacao: WebSocket real, SQLite, cache da impressora sem HTTP e isolado,
+bytes ESC/POS do comprovante/endereco/pagamento, envio incerto pausado,
+reenvio, reinicio, etapa na volta da internet, perda de resposta, caminhos
+Local/Online existentes e transacao PHP real em SQLite extraido de schema.sql.
+Sem acesso ao banco vivo, publicacao Online ou impressao fisica no Windows.

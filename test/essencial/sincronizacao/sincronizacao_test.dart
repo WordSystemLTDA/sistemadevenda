@@ -136,6 +136,24 @@ void main() {
         return;
       }
       if (pedido != null) {
+        if (rota == 'delivery/confirmar_preparo_rede.php') {
+          if (falhaServidorDelivery) {
+            handler.reject(DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response(requestOptions: options, statusCode: 503)));
+          } else {
+            handler.resolve(Response(
+                requestOptions: options,
+                statusCode: 200,
+                data: {
+                  'sucesso': true,
+                  'idDelivery': '401',
+                  'etapaConfirmada': true
+                }));
+          }
+          return;
+        }
         if (pedido['acao'] == 'delivery' && falhaServidorDelivery) {
           handler.reject(DioException(
               requestOptions: options,
@@ -190,6 +208,8 @@ void main() {
           'protocolo': 1,
           'sucesso': true,
           'id_operacao': pedido['id_operacao'],
+          if (pedido['preparo_rede']?['solicitado'] == true)
+            'etapa_rede_confirmada': true,
           if (impressaoPersistidaApi) 'impressao_persistida': true,
           if (pedido['acao'] == 'abertura') ...{
             'id_comanda_pedido': '201',
@@ -349,6 +369,102 @@ void main() {
     expect(tentativas.last['executor_impressao_rede'], executor);
     expect(socket.pedidosRede.last['tipo'], 'ConfirmarPedidoRede');
     expect(await banco.operacoes(sync.escopo), isEmpty);
+  });
+
+  for (final perdeResposta in [false, true]) {
+    test(
+        'Delivery preparado no Wi-Fi confirma a etapa no POST; resposta perdida=$perdeResposta',
+        () async {
+      const executor = 'preparo-11111111111111111111111111111111';
+      await (await SharedPreferences.getInstance()).setString(
+          'conexao',
+          jsonEncode({
+            'tipoConexao': 'online',
+            'servidor': 'cozinha',
+            'porta': '9980'
+          }));
+      await sync.configurar();
+      socket.connected = true;
+      socket.executorPedidosRede = executor;
+      await banco.gravar(
+          'estado:${sync.escopo}',
+          jsonEncode({
+            'caixa_id': '0',
+            'pedidos_rede_sem_internet': 1,
+            'offline_delivery': 1
+          }));
+      final fila = await guardarDelivery();
+      final op = (await banco.operacoes(sync.escopo)).single;
+      final id = op['id'] as String;
+      await sync.enviarPendentes();
+      final chave = 'rota-pedido-rede:${sync.escopo}:$id';
+      final rota = jsonDecode((await banco.ler(chave))!) as Map;
+      await banco.gravar(
+          chave,
+          jsonEncode(
+              {...rota, 'recebido': true, 'etapaDelivery': 'preparando'}));
+      conectado = true;
+      perderResposta = perdeResposta;
+      await banco.atualizarOperacao(id, {'proxima': 0});
+      await sync.enviarPendentes();
+      if (perdeResposta) {
+        expect((await fila.listar()).single.preparandoNaRede, isTrue);
+        await banco.atualizarOperacao(id, {'proxima': 0});
+        await sync.enviarPendentes();
+      }
+      expect(tentativas.last['preparo_rede']['solicitado'], isTrue);
+      expect(tentativas.last['preparo_rede']['impressoes'],
+          rota['mensagem']['impressoes']);
+      expect(jsonEncode(tentativas.last['dados']), op['dados']);
+      final concluido =
+          (await banco.db.query('operacoes', where: 'id = ?', whereArgs: [id]))
+              .single;
+      expect(
+          jsonDecode(concluido['resposta'] as String)['etapa_rede_confirmada'],
+          isTrue);
+      expect(await fila.listar(), isEmpty);
+      expect(aplicados, {id});
+      expect(
+          socket.mensagens.where((m) => m['tipoImpressao'] != null), isEmpty);
+    });
+  }
+
+  test('venda antiga concluida reconcilia Preparo sem reenviar produtos',
+      () async {
+    await (await SharedPreferences.getInstance()).setString(
+        'conexao',
+        jsonEncode(
+            {'tipoConexao': 'online', 'servidor': 'cozinha', 'porta': '9980'}));
+    await sync.configurar();
+    await banco.gravar('estado:${sync.escopo}', jsonEncode({'caixa_id': '0'}));
+    final fila = await guardarDelivery();
+    final op = (await banco.operacoes(sync.escopo)).single;
+    final id = op['id'] as String;
+    await banco.atualizarOperacao(id, {
+      'estado': 'concluido',
+      'resposta': jsonEncode({'idDelivery': '401', 'numeroPedido': '33'})
+    });
+    await banco.gravar(
+        'rota-pedido-rede:${sync.escopo}:$id',
+        jsonEncode({
+          'executor': 'preparo-11111111111111111111111111111111',
+          'recebido': true,
+          'etapaDelivery': 'preparando',
+          'mensagem': {
+            'pedido': {'tipoAtendimento': 'delivery'},
+            'impressoes': []
+          }
+        }));
+    conectado = true;
+    falhaServidorDelivery = true;
+    await sync.enviarPendentes();
+    expect((await fila.listar()).single.preparandoNaRede, isTrue);
+    falhaServidorDelivery = false;
+    await sync.enviarPendentes();
+    expect(tentativas, hasLength(2));
+    expect(tentativas.every((t) => t['dados'] == null), isTrue);
+    expect(aplicados, isEmpty);
+    expect(await fila.listar(), isEmpty);
   });
 
   for (final online in [false, true]) {

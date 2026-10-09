@@ -266,6 +266,23 @@ class PedidosNaRede {
     return executor;
   }
 
+  /// Etapa operacional separada do payload financeiro congelado.
+  Future<Map<String, dynamic>?> preparoParaApi(String alvo, String id) async {
+    final texto = await banco.ler(chave(alvo, id));
+    if (texto == null) return null;
+    final rota = jsonDecode(texto) as Map;
+    if (rota['recebido'] != true ||
+        rota['mensagem']?['pedido']?['tipoAtendimento'] != 'delivery' ||
+        (rota['preparoSolicitado'] != true &&
+            rota['etapaDelivery'] != 'preparando')) {
+      return null;
+    }
+    return {
+      'solicitado': true,
+      'impressoes': rota['mensagem']['impressoes'],
+    };
+  }
+
   Future<void> processar() =>
       _processando ??= _processar().catchError((Object erro) {
         debugPrint('[PEDIDO_REDE] Envio local pendente: $erro');

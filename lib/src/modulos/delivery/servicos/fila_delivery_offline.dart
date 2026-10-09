@@ -410,7 +410,8 @@ class FilaDeliveryOffline {
     return {
       ...op,
       'recebidoNaRede': rede['recebido'] == true,
-      'etapaDeliveryRede': rede['etapaDelivery'] ?? 'aguardando'
+      'etapaDeliveryRede': rede['etapaDelivery'] ?? 'aguardando',
+      'confirmacaoRede': rede['confirmacao']
     };
   }
 
@@ -422,7 +423,15 @@ class FilaDeliveryOffline {
     for (final valor in todos.values.whereType<Map>()) {
       final r = Map<String, dynamic>.from(valor);
       final op = await _operacao(r['id'] as String);
-      if (['concluido', 'arquivado'].contains(op?['estado'])) continue;
+      final recibo = jsonDecode(op?['resposta'] as String? ?? '{}') as Map;
+      final preparoPendente = op?['recebidoNaRede'] == true &&
+          op?['etapaDeliveryRede'] == 'preparando' &&
+          op?['confirmacaoRede'] != 'confirmado' &&
+          recibo['etapa_rede_confirmada'] != true;
+      if (op?['estado'] == 'arquivado' ||
+          op?['estado'] == 'concluido' && !preparoPendente) {
+        continue;
+      }
       final contexto = ContextoCarrinho(
           empresa: empresa, tipo: 'delivery', idAtendimento: r['id'] as String);
       final itensCarrinho =
@@ -450,6 +459,7 @@ class FilaDeliveryOffline {
       'id': id,
       'idVenda': '0',
       'numeroPedido': recibo['numeroPedido']?.toString() ?? '',
+      'idDeliveryConfirmado': recibo['idDelivery']?.toString() ?? '',
       'origemPedido': 'garcom',
       'idCliente': r['cliente'],
       'idendereco': r['endereco'],

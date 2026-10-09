@@ -120,6 +120,38 @@ void main() {
     expect((await fila.pedido(id)).quantidade, 1);
   });
 
+  test(
+      'venda confirmada conserva Preparo ate reconciliar etapa; reinicio nao volta para Aguardando',
+      () async {
+    final id = await criar();
+    await adicionar(id);
+    await fila.confirmar(id);
+    final op = (await banco.operacoes(escopo)).single;
+    final operacao = op['id'] as String;
+    await banco.gravar(
+        'rota-pedido-rede:$escopo:$operacao',
+        jsonEncode({
+          'recebido': true,
+          'etapaDelivery': 'preparando',
+        }));
+    await banco.atualizarOperacao(operacao, {
+      'estado': 'concluido',
+      'resposta': jsonEncode({'idDelivery': '77', 'numeroPedido': '20'})
+    });
+    final reaberto = criarFila();
+    final preparado = (await reaberto.listar()).single;
+    expect(preparado.preparandoNaRede, isTrue);
+    expect(preparado.texto('idDeliveryConfirmado'), '77');
+    await banco.atualizarOperacao(operacao, {
+      'resposta': jsonEncode({
+        'idDelivery': '77',
+        'numeroPedido': '20',
+        'etapa_rede_confirmada': true,
+      })
+    });
+    expect(await reaberto.listar(), isEmpty);
+  });
+
   test('troca modalidade e endereco recalculando a taxa do rascunho', () async {
     final id = await criar();
     await adicionar(id);

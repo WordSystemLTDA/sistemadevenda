@@ -43,6 +43,24 @@ void main() {
     expect(
         mesclarEtapasDeliveryRede(etapas, []).map((e) => e.id), ['10', '20']);
   });
+  test('API em Aguardando nao duplica nem regride a copia ja em Preparo', () {
+    final copia = PedidoDelivery.fromMap({
+      ...pedido(preparando: true).dados,
+      'idDeliveryConfirmado': '77',
+      'estadoSincronizacao': 'concluido'
+    });
+    final quadro = mesclarEtapasDeliveryRede([
+      EtapaDelivery.comPedidos(etapas.first, [
+        PedidoDelivery.fromMap({'id': '77'})
+      ]),
+      etapas.last,
+    ], [
+      copia
+    ]);
+    expect(quadro.first.pedidos, isEmpty);
+    expect(quadro.last.pedidos.single.preparandoNaRede, isTrue);
+    expect(quadro.last.pedidos.single.etapa, '20');
+  });
   test('primeiro pedido sem resposta HTTP gera quadro Aguardando/Preparo', () {
     final lista = mesclarEtapasDeliveryRede([], [pedido()]);
     expect(lista.first.nome, 'AGUARDANDO');

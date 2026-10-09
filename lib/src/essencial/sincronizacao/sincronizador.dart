@@ -1089,6 +1089,56 @@ class Sincronizador extends ChangeNotifier {
         .toList();
   }
 
+  // Recupera tambem pedidos aceitos antes do clique em Preparar ou por uma
+  // versao anterior da API. Concluir a venda nao apaga a etapa da copia LAN.
+  Future<void> _reconciliarPreparosDelivery(String alvo, String url) async {
+    final operacoes = await banco.db.query('operacoes',
+        where:
+            "escopo = ? AND acao = 'delivery' AND estado IN ('registrado', 'concluido')",
+        whereArgs: [alvo]);
+    for (final op in operacoes) {
+      if (_descartado || escopo != alvo || usuario.usuario == null) return;
+      final recibo = jsonDecode(op['resposta'] as String? ?? '{}') as Map;
+      if (recibo['etapa_rede_confirmada'] == true) continue;
+      final id = op['id'] as String;
+      final preparo = await _pedidosRede.preparoParaApi(alvo, id);
+      if (preparo == null) continue;
+      final rota =
+          jsonDecode(await banco.ler(PedidosNaRede.chave(alvo, id)) ?? '{}')
+              as Map;
+      final dados = jsonDecode(op['dados'] as String) as Map;
+      try {
+        final resposta =
+            await api.cliente.post('delivery/confirmar_preparo_rede.php',
+                data: jsonEncode({
+                  'empresa': dados['empresa'],
+                  'id_usuario': dados['id_usuario'],
+                  'id_operacao': id,
+                  'executor_impressao_rede': rota['executor'],
+                  'impressoes': preparo['impressoes'],
+                }),
+                options: _opcoes(url));
+        if (resposta.data is! Map ||
+            resposta.data['sucesso'] != true ||
+            resposta.data['etapaConfirmada'] != true ||
+            '${resposta.data['idDelivery']}' != '${recibo['idDelivery']}') {
+          throw StateError('A etapa do Delivery aguarda confirmacao na API.');
+        }
+        await banco.atualizarOperacao(id, {
+          'resposta': jsonEncode({...recibo, 'etapa_rede_confirmada': true})
+        });
+        if (escopo == alvo && !_descartado) {
+          socket.write(jsonEncode({'tipo': 'Delivery'}));
+          aoAtualizarTelas?.call();
+        }
+      } catch (erro) {
+        // Uma etapa antiga pendente nao bloqueia novas vendas. A copia e
+        // os mesmos IDs permanecem duraveis ate a proxima tentativa.
+        debugPrint('[PEDIDO_REDE] Preparo aguardando API: $erro');
+      }
+    }
+  }
+
   Future<void> _enviarPendentes(String alvo, String url) async {
     // Uma operacao antiga aguardando a API nao segura a cozinha das seguintes.
     for (final op in await banco.operacoes(alvo)) {
@@ -1096,6 +1146,7 @@ class Sincronizador extends ChangeNotifier {
       if (op['estado'] == 'pendente') await _pedidosRede.preparar(op);
     }
     unawaited(_pedidosRede.processar());
+    await _reconciliarPreparosDelivery(alvo, url);
     final bloqueados = <String>{};
     for (var op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
@@ -1162,6 +1213,7 @@ class Sincronizador extends ChangeNotifier {
         }
         final tentativas = (op['tentativas'] as int) + 1;
         await banco.atualizarOperacao(id, {'tentativas': tentativas});
+        final preparoRede = await _pedidosRede.preparoParaApi(alvo, id);
         Response resposta;
         try {
           resposta = await api.cliente.post('sincronizacao/operacao.php',
@@ -1172,6 +1224,7 @@ class Sincronizador extends ChangeNotifier {
                 'id_usuario': dados['id_usuario'],
                 if (executorRede != null)
                   'executor_impressao_rede': executorRede,
+                if (preparoRede != null) 'preparo_rede': preparoRede,
                 'impressoes': jsonDecode(op['impressoes'] as String),
                 'dados': dados
               }),
@@ -1318,7 +1371,7 @@ class Sincronizador extends ChangeNotifier {
       unawaited(socket.processarImpressoesPendentes());
       // O servidor nao devolve o aviso WebSocket ao aparelho que o enviou.
       // Atualiza a tela de origem somente depois de persistir o recibo e
-      // liberar o pedido local; assim o Delivery ja entra em Aguardando.
+      // liberar o pedido local; a API ja conserva a etapa operacional confirmada.
       if (op['acao'] == 'delivery') aoAtualizarTelas?.call();
     }
   }
