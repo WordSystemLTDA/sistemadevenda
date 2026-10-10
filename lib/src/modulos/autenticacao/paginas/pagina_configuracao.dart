@@ -239,6 +239,60 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                       : const Text('Salvar'),
                 ),
               ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Como encontrar o IP do computador',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '1. No computador, abra Menu → Server Word System.\n\n'
+                      '2. Confira o Modo de Rede: ele deve estar laranja (ativo). '
+                      'Se estiver azul, clique para ativar.\n\n'
+                      '3. Em Atualizações Online, copie o endereço mostrado em '
+                      'Seu IP para o campo de IP acima.',
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Exemplo: Seu IP: 000.000.0.000',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'O celular e o computador precisam estar na mesma rede Wi-Fi.',
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
