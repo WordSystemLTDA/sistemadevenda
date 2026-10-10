@@ -50,7 +50,7 @@ class ServicoConfigBigchef {
       if (jsonData is! Map) {
         final configCache =
             await _lerSalva(servidor, idEmpresa, conta.id ?? '');
-        return _aplicar(configCache, conta, servidor);
+        return await _aplicar(configCache, conta, servidor);
       }
 
       final dados = Map<String, dynamic>.from(jsonData);
@@ -78,7 +78,7 @@ class ServicoConfigBigchef {
         log('Falha ao salvar configuracao local',
             error: erro, stackTrace: stack);
       }
-      return _aplicar(config, conta, servidor);
+      return await _aplicar(config, conta, servidor);
     } on DioException catch (e) {
       if (e.response == null) {
         if (kDebugMode) {
