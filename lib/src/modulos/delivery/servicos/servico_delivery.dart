@@ -612,9 +612,16 @@ class ServicoDelivery {
     if (FilaDeliveryOffline.local(id)) {
       await (await _exigirFilaLocal())
           .confirmar(id, pagamentoPendente: pagarDepois);
-      Sincronizador.instancia?.solicitar();
-      unawaited(
-          Sincronizador.instancia?.enviarPendentes() ?? Future<void>.value());
+      final sync = Sincronizador.instancia;
+      try {
+        await sync
+            ?.enviarDeliveryAoFinalizar(id.substring('delivery-local:'.length));
+      } catch (erro) {
+        // O pedido ja esta duravel. A tentativa rapida e opcional e sua
+        // indisponibilidade nao transforma o commit em uma falha de venda.
+        debugPrint('[Delivery] Envio imediato pendente: $erro');
+      }
+      sync?.solicitar();
       NotificadorAtualizacao.atendimento('Delivery');
       return;
     }

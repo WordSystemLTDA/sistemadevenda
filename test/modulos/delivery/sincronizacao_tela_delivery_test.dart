@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/essencial/api/socket/atualizacao_de_tela.dart';
 import 'package:app/src/essencial/api/socket/modelos/modelo_retorno_socket.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
@@ -16,7 +18,93 @@ class _Modulo extends Module {
   void binds(Injector i) => i.addInstance<ProvedorDelivery>(provedor);
 }
 
+class _ConfiguracaoLenta extends ServicoDeliveryTeste {
+  final liberar = Completer<ConfigDelivery>();
+  @override
+  Future<ConfigDelivery> configuracao() => liberar.future;
+}
+
 void main() {
+  test('mostra Aguardando enquanto uma consulta de configuracao ainda espera',
+      () async {
+    final servico = _ConfiguracaoLenta();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    final exibiuLista = Completer<void>();
+    provedor.addListener(() {
+      if (provedor.etapas.isNotEmpty && !exibiuLista.isCompleted) {
+        exibiuLista.complete();
+      }
+    });
+    final consulta = provedor.listar();
+    try {
+      await exibiuLista.future.timeout(const Duration(seconds: 1));
+      expect(provedor.etapas.first.pedidos, isNotEmpty);
+      expect(provedor.carregando, false);
+      expect(servico.liberar.isCompleted, false);
+    } finally {
+      servico.liberar.complete(servico.config);
+      await consulta;
+    }
+  });
+
+  test('notificacao apos recibo da API nao recoloca Delivery em No aparelho',
+      () async {
+    final servico = ServicoDeliveryTeste();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    final local = pedidoTeste(campos: {
+      'id': 'delivery-local:primeiro',
+      'faseLocal': 'enfileirado',
+      'idopcoescarrossel': 'local',
+    });
+    final outro = pedidoTeste(
+        campos: {'id': 'delivery-local:outro', 'idopcoescarrossel': 'local'});
+    servico.respostaLista = () async => [
+          EtapaDelivery.fromMap({
+            'id': 'local',
+            'vendas': [local.dados, outro.dados]
+          }),
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'vendas': [pedidoTeste().dados]
+          }),
+        ];
+    await provedor.listar();
+    provedor.atualizarPedido(local);
+    provedor.atualizarPedido(PedidoDelivery.fromMap({
+      ...local.dados,
+      'estadoSincronizacao': 'concluido',
+      'idDeliveryConfirmado': '25',
+      'preparoRedePendente': false,
+    }));
+    expect(provedor.etapas.first.pedidos.map((p) => p.id), [outro.id]);
+    expect(provedor.etapas.last.pedidos.single.id, '25');
+  });
+
+  test('mantem Preparo via Wi-Fi enquanto sua etapa aguarda reconciliacao',
+      () async {
+    final servico = ServicoDeliveryTeste();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    servico.respostaLista = () async => [
+          EtapaDelivery.fromMap({'id': '2', 'vendas': []}),
+        ];
+    await provedor.listar();
+    final local = pedidoTeste(campos: {
+      'id': 'delivery-local:preparo',
+      'idopcoescarrossel': '2',
+      'faseLocal': 'enfileirado',
+      'estadoSincronizacao': 'concluido',
+      'idDeliveryConfirmado': '25',
+      'recebidoNaRede': true,
+      'etapaDeliveryRede': 'preparando',
+      'preparoRedePendente': true,
+    });
+    provedor.atualizarPedido(local);
+    expect(provedor.etapas.single.pedidos.single.preparandoNaRede, true);
+  });
+
   test(
       'ACK do PC tira imediatamente o pedido da etapa local mesmo com outro rascunho',
       () async {

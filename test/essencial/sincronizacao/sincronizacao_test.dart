@@ -9,6 +9,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
+import 'package:app/src/essencial/sincronizacao/pedidos_na_rede.dart';
 import 'package:app/src/modulos/comandas/servicos/servico_comandas.dart';
 import 'package:app/src/modulos/mesas/servicos/servico_mesas.dart';
 import 'package:app/src/modulos/delivery/servicos/fila_delivery_offline.dart';
@@ -36,6 +37,7 @@ class SocketOfflineTeste extends Server {
   final pedidosRede = <Map<String, dynamic>>[];
   Completer<void>? tentativaManual;
   Completer<void>? processamento;
+  void Function(Map<String, dynamic>)? aoEnviarPedido;
 
   @override
   Future<void> processarImpressoesPendentes(
@@ -48,6 +50,7 @@ class SocketOfflineTeste extends Server {
   @override
   bool enviarPedidoRede(Map<String, dynamic> mensagem) {
     pedidosRede.add(mensagem);
+    aoEnviarPedido?.call(mensagem);
     return true;
   }
 
@@ -338,6 +341,135 @@ void main() {
     await fila.confirmar(id);
     return fila;
   }
+
+  test('Delivery recebe recibo antes de liberar finalizacao em uma API rapida',
+      () async {
+    final fila = await guardarDelivery();
+    final id = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    conectado = true;
+    await sync.enviarDeliveryAoFinalizar(id);
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(await fila.listar(), isEmpty);
+    expect(tentativas, hasLength(1));
+    expect(socket.filaImpressao.itens, isEmpty);
+    await sync.enviarDeliveryAoFinalizar(id);
+    expect(tentativas, hasLength(1));
+  });
+
+  test('ACK do Wi-Fi libera espera curta sem confirmar venda ou imprimir',
+      () async {
+    const executor = 'preparo-11111111111111111111111111111111';
+    await (await SharedPreferences.getInstance()).setString(
+        'conexao',
+        jsonEncode(
+            {'tipoConexao': 'online', 'servidor': 'cozinha', 'porta': '9980'}));
+    sync.iniciar();
+    await sync.sincronizar();
+    socket.connected = true;
+    socket.executorPedidosRede = executor;
+    final estado =
+        jsonDecode(await banco.ler('estado:${sync.escopo}') ?? '{}') as Map;
+    await banco.gravar(
+        'estado:${sync.escopo}',
+        jsonEncode({
+          ...estado,
+          'pedidos_rede_sem_internet': 1,
+          'caixa_id': '0',
+        }));
+    final fila = await guardarDelivery();
+    final id = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    socket.aoEnviarPedido = (mensagem) {
+      if (mensagem['tipo'] != 'PedidoRedeSemInternet') return;
+      socket.aoResponderPedidoRede?.call({
+        'idEmpresa': '32',
+        'idOperacaoRede': mensagem['idOperacaoRede'],
+        'executorImpressaoRede': executor,
+        'estado': 'recebido',
+        'etapaDelivery': 'aguardando',
+      });
+    };
+    await sync
+        .enviarDeliveryAoFinalizar(id, espera: const Duration(seconds: 5))
+        .timeout(const Duration(seconds: 1));
+    expect((await fila.listar()).single.recebidoNaRede, true);
+    expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
+    expect(socket.filaImpressao.itens, isEmpty);
+  });
+
+  test('Delivery nao espera reconciliacao lenta de um preparo antigo',
+      () async {
+    await guardarDelivery();
+    final antigo = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    conectado = true;
+    await sync.enviarPendentes();
+    await banco.gravar(
+        PedidosNaRede.chave(sync.escopo, antigo),
+        jsonEncode({
+          'executor': 'preparo-11111111111111111111111111111111',
+          'recebido': true,
+          'etapaDelivery': 'preparando',
+          'mensagem': {
+            'pedido': {'tipoAtendimento': 'delivery'},
+            'impressoes': <dynamic>[],
+          },
+        }));
+    final iniciouReconciliacao = Completer<void>();
+    final liberarReconciliacao = Completer<void>();
+    api.cliente.interceptors.insert(0,
+        InterceptorsWrapper(onRequest: (op, handler) async {
+      if (op.path != 'delivery/confirmar_preparo_rede.php') {
+        return handler.next(op);
+      }
+      iniciouReconciliacao.complete();
+      await liberarReconciliacao.future;
+      handler.resolve(Response(requestOptions: op, data: {
+        'sucesso': true,
+        'etapaConfirmada': true,
+        'idDelivery': '401'
+      }));
+    }));
+    await guardarDelivery();
+    final novo = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    try {
+      await sync.enviarDeliveryAoFinalizar(novo);
+      await iniciouReconciliacao.future;
+      expect(liberarReconciliacao.isCompleted, false);
+      final op = (await banco.db
+              .query('operacoes', where: 'id = ?', whereArgs: [novo]))
+          .single;
+      expect(op['estado'], 'concluido');
+      expect(tentativas, hasLength(2));
+      expect(socket.filaImpressao.itens, isEmpty);
+    } finally {
+      liberarReconciliacao.complete();
+      await sync.enviarPendentes();
+    }
+  });
+
+  test('espera curta do Delivery nao cancela envio lento nem perde o pedido',
+      () async {
+    await guardarDelivery();
+    final id = (await banco.operacoes(sync.escopo)).single['id'] as String;
+    conectado = true;
+    requisicaoPausada = Completer<void>();
+    liberarResposta = Completer<void>();
+    final envio = sync.enviarDeliveryAoFinalizar(id,
+        espera: const Duration(milliseconds: 60));
+    await requisicaoPausada!.future;
+    try {
+      await envio;
+      expect(liberarResposta!.isCompleted, false);
+      expect((await banco.operacoes(sync.escopo)).single['estado'], 'pendente');
+      expect(tentativas, hasLength(1));
+      expect(socket.filaImpressao.itens, isEmpty);
+    } finally {
+      liberarResposta!.complete();
+      await sync.enviarPendentes();
+    }
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, hasLength(1));
+    expect(tentativas, hasLength(1));
+  });
 
   test(
       'Online reserva o mesmo PC antes do POST, envia pela LAN e reconcilia depois',

@@ -53,6 +53,10 @@ class ProvedorDelivery extends ChangeNotifier {
             tipo: tipo);
         if (_descartado || consulta != _consulta) return;
         etapas = _ordenarEtapas(_mesclarPedidosRecentes(lista));
+        // A lista recebida ja pode ser exibida. Uma consulta auxiliar lenta
+        // de configuracao nao segura Aguardando nem o ACK recebido pelo Wi-Fi.
+        carregando = false;
+        notifyListeners();
         // Os rascunhos precisam continuar acessiveis mesmo se a configuracao
         // ainda nao foi preparada. Operacoes remotas consultam-na antes de agir.
         final configuracao = await configuracaoFutura;
@@ -78,6 +82,15 @@ class ProvedorDelivery extends ChangeNotifier {
 
   void atualizarPedido(PedidoDelivery pedido,
       {Duration validade = const Duration(seconds: 45)}) {
+    if (pedido.salvoNoAparelho &&
+        pedido.texto('estadoSincronizacao') == 'concluido' &&
+        (int.tryParse(pedido.texto('idDeliveryConfirmado')) ?? 0) > 0 &&
+        pedido.dados['preparoRedePendente'] != true) {
+      // A notificacao final pode chegar depois do recibo oficial. Nao
+      // reintroduzir seu ID provisório em No aparelho por mais 45 segundos.
+      removerPedido(pedido.id);
+      return;
+    }
     _pedidosRecentes[pedido.id] =
         (pedido: pedido, ate: DateTime.now().add(validade));
     etapas = _ordenarEtapas(_mesclarPedidosRecentes(etapas));

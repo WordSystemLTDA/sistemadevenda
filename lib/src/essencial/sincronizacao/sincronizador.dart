@@ -47,6 +47,7 @@ class Sincronizador extends ChangeNotifier {
   CancelToken? _cancelamentoPreparacao;
   Future<void> _filaOperacoes = Future.value();
   Future<void>? _retentativaManual;
+  final _recebimentosDelivery = <String, Completer<void>>{};
   final revisaoCatalogo = ValueNotifier<int>(0);
   Future<void>? _configurando;
   String escopo = '';
@@ -93,15 +94,20 @@ class Sincronizador extends ChangeNotifier {
     usuario.addListener(_sessaoMudou);
     socket.addListener(_socketMudou);
     socket.aoAtualizarDados = _dadosMudaram;
-    socket.aoResponderPedidoRede = (resposta) =>
-        unawaited(_pedidosRede.receber(resposta).then((mudou) async {
-          if (!mudou || _descartado) return;
-          await _recarregarPendencias();
-          _notificar();
-          aoAtualizarTelas?.call();
-        }).catchError((Object erro) {
-          debugPrint('[PEDIDO_REDE] Confirmacao local pendente: $erro');
-        }));
+    socket.aoResponderPedidoRede = (resposta) {
+      final alvo = escopo;
+      unawaited(_pedidosRede.receber(resposta).then((mudou) async {
+        if (!mudou || _descartado || alvo != escopo) return;
+        if (resposta['estado'] == 'recebido') {
+          _deliveryRecebido(alvo, '${resposta['idOperacaoRede']}');
+        }
+        await _recarregarPendencias();
+        _notificar();
+        aoAtualizarTelas?.call();
+      }).catchError((Object erro) {
+        debugPrint('[PEDIDO_REDE] Confirmacao local pendente: $erro');
+      }));
+    };
     api.cache?.aoAtualizar = () => aoAtualizarTelas?.call();
     _timer ??= Timer.periodic(const Duration(seconds: 15), (_) => solicitar());
     _timerRede ??= Timer.periodic(
@@ -117,6 +123,7 @@ class Sincronizador extends ChangeNotifier {
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
+    _liberarRecebimentosDelivery();
     _escopoImpressaoOnline = null;
     _pedidosRede.configurar('', null);
     _pedidosRede.apiIndisponivel = false;
@@ -634,6 +641,48 @@ class Sincronizador extends ChangeNotifier {
     await _preparandoDados;
   }
 
+  /// O commit local ja ocorreu. Aguarda brevemente o recibo deste Delivery,
+  /// sem cancelar o HTTP nem prender a finalizacao durante uma queda de rede.
+  Future<void> enviarDeliveryAoFinalizar(String idOperacao,
+      {Duration espera = const Duration(milliseconds: 1200)}) async {
+    await configurar();
+    if (_descartado || escopo.isEmpty) return;
+    final alvo = escopo;
+    final chave = '$alvo:$idOperacao';
+    final recebimento =
+        _recebimentosDelivery.putIfAbsent(chave, () => Completer<void>());
+    try {
+      final op = (await banco.db.query('operacoes',
+              where: 'escopo = ? AND id = ? AND acao = ?',
+              whereArgs: [alvo, idOperacao, 'delivery'],
+              limit: 1))
+          .firstOrNull;
+      if (op == null || op['estado'] == 'concluido') return;
+      final rota = jsonDecode(
+              await banco.ler(PedidosNaRede.chave(alvo, idOperacao)) ?? '{}')
+          as Map;
+      unawaited(enviarPendentes());
+      if (rota['recebido'] == true || espera <= Duration.zero) return;
+      await recebimento.future.timeout(espera, onTimeout: () {});
+    } finally {
+      if (identical(_recebimentosDelivery[chave], recebimento)) {
+        _recebimentosDelivery.remove(chave);
+      }
+    }
+  }
+
+  void _deliveryRecebido(String alvo, String id) {
+    final recebimento = _recebimentosDelivery['$alvo:$id'];
+    if (recebimento != null && !recebimento.isCompleted) recebimento.complete();
+  }
+
+  void _liberarRecebimentosDelivery() {
+    for (final recebimento in _recebimentosDelivery.values) {
+      if (!recebimento.isCompleted) recebimento.complete();
+    }
+    _recebimentosDelivery.clear();
+  }
+
   Future<void> enviarPendentes() {
     // Nao perde um pedido salvo enquanto outro envio esta terminando. Antes,
     // a chamada nova apenas recebia o Future do ciclo antigo e podia aguardar
@@ -1146,7 +1195,6 @@ class Sincronizador extends ChangeNotifier {
       if (op['estado'] == 'pendente') await _pedidosRede.preparar(op);
     }
     unawaited(_pedidosRede.processar());
-    await _reconciliarPreparosDelivery(alvo, url);
     final bloqueados = <String>{};
     for (var op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
@@ -1372,8 +1420,14 @@ class Sincronizador extends ChangeNotifier {
       // O servidor nao devolve o aviso WebSocket ao aparelho que o enviou.
       // Atualiza a tela de origem somente depois de persistir o recibo e
       // liberar o pedido local; a API ja conserva a etapa operacional confirmada.
-      if (op['acao'] == 'delivery') aoAtualizarTelas?.call();
+      if (op['acao'] == 'delivery') {
+        _deliveryRecebido(alvo, id);
+        aoAtualizarTelas?.call();
+      }
     }
+    // Preparos antigos ja persistidos no PC nao atrasam o POST de uma venda
+    // nova. Sua etapa segue protegida pelo retrato LAN ate a reconciliacao.
+    await _reconciliarPreparosDelivery(alvo, url);
   }
 
   Map<String, dynamic> _normalizarDadosOperacao(Map<String, dynamic> dados) {
@@ -1572,6 +1626,7 @@ class Sincronizador extends ChangeNotifier {
   @override
   void dispose() {
     _descartado = true;
+    _liberarRecebimentosDelivery();
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();
     _timerRede?.cancel();

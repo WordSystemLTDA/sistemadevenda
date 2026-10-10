@@ -423,13 +423,8 @@ class FilaDeliveryOffline {
     for (final valor in todos.values.whereType<Map>()) {
       final r = Map<String, dynamic>.from(valor);
       final op = await _operacao(r['id'] as String);
-      final recibo = jsonDecode(op?['resposta'] as String? ?? '{}') as Map;
-      final preparoPendente = op?['recebidoNaRede'] == true &&
-          op?['etapaDeliveryRede'] == 'preparando' &&
-          op?['confirmacaoRede'] != 'confirmado' &&
-          recibo['etapa_rede_confirmada'] != true;
       if (op?['estado'] == 'arquivado' ||
-          op?['estado'] == 'concluido' && !preparoPendente) {
+          op?['estado'] == 'concluido' && !_preparoPendente(op)) {
         continue;
       }
       final contexto = ContextoCarrinho(
@@ -441,6 +436,14 @@ class FilaDeliveryOffline {
     pedidos.sort(
         (a, b) => b.texto('dataAbertura').compareTo(a.texto('dataAbertura')));
     return pedidos;
+  }
+
+  bool _preparoPendente(Map<String, Object?>? op) {
+    final recibo = jsonDecode(op?['resposta'] as String? ?? '{}') as Map;
+    return op?['recebidoNaRede'] == true &&
+        op?['etapaDeliveryRede'] == 'preparando' &&
+        op?['confirmacaoRede'] != 'confirmado' &&
+        recibo['etapa_rede_confirmada'] != true;
   }
 
   PedidoDelivery _pedido(Map<String, dynamic> r, Map<String, Object?>? op,
@@ -498,6 +501,7 @@ class FilaDeliveryOffline {
       ],
       'faseLocal': r['fase'],
       'estadoSincronizacao': op?['estado'] ?? 'rascunho',
+      'preparoRedePendente': _preparoPendente(op),
       'erroSincronizacao': op?['erro'],
       'recebidoNaRede': op?['recebidoNaRede'] == true,
       'etapaDeliveryRede': op?['etapaDeliveryRede'] ?? 'aguardando',

@@ -84,3 +84,27 @@ sincronizacao em publicacao isolada tambem aprovadas.
 Homologar no estabelecimento: cliente/endereco reais de teste, novo pedido,
 preparo, pagamento parcial/completo, entregador, conclusao e impressao fisica.
 Os testes automatizados nao efetuam vendas nem imprimem na cozinha real.
+
+## Envio imediato ao finalizar (09/10/2026)
+
+O novo Delivery continua sendo salvo em SQLite antes do envio. A confirmacao
+agora inicia a fila imediatamente e aguarda ate 1,2 segundo pelo recibo daquele
+pedido ou pelo ACK valido do PC. Com resposta rapida, a tela retorna depois do
+recebimento, reduzindo a passagem visivel por **No aparelho**. Expirar essa
+espera nao cancela o HTTP, nao descarta o pedido e nao cria uma segunda venda;
+a fila existente continua sincronizando. O pedido so participa de Aguardando
+depois do recebimento pela API ou pelo PC.
+
+Reconciliacoes de preparos antigos passam depois dos novos envios. A lista
+recebida e mostrada antes da consulta auxiliar de configuracao terminar. Uma
+notificacao tardia de um ID local ja concluido na API nao o recoloca em
+**No aparelho**, preservando o retrato de Preparo quando sua etapa ainda
+aguarda reconciliacao. Delivery conserva impressao ao iniciar o preparo;
+Mesa e Comanda conservam suas regras existentes.
+
+Validacao: 149 testes de sincronizacao, fila offline, recebimento LAN,
+finalizacao, etapas, impressao e telas passaram. As novas verificacoes cobrem
+API rapida, HTTP ainda em voo depois da espera curta, reconciliacao lenta,
+ACK Wi-Fi sem confirmacao financeira, configuracao lenta e notificacao tardia.
+Analise Dart dos arquivos alterados sem apontamentos. Este ajuste altera
+somente o aplicativo mobile; requer recompilar/recarregar `sistemadevenda`.
