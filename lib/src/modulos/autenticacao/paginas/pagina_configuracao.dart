@@ -293,6 +293,49 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.lan_outlined,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Atalho pelo ícone de IP',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No computador, nas telas de Mesas, Comandas, Balcão ou '
+                      'Delivery, clique no ícone de IP à esquerda do campo de '
+                      'pesquisa.\n\n'
+                      'Esse atalho ativa o Modo Servidor, caso esteja desativado, '
+                      'e mostra o IP do servidor ao qual você precisa conectar.\n\n'
+                      'Copie o IP exibido e informe no campo de IP acima.',
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
