@@ -1,5 +1,27 @@
 # Pedidos offline do garcom
 
+## Integracao Online com o painel (10/10/2026)
+
+A preparacao completa de clientes e enderecos adicionada nesta integracao so
+executa com `TIPO_INSTALADOR=2`, `CONEXAO=online` e conexao configurada `online`.
+As flags sao lidas de `String.fromEnvironment`; nao altera os fluxos Local/REDE
+anteriores nem substitui a fila SQLite existente de pedidos/recebimentos.
+O cadastro e percorrido por cursor, salvo apenas depois de completo e separado
+por servidor/empresa/usuario. A busca offline encontra nome, telefone e CPF,
+incluindo clientes fora da primeira pagina de quinze resultados. Enderecos
+tambem sao preparados sem precisar abrir antes a modal de novo pedido.
+Primeiro login/preparo requer conexao; dados desconhecidos nao sao inventados.
+Recebimentos de mesas/comandas existentes ja usam o protocolo proprio
+de atendimento, com caixa e saldo/itens capturados. Pagamentos de aberturas
+locais dependem da confirmacao da abertura; a resposta perdida conserva o ID.
+O painel `sistemarestaurante` possui journal e endpoints desktop proprios para
+pedidos e financeiro. Cada app envia sua fila para a API online e consulta o
+estado confirmado. Nao copia nem reexecuta a fila de outro aparelho.
+Conflitos entre aparelhos exigem conferencia; nao ha sobrescrita automatica.
+O app de garcom nao ganha telas de contas a pagar/receber: esses lancamentos
+administrativos sao feitos pelo painel. Atualizar a API e recompilar ambos os
+apps antes do teste integrado; nenhuma transacao real foi criada nos testes.
+
 ## Escopo implementado
 
 - Carrinhos de mesas/comandas e de itens recorrentes usam SQLite no aparelho.
@@ -19,7 +41,7 @@
   anuncia `offline_delivery: 1`. Produtos, endereco e pagamentos seguem juntos na
   operacao; a lista permite retomar pedidos identificados como `No aparelho`.
 - Edicao cadastral, agendas de Recorrentes, fechamento, exclusoes, cancelamentos e
-  alteracoes/pagamentos de atendimentos preexistentes continuam online. Esses fluxos
+  alteracoes cadastrais de atendimentos preexistentes continuam online. Esses fluxos
   precisam consultar o estado atual para nao sobrescrever outro atendimento ou cobrar
   um pagamento ja recebido. Abrir offline nao reserva o recurso
   nos outros aparelhos: a confirmacao depende da verificacao no servidor.

@@ -155,6 +155,9 @@ class CacheConsultas extends Interceptor {
       final consulta = await banco.consulta(alvo, chave(options));
       Object? dados =
           consulta == null ? null : jsonDecode(consulta['valor'] as String);
+      if (falhouRecentemente && caminho(options) == _rotaClientes) {
+        dados = await _derivar(options, alvo) ?? dados;
+      }
       dados ??= await _derivar(options, alvo);
       if (dados != null &&
           (falhouRecentemente || !_exigeConsultaAtual(caminho(options)))) {
@@ -222,9 +225,13 @@ class CacheConsultas extends Interceptor {
         try {
           final consulta =
               await banco.consulta(alvo, chave(err.requestOptions));
-          final dados = consulta == null
+          final derivadoCompleto = caminho(err.requestOptions) == _rotaClientes
               ? await _derivar(err.requestOptions, alvo)
-              : jsonDecode(consulta['valor'] as String);
+              : null;
+          final dados = derivadoCompleto ??
+              (consulta == null
+                  ? await _derivar(err.requestOptions, alvo)
+                  : jsonDecode(consulta['valor'] as String));
           if (dados != null) {
             return handler.resolve(Response(
                 requestOptions: err.requestOptions,
@@ -269,6 +276,39 @@ class CacheConsultas extends Interceptor {
   Future<Object?> _derivar(RequestOptions opcoes, String alvo) async {
     final rota = caminho(opcoes);
     final q = opcoes.uri.queryParameters;
+    if (rota == _rotaClientes) {
+      final completo = await banco.ler('clientes-completos:$alvo');
+      if (completo != null) {
+        final termo = normalizarBusca(q['pesquisa'] ?? '');
+        final numeros = termo.replaceAll(RegExp(r'\D'), '');
+        final encontrados = (jsonDecode(completo) as List)
+            .whereType<Map>()
+            .where((cliente) =>
+                ['id', 'nome', 'nome_puro', 'razao_social', 'celular', 'email']
+                    .any((campo) => normalizarBusca('${cliente[campo] ?? ''}')
+                        .contains(termo)) ||
+                numeros.isNotEmpty &&
+                    '${cliente['celular'] ?? ''}'
+                        .replaceAll(RegExp(r'\D'), '')
+                        .contains(numeros))
+            .toList();
+        if (q['paginado'] != '1') return encontrados;
+        final antes = int.tryParse(q['antes_id'] ?? '');
+        final pagina = encontrados
+            .where((cliente) =>
+                antes == null ||
+                (int.tryParse('${cliente['id']}') ?? 0) < antes)
+            .toList()
+          ..sort((a, b) => (int.tryParse('${b['id']}') ?? 0)
+              .compareTo(int.tryParse('${a['id']}') ?? 0));
+        final dados = pagina.take(15).toList();
+        return {
+          'dados': dados,
+          'tem_mais': pagina.length > 15,
+          'proximo_id': pagina.length > 15 ? '${dados.last['id']}' : null
+        };
+      }
+    }
     if (rota == 'categorias/listar.php') {
       final salvo = await banco.ler('catalogo:$alvo');
       if (salvo == null) return null;

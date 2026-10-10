@@ -25,6 +25,7 @@ import 'execucao_segundo_plano.dart';
 import 'seguranca_pendencias.dart';
 import 'pedidos_na_rede.dart';
 import 'recebimentos_atendimento.dart';
+import 'politica_offline_online.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
@@ -63,6 +64,8 @@ class Sincronizador extends ChangeNotifier {
   DateTime? ultimaAtualizacao;
   DateTime? _ultimoCatalogo;
   DateTime? _ultimasListas;
+  DateTime? _ultimosClientesCompletos;
+  bool _integracaoPainelOnline = false;
   DateTime? _ultimasFormasPagamento;
   DateTime? _proximaConsultaEstado;
   int _falhasConsultaEstado = 0;
@@ -206,6 +209,8 @@ class Sincronizador extends ChangeNotifier {
     final url = (await Apis().getConexao()).servidor;
     final conexao = await ConfigSharedPreferences().getConexao();
     if (!identical(conta, usuario.usuario) || _descartado) return;
+    _integracaoPainelOnline =
+        PoliticaOfflineOnline.permite(conexao?.tipoConexao);
     final novo = BancoLocal.escopo(url, conta.empresa ?? '', conta.id ?? '');
     _escopoImpressaoOnline = conexao?.tipoConexao == 'online'
         ? CanalAtualizacaoOnline.criarEscopo(url, conta.empresa ?? '')
@@ -226,6 +231,7 @@ class Sincronizador extends ChangeNotifier {
     api.cache?.empresa = conta.empresa ?? '';
     _ultimoCatalogo = null;
     _ultimasListas = null;
+    _ultimosClientesCompletos = null;
     _ultimasFormasPagamento = null;
     _estadoNotificado = null;
     _geracaoCatalogo++;
@@ -904,6 +910,11 @@ class Sincronizador extends ChangeNotifier {
               agora.difference(_ultimasFormasPagamento!) >=
                   const Duration(minutes: 5))
             _prepararFormasPagamento(alvo, url, empresa, idUsuario),
+          if (_integracaoPainelOnline &&
+              (_ultimosClientesCompletos == null ||
+                  agora.difference(_ultimosClientesCompletos!) >=
+                      const Duration(minutes: 5)))
+            _prepararClientesCompletos(alvo, url, empresa, idUsuario),
         ]);
       } catch (_) {
         // Preserva o retrato anterior; nao interrompe a fila duravel nem
@@ -941,6 +952,60 @@ class Sincronizador extends ChangeNotifier {
     if (alvo == escopo && !_descartado) {
       _ultimasFormasPagamento =
           geracao == _geracaoPagamentos ? DateTime.now() : null;
+    }
+  }
+
+  Future<void> _prepararClientesCompletos(
+      String alvo, String url, String empresa, String idUsuario) async {
+    final clientes = <Map<String, dynamic>>[];
+    String? cursor;
+    do {
+      final resposta = await api.cliente.get('comandas/listar_clientes.php',
+          queryParameters: {
+            'empresa': empresa,
+            'id_usuario': idUsuario,
+            'pesquisa': '',
+            'paginado': '1',
+            if (cursor != null) 'antes_id': cursor
+          },
+          cancelToken: _cancelamentoPreparacao,
+          options: _opcoes(url, preparacao: true));
+      if (alvo != escopo || _descartado || !_integracaoPainelOnline) return;
+      if (resposta.data is! Map || resposta.data['dados'] is! List) {
+        throw StateError('Listagem offline de clientes incompleta.');
+      }
+      final pagina = Map<String, dynamic>.from(resposta.data as Map);
+      clientes.addAll((pagina['dados'] as List)
+          .map((c) => Map<String, dynamic>.from(c as Map)));
+      final proximo = pagina['proximo_id']?.toString();
+      if (pagina['tem_mais'] == true && (proximo == null || proximo == cursor)) {
+        throw StateError('Paginacao de clientes invalida.');
+      }
+      cursor = pagina['tem_mais'] == true ? proximo : null;
+    } while (cursor != null);
+    if (alvo != escopo || _descartado) return;
+    await banco.gravar('clientes-completos:$alvo', jsonEncode(clientes));
+    for (final cliente in clientes) {
+      if (alvo != escopo || _descartado) return;
+      final resposta =
+          await api.cliente.get('enderecos_clientes/listar_por_cliente.php',
+              queryParameters: {
+                'empresa': empresa,
+                'id_usuario': idUsuario,
+                'cliente': cliente['id'],
+                'pesquisa': ''
+              },
+              cancelToken: _cancelamentoPreparacao,
+              options: _opcoes(url, preparacao: true));
+      if (alvo != escopo || _descartado) return;
+      if (resposta.data is! List) {
+        throw StateError('Enderecos offline incompletos.');
+      }
+      await banco.guardarConsulta(
+          alvo, CacheConsultas.chave(resposta.requestOptions), resposta.data);
+    }
+    if (alvo == escopo && !_descartado) {
+      _ultimosClientesCompletos = DateTime.now();
     }
   }
 
