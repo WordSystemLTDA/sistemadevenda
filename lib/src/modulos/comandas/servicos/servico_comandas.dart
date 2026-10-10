@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/utils/recursos_atendimento_unicos.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
@@ -28,8 +29,12 @@ class ServicoComandas {
     );
 
     final sync = Sincronizador.instancia;
-    final lista = sync == null ? response.data : await AtendimentosLocais(sync.banco, sync.escopo)
-        .projetarLista(List<dynamic>.from(response.data), 'comanda', pesquisa);
+    final projetada = sync == null
+        ? response.data
+        : await AtendimentosLocais(sync.banco, sync.escopo).projetarLista(
+            List<dynamic>.from(response.data), 'comanda', pesquisa);
+    final lista =
+        recursosAtendimentoUnicos(List<dynamic>.from(projetada), 'comanda');
     if (lista.isNotEmpty) {
       final grupos = List<ModeloComandas>.from(lista.map((elemento) {
         return ModeloComandas.fromMap(elemento);
@@ -56,7 +61,11 @@ class ServicoComandas {
     );
 
     if (response.data.isNotEmpty) {
-      final comandas = List<ModeloComanda>.from(response.data.map((elemento) {
+      final comandas = List<ModeloComanda>.from(recursosAtendimentoUnicos([
+        {'comandas': response.data}
+      ], 'comanda')
+          .single['comandas']
+          .map((elemento) {
         return ModeloComanda.fromMap(elemento);
       }));
       // A lista de cadastro nao informa a ocupacao real dos atendimentos.
@@ -124,10 +133,12 @@ class ServicoComandas {
   }
 
   Future<bool> editarComanda(String id, String codigo, String nome) async {
+    final empresa = usuarioProvedor.usuario!.empresa;
     const url = 'comandas/editar_comanda.php';
 
     final response = await dio.cliente.post(url, data: {
       'id': id,
+      'empresa': empresa,
       'codigo': codigo,
       'nome': nome,
     });
@@ -167,12 +178,17 @@ class ServicoComandas {
       String id, String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
     if (sync != null && await sync.prepararAberturasOffline()) {
-      final atendimento = await sync.abrirAtendimento(tipo: 'comanda', idComanda: id,
-          idMesa: idMesa, idCliente: idCliente, obs: obs);
+      final atendimento = await sync.abrirAtendimento(
+          tipo: 'comanda',
+          idComanda: id,
+          idMesa: idMesa,
+          idCliente: idCliente,
+          obs: obs);
       return (sucesso: true, idcomandapedido: atendimento);
     }
     if (sync != null && dio.cache?.servidorDisponivel == false) {
-      throw StateError('O servidor precisa receber a atualizacao de abertura offline.');
+      throw StateError(
+          'O servidor precisa receber a atualizacao de abertura offline.');
     }
     const url = 'comandas/inserir_comanda_ocupada.php';
 
@@ -200,7 +216,9 @@ class ServicoComandas {
   Future<bool> editarComandaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
-    if (sync != null) id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
+    if (sync != null) {
+      id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
+    }
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;

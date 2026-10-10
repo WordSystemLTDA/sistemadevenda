@@ -1,3 +1,4 @@
+import 'package:app/src/essencial/utils/recursos_atendimento_unicos.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
@@ -26,8 +27,12 @@ class ServicoMesas {
     );
 
     final sync = Sincronizador.instancia;
-    final lista = sync == null ? response.data : await AtendimentosLocais(sync.banco, sync.escopo)
-        .projetarLista(List<dynamic>.from(response.data), 'mesa', pesquisa);
+    final projetada = sync == null
+        ? response.data
+        : await AtendimentosLocais(sync.banco, sync.escopo)
+            .projetarLista(List<dynamic>.from(response.data), 'mesa', pesquisa);
+    final lista =
+        recursosAtendimentoUnicos(List<dynamic>.from(projetada), 'mesa');
     if (lista.isNotEmpty) {
       final grupos = List<MesasModel>.from(lista.map((elemento) {
         return MesasModel.fromMap(elemento);
@@ -54,7 +59,11 @@ class ServicoMesas {
     );
 
     if (response.data.isNotEmpty) {
-      final mesas = List<MesaModelo>.from(response.data.map((elemento) {
+      final mesas = List<MesaModelo>.from(recursosAtendimentoUnicos([
+        {'mesas': response.data}
+      ], 'mesa')
+          .single['mesas']
+          .map((elemento) {
         return MesaModelo.fromMap(elemento);
       }));
       // A lista de cadastro nao informa a ocupacao real dos atendimentos.
@@ -123,10 +132,12 @@ class ServicoMesas {
   }
 
   Future<bool> editarMesa(String id, String nome, String codigo) async {
+    final empresa = usuarioProvedor.usuario!.empresa;
     const url = 'mesas/editar_mesa.php';
 
     final response = await dio.cliente.post(url, data: {
       'id': id,
+      'empresa': empresa,
       'nome': nome,
       'codigo': codigo,
     });
@@ -151,7 +162,9 @@ class ServicoMesas {
   Future<bool> editarMesaOcupada(
       String id, String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
-    if (sync != null) id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
+    if (sync != null) {
+      id = await AtendimentosLocais(sync.banco, sync.escopo).idServidor(id);
+    }
     const url = 'comandas/editar_comanda_ocupada.php';
 
     final empresa = usuarioProvedor.usuario!.empresa;
@@ -176,12 +189,13 @@ class ServicoMesas {
       String idMesa, String idCliente, String obs) async {
     final sync = Sincronizador.instancia;
     if (sync != null && await sync.prepararAberturasOffline()) {
-      final atendimento = await sync.abrirAtendimento(tipo: 'mesa',
-          idMesa: idMesa, idCliente: idCliente, obs: obs);
+      final atendimento = await sync.abrirAtendimento(
+          tipo: 'mesa', idMesa: idMesa, idCliente: idCliente, obs: obs);
       return (sucesso: true, idcomandapedido: atendimento);
     }
     if (sync != null && dio.cache?.servidorDisponivel == false) {
-      throw StateError('O servidor precisa receber a atualizacao de abertura offline.');
+      throw StateError(
+          'O servidor precisa receber a atualizacao de abertura offline.');
     }
     const url = 'mesas/inserir_mesa_ocupada.php';
 
