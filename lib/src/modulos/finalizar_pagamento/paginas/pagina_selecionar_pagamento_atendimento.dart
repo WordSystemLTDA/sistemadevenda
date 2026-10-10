@@ -60,7 +60,9 @@ class _PaginaSelecionarPagamentoAtendimentoState
       BancoPixModelo(id: '4', nome: 'Crédito'),
     ];
     try {
-      final bancos = await _servico.listarBancos();
+      final bancos = widget.fluxo.offline
+          ? await _servico.listarBancosSalvos()
+          : await _servico.listarBancos();
       final adicionais = [
         (5, bancos.ativoBancoPix, bancos.nomeBancoPix),
         (6, bancos.ativoBancoOpcao2, bancos.nomeBancoOpcao2),

@@ -129,7 +129,7 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   @override
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode}) async {
+      {String? codigoQrcode, bool semCache = false}) async {
     return _atendimento(id: id, tipo: tipo);
   }
 
@@ -237,6 +237,9 @@ class _PagamentoFinalizacaoFake extends Fake
     String tipoEntrega = '0',
     String valorDesconto = '0',
     String valorAcrescimo = '0',
+    bool salvarOffline = false,
+    String nomeForma = '',
+    int? pagoConferidoCentavos,
   }) async {
     pagamentos++;
     ultimoValorAPagar = valorAPagar;

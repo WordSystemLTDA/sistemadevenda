@@ -12,6 +12,7 @@ class FiltrosDelivery extends StatefulWidget {
 
 class _FiltrosDeliveryState extends State<FiltrosDelivery> {
   late DateTimeRange _periodo = widget.provedor.periodo;
+  late bool _acompanhaHoje = widget.provedor.acompanhaHoje;
   late String _tipo = widget.provedor.tipo;
   late OrdenacaoPedidosDelivery _ordenacao = widget.provedor.ordenacao;
   late String _inicio = widget.provedor.horaInicio,
@@ -56,7 +57,10 @@ class _FiltrosDeliveryState extends State<FiltrosDelivery> {
                                 DateTime.now().add(const Duration(days: 365)),
                             initialDateRange: _periodo);
                         if (mounted && res != null) {
-                          setState(() => _periodo = res);
+                          setState(() {
+                            _periodo = res;
+                            _acompanhaHoje = false;
+                          });
                         }
                       }),
                   Wrap(spacing: 8, children: [
@@ -68,11 +72,14 @@ class _FiltrosDeliveryState extends State<FiltrosDelivery> {
                       TextButton(
                           onPressed: () {
                             final hoje = DateUtils.dateOnly(DateTime.now());
-                            setState(() => _periodo = DateTimeRange(
-                                start: hoje.subtract(Duration(days: d.$1)),
-                                end: d.$1 == 1
-                                    ? hoje.subtract(const Duration(days: 1))
-                                    : hoje));
+                            setState(() {
+                              _acompanhaHoje = d.$1 == 0;
+                              _periodo = DateTimeRange(
+                                  start: hoje.subtract(Duration(days: d.$1)),
+                                  end: d.$1 == 1
+                                      ? hoje.subtract(const Duration(days: 1))
+                                      : hoje);
+                            });
                           },
                           child: Text(d.$2))
                   ]),
@@ -129,7 +136,11 @@ class _FiltrosDeliveryState extends State<FiltrosDelivery> {
               child: const Text('Cancelar')),
           FilledButton(
               onPressed: () {
-                widget.provedor.periodo = _periodo;
+                if (_acompanhaHoje) {
+                  widget.provedor.usarPeriodoDeHoje();
+                } else {
+                  widget.provedor.periodo = _periodo;
+                }
                 widget.provedor.tipo = _tipo;
                 widget.provedor.horaInicio = _inicio;
                 widget.provedor.horaFim = _fim;

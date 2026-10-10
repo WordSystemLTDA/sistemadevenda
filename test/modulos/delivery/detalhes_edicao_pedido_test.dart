@@ -194,8 +194,8 @@ void main() {
 
     final preparo = DadosImpressaoPreparo.produto(resultado);
     final json = jsonEncode(preparo);
-    expect(json, contains('SEM Feijão'));
-    expect(json, contains('SEM Frango'));
+    expect(json, contains('Sem   - Feijão'));
+    expect(json, contains('Sem   - Frango'));
     expect(json, contains('Ovo'));
   });
 

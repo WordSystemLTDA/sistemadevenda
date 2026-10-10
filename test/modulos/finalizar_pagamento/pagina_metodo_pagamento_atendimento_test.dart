@@ -40,6 +40,9 @@ class _PagamentoFake extends Fake implements ServicoFinalizarPagamento {
     String tipoEntrega = '0',
     String valorDesconto = '0',
     String valorAcrescimo = '0',
+    bool salvarOffline = false,
+    String nomeForma = '',
+    int? pagoConferidoCentavos,
   }) async {
     chamadas.add({
       'valorLancamento': valorLancamento,

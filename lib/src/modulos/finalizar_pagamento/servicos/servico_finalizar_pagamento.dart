@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/utils/impressao.dart';
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 
@@ -49,6 +50,9 @@ class ServicoFinalizarPagamento {
     String tipoEntrega = '0',
     String valorDesconto = '0',
     String valorAcrescimo = '0',
+    bool salvarOffline = false,
+    String nomeForma = '',
+    int? pagoConferidoCentavos,
   }) async {
     if (tipo != TipoCardapio.comanda &&
         tipo != TipoCardapio.mesa &&
@@ -89,6 +93,7 @@ class ServicoFinalizarPagamento {
 
     final campos = <String, dynamic>{
       'id_operacao': BancoLocal.novoId(),
+      if (salvarOffline) 'pago_conferido_centavos': pagoConferidoCentavos,
       'id': id,
       'empresa': idEmpresa,
       'id_usuario': idUsuario,
@@ -121,6 +126,45 @@ class ServicoFinalizarPagamento {
       'valordesconto': valorDesconto,
       'valoracrescimo': valorAcrescimo,
     };
+
+    if (salvarOffline) {
+      try {
+        final sync = Sincronizador.instancia;
+        if (sync == null ||
+            ![TipoCardapio.mesa, TipoCardapio.comanda].contains(tipo)) {
+          throw StateError(
+              'Não foi possível salvar o recebimento neste aparelho.');
+        }
+        final resultado = await sync.guardarRecebimentoAtendimento(
+            id: id, campos: campos, nomeForma: nomeForma);
+        return (
+          sucesso: true,
+          mensagem: resultado.finalizou
+              ? 'Conta finalizada neste aparelho. O recebimento será sincronizado quando a conexão voltar.'
+              : 'Pagamento salvo neste aparelho. O recebimento será sincronizado quando a conexão voltar.',
+          finalizou: resultado.finalizou,
+          idVenda: '0',
+          totalPago: resultado.totalPago
+        );
+      } on StateError catch (erro) {
+        return (
+          sucesso: false,
+          mensagem: erro.message.toString(),
+          finalizou: false,
+          idVenda: '0',
+          totalPago: 0.0
+        );
+      } catch (_) {
+        return (
+          sucesso: false,
+          mensagem:
+              'Não foi possível salvar o recebimento. Confira a conta e tente novamente.',
+          finalizou: false,
+          idVenda: '0',
+          totalPago: 0.0
+        );
+      }
+    }
 
     ({
       bool sucesso,
@@ -417,5 +461,22 @@ class ServicoFinalizarPagamento {
     var dados = BancosAtivosPdvModelo.fromMap(jsonData);
 
     return dados;
+  }
+
+  Future<BancosAtivosPdvModelo> listarBancosSalvos() async {
+    final sync = Sincronizador.instancia;
+    if (sync == null) throw StateError('A fila local não está disponível.');
+    final registro = await sync.banco.consulta(
+        sync.escopo,
+        CacheConsultas.chave(RequestOptions(
+          path: 'tela_nfe_saida/listar_bancos.php',
+          queryParameters: {
+            'id_empresa': usuarioProvedor.usuario?.empresa,
+            'id_usuario': usuarioProvedor.usuario?.id,
+          },
+        )));
+    if (registro == null) throw StateError('Formas adicionais não preparadas.');
+    return BancosAtivosPdvModelo.fromMap(
+        jsonDecode(registro['valor'] as String));
   }
 }

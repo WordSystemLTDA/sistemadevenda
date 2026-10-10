@@ -27,7 +27,7 @@ class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
   @override
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode}) async {
+      {String? codigoQrcode, bool semCache = false}) async {
     leituras++;
     consultasItens.add(mostraritens);
     if (falhar) throw Exception('Queda de conexao');

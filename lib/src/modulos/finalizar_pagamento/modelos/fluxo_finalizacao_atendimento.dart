@@ -26,6 +26,7 @@ class FluxoFinalizacaoAtendimento {
   final int? valorBaseDivisaoCentavos;
   final int pessoasPagasDivisao;
   final bool divisaoLegada;
+  final bool offline;
 
   const FluxoFinalizacaoAtendimento({
     required this.idAtendimento,
@@ -47,6 +48,7 @@ class FluxoFinalizacaoAtendimento {
     this.valorBaseDivisaoCentavos,
     this.pessoasPagasDivisao = 0,
     this.divisaoLegada = false,
+    this.offline = false,
   });
 
   int get valorTotalCentavos => math.max(
@@ -101,6 +103,7 @@ class FluxoFinalizacaoAtendimento {
       valorBaseDivisaoCentavos: valorBaseDivisaoCentavos,
       pessoasPagasDivisao: pessoasPagasDivisao,
       divisaoLegada: divisaoLegada,
+      offline: offline,
     );
   }
 }

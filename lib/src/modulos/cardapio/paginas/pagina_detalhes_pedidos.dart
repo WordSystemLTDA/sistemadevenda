@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/recebimentos_atendimento.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
+import 'package:dio/dio.dart';
 import 'package:app/src/modulos/transferencias/servico_transferencias.dart';
 import 'package:app/src/modulos/transferencias/transferencia_atendimento.dart';
 import 'package:app/src/essencial/widgets/visual_atendimento.dart';
@@ -128,38 +131,64 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     }
 
     setState(() => _preparandoFinalizacao = true);
+    bool offline = false;
     String idServidor = idComandaPedido;
     String comandaServidor = idComanda;
     String mesaServidor = idMesa;
     try {
       final sincronizador = Sincronizador.instancia;
-      if (sincronizador != null) {
-        // Tenta enviar alguma alteração real antes da conferência financeira.
-        // Uma abertura já confirmada não fica bloqueada só por usar ID local.
-        await sincronizador.enviarPendentes();
-        idServidor = await AtendimentosLocais(
-          sincronizador.banco,
-          sincronizador.escopo,
-        ).idServidorParaRecebimento(idComandaPedido);
-      } else if (AtendimentosLocais.local(idComandaPedido)) {
-        throw StateError(
-          'Não foi possível identificar este atendimento no servidor. '
-          'Atualize a lista e tente novamente.',
-        );
+      Future<Modeloworddadoscardapio> prepararLocal() async {
+        if (sincronizador == null) {
+          throw StateError('Atualize a conta antes de receber.');
+        }
+        offline = true;
+        idServidor = idComandaPedido;
+        return RecebimentosAtendimento(
+                sincronizador.banco, sincronizador.escopo)
+            .preparar(idComandaPedido, widget.tipo.name);
       }
 
-      // A tela financeira sempre parte de uma leitura nova do servidor. Isso
-      // evita receber usando total, produtos ou status que ficaram antigos.
-      final atendimentoServidor = await servicoCardapio.listarPorId(
-        idServidor,
-        widget.tipo,
-        'Não',
-      );
+      Modeloworddadoscardapio atendimentoServidor;
+      if (sincronizador != null) {
+        await sincronizador.configurar();
+        final pendentes = await sincronizador.banco.db.query('operacoes',
+            where:
+                "escopo = ? AND atendimento = ? AND estado NOT IN ('concluido', 'arquivado', 'registrado')",
+            whereArgs: [sincronizador.escopo, idComandaPedido]);
+        if (pendentes.any((op) => op['estado'] == 'conflito')) {
+          throw StateError(
+              'Existe uma alteração com conflito nesta conta. Confira as pendências antes de receber.');
+        }
+        final recebimento = await RecebimentosAtendimento(
+                sincronizador.banco, sincronizador.escopo)
+            .detalhePendente(idComandaPedido);
+        if (!sincronizador.online ||
+            pendentes.isNotEmpty ||
+            recebimento != null) {
+          atendimentoServidor = await prepararLocal();
+        } else {
+          idServidor = await AtendimentosLocais(
+                  sincronizador.banco, sincronizador.escopo)
+              .idServidorParaRecebimento(idComandaPedido);
+          try {
+            atendimentoServidor = await servicoCardapio
+                .listarPorId(idServidor, widget.tipo, 'Não', semCache: true);
+          } on DioException catch (erro) {
+            if (!CacheConsultas.falhaDeConexao(erro)) rethrow;
+            atendimentoServidor = await prepararLocal();
+          }
+        }
+      } else {
+        if (AtendimentosLocais.local(idComandaPedido)) {
+          throw StateError('A abertura original não foi encontrada.');
+        }
+        atendimentoServidor =
+            await servicoCardapio.listarPorId(idServidor, widget.tipo, 'Não');
+      }
       if (atendimentoServidor.id != idServidor ||
           !['Andamento', 'Fechamento'].contains(atendimentoServidor.status)) {
         throw StateError(
-          'Esta conta não está mais aberta para recebimento. Atualize a tela.',
-        );
+            'Esta conta não está mais aberta para recebimento. Atualize a tela.');
       }
       comandaServidor = atendimentoServidor.idComanda ?? comandaServidor;
       mesaServidor = atendimentoServidor.idMesa ?? mesaServidor;
@@ -184,6 +213,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
         settings: const RouteSettings(name: 'PaginaFinalizarContaAtendimento'),
         builder: (_) => PaginaFinalizarContaAtendimento(
           idAtendimento: idServidor,
+          offline: offline,
           idComanda: comandaServidor,
           idMesa: mesaServidor,
           tipo: widget.tipo,

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/recebimentos_atendimento.dart';
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/api/socket/server.dart';
@@ -26,6 +28,7 @@ class PaginaFinalizarContaAtendimento extends StatefulWidget {
   final String idComanda;
   final String idMesa;
   final TipoCardapio tipo;
+  final bool offline;
 
   const PaginaFinalizarContaAtendimento({
     super.key,
@@ -33,6 +36,7 @@ class PaginaFinalizarContaAtendimento extends StatefulWidget {
     required this.idComanda,
     required this.idMesa,
     required this.tipo,
+    this.offline = false,
   });
 
   @override
@@ -72,11 +76,19 @@ class _PaginaFinalizarContaAtendimentoState
       });
     }
     try {
-      final atendimento = await _servicoCardapio.listarPorId(
-        widget.idAtendimento,
-        widget.tipo,
-        'Sim',
-      );
+      final sync = Sincronizador.instancia;
+      if (widget.offline && sync == null) {
+        throw StateError(
+            'A fila local não está disponível. Abra novamente este atendimento.');
+      }
+      final atendimento = widget.offline && sync != null
+          ? await RecebimentosAtendimento(sync.banco, sync.escopo)
+              .preparar(widget.idAtendimento, widget.tipo.name)
+          : await _servicoCardapio.listarPorId(
+              widget.idAtendimento,
+              widget.tipo,
+              'Sim',
+            );
       if (!mounted) return false;
       if (atendimento.id == null || atendimento.id != widget.idAtendimento) {
         throw StateError('Atendimento não encontrado.');
@@ -294,6 +306,7 @@ class _PaginaFinalizarContaAtendimentoState
       valorBaseDivisaoCentavos: _valorBaseDivisaoCentavos,
       pessoasPagasDivisao: _pessoasPagasDivisao,
       divisaoLegada: _divisaoLegada,
+      offline: widget.offline,
     );
 
     setState(() => _avancando = true);
@@ -304,7 +317,7 @@ class _PaginaFinalizarContaAtendimentoState
     if (!mounted) return;
     setState(() => _avancando = false);
     if (resultado == ResultadoFluxoAtendimento.finalizou) {
-      _salvarComprovanteSemBloquearSaida();
+      if (!widget.offline) _salvarComprovanteSemBloquearSaida();
       Navigator.pop(context, true);
       return;
     }
@@ -575,7 +588,10 @@ class _PaginaFinalizarContaAtendimentoState
           const _TituloSecao(
               icone: Icons.tune_rounded, titulo: 'Como deseja receber?'),
           const SizedBox(height: 10),
-          _ModosRecebimento(modo: _modo, onChanged: _alterarModo),
+          _ModosRecebimento(
+              modo: _modo,
+              onChanged: _alterarModo,
+              permitirProdutos: !widget.offline),
           if (_modo == ModoRecebimentoAtendimento.porPessoa) ...[
             const SizedBox(height: 12),
             _ControlePessoas(
@@ -889,7 +905,11 @@ class _ModosRecebimento extends StatelessWidget {
   final ModoRecebimentoAtendimento modo;
   final ValueChanged<ModoRecebimentoAtendimento> onChanged;
 
-  const _ModosRecebimento({required this.modo, required this.onChanged});
+  final bool permitirProdutos;
+  const _ModosRecebimento(
+      {required this.modo,
+      required this.onChanged,
+      this.permitirProdutos = true});
 
   @override
   Widget build(BuildContext context) {
@@ -906,12 +926,13 @@ class _ModosRecebimento extends StatelessWidget {
         'Por pessoa',
         'Informe quantas pessoas vão dividir'
       ),
-      (
-        ModoRecebimentoAtendimento.porProduto,
-        Icons.inventory_2_outlined,
-        'Por produtos',
-        'Escolha os itens deste pagamento'
-      ),
+      if (permitirProdutos)
+        (
+          ModoRecebimentoAtendimento.porProduto,
+          Icons.inventory_2_outlined,
+          'Por produtos',
+          'Escolha os itens deste pagamento'
+        ),
     ];
     return Column(children: [
       for (var indice = 0; indice < opcoes.length; indice++) ...[

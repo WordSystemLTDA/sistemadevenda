@@ -99,7 +99,7 @@ class AtendimentosLocais {
         if (['id_mesa', 'id_comanda'].any((campo) =>
             dados[campo] != '0' && dados[campo] == anterior[campo])) {
           throw StateError(
-              'Esta mesa ou comanda ja tem uma abertura salva no aparelho.');
+              'Esta mesa ou comanda já tem uma abertura salva. Aguarde a sincronização do encerramento antes de abrir novamente.');
         }
       }
       await tx.insert('operacoes', {
@@ -121,6 +121,13 @@ class AtendimentosLocais {
     final op = await abertura(id);
     if (op == null) {
       throw StateError('Atendimento local nao encontrado nesta conta.');
+    }
+    final recebido = await banco.ler('recebimento-atendimento:$escopo:$id');
+    if (recebido != null) {
+      final snapshot = jsonDecode(recebido) as Map;
+      if (snapshot['ultima_operacao'] != null) {
+        return Map<String, dynamic>.from(snapshot['detalhe']);
+      }
     }
     final estado = jsonDecode(await banco.ler('estado:$escopo') ?? '{}') as Map;
     final base = Map<String, dynamic>.from(dados(op)['detalhe'] as Map);
@@ -169,6 +176,12 @@ class AtendimentosLocais {
       final resposta = recibo(op);
       final real = resposta['id_comanda_pedido'];
       final localId = op['atendimento'] as String;
+      final recebido =
+          await banco.ler('recebimento-atendimento:$escopo:$localId');
+      if (recebido != null &&
+          jsonDecode(recebido)['detalhe']['status'] == 'Finalizada') {
+        continue;
+      }
       if (real != null) {
         var encontrado = false;
         for (final grupo in copia) {
@@ -221,6 +234,77 @@ class AtendimentosLocais {
         'valor': detalhe['valorTotal'],
         'fechamento': false,
       });
+    }
+    // O encerramento permanece visível mesmo quando a lista vem do cache,
+    // sem ocultar uma nova abertura que outro aparelho já criou no servidor.
+    final recebidos = await banco.db.query('documentos',
+        where: 'chave LIKE ?',
+        whereArgs: ['recebimento-atendimento:$escopo:%']);
+    for (final registro in recebidos) {
+      final snapshot = jsonDecode(registro['valor'] as String) as Map;
+      if (snapshot['tipo'] != tipo || snapshot['ultima_operacao'] == null) {
+        continue;
+      }
+      final detalhe = snapshot['detalhe'] as Map;
+      if (detalhe['status'] != 'Finalizada') continue;
+      final operacao = (await banco.db.query('operacoes',
+              where: 'escopo = ? AND id = ?',
+              whereArgs: [escopo, snapshot['ultima_operacao']]))
+          .firstOrNull;
+      if (operacao == null ||
+          ['conflito', 'arquivado'].contains(operacao['estado'])) {
+        continue;
+      }
+      final localId = operacao['atendimento'] as String;
+      final abertura = await this.abertura(localId);
+      final real = abertura == null
+          ? localId
+          : recibo(abertura)['id_comanda_pedido']?.toString();
+      final recursoId =
+          detalhe[tipo == 'mesa' ? 'idMesa' : 'idComanda']?.toString();
+      Map<String, dynamic>? livre;
+      for (final grupo in copia) {
+        final itens = grupo[campo] as List? ?? [];
+        itens.removeWhere((r) {
+          if (r['id']?.toString() != recursoId ||
+              ![localId, real, '0', null]
+                  .contains(r['idComandaPedido']?.toString())) {
+            return false;
+          }
+          livre = {
+            ...Map<String, dynamic>.from(r),
+            ocupado: false,
+            'idComandaPedido': '0',
+            'idCliente': '0',
+            'nomeCliente': '',
+            'valor': '0',
+            'fechamento': false
+          };
+          return true;
+        });
+      }
+      if (livre == null &&
+          AtendimentosLocais.local(localId) &&
+          !copia.any((g) => (g[campo] as List? ?? [])
+              .any((r) => r['id']?.toString() == recursoId))) {
+        livre = {
+          'id': recursoId,
+          'nome': detalhe['nome'],
+          'codigo': detalhe['codigo'],
+          'ativo': 'Sim',
+          ocupado: false,
+          'idComandaPedido': '0',
+          'valor': '0'
+        };
+      }
+      if (livre != null) {
+        var grupo = copia.where((g) => g['titulo'] == 'Livres').firstOrNull;
+        if (grupo == null) {
+          grupo = {'titulo': 'Livres', campo: <dynamic>[]};
+          copia.add(grupo);
+        }
+        (grupo[campo] as List).add(livre);
+      }
     }
     return copia;
   }

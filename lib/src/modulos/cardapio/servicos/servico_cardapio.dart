@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/recebimentos_atendimento.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'dart:developer';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
@@ -25,7 +26,7 @@ class ServicoCardapio {
 
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode}) async {
+      {String? codigoQrcode, bool semCache = false}) async {
     if (tipo == TipoCardapio.delivery) {
       return ServicoDelivery(dio, usuarioProvedor).dadosCardapio(id);
     }
@@ -33,6 +34,13 @@ class ServicoCardapio {
     final idUsuario = usuarioProvedor.usuario!.id;
 
     final sync = Sincronizador.instancia;
+    if (sync != null &&
+        !semCache &&
+        [TipoCardapio.mesa, TipoCardapio.comanda].contains(tipo)) {
+      final recebimento = await RecebimentosAtendimento(sync.banco, sync.escopo)
+          .detalhePendente(id);
+      if (recebimento != null) return recebimento;
+    }
     if (sync != null && AtendimentosLocais.local(id)) {
       final locais = AtendimentosLocais(sync.banco, sync.escopo);
       final abertura = await locais.abertura(id);
@@ -43,7 +51,8 @@ class ServicoCardapio {
       if (real != null &&
           !['conflito', 'arquivado'].contains(abertura!['estado'])) {
         try {
-          final remoto = await listarPorId(real.toString(), tipo, mostraritens);
+          final remoto = await listarPorId(real.toString(), tipo, mostraritens,
+              semCache: semCache);
           if (remoto.id == real.toString()) {
             remoto.id = id;
             await ArmazenamentoCarrinhos.instancia
@@ -69,7 +78,8 @@ class ServicoCardapio {
     }
 
     final response = await dio.cliente.get(
-        'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens');
+        'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens',
+        options: semCache ? Options(extra: {'semCache': true}) : null);
 
     if (response.statusCode == 200) {
       final dados = Modeloworddadoscardapio.fromMap(response.data);

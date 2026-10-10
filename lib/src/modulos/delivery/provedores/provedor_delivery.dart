@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 class ProvedorDelivery extends ChangeNotifier {
   final ServicoDelivery servico;
-  ProvedorDelivery(this.servico);
+  ProvedorDelivery(this.servico, {DateTime Function()? agora})
+      : _agora = agora ?? DateTime.now;
+  final DateTime Function() _agora;
 
   List<EtapaDelivery> etapas = [];
   ConfigDelivery? config;
@@ -24,8 +26,17 @@ class ProvedorDelivery extends ChangeNotifier {
       tipo = '0',
       horaInicio = '05:00:00',
       horaFim = '05:00:00';
-  DateTimeRange periodo =
-      DateTimeRange(start: DateTime.now(), end: DateTime.now());
+  DateTimeRange? _periodoSelecionado;
+  bool get acompanhaHoje => _periodoSelecionado == null;
+  DateTimeRange get periodo {
+    final selecionado = _periodoSelecionado;
+    if (selecionado != null) return selecionado;
+    final hoje = DateUtils.dateOnly(_agora());
+    return DateTimeRange(start: hoje, end: hoje);
+  }
+
+  set periodo(DateTimeRange valor) => _periodoSelecionado = valor;
+  void usarPeriodoDeHoje() => _periodoSelecionado = null;
   int _consulta = 0;
   bool _descartado = false;
   final _pedidosRecentes = <String, ({PedidoDelivery pedido, DateTime ate})>{};
@@ -44,12 +55,13 @@ class ProvedorDelivery extends ChangeNotifier {
     await _atualizacao.executar(() async {
       erro = null;
       try {
+        final periodoConsulta = periodo;
         final configuracaoFutura = servico.configuracao().then<ConfigDelivery?>(
             (valor) => valor,
             onError: (Object _, StackTrace __) => null);
         final lista = await servico.listar(
-            inicio: periodo.start,
-            fim: periodo.end,
+            inicio: periodoConsulta.start,
+            fim: periodoConsulta.end,
             horaInicio: horaInicio,
             horaFim: horaFim,
             pesquisa: pesquisa,

@@ -335,6 +335,9 @@ class PendenciasSincronizacao extends StatelessWidget {
                           ? 'Abertura: ${dados['detalhe']['nome']}'
                           : null) ??
                       (op['acao'] == 'delivery' ? 'Pedido Delivery' : null) ??
+                      (op['acao'] == 'recebimento'
+                          ? 'Recebimento: ${dados['tipo']} ${dados[dados['tipo'] == 'Mesa' ? 'id_mesa' : 'id_comanda']}'
+                          : null) ??
                       'Atendimento ${op['atendimento']}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
@@ -363,7 +366,11 @@ class PendenciasSincronizacao extends StatelessWidget {
                 if ((dados['obs'] ?? '').toString().isNotEmpty)
                   Text(dados['obs'].toString()),
               ],
-              if (produtos.isEmpty && op['acao'] != 'abertura')
+              if (op['acao'] == 'recebimento')
+                Text(
+                    'Pagamento: R\$ ${dados['valor_lancamento']} · Troco: R\$ ${dados['valortroco']}'),
+              if (produtos.isEmpty &&
+                  !['abertura', 'recebimento'].contains(op['acao']))
                 Text(
                   'Nao foi possivel detalhar os itens salvos neste registro.',
                   style: Theme.of(context).textTheme.bodySmall,

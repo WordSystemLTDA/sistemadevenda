@@ -24,6 +24,7 @@ import 'cache_consultas.dart';
 import 'execucao_segundo_plano.dart';
 import 'seguranca_pendencias.dart';
 import 'pedidos_na_rede.dart';
+import 'recebimentos_atendimento.dart';
 
 class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
@@ -255,6 +256,12 @@ class Sincronizador extends ChangeNotifier {
     final alvo = escopo;
     final conta = usuario.usuario!;
     final destinoOriginal = destino;
+    final recebimento = await RecebimentosAtendimento(banco, alvo)
+        .detalhePendente(contexto.idAtendimento);
+    if (recebimento != null) {
+      throw StateError(
+          'Conclua a sincronização dos recebimentos antes de lançar outros itens nesta conta.');
+    }
     final abertura =
         await AtendimentosLocais(banco, alvo).abertura(contexto.idAtendimento);
     if (abertura != null &&
@@ -579,6 +586,38 @@ class Sincronizador extends ChangeNotifier {
     await _recarregarPendencias();
     _notificar();
     unawaited(enviarPendentes());
+  }
+
+  Future<({bool finalizou, double totalPago})> guardarRecebimentoAtendimento({
+    required String id,
+    required Map<String, dynamic> campos,
+    required String nomeForma,
+  }) async {
+    await configurar();
+    final alvo = escopo;
+    final conta = usuario.usuario;
+    final destinoOriginal = destino;
+    return _operacaoExclusiva(() async {
+      if (_descartado ||
+          alvo.isEmpty ||
+          alvo != escopo ||
+          conta == null ||
+          !identical(conta, usuario.usuario) ||
+          campos['empresa'] != conta.empresa ||
+          campos['id_usuario'] != conta.id) {
+        throw StateError('A sessão mudou. Confira a conta antes de receber.');
+      }
+      final resultado = await RecebimentosAtendimento(banco, alvo).guardar(
+        id: id,
+        campos: campos,
+        destino: destinoOriginal,
+        nomeForma: nomeForma,
+      );
+      await _recarregarPendencias();
+      _notificar();
+      unawaited(enviarPendentes());
+      return resultado;
+    });
   }
 
   Future<void> sincronizar() {
@@ -1201,6 +1240,43 @@ class Sincronizador extends ChangeNotifier {
       final id = op['id'] as String;
       final atendimento = op['atendimento'] as String;
       final dadosOriginais = AtendimentosLocais.dados(op);
+      if (op['acao'] == 'recebimento' && op['estado'] != 'registrado') {
+        final dependencias = <String>{
+          ...List<String>.from(dadosOriginais['dependencias'] as List? ?? []),
+          if (dadosOriginais['id_abertura'] != null)
+            dadosOriginais['id_abertura'] as String,
+        };
+        var aguardando = false;
+        var conflito = false;
+        for (final dependencia in dependencias) {
+          final origem = (await banco.db.query('operacoes',
+                  where: 'escopo = ? AND id = ?',
+                  whereArgs: [alvo, dependencia]))
+              .firstOrNull;
+          if (origem == null ||
+              ['conflito', 'arquivado'].contains(origem['estado'])) {
+            conflito = true;
+          }
+          if (origem?['estado'] != 'concluido' &&
+              origem?['estado'] != 'registrado') {
+            aguardando = true;
+          }
+        }
+        if (conflito) {
+          await banco.atualizarOperacao(id, {
+            'estado': 'conflito',
+            'codigo_erro': 'origem_nao_confirmada',
+            'erro':
+                'A abertura ou os itens não foram confirmados. Confira este recebimento.'
+          });
+          bloqueados.add(atendimento);
+          continue;
+        }
+        if (aguardando) {
+          bloqueados.add(atendimento);
+          continue;
+        }
+      }
       if (op['acao'] == 'venda' && dadosOriginais['id_venda_origem'] != null) {
         final origem = (await banco.db.query('operacoes',
                 where: 'escopo = ? AND id = ?',
@@ -1253,6 +1329,18 @@ class Sincronizador extends ChangeNotifier {
         var dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
         if (op['tentativas'] == 0) {
           final normalizados = _normalizarDadosOperacao(dados);
+          if (op['acao'] == 'recebimento' && dados['id_abertura'] != null) {
+            final abertura = (await banco.db.query('operacoes',
+                    where: 'escopo = ? AND id = ?',
+                    whereArgs: [alvo, dados['id_abertura']]))
+                .single;
+            final recibo = AtendimentosLocais.recibo(abertura);
+            normalizados['id'] = recibo['id_comanda_pedido'].toString();
+            normalizados['recebimento_offline'] = {
+              ...Map<String, dynamic>.from(dados['recebimento_offline']),
+              'versao_atendimento': recibo['versao_atendimento']
+            };
+          }
           if (jsonEncode(normalizados) != jsonEncode(dados)) {
             await banco
                 .atualizarOperacao(id, {'dados': jsonEncode(normalizados)});
@@ -1264,25 +1352,45 @@ class Sincronizador extends ChangeNotifier {
         final preparoRede = await _pedidosRede.preparoParaApi(alvo, id);
         Response resposta;
         try {
-          resposta = await api.cliente.post('sincronizacao/operacao.php',
-              data: jsonEncode({
-                'id_operacao': id,
-                'acao': op['acao'],
-                'empresa': dados['empresa'],
-                'id_usuario': dados['id_usuario'],
-                if (executorRede != null)
-                  'executor_impressao_rede': executorRede,
-                if (preparoRede != null) 'preparo_rede': preparoRede,
-                'impressoes': jsonDecode(op['impressoes'] as String),
-                'dados': dados
-              }),
-              options: _opcoes(url));
+          if (op['acao'] == 'recebimento') {
+            resposta = await api.cliente.post(
+              dados['tipo'] == 'Mesa'
+                  ? 'mesas/pagar_pedido.php'
+                  : 'comandas/pagar_pedido.php',
+              data: jsonEncode(dados),
+              options: _opcoes(url),
+            );
+            if (resposta.data is Map && resposta.data['sucesso'] == false) {
+              await banco.atualizarOperacao(id, {
+                'estado': 'conflito',
+                'codigo_erro': 'recebimento_nao_confirmado',
+                'erro': resposta.data['mensagem']?.toString() ??
+                    'Confira este recebimento com o responsável.'
+              });
+              bloqueados.add(atendimento);
+              continue;
+            }
+          } else {
+            resposta = await api.cliente.post('sincronizacao/operacao.php',
+                data: jsonEncode({
+                  'id_operacao': id,
+                  'acao': op['acao'],
+                  'empresa': dados['empresa'],
+                  'id_usuario': dados['id_usuario'],
+                  if (executorRede != null)
+                    'executor_impressao_rede': executorRede,
+                  if (preparoRede != null) 'preparo_rede': preparoRede,
+                  'impressoes': jsonDecode(op['impressoes'] as String),
+                  'dados': dados
+                }),
+                options: _opcoes(url));
+          }
         } on DioException catch (e) {
           final mensagem = e.response?.data;
           if ((e.response?.statusCode == 409 ||
                   e.response?.statusCode == 422) &&
               mensagem is Map &&
-              mensagem['protocolo'] == 1 &&
+              (mensagem['protocolo'] == 1 || op['acao'] == 'recebimento') &&
               mensagem['sucesso'] == false) {
             await banco.atualizarOperacao(id, {
               'estado': 'conflito',
@@ -1320,7 +1428,9 @@ class Sincronizador extends ChangeNotifier {
           unawaited(_pedidosRede.processar());
           rethrow;
         }
-        final resultado = resposta.data;
+        final resultado = resposta.data is Map
+            ? Map<String, dynamic>.from(resposta.data)
+            : resposta.data;
         // Exige o protocolo e o mesmo recibo, inclusive depois de resposta perdida.
         if (resultado is! Map ||
             resultado['protocolo'] != 1 ||
@@ -1336,6 +1446,27 @@ class Sincronizador extends ChangeNotifier {
           throw StateError(
               'O servidor nao confirmou a identidade da abertura.');
         }
+        if (op['acao'] == 'recebimento') {
+          final esperado = dados['recebimento_offline'] as Map;
+          final pagoEsperado =
+              (esperado['pago_antes_centavos'] as num).toInt() +
+                  ((double.parse('${dados['valor_lancamento']}') -
+                              double.parse('${dados['valortroco']}')) *
+                          100)
+                      .round();
+          final pagoConfirmado =
+              ((double.tryParse('${resultado['somaValorHistorico']}') ?? -1) *
+                      100)
+                  .round();
+          if (pagoConfirmado != pagoEsperado ||
+              (pagoEsperado == esperado['total_centavos'] &&
+                  (resultado['finalizouPedido']?.toString() != '1' ||
+                      (int.tryParse('${resultado['idVenda']}') ?? 0) <= 0))) {
+            throw StateError(
+                'O servidor não confirmou o saldo deste recebimento.');
+          }
+        }
+        resultado['confirmado_em'] = DateTime.now().millisecondsSinceEpoch;
         if (op['acao'] == 'venda' &&
             ((int.tryParse('${resultado['idVenda']}') ?? 0) <= 0 ||
                 numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
@@ -1407,7 +1538,8 @@ class Sincronizador extends ChangeNotifier {
             ? 'Delivery'
             : op['acao'] == 'venda'
                 ? 'Balcão'
-                : jsonDecode(op['dados'] as String)['tipo'] == 'mesa'
+                : ['mesa', 'Mesa']
+                        .contains(jsonDecode(op['dados'] as String)['tipo'])
                     ? 'Mesa'
                     : 'Comanda'
       }));
@@ -1422,6 +1554,8 @@ class Sincronizador extends ChangeNotifier {
       // liberar o pedido local; a API ja conserva a etapa operacional confirmada.
       if (op['acao'] == 'delivery') {
         _deliveryRecebido(alvo, id);
+        aoAtualizarTelas?.call();
+      } else if (op['acao'] == 'recebimento') {
         aoAtualizarTelas?.call();
       }
     }

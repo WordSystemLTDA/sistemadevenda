@@ -130,6 +130,9 @@ class _PaginaMetodoPagamentoAtendimentoState
     setState(() => _processando = true);
     final resultado = await _servico.pagarContaAtendimento(
       id: widget.fluxo.idAtendimento,
+      salvarOffline: widget.fluxo.offline,
+      nomeForma: widget.forma.nome,
+      pagoConferidoCentavos: widget.fluxo.valorPagoCentavos,
       idComanda: widget.fluxo.idComanda,
       idMesa: widget.fluxo.idMesa,
       cliente: widget.fluxo.idCliente,
@@ -192,9 +195,11 @@ class _PaginaMetodoPagamentoAtendimentoState
             size: 48, color: VisualAtendimento.verde(context)),
         title: Text(
             resultado.finalizou ? 'Conta finalizada' : 'Pagamento registrado'),
-        content: Text(resultado.finalizou
-            ? 'O recebimento foi concluído e a ${widget.fluxo.tipo.nome.toLowerCase()} foi liberada.'
-            : 'O recebimento foi lançado. Ainda existe saldo nesta conta.'),
+        content: Text(widget.fluxo.offline
+            ? resultado.mensagem
+            : resultado.finalizou
+                ? 'O recebimento foi concluído e a ${widget.fluxo.tipo.nome.toLowerCase()} foi liberada.'
+                : 'O recebimento foi lançado. Ainda existe saldo nesta conta.'),
         actions: [
           FilledButton(
               onPressed: () => Navigator.pop(context),
