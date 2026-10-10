@@ -33,12 +33,15 @@ class ProvedorDelivery extends ChangeNotifier {
   final _atualizacao = AtualizacaoAgrupada();
 
   Future<void> listar({bool mostrarCarregamento = true}) async {
+    if (_descartado) return;
     final consulta = ++_consulta;
+    // O retorno da finalizacao pode aguardar uma consulta ja em andamento.
+    // Sinaliza essa espera agora, conservando a lista que ja esta na tela.
+    if (mostrarCarregamento) {
+      carregando = true;
+      notifyListeners();
+    }
     await _atualizacao.executar(() async {
-      if (mostrarCarregamento && etapas.isEmpty) {
-        carregando = true;
-        notifyListeners();
-      }
       erro = null;
       try {
         final configuracaoFutura = servico.configuracao().then<ConfigDelivery?>(

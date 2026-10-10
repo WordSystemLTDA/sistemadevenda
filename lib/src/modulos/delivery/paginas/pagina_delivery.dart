@@ -908,6 +908,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             }
             return _CarrosselDelivery(
               etapas: _provedor.etapas,
+              carregando: _provedor.carregando,
               filtros: filtros,
               atualizar: _provedor.listar,
               ocupado: _processandoLote ? '__lote__' : _ocupado,
@@ -941,6 +942,7 @@ class _CarrosselDelivery extends StatefulWidget {
   final Widget filtros;
   final String? ocupado, excluindo, imprimindo;
   final bool modoSelecao;
+  final bool carregando;
   final int progressoLote, totalLote;
   final ConfigDelivery? config;
   final VoidCallback encerrarSelecao;
@@ -960,6 +962,7 @@ class _CarrosselDelivery extends StatefulWidget {
   ) avancarLote;
   const _CarrosselDelivery(
       {required this.etapas,
+      required this.carregando,
       required this.filtros,
       required this.atualizar,
       required this.abrir,
@@ -1137,12 +1140,29 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                               return Padding(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 64),
-                                  child: Column(children: [
-                                    Icon(Icons.receipt_long_outlined,
-                                        size: 42, color: cs.outline),
-                                    const SizedBox(height: 12),
-                                    const Text('Nenhum pedido nesta etapa'),
-                                  ]));
+                                  child: widget.carregando
+                                      ? Semantics(
+                                          key: ValueKey(
+                                              'delivery-carregando-${etapa.id}'),
+                                          liveRegion: true,
+                                          child: const Column(children: [
+                                            SizedBox(
+                                              width: 32,
+                                              height: 32,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2.5),
+                                            ),
+                                            SizedBox(height: 16),
+                                            Text('Atualizando pedidos…'),
+                                          ]),
+                                        )
+                                      : Column(children: [
+                                          Icon(Icons.receipt_long_outlined,
+                                              size: 42, color: cs.outline),
+                                          const SizedBox(height: 12),
+                                          const Text(
+                                              'Nenhum pedido nesta etapa'),
+                                        ]));
                             }
                             final p = etapa.pedidos[j];
                             final idade = p.abertura == null

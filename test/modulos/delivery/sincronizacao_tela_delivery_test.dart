@@ -25,6 +25,113 @@ class _ConfiguracaoLenta extends ServicoDeliveryTeste {
 }
 
 void main() {
+  test(
+      'retorno da finalizacao mostra espera antes de iniciar consulta agrupada',
+      () async {
+    final servico = _ConfiguracaoLenta();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    final recebeuListaAntiga = Completer<void>();
+    provedor.addListener(() {
+      if (provedor.etapas.isNotEmpty && !recebeuListaAntiga.isCompleted) {
+        recebeuListaAntiga.complete();
+      }
+    });
+    final antiga = provedor.listar(mostrarCarregamento: false);
+    await recebeuListaAntiga.future;
+    final listaNova = Completer<List<EtapaDelivery>>();
+    final iniciouConsultaNova = Completer<void>();
+    servico.respostaLista = () {
+      iniciouConsultaNova.complete();
+      return listaNova.future;
+    };
+    final nova = provedor.listar();
+    try {
+      expect(provedor.carregando, true);
+      expect(servico.consultas, 1);
+      expect(provedor.etapas.first.pedidos, isNotEmpty);
+      servico.liberar.complete(servico.config);
+      await iniciouConsultaNova.future;
+      expect(provedor.carregando, true);
+    } finally {
+      if (!servico.liberar.isCompleted) {
+        servico.liberar.complete(servico.config);
+      }
+      listaNova.complete(etapasTeste());
+      await Future.wait([antiga, nova]);
+    }
+    expect(provedor.carregando, false);
+  });
+
+  testWidgets(
+      'Aguardando vazio mostra carregamento ate receber o pedido finalizado',
+      (tester) async {
+    final servico = ServicoDeliveryTeste();
+    final provedor = ProvedorDelivery(servico);
+    addTearDown(provedor.dispose);
+    final emPreparo = pedidoTeste(
+        campos: {'id': '7', 'numeroPedido': '7', 'idopcoescarrossel': '2'});
+    List<EtapaDelivery> quadro({bool incluirLocal = true, bool novo = false}) =>
+        [
+          if (incluirLocal)
+            EtapaDelivery.fromMap(
+                {'id': 'local', 'nomeOpcao': 'No aparelho', 'vendas': []}),
+          EtapaDelivery.fromMap({
+            'id': '1',
+            'nomeOpcao': 'AGUARDANDO',
+            'nomeBotao': 'PREPARAR',
+            'tipodeimpressao': '0',
+            'vendas': [
+              if (novo)
+                pedidoTeste(campos: {'id': '28', 'numeroPedido': '28'}).dados
+            ],
+          }),
+          EtapaDelivery.fromMap({
+            'id': '2',
+            'nomeOpcao': 'PREPARANDO',
+            'tipodeimpressao': '1',
+            'vendas': [emPreparo.dados],
+          }),
+        ];
+    servico.respostaLista = () async => quadro();
+    await tester
+        .pumpWidget(MaterialApp(home: PaginaDelivery(provedor: provedor)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AGUARDANDO (0)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhum pedido nesta etapa'), findsOneWidget);
+    final resposta = Completer<List<EtapaDelivery>>();
+    servico.respostaLista = () => resposta.future;
+    await tester.tap(find.byTooltip('Atualizar pedidos'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.byKey(const ValueKey('delivery-carregando-1')), findsOneWidget);
+    expect(find.text('Atualizando pedidos…'), findsOneWidget);
+    expect(find.text('Nenhum pedido nesta etapa'), findsNothing);
+    expect(find.text('PREPARANDO (1)'), findsOneWidget);
+    resposta.complete(quadro(incluirLocal: false, novo: true));
+    await tester.pumpAndSettle();
+    expect(find.text('Atualizando pedidos…'), findsNothing);
+    expect(find.textContaining('#28'), findsOneWidget);
+    expect(find.text('AGUARDANDO (1)'), findsOneWidget);
+    expect(find.text('2 pedidos'), findsOneWidget);
+    expect(find.textContaining('No aparelho'), findsNothing);
+
+    // Falha na consulta seguinte conserva o pedido e encerra o carregamento.
+    final falha = Completer<List<EtapaDelivery>>();
+    servico.respostaLista = () => falha.future;
+    await tester.tap(find.byTooltip('Atualizar pedidos'));
+    await tester.pump();
+    expect(find.textContaining('#28'), findsOneWidget);
+    falha.completeError(StateError('Sem conexao'));
+    await tester.pumpAndSettle();
+    expect(provedor.carregando, false);
+    expect(provedor.erro, isNotNull);
+    expect(find.textContaining('#28'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   test('mostra Aguardando enquanto uma consulta de configuracao ainda espera',
       () async {
     final servico = _ConfiguracaoLenta();

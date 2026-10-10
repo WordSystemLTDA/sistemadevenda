@@ -108,3 +108,18 @@ API rapida, HTTP ainda em voo depois da espera curta, reconciliacao lenta,
 ACK Wi-Fi sem confirmacao financeira, configuracao lenta e notificacao tardia.
 Analise Dart dos arquivos alterados sem apontamentos. Este ajuste altera
 somente o aplicativo mobile; requer recompilar/recarregar `sistemadevenda`.
+
+## Carregamento ao retornar da finalizacao (09/10/2026)
+
+Ao retornar ao Delivery ou solicitar uma atualizacao, o indicador de espera
+comeca imediatamente, inclusive quando existe uma consulta anterior na fila.
+Os pedidos existentes permanecem visiveis. Abas vazias mostram o indicador
+**Atualizando pedidos…** ate a resposta atual chegar; so depois uma etapa
+realmente vazia apresenta **Nenhum pedido nesta etapa**. Atualizacoes periodicas
+em segundo plano conservam o comportamento discreto existente.
+
+O indicador termina assim que a lista e aplicada ou a consulta falha. Uma falha
+conserva os pedidos anteriores e mostra o aviso existente para tentar novamente.
+O teste visual reproduz uma espera de tres segundos, a retirada da aba local
+vazia com preservacao da selecao em Aguardando e uma falha na consulta seguinte.
+Outro teste verifica o carregamento antes de uma consulta agrupada iniciar.
