@@ -69,7 +69,7 @@ void main() {
     BancoLocal.instancia = banco;
     api = DioCliente();
     usuario = UsuarioProvedor()
-      ..setUsuario(UsuarioModelo(id: '1', empresa: '32', nome: 'Garçom'));
+      ..setUsuario(UsuarioModelo(id: '1', empresa: '2', nome: 'Garçom'));
     sync = Sincronizador(api, usuario, SocketOfflineTeste(), banco: banco);
     Sincronizador.instancia = sync;
     api.cliente.interceptors.add(InterceptorsWrapper(onRequest: (op, handler) {
@@ -146,11 +146,8 @@ void main() {
         sync.escopo,
         CacheConsultas.chave(RequestOptions(
             path: 'config_bigchef/listar.php',
-            queryParameters: {'empresa': '32'})),
-        {
-          'permitir_finalizar_mesa': 'Sim',
-          'permitir_finalizar_comanda': 'Sim'
-        });
+            queryParameters: {'empresa': '2'})),
+        {'permitirfinalizarmesa': 'Sim', 'permitirfinalizarcomanda': 'Sim'});
   });
 
   tearDown(() async {
@@ -165,7 +162,7 @@ void main() {
   Future<String> abrir(TipoCardapio tipo) async {
     final id = await AtendimentosLocais(banco, sync.escopo).abrir({
       'tipo': tipo.name,
-      'empresa': '32',
+      'empresa': '2',
       'id_usuario': '1',
       'id_mesa': tipo == TipoCardapio.mesa ? '5' : '0',
       'id_comanda': tipo == TipoCardapio.comanda ? '5' : '0',
@@ -184,7 +181,7 @@ void main() {
       'acao': 'produtos',
       'estado': 'pendente',
       'dados': jsonEncode({
-        'empresa': '32',
+        'empresa': '2',
         'id_usuario': '1',
         'tipo': tipo.name,
         'id_abertura': id.substring(6),
@@ -227,6 +224,49 @@ void main() {
   }
 
   for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+    test(
+        '${tipo.nome} da empresa 2 aceita configuracao antiga com nomes das colunas',
+        () async {
+      await banco.guardarConsulta(
+          sync.escopo,
+          CacheConsultas.chave(RequestOptions(
+            path: 'config_bigchef/listar.php',
+            queryParameters: {'empresa': '2'},
+          )),
+          {
+            'permitir_finalizar_mesa': 'Sim',
+            'permitir_finalizar_comanda': 'Sim'
+          });
+      final id = await abrir(tipo);
+      await recebimentos.preparar(id, tipo.name);
+      expect((await pagar(id, tipo)).finalizou, true);
+    });
+
+    test(
+        '${tipo.nome} continua bloqueada quando sua permissao esta desabilitada',
+        () async {
+      await banco.guardarConsulta(
+          sync.escopo,
+          CacheConsultas.chave(RequestOptions(
+            path: 'config_bigchef/listar.php',
+            queryParameters: {'empresa': '2'},
+          )),
+          {
+            'permitirfinalizarmesa': tipo == TipoCardapio.mesa ? 'Não' : 'Sim',
+            'permitirfinalizarcomanda':
+                tipo == TipoCardapio.comanda ? 'Não' : 'Sim'
+          });
+      final id = await abrir(tipo);
+      await expectLater(
+          recebimentos.preparar(id, tipo.name),
+          throwsA(isA<StateError>().having(
+              (e) => e.message, 'mensagem', contains('não está habilitado'))));
+      expect(
+          (await banco.operacoes(sync.escopo))
+              .where((op) => op['acao'] == 'recebimento'),
+          isEmpty);
+    });
+
     testWidgets(
         '${tipo.nome} percorre conferencia e pagamento offline pela interface',
         (tester) async {
@@ -362,6 +402,37 @@ void main() {
     expect(recibos.values.last['somaValorHistorico'], '50.00');
   });
 
+  test('configuracao da empresa 2 nao habilita recebimento em outra empresa',
+      () async {
+    final outraEmpresa = BancoLocal.escopo(sync.servidor, '3', '1');
+    await banco.gravar('estado:$outraEmpresa',
+        jsonEncode({'recebimento_atendimento_offline': 1, 'caixa_id': '7'}));
+    await banco.guardarConsulta(
+        outraEmpresa,
+        CacheConsultas.chave(RequestOptions(
+            path: 'cardapio/listar_por_id.php',
+            queryParameters: {
+              'id': '104',
+              'codigoQrcode': 'null',
+              'empresa': '3',
+              'id_usuario': '1',
+              'tipo': 'Comanda',
+              'mostrar_itens': 'Sim',
+            })),
+        {
+          'id': '104',
+          'idComanda': '5',
+          'status': 'Andamento',
+          'versao_atendimento': 'versao-empresa-3',
+          'produtos': [produto().toMap()],
+          'valorTotal': '50.00',
+        });
+    await expectLater(
+        RecebimentosAtendimento(banco, outraEmpresa).preparar('104', 'comanda'),
+        throwsA(isA<StateError>().having((e) => e.message, 'mensagem',
+            contains('configuração desta empresa'))));
+  });
+
   test('resposta perdida reenvia o mesmo pagamento sem mudar os dados',
       () async {
     final id = await abrir(TipoCardapio.mesa);
@@ -406,7 +477,7 @@ void main() {
             queryParameters: {
               'id': '104',
               'codigoQrcode': 'null',
-              'empresa': '32',
+              'empresa': '2',
               'id_usuario': '1',
               'tipo': 'Comanda',
               'mostrar_itens': 'Sim'

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/finalizar_pagamento/uteis/calculo_finalizacao_atendimento.dart';
@@ -177,12 +178,19 @@ class RecebimentosAtendimento {
           path: 'config_bigchef/listar.php',
           queryParameters: {'empresa': (jsonDecode(escopo) as List)[1]},
         )));
-    final config =
-        jsonDecode(configRegistro?['valor'] as String? ?? '{}') as Map;
-    final permitido = config[tipo == 'mesa'
-        ? 'permitir_finalizar_mesa'
-        : 'permitir_finalizar_comanda'];
-    if (permitido != 'Sim') {
+    if (configRegistro == null) {
+      throw StateError(
+          'A configuração desta empresa ainda não está salva no aparelho. Conecte à API para atualizar as permissões antes de receber offline.');
+    }
+    final config = Map<String, dynamic>.from(
+        jsonDecode(configRegistro['valor'] as String));
+    // A API envia os nomes compactos; o modelo também reconhece os nomes
+    // das colunas em retratos antigos. Usa a mesma regra da tela de detalhes.
+    final configuracao = ModeloConfigBigchef.fromMap(config);
+    final permitido = tipo == 'mesa'
+        ? configuracao.permiteFinalizarMesa
+        : configuracao.permiteFinalizarComanda;
+    if (!permitido) {
       throw StateError(
           'O recebimento pelo aplicativo não está habilitado para este atendimento.');
     }
