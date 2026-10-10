@@ -281,6 +281,21 @@ as consultas da API e sem criar uma segunda via. Toques repetidos compartilham a
 tentativa. A recuperacao automatica tambem independe do sucesso da consulta de catalogo.
 Desconexao intencional continua sendo respeitada pelo processamento da fila.
 
+## Abertura do aplicativo sem internet
+
+A tela inicial carrega primeiro os ajustes salvos em SQLite e o uso dos atalhos.
+A consulta atual da API roda em segundo plano e nao bloqueia os atalhos nem a
+conexao ao PC pelo Wi-Fi. Mesmo sem configuracao salva, os acessos basicos aparecem.
+Consultas forcadas tambem preservam a configuracao para o proximo inicio; a copia
+e separada por API, empresa e usuario. Respostas de uma sessao ou API anterior
+nao atualizam a sessao atual.
+
+O canal local inicia independentemente da internet e tenta novamente quando o
+login salvo termina de ser restaurado. Essa retomada nao depende de um novo
+evento de rede nem de fechar/reabrir o aplicativo. Atualizar ajustes da mesma
+sessao nao reabre o socket. As retentativas por queda de rede continuam ativas.
+O PC precisa estar ligado e acessivel na mesma rede, com IP/porta configurados.
+
 ## Tela apagada
 
 O app nao desconecta intencionalmente o socket ao ficar inativo. No iOS, cada envio

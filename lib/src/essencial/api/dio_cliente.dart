@@ -7,6 +7,7 @@ import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 
 class DioCliente {
   CacheConsultas? cache;
+  String? _servidor;
   DioCliente({String? servidor}) {
     cliente.httpClientAdapter =
         AdaptadorHttpPrioritario(cliente.httpClientAdapter);
@@ -23,23 +24,18 @@ class DioCliente {
     receiveTimeout: tempoResposta,
   ));
 
-  void configurar({String? servidor}) {
-    // cliente.options.baseUrl = servidor ?? (await Apis().getConexao()).servidor;
-    // cliente = Dio(
-    //   BaseOptions(
-    //     baseUrl: servidor ?? (await Apis().getConexao()).servidor,
-    //     connectTimeout: const Duration(seconds: 10),
-    //   ),
-    // );
+  Future<String> obterServidor() async =>
+      _servidor ?? (await Apis().getConexao()).servidor;
 
+  void configurar({String? servidor}) {
+    _servidor = servidor;
     cliente.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
             PoliticaConsultasHttp.preparar(options);
             options.baseUrl = options.extra['servidorFixo'] as String? ??
-                servidor ??
-                (await Apis().getConexao()).servidor;
+                await obterServidor();
             handler.next(options);
           } catch (erro, stack) {
             handler.reject(DioException(

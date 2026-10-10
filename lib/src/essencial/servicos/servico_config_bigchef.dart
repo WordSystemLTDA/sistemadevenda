@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -14,9 +18,22 @@ class ServicoConfigBigchef {
   static const caminhoAPI = 'config_bigchef';
   static final Map<String, ModeloConfigBigchef> _cachePorDestino = {};
 
+  /// Le somente a copia local, inclusive antes de o sincronizador iniciar.
+  Future<ModeloConfigBigchef?> listarSalva() async {
+    final conta = usuarioProvedor.usuario;
+    final empresa = conta?.empresa;
+    if (conta == null || empresa == null || empresa.isEmpty) return null;
+    final servidor = await dio.obterServidor();
+    final config = await _lerSalva(servidor, empresa, conta.id ?? '');
+    return _aplicar(config, conta, servidor);
+  }
+
   Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async {
-    final idEmpresa = usuarioProvedor.usuario?.empresa;
-    if (idEmpresa == null || idEmpresa.isEmpty) return null;
+    final conta = usuarioProvedor.usuario;
+    final idEmpresa = conta?.empresa;
+    if (conta == null || idEmpresa == null || idEmpresa.isEmpty) return null;
+    final servidor = await dio.obterServidor();
+    final chaveCache = BancoLocal.escopo(servidor, idEmpresa, conta.id ?? '');
 
     try {
       final response = await dio.cliente.get('$caminhoAPI/listar.php',
@@ -25,13 +42,15 @@ class ServicoConfigBigchef {
             if (forcarAtualizacao)
               '_atualizacao': DateTime.now().microsecondsSinceEpoch,
           },
-          options: Options(extra: {'semCache': forcarAtualizacao}));
+          options: Options(extra: {
+            'semCache': forcarAtualizacao,
+            'servidorFixo': servidor,
+          }));
       final jsonData = response.data;
-      final chaveCache = _chaveCache(response.requestOptions, idEmpresa);
       if (jsonData is! Map) {
-        final configCache = _cachePorDestino[chaveCache];
-        if (configCache != null) usuarioProvedor.setConfigBigChef(configCache);
-        return configCache;
+        final configCache =
+            await _lerSalva(servidor, idEmpresa, conta.id ?? '');
+        return _aplicar(configCache, conta, servidor);
       }
 
       final dados = Map<String, dynamic>.from(jsonData);
@@ -49,8 +68,17 @@ class ServicoConfigBigchef {
 
       final config = ModeloConfigBigchef.fromMap(dados);
       _cachePorDestino[chaveCache] = config;
-      usuarioProvedor.setConfigBigChef(config);
-      return config;
+      // A consulta forcada tambem precisa sobreviver ao encerramento do app.
+      try {
+        if (response.extra['cacheLocal'] != true) {
+          await (dio.cache?.banco ?? BancoLocal.instancia)?.guardarConsulta(
+              chaveCache, CacheConsultas.chave(response.requestOptions), dados);
+        }
+      } catch (erro, stack) {
+        log('Falha ao salvar configuracao local',
+            error: erro, stackTrace: stack);
+      }
+      return _aplicar(config, conta, servidor);
     } on DioException catch (e) {
       if (e.response == null) {
         if (kDebugMode) {
@@ -58,11 +86,42 @@ class ServicoConfigBigchef {
         }
       }
 
-      final configCache =
-          _cachePorDestino[_chaveCache(e.requestOptions, idEmpresa)];
-      if (configCache != null) usuarioProvedor.setConfigBigChef(configCache);
-      return configCache;
+      final configCache = await _lerSalva(servidor, idEmpresa, conta.id ?? '');
+      return _aplicar(configCache, conta, servidor);
     }
+  }
+
+  Future<ModeloConfigBigchef?> _lerSalva(
+      String servidor, String empresa, String usuario) async {
+    final escopo = BancoLocal.escopo(servidor, empresa, usuario);
+    final memoria = _cachePorDestino[escopo];
+    try {
+      final requisicao = RequestOptions(
+        path: '$caminhoAPI/listar.php',
+        baseUrl: servidor,
+        queryParameters: {'empresa': empresa},
+      );
+      final registro = await (dio.cache?.banco ?? BancoLocal.instancia)
+          ?.consulta(escopo, CacheConsultas.chave(requisicao));
+      if (registro == null) return memoria;
+      final dados = jsonDecode(registro['valor'] as String);
+      if (dados is! Map) return memoria;
+      return ModeloConfigBigchef.fromMap(Map<String, dynamic>.from(dados));
+    } catch (erro, stack) {
+      log('Falha ao ler configuracao local', error: erro, stackTrace: stack);
+      return memoria;
+    }
+  }
+
+  Future<ModeloConfigBigchef?> _aplicar(
+      ModeloConfigBigchef? config, UsuarioModelo conta, String servidor) async {
+    if (config == null ||
+        await dio.obterServidor() != servidor ||
+        !identical(usuarioProvedor.usuario, conta)) {
+      return null;
+    }
+    usuarioProvedor.setConfigBigChef(config);
+    return config;
   }
 
   bool _possuiValorEmbalagemSeparada(Map<String, dynamic> dados) =>
@@ -92,11 +151,6 @@ class ServicoConfigBigchef {
       !_possuiConfiguracaoRecorrentes(dados) ||
       !_possuiFiltroProdutosPersonalizados(dados) ||
       !_possuiCodigoSaboresPizza(dados);
-
-  String _chaveCache(RequestOptions requisicao, String empresa) {
-    final base = requisicao.baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
-    return '$base|$empresa';
-  }
 
   String? _baseDesktop(String baseGarcom) {
     if (baseGarcom.isEmpty) return null;

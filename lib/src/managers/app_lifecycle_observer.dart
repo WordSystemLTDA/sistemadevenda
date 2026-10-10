@@ -27,6 +27,12 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   int _geracaoRetomada = 0;
   bool _voltandoDoSegundoPlano = false;
   bool _renovarCanalPendente = false;
+  (String?, String?)? _sessaoAnterior;
+
+  (String?, String?)? get _sessao {
+    final conta = sincronizador.usuario.usuario;
+    return conta == null ? null : (conta.empresa, conta.id);
+  }
 
   @override
   void initState() {
@@ -35,6 +41,8 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
     sincronizador = Modular.get<Sincronizador>();
     sincronizador.aoAtualizarTelas = _atualizarTelas;
     sincronizador.iniciar();
+    _sessaoAnterior = _sessao;
+    sincronizador.usuario.addListener(_sessaoMudou);
     WidgetsBinding.instance.addObserver(this);
     // Wi-Fi sem internet ainda pode alcancar o servidor local pelo IP.
     _rede = Connectivity().onConnectivityChanged.listen((resultados) {
@@ -50,6 +58,20 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
       _retomar();
     });
     _retomar();
+  }
+
+  void _sessaoMudou() {
+    final atual = _sessao;
+    if (atual == _sessaoAnterior) return;
+    _sessaoAnterior = atual;
+    if (atual == null) {
+      ++_geracaoRetomada;
+      _renovarCanalPendente = true;
+      return;
+    }
+    // A primeira tentativa pode ocorrer antes de restaurar o login salvo.
+    // Configuracoes da mesma sessao nao precisam reabrir o canal.
+    unawaited(_retomar(renovarCanal: true));
   }
 
   void _atualizarTelas() {
@@ -98,6 +120,7 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _rede?.cancel();
+    sincronizador.usuario.removeListener(_sessaoMudou);
     sincronizador.aoAtualizarTelas = null;
     sincronizador.dispose();
     super.dispose();

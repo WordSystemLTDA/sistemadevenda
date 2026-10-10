@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/config/config_modelo.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';
@@ -125,10 +126,19 @@ class BalcaoTeste extends Fake implements ServicoBalcao {
 
 class ConfigBigchefTeste extends Fake implements ServicoConfigBigchef {
   ModeloConfigBigchef? resposta;
+  ModeloConfigBigchef? salva;
+  Completer<ModeloConfigBigchef?>? consultaPendente;
+  int consultas = 0;
 
   @override
-  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async =>
-      resposta;
+  Future<ModeloConfigBigchef?> listarSalva() async => salva;
+
+  @override
+  Future<ModeloConfigBigchef?> listar({bool forcarAtualizacao = false}) async {
+    consultas++;
+    final pendente = consultaPendente;
+    return pendente != null ? await pendente.future : resposta;
+  }
 }
 
 class ConfigTeste extends Fake implements ServicoConfig {
@@ -139,8 +149,12 @@ class ConfigTeste extends Fake implements ServicoConfig {
 class AutenticacaoTeste extends Fake implements ServicoAutenticacao {}
 
 class ServerTeste extends Server {
+  int conexoes = 0;
   @override
-  Future<bool> connect(String ip, String porta) async => true;
+  Future<bool> connect(String ip, String porta) async {
+    conexoes++;
+    return true;
+  }
 }
 
 class ModuloAtendimentoTeste extends Module {
@@ -148,6 +162,7 @@ class ModuloAtendimentoTeste extends Module {
   final comandas = ComandasTeste();
   final balcao = BalcaoTeste();
   final configBigchef = ConfigBigchefTeste();
+  final servidor = ServerTeste();
   late final provedorMesas = ProvedorMesas(mesas);
   late final provedorComandas = ProvedorComanda(comandas);
   late final provedorBalcao = ProvedorBalcao(balcao);
@@ -163,7 +178,7 @@ class ModuloAtendimentoTeste extends Module {
           UsuarioModelo(nome: 'Atendente', nomeEmpresa: 'Restaurante')));
     i.addInstance<ServicoConfigBigchef>(configBigchef);
     i.addInstance<ServicoConfig>(ConfigTeste());
-    i.addInstance<Server>(ServerTeste());
+    i.addInstance<Server>(servidor);
     i.addInstance<ServicoAutenticacao>(AutenticacaoTeste());
     i.addInstance<ThemeController>(ThemeController());
     i.addInstance<ConfigProvider>(ConfigProvider()
@@ -397,6 +412,55 @@ void main() {
     expect(
         find.byKey(const ValueKey('atalho-home-Recorrentes')), findsOneWidget);
     expect(find.text('Programados'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inicio libera atalhos salvos e Wi-Fi enquanto API nao responde',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({
+        'tipoConexao': 'online',
+        'servidor': '192.168.0.10',
+        'porta': '9980',
+      }),
+    });
+    final pendente = Completer<ModeloConfigBigchef?>();
+    modulo.configBigchef.consultaPendente = pendente;
+    modulo.configBigchef.salva = ModeloConfigBigchef.fromMap({
+      'clientecompedidosdecorrentes': 'Sim',
+    });
+
+    await abrir(tester, const PaginaInicio());
+
+    expect(pendente.isCompleted, isFalse);
+    expect(modulo.servidor.conexoes, 1);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const ValueKey('card-home-Comandas')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('atalho-home-Recorrentes')), findsOneWidget);
+    expect(modulo.configBigchef.consultas, 1);
+
+    // A falha externa conserva a configuracao ja preparada no aparelho.
+    pendente.complete(null);
+    await tester.pumpAndSettle();
+    expect(
+        find.byKey(const ValueKey('atalho-home-Recorrentes')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('inicio sem copia local nao espera internet para mostrar atalhos',
+      (tester) async {
+    final pendente = Completer<ModeloConfigBigchef?>();
+    modulo.configBigchef.consultaPendente = pendente;
+    await abrir(tester, const PaginaInicio());
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const ValueKey('card-home-Comandas')), findsOneWidget);
+    expect(find.byKey(const ValueKey('card-home-Delivery')), findsOneWidget);
+    // Uma resposta que chega depois de sair da pagina nao a atualiza.
+    await tester.pumpWidget(const SizedBox());
+    pendente.complete(ModeloConfigBigchef.fromMap({}));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 

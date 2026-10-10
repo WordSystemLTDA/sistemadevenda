@@ -45,6 +45,8 @@ class _PaginaInicioState extends State<PaginaInicio>
   ModeloConfigBigchef? configBigchef;
   Map<String, _UsoAtalhoInicio> _usoAtalhos = const {};
   bool isLoading = true;
+  Future<void>? _atualizandoConfig;
+  int _geracaoCarregamento = 0;
 
   static const _prioridadeInicial = <String>[
     'comandas',
@@ -76,40 +78,45 @@ class _PaginaInicioState extends State<PaginaInicio>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      listarDadosConfigBigChef().then((_) {
-        if (mounted) setState(() {});
-      });
+      unawaited(listarDadosConfigBigChef());
     }
   }
 
   Future<void> listarDados() async {
+    final geracao = ++_geracaoCarregamento;
     setState(() => isLoading = true);
+    // O PC pode estar acessivel pelo Wi-Fi mesmo com a API sem internet.
+    unawaited(conectarAoServidor());
     try {
       await Future.wait([
-        listarDadosConfigBigChef(),
+        _carregarConfiguracaoSalva(),
         _carregarUsoAtalhos(),
       ]);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Não foi possível atualizar as configurações.'),
-        action:
-            SnackBarAction(label: 'Tentar novamente', onPressed: listarDados),
-      ));
+    } catch (erro) {
+      debugPrint('Falha ao carregar configuracoes locais: $erro');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted && geracao == _geracaoCarregamento) {
+        setState(() => isLoading = false);
+      }
     }
-    if (!mounted) return;
-    await conectarAoServidor();
+    if (!mounted || geracao != _geracaoCarregamento) return;
+    // Atualiza os ajustes sem bloquear os atalhos nem a conexao local.
+    unawaited(listarDadosConfigBigChef());
+  }
+
+  Future<void> _carregarConfiguracaoSalva() async {
+    final config = await servicoConfigBigchef.listarSalva();
+    if (mounted && config != null) configBigchef = config;
   }
 
   Future<void> listarDadosAtualizacoes() async {
-    var config = await servicoConfig.listar();
-
-    if (config != null) {
-      if (mounted) {
-        verificarAtualizacao(context, config);
+    try {
+      final config = await servicoConfig.listar();
+      if (config != null && mounted) {
+        await verificarAtualizacao(context, config);
       }
+    } catch (erro) {
+      debugPrint('Falha ao verificar atualizacao: $erro');
     }
   }
 
@@ -143,26 +150,38 @@ class _PaginaInicioState extends State<PaginaInicio>
   }
 
   Future<void> conectarAoServidor() async {
-    final ConfigSharedPreferences config = ConfigSharedPreferences();
-    var conexao = await config.getConexao();
-    if (!mounted || conexao == null) return;
+    try {
+      final ConfigSharedPreferences config = ConfigSharedPreferences();
+      var conexao = await config.getConexao();
+      if (!mounted || conexao == null) return;
 
-    await _server.connect(conexao.servidor, conexao.porta).then((sucesso) {
-      if (sucesso == false) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text(
-                'Canal da cozinha desconectado. A reconexão será automática.'),
-            showCloseIcon: true,
-            duration: const Duration(seconds: 6),
-          ));
+      await _server.connect(conexao.servidor, conexao.porta).then((sucesso) {
+        if (sucesso == false && !_server.connected) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: const Text(
+                  'Canal da cozinha desconectado. A reconexão será automática.'),
+              showCloseIcon: true,
+              duration: const Duration(seconds: 6),
+            ));
+          }
         }
-      }
-    });
+      });
+    } catch (erro) {
+      debugPrint('Falha ao conectar ao PC: $erro');
+    }
   }
 
-  Future<void> listarDadosConfigBigChef() async {
-    configBigchef = await servicoConfigBigchef.listar(forcarAtualizacao: true);
+  Future<void> listarDadosConfigBigChef() => _atualizandoConfig ??=
+      _atualizarConfiguracao().whenComplete(() => _atualizandoConfig = null);
+
+  Future<void> _atualizarConfiguracao() async {
+    try {
+      final config = await servicoConfigBigchef.listar(forcarAtualizacao: true);
+      if (mounted && config != null) setState(() => configBigchef = config);
+    } catch (erro) {
+      debugPrint('Falha ao atualizar configuracoes: $erro');
+    }
   }
 
   String get _chaveUsoAtalhos {

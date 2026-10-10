@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
+import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/managers/app_lifecycle_observer.dart';
@@ -20,6 +22,7 @@ class ServidorCiclo extends Server {
   int conexoes = 0;
   Completer<bool>? tentativaBloqueada;
   final renovacoes = <bool>[];
+  UsuarioProvedor? usuarioExigido;
 
   @override
   Future<bool> retomarConexao(String ip, String porta,
@@ -31,6 +34,7 @@ class ServidorCiclo extends Server {
   @override
   Future<bool> connect(String ip, String porta) async {
     conexoes++;
+    if (usuarioExigido != null && usuarioExigido!.usuario == null) return false;
     if (tentativaBloqueada != null) return tentativaBloqueada!.future;
     connected = true;
     return true;
@@ -105,6 +109,49 @@ void main() {
     expect(modulo.sync.retomadas, 2);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('login restaurado retoma Wi-Fi sem reiniciar nem mudar a rede',
+      (tester) async {
+    modulo.servidor.usuarioExigido = modulo.usuario;
+    await tester.pumpWidget(const AppLifecycleObserver(child: SizedBox()));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 1);
+    expect(modulo.servidor.connected, isFalse);
+
+    modulo.usuario.setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 2);
+    expect(modulo.servidor.renovacoes, [false, true]);
+    expect(modulo.servidor.connected, isTrue);
+
+    modulo.usuario.setConfigBigChef(ModeloConfigBigchef.fromMap({}));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 2);
+
+    modulo.usuario.setUsuario(UsuarioModelo(id: '276', empresa: '33'));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.renovacoes, [false, true, true]);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('logout cancela retomada aguardando preferencias',
+      (tester) async {
+    modulo.usuario.setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    await tester.pumpWidget(const AppLifecycleObserver(child: SizedBox()));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 1);
+    // O logout acontece antes de terminar a retomada da troca de conta.
+    modulo.usuario.setUsuario(UsuarioModelo(id: '276', empresa: '33'));
+    modulo.usuario.setUsuario(null);
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 1);
+    await tester.pumpWidget(const SizedBox());
+    modulo.usuario.setUsuario(UsuarioModelo(id: '275', empresa: '32'));
+    await tester.pumpAndSettle();
+    expect(modulo.servidor.conexoes, 1);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('voltar ao app renova conexao sem aguardar tentativa travada',
