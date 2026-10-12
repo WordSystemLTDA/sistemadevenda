@@ -9,7 +9,13 @@ import 'delivery_test.dart';
 
 void main() {
   for (final largura in [320.0, 1180.0]) {
-    for (final caso in ['cancelar', 'parcial', 'completo', 'quitado']) {
+    for (final caso in [
+      'cancelar',
+      'parcial',
+      'completo',
+      'quitado',
+      'vinculado ao receber'
+    ]) {
       testWidgets('etapa Finalizar Pagamento em $largura: $caso',
           (tester) async {
         tester.view.devicePixelRatio = 1;
@@ -18,8 +24,9 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         final s = ServicoDeliveryTeste()
           ..atual = pedidoTeste(campos: {
-            'idVenda': '78',
-            'status': 'Finalizado',
+            'idVenda': caso == 'vinculado ao receber' ? '0' : '78',
+            'status':
+                caso == 'vinculado ao receber' ? 'Pendente' : 'Finalizado',
             'idopcoescarrossel': '3',
             'pagamentoPendente': true,
             'somaValorHistorico': caso == 'quitado' ? '86,00' : '0,00',
@@ -55,6 +62,8 @@ void main() {
                   if (caso == 'cancelar') return false;
                   s.atual = PedidoDelivery.fromMap({
                     ...s.atual.dados,
+                    'idVenda': '78',
+                    'status': 'Finalizado',
                     'somaValorHistorico': caso == 'parcial' ? '40.00' : '86.00'
                   });
                   return true;
@@ -74,7 +83,9 @@ void main() {
             .where((g) => g.$1 == 'delivery/mudar_status_delivery.php')
             .toList();
         expect(recebimentos, caso == 'quitado' ? 0 : 1);
-        if (caso == 'quitado' || caso == 'completo') {
+        if (caso == 'quitado' ||
+            caso == 'completo' ||
+            caso == 'vinculado ao receber') {
           expect(movimentos, hasLength(1));
           expect(movimentos.single.$2['status'], '4');
           expect(movimentos.single.$2['statusOrigem'], '3');
@@ -83,6 +94,12 @@ void main() {
           expect(movimentos, isEmpty);
           expect(s.atual.etapa, '3');
         }
+        expect(
+            s.gravacoes
+                .where((g) => g.$1 == 'delivery/finalizar_pedido_delivery.php'),
+            isEmpty);
+        expect(s.gravacoes.where((g) => g.$1 == 'delivery/pagar_pedido.php'),
+            isEmpty);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
         await tester.pumpAndSettle();
