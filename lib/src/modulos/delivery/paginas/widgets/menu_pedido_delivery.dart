@@ -123,12 +123,18 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
     (
       'Financeiro',
       [
-        if (pedido.quantidade > 0 && !pedido.encerrado)
-          (AcaoPedidoDelivery.receber, 'Concluir', Icons.task_alt_outlined),
+        if (pedido.quantidade > 0 &&
+            !pedido.cancelado &&
+            !pedido.pagamentoConcluido)
+          (
+            AcaoPedidoDelivery.receber,
+            'Concluir Pagamento',
+            Icons.task_alt_outlined
+          ),
         if (pedido.quantidade > 0)
           (
             AcaoPedidoDelivery.pagamento,
-            pedido.pago > 0
+            pedido.possuiPagamentoRegistrado
                 ? 'Alterar Forma de Pagamento'
                 : 'Mudar Forma de Pagamento',
             Icons.payments_outlined

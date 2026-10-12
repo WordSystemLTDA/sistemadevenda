@@ -116,7 +116,8 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
     try {
       final atual = await widget.servico.pedido(widget.id);
       if ((atual.restante - _pedido!.restante).abs() > .009 ||
-          atual.encerrado) {
+          atual.cancelado ||
+          atual.pagamentoConcluido) {
         throw StateError(
             'O saldo do pedido mudou. Feche e abra o pagamento novamente.');
       }

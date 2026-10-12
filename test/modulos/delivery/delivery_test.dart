@@ -589,7 +589,7 @@ void main() {
         pedidoTeste(campos: {'pagamentoPendente': true}),
         etapasTeste().last,
       ),
-      isFalse,
+      isTrue,
     );
     expect(config.taxaEntrega('6.00'), 8.5);
     expect(config.entregadorFixo, isEmpty);
@@ -803,7 +803,15 @@ void main() {
     expect(p['limpar_pagamentos_anteriores'], '0');
     expect(p['produtosParaFinalizar'], isEmpty);
     await expectLater(s.pagar(pedidoTeste(), 4, 100), throwsStateError);
-    await expectLater(s.pagar(pedidoTeste(campos: {'idVenda': '2'}), 1, 86),
+    await expectLater(
+        s.pagar(
+            pedidoTeste(
+                campos: {'idVenda': '2', 'somaValorHistorico': '86.00'}),
+            1,
+            86),
+        throwsStateError);
+    await expectLater(
+        s.pagar(pedidoTeste(campos: {'status': 'Cancelado'}), 1, 86),
         throwsStateError);
     expect(s.gravacoes, hasLength(1));
   });

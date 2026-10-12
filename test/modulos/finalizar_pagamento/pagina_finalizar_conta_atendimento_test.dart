@@ -28,6 +28,7 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   String totalInicial = '85.00';
   String pagoInicial = '20.00';
   int quantidadeInicial = 2;
+  String statusInicial = 'Andamento';
 
   Modeloworddadoscardapio _atendimento({
     required String id,
@@ -130,7 +131,7 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
       {String? codigoQrcode, bool semCache = false}) async {
-    return _atendimento(id: id, tipo: tipo);
+    return _atendimento(id: id, tipo: tipo, status: statusInicial);
   }
 
   @override
@@ -282,6 +283,91 @@ void main() {
     Modular.init(_ModuloFinalizacao(pagamento, cardapio, servidor));
   });
   tearDown(Modular.destroy);
+
+  testWidgets(
+      'Delivery encerrado com saldo retorna confirmacao apenas apos receber',
+      (tester) async {
+    cardapio.statusInicial = 'Finalizado';
+    bool? retorno;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: Builder(
+                builder: (context) => TextButton(
+                      onPressed: () async => retorno =
+                          await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PaginaFinalizarContaAtendimento(
+                                        idAtendimento: '138',
+                                        idComanda: '0',
+                                        idMesa: '0',
+                                        tipo: TipoCardapio.delivery,
+                                      ))),
+                      child: const Text('Receber Delivery'),
+                    )))));
+    await tester.tap(find.text('Receber Delivery'));
+    await tester.pumpAndSettle();
+    for (final chave in [
+      'avancar_finalizacao_atendimento',
+      'avancar_acrescimos_atendimento',
+      'avancar_forma_pagamento_atendimento',
+      'finalizar_pagamento_atendimento'
+    ]) {
+      final botao = find.byKey(ValueKey(chave));
+      await tester.ensureVisible(botao);
+      await tester.tap(botao);
+      await tester.pumpAndSettle();
+    }
+    expect(retorno, isNull);
+    expect(pagamento.pagamentos, 0);
+    // A leitura seguinte representa o saldo confirmado pela API apos o POST.
+    cardapio.pagoInicial = '85.00';
+    await tester.tap(find.widgetWithText(FilledButton, 'Confirmar'));
+    await tester.pumpAndSettle();
+    expect(pagamento.pagamentos, 1);
+    expect(retorno, isNull);
+    await tester.tap(find.widgetWithText(FilledButton, 'Concluir'));
+    await tester.pumpAndSettle();
+    expect(retorno, isTrue);
+    expect(find.text('Receber Delivery'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final caso in ['saldo pendente', 'cancelado', 'quitado']) {
+    testWidgets('recebimento normal de Delivery encerrado: $caso',
+        (tester) async {
+      cardapio.statusInicial = caso == 'cancelado' ? 'Cancelado' : 'Finalizado';
+      cardapio.pagoInicial = caso == 'quitado' ? '85.00' : '20.00';
+      await tester.pumpWidget(const MaterialApp(
+          home: PaginaFinalizarContaAtendimento(
+        idAtendimento: '138',
+        idComanda: '0',
+        idMesa: '0',
+        tipo: TipoCardapio.delivery,
+      )));
+      await tester.pumpAndSettle();
+      if (caso == 'saldo pendente') {
+        expect(find.textContaining('65,00'), findsWidgets);
+        expect(find.text('Esta conta não está mais aberta para recebimento.'),
+            findsNothing);
+        await tester
+            .tap(find.byKey(const ValueKey('avancar_finalizacao_atendimento')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('avancar_acrescimos_atendimento')),
+            findsOneWidget);
+      } else {
+        expect(find.text('Esta conta não está mais aberta para recebimento.'),
+            findsOneWidget);
+        expect(find.byKey(const ValueKey('avancar_finalizacao_atendimento')),
+            findsNothing);
+      }
+      expect(pagamento.pagamentos, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+    });
+  }
 
   Future<void> abrir(WidgetTester tester,
       {Size tamanho = const Size(430, 1000), double escala = 1}) async {

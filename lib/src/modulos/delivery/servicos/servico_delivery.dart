@@ -1160,7 +1160,8 @@ class ServicoDelivery {
     final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||
         forma > 9 ||
-        pedido.encerrado ||
+        pedido.cancelado ||
+        pedido.restante <= 0.009 ||
         totalAPagar <= 0.009 ||
         recebido <= 0 ||
         !recebido.isFinite) {

@@ -93,11 +93,20 @@ class _PaginaFinalizarContaAtendimentoState
       if (atendimento.id == null || atendimento.id != widget.idAtendimento) {
         throw StateError('Atendimento não encontrado.');
       }
-      if (['Finalizada', 'Concluída'].contains(atendimento.status) &&
-          concluirSeFinalizada) {
+      final deliveryFinalizado = widget.tipo == TipoCardapio.delivery &&
+          ['Finalizado', 'Finalizada', 'Concluída']
+              .contains(atendimento.status);
+      final deliveryComSaldo = deliveryFinalizado &&
+          centavosMonetarios(atendimento.valorTotal) >
+              centavosMonetarios(atendimento.somaValorHistorico);
+      if ((['Finalizada', 'Concluída'].contains(atendimento.status) ||
+              deliveryFinalizado) &&
+          concluirSeFinalizada &&
+          !deliveryComSaldo) {
         contaFinalizada = true;
       } else if (!['Andamento', 'Fechamento', 'Pendente']
-          .contains(atendimento.status)) {
+              .contains(atendimento.status) &&
+          !deliveryComSaldo) {
         throw StateError('Esta conta não está mais aberta para recebimento.');
       }
       if (!contaFinalizada) {

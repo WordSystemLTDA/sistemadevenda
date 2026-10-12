@@ -116,7 +116,9 @@ class PedidoDelivery {
   bool get aguardandoSincronizacao =>
       salvoNoAparelho && texto('faseLocal') == 'enfileirado';
   bool get recebidoNaRede =>
-      aguardandoSincronizacao && dados['recebidoNaRede'] == true && texto('estadoSincronizacao') != 'conflito';
+      aguardandoSincronizacao &&
+      dados['recebidoNaRede'] == true &&
+      texto('estadoSincronizacao') != 'conflito';
   bool get preparandoNaRede =>
       recebidoNaRede && texto('etapaDeliveryRede') == 'preparando';
   bool get produtosConfirmadosLocal =>
@@ -226,6 +228,9 @@ class PedidoDelivery {
   double get total => valorDelivery(dados['valorVenda']);
   double get pago => valorDelivery(dados['somaValorHistorico']);
   double get restante => math.max(0, total - pago);
+  // Encerrar/vincular uma venda nao significa que a forma de pagamento foi
+  // escolhida. Pagar Depois continua recebivel enquanto houver saldo.
+  bool get pagamentoConcluido => total > 0 && restante <= 0.009;
   bool get pagamentoPendente => valorDeliverySim(
       dados['pagamentoPendente'] ?? dados['pagamento_pendente']);
   int get quantidade =>
@@ -354,8 +359,8 @@ class ConfigDelivery {
 
   bool exigePagamento(PedidoDelivery pedido, EtapaDelivery destino) =>
       pedido.restante > 0.009 &&
-      !pedido.pagamentoPendente &&
-      (!receberNoFinal || destino.impressao == '3');
+      (destino.impressao == '3' ||
+          (!pedido.pagamentoPendente && !receberNoFinal));
 
   bool get controlaNumeroOperacionalPedido =>
       ativarnumerooperacionalpedido.trim().isNotEmpty ||

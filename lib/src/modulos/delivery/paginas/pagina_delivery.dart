@@ -1180,7 +1180,10 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                         : widget.config?.exigePagamento(
                                                     p, destino ?? etapa) ==
                                                 true
-                                            ? 'Receber ${p.restante.obterReal()}'
+                                            ? (destino ?? etapa).impressao ==
+                                                    '3'
+                                                ? 'FINALIZAR'
+                                                : 'Receber ${p.restante.obterReal()}'
                                             : etapa.impressao == '3'
                                                 ? 'Concluir pedido'
                                                 : etapa.botao;
