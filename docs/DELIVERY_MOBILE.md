@@ -1,5 +1,27 @@
 # Delivery no aplicativo
 
+## Pagamento online pelo Mercado Pago (13/10/2026)
+
+O checkout Delivery identifica as cobrancas Pix/cartao pelos campos
+`pagamento_online_obrigatorio`, `pagamento_online_tipo`,
+`pagamento_online_status` e `pagamento_online_liberado`. O pedido fica visivel
+com **Preparar** desabilitado e **Aguardando pagamento** ate a API confirmar
+`approved` e a liberacao. Saldo local, Pagar Depois e recebimento manual nao
+substituem a confirmacao do provedor financeiro.
+
+Menu/detalhes nao permitem mudar valor, pagamento ou entrega dessa cobranca.
+Preparo e comprovantes ficam bloqueados na geracao, mesmo por uma rota antiga;
+recebimento, conclusao e mudanca de etapa tambem validam o estado. O polling
+existente atualiza a tela depois da aprovacao, e o desktop processa o preparo
+automatico quando sua preferencia estiver ativa. Respostas `jaNaEtapa` nao
+reimprimem uma etapa que outra central ja confirmou. A API prevalece sobre um
+pagamento local antigo depois de rejeicao/estorno.
+
+Validacao isolada:16testes MP e116regressoes Delivery/recebimento/preparo/Wi-Fi
+aprovados, incluindo telas320/1180px e liberacao pela consulta periodica. Nenhum
+pagamento, impressao fisica ou banco vivo usado. Recompilar o app e publicar o
+contrato compativel da API. As formas comuns permanecem no fluxo existente.
+
 Implementacao mobile no `sistemadevenda`, integrada ao contrato da API39.
 O projeto `sistemarestaurante` fornece os mesmos cadastros e regras de entrega.
 

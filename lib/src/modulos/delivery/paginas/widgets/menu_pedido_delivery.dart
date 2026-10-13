@@ -39,7 +39,7 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
     (
       'Pedido',
       [
-        if (pedido.podeAvancar(etapa))
+        if (pedido.podeAvancar(etapa) && !pedido.pagamentoOnlineObrigatorio)
           (
             AcaoPedidoDelivery.editar,
             'Editar Pedido',
@@ -124,6 +124,7 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
       'Financeiro',
       [
         if (pedido.quantidade > 0 &&
+            !pedido.pagamentoOnlineObrigatorio &&
             !pedido.cancelado &&
             !pedido.pagamentoConcluido)
           (
@@ -131,7 +132,7 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
             'Concluir Pagamento',
             Icons.task_alt_outlined
           ),
-        if (pedido.quantidade > 0)
+        if (pedido.quantidade > 0 && !pedido.pagamentoOnlineObrigatorio)
           (
             AcaoPedidoDelivery.pagamento,
             pedido.possuiPagamentoRegistrado
@@ -139,7 +140,7 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
                 : 'Mudar Forma de Pagamento',
             Icons.payments_outlined
           ),
-        if (pedido.podeAvancar(etapa))
+        if (pedido.podeAvancar(etapa) && !pedido.pagamentoOnlineObrigatorio)
           (
             AcaoPedidoDelivery.entrega,
             'Mudar Tipo de Entrega',
@@ -151,11 +152,12 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
       'Relatórios',
       [
         (AcaoPedidoDelivery.conta, 'Conta', Icons.print_outlined),
-        (
-          AcaoPedidoDelivery.preparo,
-          'Imprimir Preparo',
-          Icons.restaurant_outlined
-        ),
+        if (!pedido.aguardandoPagamentoOnline)
+          (
+            AcaoPedidoDelivery.preparo,
+            'Imprimir Preparo',
+            Icons.restaurant_outlined
+          ),
       ]
     ),
     if (fiscal)

@@ -552,8 +552,11 @@ class ServicoDelivery {
           PedidoDelivery pedido, EtapaDelivery destino,
           {String entregador = '',
           String valorEntrega = '0',
-          List<String> impressoes = const []}) =>
-      salvar('delivery/mudar_status_delivery.php', {
+          List<String> impressoes = const []}) async {
+    if (pedido.aguardandoPagamentoOnline) {
+      throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+    }
+    return salvar('delivery/mudar_status_delivery.php', {
         'id': pedido.id,
         'status': destino.id,
         'statusOrigem': pedido.etapa,
@@ -564,9 +567,13 @@ class ServicoDelivery {
         'idEntregador': entregador,
         'valor_da_entrega': valorEntrega,
       });
+  }
 
   Future<void> concluir(PedidoDelivery pedido,
       {bool enviarChavePix = true}) async {
+    if (pedido.aguardandoPagamentoOnline) {
+      throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+    }
     if (FilaDeliveryOffline.local(pedido.id)) {
       await (await _exigirFilaLocal()).concluir(pedido.id);
       return;
@@ -1158,6 +1165,9 @@ class ServicoDelivery {
       String? nomePagamento,
       String? dataLancamento,
       List<ParcelasModelo> parcelasLista = const []}) async {
+    if (pedido.pagamentoOnlineObrigatorio) {
+      throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
+    }
     final totalOriginal = valorOriginal ?? pedido.total;
     final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||

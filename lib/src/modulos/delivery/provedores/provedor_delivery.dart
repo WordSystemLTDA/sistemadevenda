@@ -172,6 +172,12 @@ class ProvedorDelivery extends ChangeNotifier {
     };
     _pedidosRecentes.removeWhere((id, item) {
       final remoto = remotos[id];
+      // Confirmacao/rejeicao/estorno do provedor financeiro sempre prevalece
+      // sobre o retrato otimista guardado no telefone.
+      final pagamentoOnlineAtualizado = remoto != null &&
+          (remoto.pagamentoOnlineObrigatorio || item.pedido.pagamentoOnlineObrigatorio) &&
+          (remoto.pagamentoOnlineStatus != item.pedido.pagamentoOnlineStatus ||
+              remoto.aguardandoPagamentoOnline != item.pedido.aguardandoPagamentoOnline);
       final confirmado = remoto != null &&
           remoto.etapa == item.pedido.etapa &&
           remoto.quantidade >= item.pedido.quantidade &&
@@ -179,6 +185,7 @@ class ProvedorDelivery extends ChangeNotifier {
           remoto.total >= item.pedido.total - 0.009;
       // O ACK do PC prevalece sobre a exibicao otimista do rascunho local.
       return item.ate.isBefore(agora) ||
+          pagamentoOnlineAtualizado ||
           confirmado ||
           remoto?.recebidoNaRede == true && item.pedido.salvoNoAparelho;
     });

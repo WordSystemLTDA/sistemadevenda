@@ -40,7 +40,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
   String? _erro;
   ServicoEdicaoPedido get _edicao => ServicoEdicaoPedido(widget.servico);
   bool get _podeEditar =>
-      _pedido != null && !_pedido!.cancelado && !_ocupado && !_carregando;
+      _pedido != null && !_pedido!.cancelado && !_pedido!.pagamentoOnlineObrigatorio && !_ocupado && !_carregando;
 
   @override
   void initState() {
@@ -194,7 +194,8 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                   tooltip: 'Imprimir',
                   icon: const Icon(Icons.print_outlined),
                   onSelected: _imprimir,
-                  itemBuilder: (_) => const [
+                  itemBuilder: (_) => [
+                        if (pedido?.aguardandoPagamentoOnline != true)
                         PopupMenuItem(
                             value: true, child: Text('Imprimir preparo')),
                         PopupMenuItem(
@@ -212,7 +213,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                       child: Wrap(spacing: 8, runSpacing: 8, children: [
                         OutlinedButton.icon(
-                            onPressed: _ocupado
+                            onPressed: !_podeEditar
                                 ? null
                                 : () async {
                                     await Navigator.push(
@@ -234,7 +235,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
                                   },
                             icon: const Icon(Icons.add_shopping_cart),
                             label: const Text('Adicionar produtos')),
-                        if (!widget.modeloRecorrente && pedido.restante > .009)
+                        if (!widget.modeloRecorrente && !pedido.pagamentoOnlineObrigatorio && pedido.restante > .009)
                           FilledButton.icon(
                               onPressed: _ocupado
                                   ? null

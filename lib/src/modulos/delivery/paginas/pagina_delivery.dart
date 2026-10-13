@@ -423,6 +423,10 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       return false;
     }
     if (_ocupado != null) return false;
+    if (pedido.aguardandoPagamentoOnline) {
+      if (exibirFalha) _mensagem('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+      return false;
+    }
     if (pedido.quantidade == 0) {
       await _cardapio(pedido);
       return false;
@@ -432,6 +436,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     try {
       var atual = await _provedor.servico.pedido(pedido.id);
       if (!mounted) return false;
+      if (atual.aguardandoPagamentoOnline) {
+        throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+      }
       if (!atual.podeAvancar(origem) || atual.etapa != origem.id) {
         throw StateError(
             'O pedido foi atualizado em outro aparelho. Confira a etapa atual.');
@@ -493,6 +500,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
           : <String>[];
       if (!mounted) return false;
       var preparoPersistido = false;
+      var etapaJaConfirmada = false;
       if (alvo.impressao == '3' && !conferido.encerrado) {
         await _provedor.servico.concluir(conferido, enviarChavePix: false);
       }
@@ -505,6 +513,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               'Esta etapa exige um entregador. Confira a configuração do Delivery.');
         }
         preparoPersistido = res['impressao_persistida'] == true;
+        etapaJaConfirmada = res['jaNaEtapa'] == true;
         alterado = true;
         if (atualizarProvedor) {
           _provedor.moverPedidoParaEtapa(conferido, alvo.id);
@@ -512,7 +521,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
         }
       }
-      if (mensagens.isNotEmpty) {
+      if (mensagens.isNotEmpty && !etapaJaConfirmada) {
         await ImpressaoDelivery.enviarPreparadas(
             Modular.get<Server>(), mensagens,
             preparoPersistido: preparoPersistido);
@@ -548,6 +557,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     if (destinos.isEmpty) return null;
 
     String? bloqueio(EtapaDelivery etapa) {
+      if (pedidos.any((pedido) => pedido.aguardandoPagamentoOnline)) {
+        return 'Aguarde a confirmação do pagamento pelo Mercado Pago.';
+      }
       if (etapa.impressao == '3' &&
           pedidos.any((pedido) => config.exigePagamento(pedido, etapa))) {
         return 'Há pedidos sem pagamento completo. Receba esses pedidos antes de concluir.';
@@ -1168,7 +1180,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final idade = p.abertura == null
                                 ? ''
                                 : '${DateTime.now().difference(p.abertura!).inMinutes.clamp(0, 99999)} min';
-                            final label = p.recebidoNaRede &&
+                            final label = p.aguardandoPagamentoOnline
+                                ? 'Preparar'
+                                : p.recebidoNaRede &&
                                     !p.preparandoNaRede
                                 ? 'Preparar'
                                 : p.salvoNoAparelho
@@ -1204,6 +1218,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                 !excluindo &&
                                 !imprimindo;
                             final podeImprimir = !p.salvoNoAparelho &&
+                                !p.aguardandoPagamentoOnline &&
                                 p.quantidade > 0 &&
                                 !_etapaAguardando(etapa);
                             final produtos = p.produtos;
@@ -1435,7 +1450,12 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                       Curves.easeOutCubic,
                                                 ),
                                               ],
-                                              if (p.pago > 0)
+                                              if (p.aguardandoPagamentoOnline)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 6),
+                                                  child: Text('Aguardando pagamento', style: TextStyle(fontSize: 12, color: cs.error)),
+                                                ),
+                                              if (p.pago > 0 && !p.aguardandoPagamentoOnline)
                                                 Padding(
                                                     padding:
                                                         const EdgeInsets.only(
@@ -1472,7 +1492,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                 ),
                                               if (podeAvancar ||
                                                   podeImprimir ||
-                                                  podeVerDetalhes) ...[
+                                                  podeVerDetalhes || p.aguardandoPagamentoOnline) ...[
                                                 const SizedBox(height: 12),
                                                 Row(children: [
                                                   if (podeExcluirRascunho) ...[
@@ -1573,7 +1593,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     const SizedBox(width: 8),
                                                   ],
                                                   if (podeAvancar ||
-                                                      podeVerDetalhes)
+                                                      podeVerDetalhes || p.aguardandoPagamentoOnline)
                                                     Expanded(
                                                       flex:
                                                           podeExcluirRascunho ||
@@ -1583,7 +1603,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                       child: FilledButton.icon(
                                                         key: ValueKey(
                                                             '${podeVerDetalhes ? 'detalhes-venda-delivery' : 'avancar-delivery'}-${p.id}'),
-                                                        onPressed: widget
+                                                        onPressed: (!podeAvancar && !podeVerDetalhes) || widget
                                                                         .ocupado !=
                                                                     null ||
                                                                 widget

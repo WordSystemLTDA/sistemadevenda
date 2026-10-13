@@ -65,6 +65,9 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
     });
     try {
       final pedido = await widget.servico.pedido(widget.id);
+      if (pedido.pagamentoOnlineObrigatorio) {
+        throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
+      }
       final recorrencia = await widget.servico.pagamentoRecorrente(widget.id);
       final bancos =
           await widget.servico.consultar('tela_nfe_saida/listar_bancos.php', {
@@ -115,6 +118,9 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
     });
     try {
       final atual = await widget.servico.pedido(widget.id);
+      if (atual.pagamentoOnlineObrigatorio) {
+        throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
+      }
       if ((atual.restante - _pedido!.restante).abs() > .009 ||
           atual.cancelado ||
           atual.pagamentoConcluido) {

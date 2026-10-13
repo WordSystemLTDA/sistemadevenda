@@ -36,6 +36,10 @@ Future<String?> executarAcaoDelivery(
     ServicoDelivery servico,
     PedidoDelivery pedido,
     AcaoPedidoDelivery acao) async {
+  if (pedido.pagamentoOnlineObrigatorio &&
+      {AcaoPedidoDelivery.editar, AcaoPedidoDelivery.receber, AcaoPedidoDelivery.pagamento, AcaoPedidoDelivery.entrega}.contains(acao)) {
+    throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
+  }
   switch (acao) {
     case AcaoPedidoDelivery.editar:
     case AcaoPedidoDelivery.produtos:

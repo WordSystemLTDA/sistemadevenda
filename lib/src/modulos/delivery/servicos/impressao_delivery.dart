@@ -31,6 +31,9 @@ class ImpressaoDelivery {
       bool ambos = false,
       String? chaveRecorrente,
       ConfigDelivery? config}) async {
+    if (pedido.aguardandoPagamentoOnline) {
+      throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+    }
     final resultados = await Future.wait([
       servico.dadosCardapio(pedido.id),
       servico.detalhesLocais(pedido.id),
@@ -510,6 +513,9 @@ class ImpressaoDelivery {
   static List<String> comprovantes(ServicoDelivery servico,
       PedidoDelivery pedido, List<Modelowordprodutos> produtos,
       {TipoCardapio tipo = TipoCardapio.delivery, ConfigDelivery? config}) {
+    if (pedido.aguardandoPagamentoOnline) {
+      throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+    }
     final numeroPedido =
         exigirNumeroPedidoOperacional(pedido.numeroOperacional);
     final grupos = <String, List<Modelowordprodutos>>{};

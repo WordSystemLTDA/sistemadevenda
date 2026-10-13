@@ -163,9 +163,16 @@ class PedidoDelivery {
   }
 
   bool get cancelado => texto('status') == 'Cancelado';
+  bool get pagamentoOnlineObrigatorio =>
+      valorDeliverySim(dados['pagamento_online_obrigatorio']);
+  String get pagamentoOnlineStatus => texto('pagamento_online_status');
+  String get pagamentoOnlineTipo => texto('pagamento_online_tipo');
+  bool get aguardandoPagamentoOnline => pagamentoOnlineObrigatorio &&
+      !(valorDeliverySim(dados['pagamento_online_liberado']) &&
+          pagamentoOnlineStatus.trim().toLowerCase() == 'approved');
   // A venda pode estar paga antes de o pedido entrar em preparo.
   bool podeAvancar(EtapaDelivery origem) =>
-      !cancelado && origem.impressao != '3';
+      !cancelado && !aguardandoPagamentoOnline && origem.impressao != '3';
   double get taxaEntrega =>
       tipoEntrega == '1' ? valorDelivery(dados['valordaentrega']) : 0;
 
@@ -230,7 +237,9 @@ class PedidoDelivery {
   double get restante => math.max(0, total - pago);
   // Encerrar/vincular uma venda nao significa que a forma de pagamento foi
   // escolhida. Pagar Depois continua recebivel enquanto houver saldo.
-  bool get pagamentoConcluido => total > 0 && restante <= 0.009;
+  bool get pagamentoConcluido => pagamentoOnlineObrigatorio
+      ? !aguardandoPagamentoOnline
+      : total > 0 && restante <= 0.009;
   bool get pagamentoPendente => valorDeliverySim(
       dados['pagamentoPendente'] ?? dados['pagamento_pendente']);
   int get quantidade =>
@@ -358,6 +367,7 @@ class ConfigDelivery {
       };
 
   bool exigePagamento(PedidoDelivery pedido, EtapaDelivery destino) =>
+      !pedido.pagamentoOnlineObrigatorio &&
       pedido.restante > 0.009 &&
       (destino.impressao == '3' ||
           (!pedido.pagamentoPendente && !receberNoFinal));
