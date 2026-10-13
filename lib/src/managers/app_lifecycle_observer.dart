@@ -84,7 +84,9 @@ class _AppLifecycleObserverState extends State<AppLifecycleObserver>
   Future<void> _retomar({bool renovarCanal = false}) async {
     final geracao = ++_geracaoRetomada;
     _renovarCanalPendente = _renovarCanalPendente || renovarCanal;
-    sincronizador.solicitar();
+    // A mudanca de rede/retomada deve enviar a fila mesmo durante o backoff
+    // de uma consulta anterior. O envio preserva os mesmos IDs e payloads.
+    unawaited(sincronizador.retomarEnvios());
     try {
       final conexao = await ConfigSharedPreferences().getConexao();
       if (!mounted || geracao != _geracaoRetomada) return;

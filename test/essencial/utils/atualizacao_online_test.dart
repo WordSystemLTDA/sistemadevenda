@@ -260,6 +260,26 @@ void main() {
     expect(server.executorPedidosRede, isNull);
     await server.onData(jsonEncode(envelopeRede(anuncio)));
     expect(server.executorPedidosRede, executor);
+    final compartilhados = <Map<String, dynamic>>[];
+    server.aoCompartilharPedidosRede = compartilhados.add;
+    final listaRede = {
+      'tipo': 'PedidosCompartilhadosRede',
+      'protocoloPedidoRede': 1,
+      'idEmpresa': '2',
+      'executorImpressaoRede': executor,
+      'sessaoRede': id,
+      'revisao': 1,
+      'pedidos': []
+    };
+    await server
+        .onData(jsonEncode(envelopeRede(listaRede, 'online|bigchef.com.br|3')));
+    await server.onData(jsonEncode(envelopeRede({
+      ...listaRede,
+      'executorImpressaoRede': 'preparo-22222222222222222222222222222222'
+    })));
+    expect(compartilhados, isEmpty);
+    await server.onData(jsonEncode(envelopeRede(listaRede)));
+    expect(compartilhados.single['revisao'], 1);
     final copia = entrada.firstWhere(
         (m) => m['data']?['customData']?['tipo'] == 'PedidoRedeSemInternet');
     expect(

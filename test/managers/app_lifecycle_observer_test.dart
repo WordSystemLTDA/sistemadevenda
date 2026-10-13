@@ -49,6 +49,8 @@ class SincronizadorCiclo extends Sincronizador {
   void iniciar() {}
   @override
   void solicitar() => retomadas++;
+  @override
+  Future<void> retomarEnvios() async => retomadas++;
 }
 
 class ModuloCiclo extends Module {

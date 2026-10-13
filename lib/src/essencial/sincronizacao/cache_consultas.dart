@@ -20,6 +20,7 @@ class CacheConsultas extends Interceptor {
   final Set<String> _atualizando = {};
   int _geracaoAtendimento = 0;
   void Function()? aoAtualizar;
+  void Function()? aoConectar;
 
   CacheConsultas(this.cliente, this.banco);
   late final pedidosRede = PedidosCompartilhados(banco);
@@ -27,6 +28,7 @@ class CacheConsultas extends Interceptor {
   Future<Object?> _projetarRede(RequestOptions opcoes, Object? dados) {
     if (opcoes.baseUrl != servidor ||
         escopo.isEmpty ||
+        opcoes.extra['preparacaoOffline'] == true ||
         !{
           'mesas/listar.php',
           'comandas/listar.php',
@@ -35,11 +37,14 @@ class CacheConsultas extends Interceptor {
           'cardapio/listar_por_id.php',
           'delivery/listar_opcoes_por_id.php',
           'balcao/listar_por_id.php'
-        }.contains(caminho(opcoes))) return Future.value(dados);
+        }.contains(caminho(opcoes))) {
+      return Future.value(dados);
+    }
     final empresaConsulta = opcoes.uri.queryParameters['empresa'] ??
         opcoes.uri.queryParameters['id_empresa'];
-    if (empresaConsulta != null && empresaConsulta != empresa)
+    if (empresaConsulta != null && empresaConsulta != empresa) {
       return Future.value(dados);
+    }
     return pedidosRede.projetar(opcoes, dados);
   }
 
@@ -85,8 +90,10 @@ class CacheConsultas extends Interceptor {
   }
 
   void confirmarConexao() {
+    final retomou = !servidorDisponivel;
     servidorDisponivel = true;
     _ultimaFalha = null;
+    if (retomou) aoConectar?.call();
   }
 
   static bool falhaDeConexao(DioException erro) =>
@@ -161,12 +168,13 @@ class CacheConsultas extends Interceptor {
       if (options.method == 'GET' &&
           options.uri.queryParameters['imprimir'] != 'true') {
         final dados = await _projetarRede(options, null);
-        if (dados != null)
+        if (dados != null) {
           return handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
               data: dados,
               extra: {'cacheLocal': true}));
+        }
       }
       return handler.reject(DioException(
           requestOptions: options,
@@ -212,7 +220,8 @@ class CacheConsultas extends Interceptor {
         dados = await _derivar(options, alvo) ?? dados;
       }
       dados ??= await _derivar(options, alvo);
-      if (dados != null &&
+      final projetado = await _projetarRede(options, dados);
+      if (projetado != null &&
           (falhouRecentemente || !_exigeConsultaAtual(caminho(options)))) {
         final recente = consulta != null &&
             DateTime.now().millisecondsSinceEpoch -
@@ -222,7 +231,7 @@ class CacheConsultas extends Interceptor {
         return handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: await _projetarRede(options, dados),
+            data: projetado,
             extra: {'cacheLocal': true}));
       }
       if (falhouRecentemente) {

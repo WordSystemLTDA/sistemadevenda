@@ -896,6 +896,44 @@ void main() {
     expect(aplicados, hasLength(1));
   });
 
+  test(
+      'retomar rede ignora espera antiga, preserva ID e atualiza a tela de origem',
+      () async {
+    await guardar();
+    final op = (await banco.operacoes(sync.escopo)).single;
+    await banco.atualizarOperacao(op['id'] as String, {
+      'proxima':
+          DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch,
+    });
+    conectado = true;
+    var atualizacoes = 0;
+    sync.aoAtualizarTelas = () => atualizacoes++;
+    await sync.retomarEnvios();
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, {op['id']});
+    expect(atualizacoes, greaterThan(0));
+  });
+
+  test('API recuperada na mesma rede Wi-Fi retoma pedido sem aguardar backoff',
+      () async {
+    await guardar();
+    final op = (await banco.operacoes(sync.escopo)).single;
+    await banco.atualizarOperacao(op['id'] as String, {
+      'proxima':
+          DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch,
+    });
+    conectado = true;
+    sync.iniciar();
+    await sync.sincronizar();
+    for (var i = 0;
+        i < 50 && (await banco.operacoes(sync.escopo)).isNotEmpty;
+        i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(aplicados, {op['id']});
+  });
+
   for (final tipo in ['mesa', 'comanda']) {
     test('servidor antigo ainda permite abertura online de $tipo', () async {
       await banco.gravar('estado:${sync.escopo}', '{}');

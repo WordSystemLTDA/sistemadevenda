@@ -33,7 +33,9 @@ class PedidosCompartilhados {
           mensagem['executorImpressaoRede'] != executor ||
           ProtocoloPedidosRede.mensagem(mensagem, rede,
                   aceitarResposta: true)?['tipo'] !=
-              ProtocoloPedidosRede.lista) return false;
+              ProtocoloPedidosRede.lista) {
+        return false;
+      }
       final pedidos = mensagem['pedidos'] as List;
       if (pedidos.length > 10000) return false;
       final ids = <String>{};
@@ -45,13 +47,17 @@ class PedidosCompartilhados {
             p['pedido'] is! Map ||
             p['pedido']['produtos'] is! List ||
             !{'mesa', 'comanda', 'delivery', 'balcao'}
-                .contains(p['pedido']['tipoAtendimento'])) return false;
+                .contains(p['pedido']['tipoAtendimento'])) {
+          return false;
+        }
       }
       final texto = await banco.ler(chave);
       final anterior = texto == null ? null : jsonDecode(texto) as Map;
       if (anterior?['sessaoRede'] == mensagem['sessaoRede'] &&
-          (anterior?['revisao'] as int? ?? -1) >= (mensagem['revisao'] as int))
+          (anterior?['revisao'] as int? ?? -1) >=
+              (mensagem['revisao'] as int)) {
         return false;
+      }
       if (alvo != _alvo || rede != _rede || executor != _executor) return false;
       await banco.gravar(chave, jsonEncode(mensagem));
       return alvo == _alvo && rede == _rede && executor == _executor;
@@ -66,6 +72,9 @@ class PedidosCompartilhados {
     final texto = await banco.ler(_chave);
     if (texto == null || alvo != _alvo || rede != _rede) return [];
     final snapshot = jsonDecode(texto) as Map;
+    if (_executor != null && snapshot['executorImpressaoRede'] != _executor) {
+      return [];
+    }
     // O aparelho de origem ja projeta sua propria fila, inclusive recibos.
     final proprios = await banco.db.query('operacoes',
         columns: ['id'], where: 'escopo = ?', whereArgs: [alvo]);
@@ -79,8 +88,9 @@ class PedidosCompartilhados {
 
   static double numero(Object? valor) {
     var texto = '${valor ?? '0'}'.replaceAll('R\$', '').trim();
-    if (texto.contains(','))
+    if (texto.contains(',')) {
       texto = texto.replaceAll('.', '').replaceAll(',', '.');
+    }
     final n = double.tryParse(texto) ?? 0;
     return n.isFinite ? n : 0;
   }
@@ -103,12 +113,15 @@ class PedidosCompartilhados {
       'valordesconto': '0',
       'valoracrescimo': '0',
       'idCliente': '0',
-      'idMesa': '0',
-      'idComanda': '0',
+      'idMesa':
+          pedido['tipoAtendimento'] == 'mesa' ? '${pedido['recurso']}' : '0',
+      'idComanda':
+          pedido['tipoAtendimento'] == 'comanda' ? '${pedido['recurso']}' : '0',
       ...pedido,
       'id': id,
       'nome': pedido['nome'] ?? pedido['nomeCliente'] ?? '',
       'valorTotal': valor,
+      'valorVenda': valor,
       'valorTotalF': valor,
       'subtotal': valor,
       'dataHora': pedido['dataHora'] ?? registro['recebidoEm'] ?? '',
@@ -128,8 +141,39 @@ class PedidosCompartilhados {
     };
   }
 
-  Future<bool> temPendencia(String id) async => (await pedidos())
-      .any((p) => local(id) || '${p['pedido']['idAtendimento']}' == id);
+  Future<bool> temPendencia(String id) async {
+    final registros = await pedidos();
+    if (registros
+        .any((p) => local(id) || '${p['pedido']['idAtendimento']}' == id))
+      return true;
+    // Copias anteriores ao campo idAtendimento usam o cadastro do recurso.
+    final legados = registros
+        .where((p) =>
+            p['pedido']['idAtendimento'] == null &&
+            {'mesa', 'comanda'}.contains(p['pedido']['tipoAtendimento']))
+        .toList();
+    if (legados.isEmpty) return false;
+    final consultas = await banco.db
+        .query('consultas', where: 'escopo = ?', whereArgs: [_alvo]);
+    for (final c in consultas) {
+      final rota = (jsonDecode(c['chave'] as String) as List).first;
+      if (rota != 'mesas/listar.php' && rota != 'comandas/listar.php') continue;
+      final tipo = rota == 'mesas/listar.php' ? 'mesa' : 'comanda';
+      final grupos = jsonDecode(c['valor'] as String);
+      if (grupos is! List) continue;
+      for (final g in grupos) {
+        for (final r in g['${tipo}s'] as List? ?? []) {
+          if ('${r['idComandaPedido']}' == id &&
+              legados.any((p) =>
+                  p['pedido']['tipoAtendimento'] == tipo &&
+                  '${p['pedido']['recurso']}' == '${r['id']}')) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 
   Future<Object?> projetar(RequestOptions opcoes, Object? base) async {
     final rota = Uri.parse(opcoes.path).path.replaceFirst(RegExp(r'^/+'), '');
@@ -164,8 +208,9 @@ class PedidosCompartilhados {
                     r['idAtendimentoRede'] == id))
             .toList();
         if (oficiais.length > 1 ||
-            oficiais.isEmpty && candidatos.any((r) => r[ocupado] == true))
+            oficiais.isEmpty && candidatos.any((r) => r[ocupado] == true)) {
           continue;
+        }
         Map recurso;
         if (oficiais.isNotEmpty) {
           recurso = oficiais.single;
@@ -179,8 +224,9 @@ class PedidosCompartilhados {
           recurso['valor'] = '0';
         } else {
           if (!corresponde(p)) continue;
-          recurso = {
+          recurso = <String, dynamic>{
             'id': idRecurso,
+            'codigo': '${p['codigo'] ?? ''}',
             'nome': p['identificacaoAtendimento'] ?? idRecurso,
             'ativo': 'Sim',
             ocupado: true,
@@ -219,7 +265,19 @@ class PedidosCompartilhados {
         final d = detalhe(r);
         if (!corresponde(d) || !_periodo(d, q)) continue;
         if ((q['tipoentrega'] ?? '0') != '0' &&
-            q['tipoentrega'] != '${d['tipodeentrega']}') continue;
+            q['tipoentrega'] != '${d['tipodeentrega']}') {
+          continue;
+        }
+        final oficial = etapas
+            .expand((e) => e['vendas'] as List? ?? [])
+            .where((v) => '${v['id']}' == '${r['pedido']['idAtendimento']}')
+            .firstOrNull;
+        if (oficial is Map) {
+          if (r['totalCompleto'] == true) {
+            oficial.addAll(<String, dynamic>{...d, 'id': oficial['id']});
+          }
+          continue;
+        }
         final impressao = r['etapaDelivery'] == 'preparando' ? '1' : '0';
         var etapa = etapas
             .where((e) => '${e['tipodeimpressao']}' == impressao)
@@ -245,6 +303,16 @@ class PedidosCompartilhados {
           .where((r) => r['pedido']['tipoAtendimento'] == 'balcao')) {
         final d = detalhe(r);
         if (!corresponde(d) || !_periodo(d, q)) continue;
+        final oficial = lista
+            .where((v) => '${v['id']}' == '${r['pedido']['idAtendimento']}')
+            .firstOrNull;
+        if (oficial is Map) {
+          if (r['totalCompleto'] == true) {
+            oficial['subtotal'] = d['subtotal'];
+            oficial['valorTotalF'] = d['valorTotalF'];
+          }
+          continue;
+        }
         lista.insert(0, {
           ...d,
           'nomecliente': '${d['nomeCliente'] ?? ''}',
@@ -271,6 +339,22 @@ class PedidosCompartilhados {
           .firstOrNull;
       if (remoto != null) {
         final d = detalhe(remoto);
+        final familia = registros.where((r) =>
+            r['idOperacaoRede'] != remoto['idOperacaoRede'] &&
+            r['pedido']['tipoAtendimento'] ==
+                remoto['pedido']['tipoAtendimento'] &&
+            r['pedido']['idAtendimento'] != null &&
+            r['pedido']['idAtendimento'] == remoto['pedido']['idAtendimento']);
+        for (final r in familia) {
+          final outro = detalhe(r);
+          d['produtos'] = [
+            ...d['produtos'] as List,
+            ...outro['produtos'] as List
+          ];
+          d['valorTotal'] =
+              (numero(d['valorTotal']) + numero(outro['valorTotal']))
+                  .toStringAsFixed(2);
+        }
         return rota == 'cardapio/listar_por_id.php'
             ? d
             : {'sucesso': true, 'dados': d};
@@ -280,7 +364,7 @@ class PedidosCompartilhados {
             .where((r) => '${r['pedido']['idAtendimento']}' == id)) {
           final d = detalhe(r);
           if (r['totalCompleto'] == true) {
-            copia.addAll({...d, 'id': id});
+            copia.addAll(<String, dynamic>{...d, 'id': id});
           } else {
             copia['produtos'] = [
               ...copia['produtos'] as List? ?? [],

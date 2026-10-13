@@ -82,7 +82,13 @@ class ServicoCardapio {
         options: semCache ? Options(extra: {'semCache': true}) : null);
 
     if (response.statusCode == 200) {
-      final dados = Modeloworddadoscardapio.fromMap(response.data);
+      final projetado = sync != null &&
+              [TipoCardapio.comanda, TipoCardapio.mesa].contains(tipo)
+          ? await AtendimentosLocais(sync.banco, sync.escopo).projetarDetalhe(
+              Map<String, dynamic>.from(response.data),
+              tipo == TipoCardapio.mesa ? 'mesa' : 'comanda')
+          : response.data;
+      final dados = Modeloworddadoscardapio.fromMap(projetado);
       if (tipo == TipoCardapio.comanda || tipo == TipoCardapio.mesa) {
         await ArmazenamentoCarrinhos.instancia
             .atualizarStatus(empresa ?? '', id, dados.status);

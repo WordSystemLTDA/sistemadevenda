@@ -43,8 +43,9 @@ class AtendimentosLocais {
   }
 
   Future<String> idServidor(String id) async {
-    if (PedidosCompartilhados.local(id))
+    if (PedidosCompartilhados.local(id)) {
       throw StateError('Aguarde a confirmacao do pedido recebido pelo Wi-Fi.');
+    }
     if (!local(id)) return id;
     final op = await abertura(id);
     final real = op == null ? null : recibo(op)['id_comanda_pedido'];
@@ -327,12 +328,14 @@ class AtendimentosLocais {
         whereArgs: [escopo]);
     for (final op in produtos) {
       final d = dados(op);
-      if (d['tipo'] != tipo || projetados.contains('${op['atendimento']}'))
+      if (d['tipo'] != tipo || projetados.contains('${op['atendimento']}')) {
         continue;
+      }
       for (final grupo in copia) {
         for (final recurso in grupo[campo] as List? ?? []) {
-          if ('${recurso['idComandaPedido']}' != '${op['atendimento']}')
+          if ('${recurso['idComandaPedido']}' != '${op['atendimento']}') {
             continue;
+          }
           recurso['valor'] = (PedidosCompartilhados.numero(recurso['valor']) +
                   PedidosCompartilhados.total(d))
               .toStringAsFixed(2);
@@ -341,6 +344,41 @@ class AtendimentosLocais {
                   .toIso8601String();
         }
       }
+    }
+    return copia;
+  }
+
+  Future<Map<String, dynamic>> projetarDetalhe(
+      Map<String, dynamic> base, String tipo) async {
+    final id = '${base['id']}';
+    final opcoes = await banco.db.query('operacoes',
+        where: "escopo = ? AND acao = 'produtos' AND estado = 'pendente'",
+        whereArgs: [escopo]);
+    final copia =
+        Map<String, dynamic>.from(jsonDecode(jsonEncode(base)) as Map);
+    for (final op in opcoes) {
+      final d = dados(op);
+      if (d['tipo'] != tipo) continue;
+      final atendimento = '${op['atendimento']}';
+      if (atendimento != id) {
+        if (!local(atendimento)) continue;
+        final origem = await abertura(atendimento);
+        if (origem == null || '${recibo(origem)['id_comanda_pedido']}' != id) {
+          continue;
+        }
+      }
+      copia['produtos'] = [
+        ...copia['produtos'] as List? ?? [],
+        for (final p in d['produtos'] as List? ?? [])
+          {
+            ...Map<String, dynamic>.from(p as Map),
+            'novo': false,
+            'iditensvenda': 'local-item:${op['id']}'
+          }
+      ];
+      copia['valorTotal'] = (PedidosCompartilhados.numero(copia['valorTotal']) +
+              PedidosCompartilhados.total(d))
+          .toStringAsFixed(2);
     }
     return copia;
   }

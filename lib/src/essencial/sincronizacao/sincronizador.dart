@@ -17,7 +17,6 @@ import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/servicos/preparacao_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 
 import 'banco_local.dart';
 import 'atendimentos_locais.dart';
@@ -29,7 +28,7 @@ import 'recebimentos_atendimento.dart';
 import 'politica_offline_online.dart';
 import 'pedidos_compartilhados.dart';
 
-class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
+class Sincronizador extends ChangeNotifier {
   static Sincronizador? instancia;
   static const _falhaEnvio =
       'Nao foi possivel enviar os pedidos. Verifique o servidor.';
@@ -51,6 +50,7 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
   CancelToken? _cancelamentoPreparacao;
   Future<void> _filaOperacoes = Future.value();
   Future<void>? _retentativaManual;
+  Future<void>? _retomandoEnvios;
   final _recebimentosDelivery = <String, Completer<void>>{};
   final revisaoCatalogo = ValueNotifier<int>(0);
   Future<void>? _configurando;
@@ -96,7 +96,6 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
       .length;
 
   void iniciar() {
-    WidgetsBinding.instance.addObserver(this);
     instancia = this;
     usuario.addListener(_sessaoMudou);
     socket.addListener(_socketMudou);
@@ -128,6 +127,9 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
       }));
     };
     api.cache?.aoAtualizar = () => aoAtualizarTelas?.call();
+    api.cache?.aoConectar = () {
+      if (!_descartado) unawaited(retomarEnvios());
+    };
     _timer ??= Timer.periodic(const Duration(seconds: 15), (_) => solicitar());
     _timerRede ??= Timer.periodic(
         const Duration(seconds: 5), (_) => unawaited(_pedidosRede.processar()));
@@ -190,28 +192,30 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(_pedidosRede.processar());
     if (socket.connected && !_socketConectado) {
       // Retomar a fila nao depende do backoff da consulta do catalogo.
-      unawaited(enviarPendentes());
+      unawaited(retomarEnvios());
       solicitar();
     }
     _socketConectado = socket.connected;
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_descartado) {
-      unawaited(retomarEnvios());
-    }
-  }
+  Future<void> retomarEnvios() =>
+      _retomandoEnvios ??= _retomarEnvios().catchError((Object falha) {
+        if (!_descartado) {
+          erro = _envioPendente;
+          _notificar();
+        }
+      }).whenComplete(() => _retomandoEnvios = null);
 
-  Future<void> retomarEnvios() async {
+  Future<void> _retomarEnvios() async {
     if (_descartado) return;
     await configurar();
     final alvo = escopo;
     if (alvo.isEmpty || _descartado) return;
     for (final op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo) return;
-      if (op['estado'] == 'pendente')
+      if (op['estado'] == 'pendente') {
         await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+      }
     }
     _proximaConsultaEstado = null;
     _consultarPedidosCompartilhados();
@@ -395,6 +399,11 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
     required String idCliente,
     required List<String> impressoes,
   }) async {
+    if (PedidosCompartilhados.local(idAtendimento) ||
+        PedidosCompartilhados.local(idItemVenda)) {
+      throw StateError(
+          'Aguarde a confirmacao deste produto recebido pelo Wi-Fi antes de editar.');
+    }
     await configurar();
     final conta = usuario.usuario;
     if (escopo.isEmpty ||
@@ -573,6 +582,9 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
       required List<Modelowordprodutos> itens,
       required Map<String, dynamic> dados,
       required List<String> impressoes}) async {
+    if (PedidosCompartilhados.local(contexto.idAtendimento)) {
+      throw StateError('Aguarde a confirmacao do pedido recebido pelo Wi-Fi.');
+    }
     await configurar();
     if (escopo.isEmpty ||
         contexto.empresa != usuario.usuario?.empresa ||
@@ -668,7 +680,14 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
     required Map<String, dynamic> campos,
     required String nomeForma,
   }) async {
+    if (PedidosCompartilhados.local(id)) {
+      throw StateError('Aguarde a confirmacao do pedido recebido pelo Wi-Fi.');
+    }
     await configurar();
+    if (await api.cache?.pedidosRede.temPendencia(id) == true) {
+      throw StateError(
+          'Aguarde a confirmacao dos pedidos recebidos pelo Wi-Fi antes de receber esta conta.');
+    }
     final alvo = escopo;
     final conta = usuario.usuario;
     final destinoOriginal = destino;
@@ -1690,7 +1709,7 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
       if (op['acao'] == 'delivery') {
         _deliveryRecebido(alvo, id);
       }
-      aoAtualizarTelas?.call();
+      if (op['acao'] != 'abertura') aoAtualizarTelas?.call();
     }
     // Preparos antigos ja persistidos no PC nao atrasam o POST de uma venda
     // nova. Sua etapa segue protegida pelo retrato LAN ate a reconciliacao.
@@ -1892,7 +1911,6 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _descartado = true;
     _liberarRecebimentosDelivery();
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
@@ -1906,6 +1924,7 @@ class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
     socket.aoResponderPedidoRede = null;
     socket.aoCompartilharPedidosRede = null;
     api.cache?.pedidosRede.configurar('', null, null);
+    api.cache?.aoConectar = null;
     api.cache?.aoAtualizar = null;
     if (identical(instancia, this)) instancia = null;
     revisaoCatalogo.dispose();
