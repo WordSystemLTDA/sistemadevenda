@@ -7,6 +7,8 @@ class ProtocoloPedidosRede {
   static const resposta = 'RespostaPedidoRede';
   static const prepararDelivery = 'PrepararDeliveryRede';
   static const consultar = 'ConsultarPedidoRede';
+  static const listar = 'ConsultarPedidosRede';
+  static const lista = 'PedidosCompartilhadosRede';
   static String chaveRota(String alvo, String id) =>
       'rota-pedido-rede:$alvo:$id';
 
@@ -24,6 +26,16 @@ class ProtocoloPedidosRede {
       return null;
     }
     final tipo = dados['tipo'];
+    if (tipo == listar) return dados;
+    if (tipo == lista) {
+      return aceitarResposta &&
+              executorValido(dados['executorImpressaoRede']) &&
+              operacaoValida(dados['sessaoRede']) &&
+              dados['revisao'] is int &&
+              dados['pedidos'] is List
+          ? dados
+          : null;
+    }
     if (tipo == anuncio) {
       return aceitarResposta && executorValido(dados['executorImpressaoRede'])
           ? dados

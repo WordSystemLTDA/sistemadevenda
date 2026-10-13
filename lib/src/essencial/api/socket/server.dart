@@ -38,6 +38,7 @@ class Server extends ChangeNotifier {
   String? executorPedidosRede;
   String? get escopoPedidosRede => _escopoOnline;
   void Function(Map<String, dynamic>)? aoResponderPedidoRede;
+  void Function(Map<String, dynamic>)? aoCompartilharPedidosRede;
 
   bool enviarPedidoRede(Map<String, dynamic> mensagem) =>
       connected &&
@@ -1138,6 +1139,13 @@ class Server extends ChangeNotifier {
           mensagem['tipo'] == ProtocoloPedidosRede.anuncio) {
         executorPedidosRede = mensagem['executorImpressaoRede'] as String;
         if (!_descartado) notifyListeners();
+        return;
+      }
+      if (_escopoOnline != null &&
+          mensagem['tipo'] == ProtocoloPedidosRede.lista) {
+        if (mensagem['executorImpressaoRede'] == executorPedidosRede) {
+          aoCompartilharPedidosRede?.call(mensagem);
+        }
         return;
       }
       if (_escopoOnline != null &&

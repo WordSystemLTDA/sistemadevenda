@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import 'banco_local.dart';
+import 'pedidos_compartilhados.dart';
 
 class CacheConsultas extends Interceptor {
   final Dio cliente;
@@ -21,6 +22,42 @@ class CacheConsultas extends Interceptor {
   void Function()? aoAtualizar;
 
   CacheConsultas(this.cliente, this.banco);
+  late final pedidosRede = PedidosCompartilhados(banco);
+
+  Future<Object?> _projetarRede(RequestOptions opcoes, Object? dados) {
+    if (opcoes.baseUrl != servidor ||
+        escopo.isEmpty ||
+        !{
+          'mesas/listar.php',
+          'comandas/listar.php',
+          'balcao/listar.php',
+          'delivery/listar_opcoes.php',
+          'cardapio/listar_por_id.php',
+          'delivery/listar_opcoes_por_id.php',
+          'balcao/listar_por_id.php'
+        }.contains(caminho(opcoes))) return Future.value(dados);
+    final empresaConsulta = opcoes.uri.queryParameters['empresa'] ??
+        opcoes.uri.queryParameters['id_empresa'];
+    if (empresaConsulta != null && empresaConsulta != empresa)
+      return Future.value(dados);
+    return pedidosRede.projetar(opcoes, dados);
+  }
+
+  static bool _temIdRede(Object? valor) {
+    if (valor is Map) return valor.values.any(_temIdRede);
+    if (valor is List) return valor.any(_temIdRede);
+    if (valor is String) {
+      if (PedidosCompartilhados.local(valor)) return true;
+      if (valor.startsWith('{') || valor.startsWith('[')) {
+        try {
+          return _temIdRede(jsonDecode(valor));
+        } on FormatException {
+          return false;
+        }
+      }
+    }
+    return false;
+  }
 
   static const _rotaClientes = 'comandas/listar_clientes.php';
 
@@ -120,6 +157,22 @@ class CacheConsultas extends Interceptor {
   @override
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
+    if (_temIdRede(options.uri.queryParameters) || _temIdRede(options.data)) {
+      if (options.method == 'GET' &&
+          options.uri.queryParameters['imprimir'] != 'true') {
+        final dados = await _projetarRede(options, null);
+        if (dados != null)
+          return handler.resolve(Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: dados,
+              extra: {'cacheLocal': true}));
+      }
+      return handler.reject(DioException(
+          requestOptions: options,
+          error: StateError(
+              'Pedido recebido pelo Wi-Fi. Aguarde a confirmacao no servidor antes de alterar ou receber.')));
+    }
     if (!_permitido(options)) return handler.next(options);
     final alvo = escopo;
     options.extra['escopoCache'] = alvo;
@@ -135,7 +188,7 @@ class CacheConsultas extends Interceptor {
           return handler.resolve(Response(
               requestOptions: options,
               statusCode: 200,
-              data: dados,
+              data: await _projetarRede(options, dados),
               extra: {'cacheLocal': true, 'atualizandoEmSegundoPlano': true}));
         }
       } catch (_) {
@@ -169,7 +222,7 @@ class CacheConsultas extends Interceptor {
         return handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
-            data: dados,
+            data: await _projetarRede(options, dados),
             extra: {'cacheLocal': true}));
       }
       if (falhouRecentemente) {
@@ -212,6 +265,11 @@ class CacheConsultas extends Interceptor {
         // Uma consulta online ainda pode ser exibida se o cache nao couber.
       }
     }
+    if (response.statusCode == 200 &&
+        (response.data is Map || response.data is List)) {
+      response.data =
+          await _projetarRede(response.requestOptions, response.data);
+    }
     handler.next(response);
   }
 
@@ -228,10 +286,11 @@ class CacheConsultas extends Interceptor {
           final derivadoCompleto = caminho(err.requestOptions) == _rotaClientes
               ? await _derivar(err.requestOptions, alvo)
               : null;
-          final dados = derivadoCompleto ??
+          final base = derivadoCompleto ??
               (consulta == null
                   ? await _derivar(err.requestOptions, alvo)
                   : jsonDecode(consulta['valor'] as String));
+          final dados = await _projetarRede(err.requestOptions, base);
           if (dados != null) {
             return handler.resolve(Response(
                 requestOptions: err.requestOptions,

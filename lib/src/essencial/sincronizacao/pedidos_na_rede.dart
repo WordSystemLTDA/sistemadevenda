@@ -221,6 +221,7 @@ class PedidosNaRede {
           retrato['nomeCliente'] ?? preparos.firstOrNull?['nomeCliente'] ?? '',
       'identificacaoAtendimento': preparos.firstOrNull?['comanda'] ?? '',
       'tipoAtendimento': tipo,
+      'idAtendimento': op['atendimento'],
       'produtos': dados['produtos'],
       'recurso': tipo == 'mesa'
           ? dados['id_mesa']

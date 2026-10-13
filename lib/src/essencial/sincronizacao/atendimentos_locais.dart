@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import 'banco_local.dart';
 import 'cache_consultas.dart';
+import 'pedidos_compartilhados.dart';
 
 /// Identidades locais permanecem estaveis mesmo com uma tela/carrinho aberto.
 class AtendimentosLocais {
@@ -42,6 +43,8 @@ class AtendimentosLocais {
   }
 
   Future<String> idServidor(String id) async {
+    if (PedidosCompartilhados.local(id))
+      throw StateError('Aguarde a confirmacao do pedido recebido pelo Wi-Fi.');
     if (!local(id)) return id;
     final op = await abertura(id);
     final real = op == null ? null : recibo(op)['id_comanda_pedido'];
@@ -59,6 +62,16 @@ class AtendimentosLocais {
   /// estar aguardando apenas a impressão local, portanto não bloqueiam o caixa.
   Future<String> idServidorParaRecebimento(String id) async {
     final real = await idServidor(id);
+    final partes = jsonDecode(escopo) as List;
+    final compartilhados = PedidosCompartilhados(banco)
+      ..configurar(
+          escopo,
+          'online|${Uri.parse(partes[0] as String).host.toLowerCase()}|${partes[1]}',
+          null);
+    if (await compartilhados.temPendencia(real)) {
+      throw StateError(
+          'Existe um pedido recebido pelo Wi-Fi ainda nao confirmado. Aguarde a sincronizacao antes de receber.');
+    }
     final atendimentos = <String>{id, real}.toList(growable: false);
     final marcadores = List.filled(atendimentos.length, '?').join(', ');
     final operacoes = await banco.db.query(
@@ -169,6 +182,7 @@ class AtendimentosLocais {
             "escopo = ? AND acao = 'abertura' AND estado NOT IN ('conflito', 'arquivado')",
         whereArgs: [escopo]);
     final estado = jsonDecode(await banco.ler('estado:$escopo') ?? '{}') as Map;
+    final projetados = <String>{};
     for (final op in aberturas) {
       final d = dados(op);
       if (d['tipo'] != tipo) continue;
@@ -234,6 +248,7 @@ class AtendimentosLocais {
         'valor': detalhe['valorTotal'],
         'fechamento': false,
       });
+      projetados.add(localId);
     }
     // O encerramento permanece visível mesmo quando a lista vem do cache,
     // sem ocultar uma nova abertura que outro aparelho já criou no servidor.
@@ -304,6 +319,27 @@ class AtendimentosLocais {
           copia.add(grupo);
         }
         (grupo[campo] as List).add(livre);
+      }
+    }
+    // Itens de um atendimento ja aberto tambem precisam aparecer no cartao.
+    final produtos = await banco.db.query('operacoes',
+        where: "escopo = ? AND acao = 'produtos' AND estado = 'pendente'",
+        whereArgs: [escopo]);
+    for (final op in produtos) {
+      final d = dados(op);
+      if (d['tipo'] != tipo || projetados.contains('${op['atendimento']}'))
+        continue;
+      for (final grupo in copia) {
+        for (final recurso in grupo[campo] as List? ?? []) {
+          if ('${recurso['idComandaPedido']}' != '${op['atendimento']}')
+            continue;
+          recurso['valor'] = (PedidosCompartilhados.numero(recurso['valor']) +
+                  PedidosCompartilhados.total(d))
+              .toStringAsFixed(2);
+          recurso['dataultimopedido'] =
+              DateTime.fromMillisecondsSinceEpoch(op['criado'] as int)
+                  .toIso8601String();
+        }
       }
     }
     return copia;

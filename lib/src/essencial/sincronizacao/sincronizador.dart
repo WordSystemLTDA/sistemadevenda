@@ -17,6 +17,7 @@ import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/servicos/preparacao_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'banco_local.dart';
 import 'atendimentos_locais.dart';
@@ -26,8 +27,9 @@ import 'seguranca_pendencias.dart';
 import 'pedidos_na_rede.dart';
 import 'recebimentos_atendimento.dart';
 import 'politica_offline_online.dart';
+import 'pedidos_compartilhados.dart';
 
-class Sincronizador extends ChangeNotifier {
+class Sincronizador extends ChangeNotifier with WidgetsBindingObserver {
   static Sincronizador? instancia;
   static const _falhaEnvio =
       'Nao foi possivel enviar os pedidos. Verifique o servidor.';
@@ -94,10 +96,23 @@ class Sincronizador extends ChangeNotifier {
       .length;
 
   void iniciar() {
+    WidgetsBinding.instance.addObserver(this);
     instancia = this;
     usuario.addListener(_sessaoMudou);
     socket.addListener(_socketMudou);
     socket.aoAtualizarDados = _dadosMudaram;
+    socket.aoCompartilharPedidosRede = (mensagem) {
+      final alvo = escopo;
+      _configurarCompartilhamento();
+      final compartilhados = api.cache?.pedidosRede;
+      if (compartilhados == null) return;
+      unawaited(compartilhados.receber(mensagem).then((mudou) {
+        if (mudou && !_descartado && alvo == escopo) aoAtualizarTelas?.call();
+      }).catchError((Object erro) {
+        debugPrint(
+            '[PEDIDO_REDE] Consulta Wi-Fi aguardando armazenamento: $erro');
+      }));
+    };
     socket.aoResponderPedidoRede = (resposta) {
       final alvo = escopo;
       unawaited(_pedidosRede.receber(resposta).then((mudou) async {
@@ -130,6 +145,7 @@ class Sincronizador extends ChangeNotifier {
     _liberarRecebimentosDelivery();
     _escopoImpressaoOnline = null;
     _pedidosRede.configurar('', null);
+    api.cache?.pedidosRede.configurar('', null, null);
     _pedidosRede.apiIndisponivel = false;
     _retentativaEnvio?.cancel();
     _retentativaEnvio = null;
@@ -170,9 +186,54 @@ class Sincronizador extends ChangeNotifier {
 
   bool _socketConectado = false;
   void _socketMudou() {
+    _configurarCompartilhamento();
     unawaited(_pedidosRede.processar());
-    if (socket.connected && !_socketConectado) solicitar();
+    if (socket.connected && !_socketConectado) {
+      // Retomar a fila nao depende do backoff da consulta do catalogo.
+      unawaited(enviarPendentes());
+      solicitar();
+    }
     _socketConectado = socket.connected;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_descartado) {
+      unawaited(retomarEnvios());
+    }
+  }
+
+  Future<void> retomarEnvios() async {
+    if (_descartado) return;
+    await configurar();
+    final alvo = escopo;
+    if (alvo.isEmpty || _descartado) return;
+    for (final op in await banco.operacoes(alvo)) {
+      if (_descartado || escopo != alvo) return;
+      if (op['estado'] == 'pendente')
+        await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+    }
+    _proximaConsultaEstado = null;
+    _consultarPedidosCompartilhados();
+    unawaited(socket.processarImpressoesPendentes(reconectarAgora: true));
+    await enviarPendentes();
+    if (!_descartado && alvo == escopo) solicitar();
+  }
+
+  void _configurarCompartilhamento() {
+    api.cache?.pedidosRede
+        .configurar(escopo, _escopoImpressaoOnline, socket.executorPedidosRede);
+  }
+
+  void _consultarPedidosCompartilhados() {
+    _configurarCompartilhamento();
+    if (_escopoImpressaoOnline == null || !socket.connected) return;
+    socket.enviarPedidoRede({
+      'tipo': ProtocoloPedidosRede.listar,
+      'protocoloPedidoRede': 1,
+      'idEmpresa': usuario.usuario?.empresa,
+      'escopoAtualizacao': _escopoImpressaoOnline,
+    });
   }
 
   void solicitar() {
@@ -218,7 +279,10 @@ class Sincronizador extends ChangeNotifier {
     destino = conexao == null ? '' : '${conexao.servidor}:${conexao.porta}';
     _pedidosRede.destino = destino;
     _pedidosRede.configurar(novo, _escopoImpressaoOnline);
-    if (novo == escopo) return;
+    if (novo == escopo) {
+      _configurarCompartilhamento();
+      return;
+    }
     escopo = novo;
     ultimaAtualizacao = null;
     servidor = url;
@@ -229,6 +293,7 @@ class Sincronizador extends ChangeNotifier {
     api.cache?.escopo = escopo;
     api.cache?.servidor = servidor;
     api.cache?.empresa = conta.empresa ?? '';
+    _consultarPedidosCompartilhados();
     _ultimoCatalogo = null;
     _ultimasListas = null;
     _ultimosClientesCompletos = null;
@@ -254,6 +319,10 @@ class Sincronizador extends ChangeNotifier {
     bool recorrentes = false,
   }) async {
     await configurar();
+    if (PedidosCompartilhados.local(contexto.idAtendimento)) {
+      throw StateError(
+          'Aguarde a confirmacao deste atendimento recebido pelo Wi-Fi antes de lancar itens.');
+    }
     if (escopo.isEmpty ||
         contexto.empresa != usuario.usuario?.empresa ||
         !['mesa', 'comanda'].contains(contexto.tipo)) {
@@ -978,7 +1047,8 @@ class Sincronizador extends ChangeNotifier {
       clientes.addAll((pagina['dados'] as List)
           .map((c) => Map<String, dynamic>.from(c as Map)));
       final proximo = pagina['proximo_id']?.toString();
-      if (pagina['tem_mais'] == true && (proximo == null || proximo == cursor)) {
+      if (pagina['tem_mais'] == true &&
+          (proximo == null || proximo == cursor)) {
         throw StateError('Paginacao de clientes invalida.');
       }
       cursor = pagina['tem_mais'] == true ? proximo : null;
@@ -1619,10 +1689,8 @@ class Sincronizador extends ChangeNotifier {
       // liberar o pedido local; a API ja conserva a etapa operacional confirmada.
       if (op['acao'] == 'delivery') {
         _deliveryRecebido(alvo, id);
-        aoAtualizarTelas?.call();
-      } else if (op['acao'] == 'recebimento') {
-        aoAtualizarTelas?.call();
       }
+      aoAtualizarTelas?.call();
     }
     // Preparos antigos ja persistidos no PC nao atrasam o POST de uma venda
     // nova. Sua etapa segue protegida pelo retrato LAN ate a reconciliacao.
@@ -1824,6 +1892,7 @@ class Sincronizador extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _descartado = true;
     _liberarRecebimentosDelivery();
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
@@ -1835,6 +1904,8 @@ class Sincronizador extends ChangeNotifier {
     socket.removeListener(_socketMudou);
     socket.aoAtualizarDados = null;
     socket.aoResponderPedidoRede = null;
+    socket.aoCompartilharPedidosRede = null;
+    api.cache?.pedidosRede.configurar('', null, null);
     api.cache?.aoAtualizar = null;
     if (identical(instancia, this)) instancia = null;
     revisaoCatalogo.dispose();
