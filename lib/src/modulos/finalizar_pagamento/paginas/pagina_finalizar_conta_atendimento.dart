@@ -326,7 +326,10 @@ class _PaginaFinalizarContaAtendimentoState
     if (!mounted) return;
     setState(() => _avancando = false);
     if (resultado == ResultadoFluxoAtendimento.finalizou) {
-      if (!widget.offline) _salvarComprovanteSemBloquearSaida();
+      // O comprovante do Delivery já é emitido no fluxo de preparo.
+      if (!widget.offline && widget.tipo != TipoCardapio.delivery) {
+        _salvarComprovanteSemBloquearSaida();
+      }
       Navigator.pop(context, true);
       return;
     }

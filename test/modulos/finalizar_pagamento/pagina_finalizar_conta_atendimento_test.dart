@@ -285,9 +285,10 @@ void main() {
   tearDown(Modular.destroy);
 
   testWidgets(
-      'Delivery encerrado com saldo retorna confirmacao apenas apos receber',
+      'Delivery sem pagamento recebe sem repetir o comprovante de consumo',
       (tester) async {
     cardapio.statusInicial = 'Finalizado';
+    cardapio.pagoInicial = '0.00';
     bool? retorno;
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -331,6 +332,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(retorno, isTrue);
     expect(find.text('Receber Delivery'), findsOneWidget);
+    expect(pagamento.ultimoValorAPagar, 85);
+    expect(cardapio.leiturasFinalizadas, 0);
+    expect(servidor.mensagens, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

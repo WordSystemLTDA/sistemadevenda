@@ -1190,6 +1190,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final podeAvancar = p.salvoNoAparelho
                                 ? !p.preparandoNaRede
                                 : p.podeAvancar(etapa) && destino != null;
+                            final podeVerDetalhes = etapa.impressao == '3' &&
+                                !p.salvoNoAparelho &&
+                                !p.cancelado;
                             final selecionavel =
                                 _podeSelecionar(p, etapa, destino);
                             final selecionado = _selecionados.contains(p.id);
@@ -1468,7 +1471,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                   ),
                                                 ),
                                               if (podeAvancar ||
-                                                  podeImprimir) ...[
+                                                  podeImprimir ||
+                                                  podeVerDetalhes) ...[
                                                 const SizedBox(height: 12),
                                                 Row(children: [
                                                   if (podeExcluirRascunho) ...[
@@ -1568,7 +1572,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     ),
                                                     const SizedBox(width: 8),
                                                   ],
-                                                  if (podeAvancar)
+                                                  if (podeAvancar ||
+                                                      podeVerDetalhes)
                                                     Expanded(
                                                       flex:
                                                           podeExcluirRascunho ||
@@ -1577,20 +1582,23 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                               : 1,
                                                       child: FilledButton.icon(
                                                         key: ValueKey(
-                                                            'avancar-delivery-${p.id}'),
+                                                            '${podeVerDetalhes ? 'detalhes-venda-delivery' : 'avancar-delivery'}-${p.id}'),
                                                         onPressed: widget
                                                                         .ocupado !=
                                                                     null ||
                                                                 widget
                                                                     .modoSelecao
                                                             ? null
-                                                            : () => widget.avancar(
-                                                                p,
-                                                                etapa,
-                                                                etapa.impressao ==
-                                                                        '3'
-                                                                    ? null
-                                                                    : destino),
+                                                            : podeVerDetalhes
+                                                                ? () => widget
+                                                                    .abrir(p)
+                                                                : () => widget.avancar(
+                                                                    p,
+                                                                    etapa,
+                                                                    etapa.impressao ==
+                                                                            '3'
+                                                                        ? null
+                                                                        : destino),
                                                         icon: avancando
                                                             ? const SizedBox(
                                                                 width: 18,
@@ -1598,14 +1606,19 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                                 child: CircularProgressIndicator(
                                                                     strokeWidth:
                                                                         2))
-                                                            : const Icon(
-                                                                Icons
-                                                                    .arrow_forward,
+                                                            : Icon(
+                                                                podeVerDetalhes
+                                                                    ? Icons
+                                                                        .receipt_long_outlined
+                                                                    : Icons
+                                                                        .arrow_forward,
                                                                 size: 18),
                                                         label: Text(
                                                             avancando
                                                                 ? 'Aguarde...'
-                                                                : label,
+                                                                : podeVerDetalhes
+                                                                    ? 'Detalhes da Venda'
+                                                                    : label,
                                                             textAlign: TextAlign
                                                                 .center),
                                                         style: FilledButton.styleFrom(
