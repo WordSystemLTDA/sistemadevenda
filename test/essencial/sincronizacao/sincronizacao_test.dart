@@ -934,6 +934,53 @@ void main() {
     expect(aplicados, {op['id']});
   });
 
+  test(
+      'recebimento nao enfileira saldo antigo com pedido de outro aparelho no Wi-Fi',
+      () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'conexao',
+        jsonEncode(
+            {'tipoConexao': 'online', 'servidor': 'cozinha', 'porta': '9980'}));
+    socket.executorPedidosRede = 'preparo-11111111111111111111111111111111';
+    await sync.configurar();
+    await api.cache!.pedidosRede.receber({
+      'tipo': 'PedidosCompartilhadosRede',
+      'protocoloPedidoRede': 1,
+      'idEmpresa': '32',
+      'executorImpressaoRede': socket.executorPedidosRede,
+      'sessaoRede': 'a' * 48,
+      'revisao': 1,
+      'pedidos': [
+        {
+          'idOperacaoRede': 'b' * 48,
+          'estado': 'recebido',
+          'pedido': {
+            'tipoAtendimento': 'comanda',
+            'idAtendimento': '104',
+            'recurso': '4',
+            'produtos': [
+              {'nome': 'Coca', 'quantidade': 1, 'valorVenda': '5.00'}
+            ]
+          }
+        }
+      ],
+    });
+    expect(await api.cache!.pedidosRede.temPendencia('104'), true);
+    await expectLater(
+        sync.guardarRecebimentoAtendimento(
+            id: '104',
+            campos: {
+              'empresa': '32',
+              'id_usuario': '1',
+              'tipo': 'Comanda',
+            },
+            nomeForma: 'Dinheiro'),
+        throwsStateError);
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(tentativas, isEmpty);
+  });
+
   for (final tipo in ['mesa', 'comanda']) {
     test('servidor antigo ainda permite abertura online de $tipo', () async {
       await banco.gravar('estado:${sync.escopo}', '{}');

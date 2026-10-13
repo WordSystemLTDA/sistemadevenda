@@ -1,5 +1,34 @@
 # Pedidos pelo Wi-Fi durante queda de internet
 
+## Compartilhamento entre aparelhos (13/10/2026)
+
+O PC Online agora distribui os pedidos pendentes de Delivery, Mesa, Comanda e
+Balcao aos garcons da mesma empresa/API. Inclui pedidos criados no proprio PC
+e copias recebidas de outros celulares. A lista completa acompanha a conexao
+e as alteracoes; ConsultarPedidosRede recupera mensagens perdidas na retomada.
+PedidosCompartilhadosRede carrega executor, sessao e revisao, sem transferir
+comandos de impressao ou criar novas operacoes de envio no celular receptor.
+Snapshots atrasados, outra empresa e outro PC sao recusados.
+
+As copias sao consultas duraveis, separadas da fila original. Cada origem
+continua enviando seus proprios IDs e payloads para a API. A confirmacao remove
+a copia da lista compartilhada; recebimentos e edicoes de IDs provisórios
+aguardam a identidade oficial. Contas com itens compartilhados pendentes nao
+podem ser recebidas usando o saldo antigo. Cache e preparacao conservam os
+dados oficiais sem incorporar os itens da LAN.
+
+Itens pendentes de uma mesa/comanda ja aberta agora aparecem no total da lista
+e nos detalhes do aparelho de origem. A origem recebe aviso apos o commit de
+produtos, vendas e recebimentos. Retomada do app/rede e uma resposta valida da
+API apos a queda liberam a espera de reenvio, mantendo o mesmo ID. O PC tambem
+envia seu journal antes da preparacao extensa ao iniciar.
+
+Recompilar os dois aplicativos; manter o PC como servidor de Atualizacoes
+Online, na mesma rede dos celulares. Este ajuste nao exige PHP novo nem DDL.
+Testes isolados exercitam SQLite, HTTP indisponivel, WebSocket real com varios
+clientes, reconexao, snapshot repetido, resposta perdida e retorno da API
+sem mudanca de Wi-Fi. Teste fisico no iPhone/roteador depende dos novos binarios.
+
 Implementacao de 09/10/2026 para a conexao **Online / API41**. A API continua
 responsavel por vendas, pagamentos e numeros oficiais. A rede Wi-Fi leva uma
 copia provisoria do pedido ao PC e a fila confiavel de impressao da cozinha.

@@ -37,7 +37,9 @@ class PedidosCompartilhados {
         return false;
       }
       final pedidos = mensagem['pedidos'] as List;
-      if (pedidos.length > 10000) return false;
+      if (pedidos.length > 10000 || (mensagem['revisao'] as int) < 0) {
+        return false;
+      }
       final ids = <String>{};
       for (final p in pedidos) {
         if (p is! Map ||
@@ -46,6 +48,8 @@ class PedidosCompartilhados {
             p['estado'] != 'recebido' ||
             p['pedido'] is! Map ||
             p['pedido']['produtos'] is! List ||
+            (p['pedido']['produtos'] as List).length > 1000 ||
+            !(p['pedido']['produtos'] as List).every((item) => item is Map) ||
             !{'mesa', 'comanda', 'delivery', 'balcao'}
                 .contains(p['pedido']['tipoAtendimento'])) {
           return false;
@@ -76,11 +80,21 @@ class PedidosCompartilhados {
       return [];
     }
     // O aparelho de origem ja projeta sua propria fila, inclusive recibos.
-    final proprios = await banco.db.query('operacoes',
-        columns: ['id'], where: 'escopo = ?', whereArgs: [alvo]);
-    final ids = proprios.map((o) => o['id']).toSet();
+    final registros = snapshot['pedidos'] as List;
+    if (registros.isEmpty) return [];
+    final candidatos = registros.map((p) => p['idOperacaoRede']).toList();
+    final ids = <Object?>{};
+    for (var inicio = 0; inicio < candidatos.length; inicio += 400) {
+      final lote = candidatos.skip(inicio).take(400).toList();
+      final proprios = await banco.db.query('operacoes',
+          columns: ['id'],
+          where:
+              'escopo = ? AND id IN (${List.filled(lote.length, '?').join(',')})',
+          whereArgs: [alvo, ...lote]);
+      ids.addAll(proprios.map((o) => o['id']));
+    }
     return [
-      for (final p in snapshot['pedidos'] as List)
+      for (final p in registros)
         if (!ids.contains(p['idOperacaoRede']))
           Map<String, dynamic>.from(p as Map)
     ];
@@ -144,8 +158,9 @@ class PedidosCompartilhados {
   Future<bool> temPendencia(String id) async {
     final registros = await pedidos();
     if (registros
-        .any((p) => local(id) || '${p['pedido']['idAtendimento']}' == id))
+        .any((p) => local(id) || '${p['pedido']['idAtendimento']}' == id)) {
       return true;
+    }
     // Copias anteriores ao campo idAtendimento usam o cadastro do recurso.
     final legados = registros
         .where((p) =>
