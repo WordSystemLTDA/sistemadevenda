@@ -803,500 +803,505 @@ class _PaginaFinalizarFormaPagamentoState
               ),
             );
           }),
-      body: GestureDetector(
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: _carregando
-            ? const Center(child: CircularProgressIndicator())
-            : Stack(
-                children: [
-                  Positioned(
-                    bottom: ehDinheiroDelivery
-                        ? 251
-                        : ehDelivery
-                            ? 195
-                            : 115,
-                    left: 14,
-                    right: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1F2937) : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : cs.outline.withValues(alpha: 0.12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.fact_check_outlined,
-                                  size: 16,
-                                  color: cs.onSurface.withValues(alpha: 0.7)),
-                              const SizedBox(width: 6),
-                              const Text('Total Registrado',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          Text(
-                            _totalRegistrado.obterReal(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: cs.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ListView(
-                    padding: EdgeInsets.fromLTRB(
-                        12,
-                        14,
-                        12,
-                        ehDinheiroDelivery
-                            ? 335
-                            : ehDelivery
-                                ? 275
-                                : 200),
-                    children: [
-                      // Hero "A pagar"
-                      Container(
-                        padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        top: false,
+        child: GestureDetector(
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: _carregando
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
+                  children: [
+                    Positioned(
+                      bottom: ehDinheiroDelivery
+                          ? 251
+                          : ehDelivery
+                              ? 195
+                              : 115,
+                      left: 14,
+                      right: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              cs.primaryContainer,
-                              cs.primaryContainer.withValues(alpha: 0.55)
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                          color:
+                              isDark ? const Color(0xFF1F2937) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : cs.outline.withValues(alpha: 0.12),
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: cs.primary.withValues(alpha: 0.12),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.fact_check_outlined,
+                                    size: 16,
+                                    color: cs.onSurface.withValues(alpha: 0.7)),
+                                const SizedBox(width: 6),
+                                const Text('Total Registrado',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            Text(
+                              _totalRegistrado.obterReal(),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: cs.primary,
+                              ),
                             ),
                           ],
                         ),
-                        child: Row(
-                          children: [
-                            SearchAnchor(
-                              builder: (BuildContext context,
-                                  SearchController controller) {
-                                return IconButton.filledTonal(
-                                  onPressed: () => controller.openView(),
-                                  icon: const Icon(Icons.history_rounded,
-                                      size: 18),
-                                  tooltip: 'Histórico de pagamentos',
-                                );
-                              },
-                              suggestionsBuilder: (BuildContext context,
-                                  SearchController controller) async {
-                                final res = await Modular.get<ServicoBalcao>()
-                                    .listarHistoricoPagamentos(
-                                        provedor.idVenda, TipoCardapio.balcao);
-                                return [
-                                  ...res.map(
-                                    (e) => Card(
-                                      elevation: 3.0,
-                                      margin: const EdgeInsets.all(5.0),
-                                      child: InkWell(
-                                        onTap: () {},
-                                        borderRadius: const BorderRadius.all(
-                                            Radius.circular(8)),
-                                        child: ListTile(
-                                          leading: const Icon(
-                                              Icons.person_2_outlined),
-                                          title: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(e.pagamento),
-                                              Text(
-                                                  "Valor ${double.parse(e.valor).obterReal()}"),
-                                              Text(
-                                                  "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
-                                            ],
+                      ),
+                    ),
+                    ListView(
+                      padding: EdgeInsets.fromLTRB(
+                          12,
+                          14,
+                          12,
+                          ehDinheiroDelivery
+                              ? 335
+                              : ehDelivery
+                                  ? 275
+                                  : 200),
+                      children: [
+                        // Hero "A pagar"
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                cs.primaryContainer,
+                                cs.primaryContainer.withValues(alpha: 0.55)
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: cs.primary.withValues(alpha: 0.12),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              SearchAnchor(
+                                builder: (BuildContext context,
+                                    SearchController controller) {
+                                  return IconButton.filledTonal(
+                                    onPressed: () => controller.openView(),
+                                    icon: const Icon(Icons.history_rounded,
+                                        size: 18),
+                                    tooltip: 'Histórico de pagamentos',
+                                  );
+                                },
+                                suggestionsBuilder: (BuildContext context,
+                                    SearchController controller) async {
+                                  final res = await Modular.get<ServicoBalcao>()
+                                      .listarHistoricoPagamentos(
+                                          provedor.idVenda,
+                                          TipoCardapio.balcao);
+                                  return [
+                                    ...res.map(
+                                      (e) => Card(
+                                        elevation: 3.0,
+                                        margin: const EdgeInsets.all(5.0),
+                                        child: InkWell(
+                                          onTap: () {},
+                                          borderRadius: const BorderRadius.all(
+                                              Radius.circular(8)),
+                                          child: ListTile(
+                                            leading: const Icon(
+                                                Icons.person_2_outlined),
+                                            title: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(e.pagamento),
+                                                Text(
+                                                    "Valor ${double.parse(e.valor).obterReal()}"),
+                                                Text(
+                                                    "Total: ${double.parse(e.somaValorHistorico).obterReal()}"),
+                                              ],
+                                            ),
+                                            subtitle: Text('ID: ${e.id}'),
                                           ),
-                                          subtitle: Text('ID: ${e.id}'),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ];
-                              },
-                            ),
+                                  ];
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'A PAGAR',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.4,
+                                        color: cs.onPrimaryContainer
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.totalReceber.obterReal(),
+                                      style: TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w800,
+                                        color: cs.onPrimaryContainer,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Icon(Icons.attach_money_rounded,
+                                size: 18, color: cs.primary),
                             const SizedBox(width: 8),
+                            const Text('Valor a receber',
+                                style: TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Column(
+                          children: [
+                            // InformacoesApp.getLogoEscuraApp(context, width: 200, height: 100),
+                            // const SizedBox(height: 18),
+
+                            // Row(
+                            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            //   children: [
+                            //     Container(
+                            //       width: 115,
+                            //       height: 120,
+                            //       decoration: const BoxDecoration(
+                            //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                            //         boxShadow: [
+                            //           BoxShadow(
+                            //             offset: Offset(0, 3),
+                            //             blurRadius: 7,
+                            //             spreadRadius: 1,
+                            //             color: Colors.black54,
+                            //           ),
+                            //         ],
+                            //       ),
+                            //       child: Material(
+                            //         color: _selecionado == 1
+                            //             ? Theme.of(context).brightness == Brightness.light
+                            //                 ? Theme.of(context).colorScheme.primary
+                            //                 // ? const Color(0xFF4f0073)
+                            //                 : Theme.of(context).colorScheme.inversePrimary
+                            //             : Theme.of(context).brightness == Brightness.light
+                            //                 ? Colors.white
+                            //                 : const Color(0xff1c1c1c),
+                            //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //         child: InkWell(
+                            //           onTap: () {
+                            //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //             setState(() => _selecionado = 1);
+                            //           },
+                            //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //           child: Column(
+                            //             mainAxisAlignment: MainAxisAlignment.center,
+                            //             children: [
+                            //               Text(
+                            //                 'Não Fiscal',
+                            //                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _selecionado == 1 ? Colors.white : null),
+                            //               ),
+                            //               const SizedBox(height: 10),
+                            //               Icon(Icons.add_shopping_cart, size: 40, color: _selecionado == 1 ? Colors.white : null),
+                            //             ],
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     Container(
+                            //       width: 115,
+                            //       height: 120,
+                            //       decoration: const BoxDecoration(
+                            //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                            //         boxShadow: [
+                            //           BoxShadow(
+                            //             offset: Offset(0, 3),
+                            //             blurRadius: 7,
+                            //             spreadRadius: 1,
+                            //             color: Colors.black54,
+                            //           ),
+                            //         ],
+                            //       ),
+                            //       child: Material(
+                            //         color: _selecionado == 2
+                            //             ? Theme.of(context).brightness == Brightness.light
+                            //                 ? Theme.of(context).colorScheme.primary
+                            //                 // ? const Color(0xFF4f0073)
+                            //                 : Theme.of(context).colorScheme.inversePrimary
+                            //             : Theme.of(context).brightness == Brightness.light
+                            //                 ? Colors.white
+                            //                 : const Color(0xff1c1c1c),
+                            //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //         child: InkWell(
+                            //           onTap: () {
+                            //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //             setState(() => _selecionado = 2);
+                            //           },
+                            //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //           child: Column(
+                            //             mainAxisAlignment: MainAxisAlignment.center,
+                            //             children: [
+                            //               Text(
+                            //                 'Emitir NFe',
+                            //                 style: TextStyle(
+                            //                   fontSize: 16,
+                            //                   fontWeight: FontWeight.bold,
+                            //                   color: _selecionado == 2 ? Colors.white : null,
+                            //                 ),
+                            //               ),
+                            //               const SizedBox(height: 10),
+                            //               Icon(Icons.shopping_cart_outlined, size: 40, color: _selecionado == 2 ? Colors.white : null),
+                            //             ],
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //     Container(
+                            //       width: 115,
+                            //       height: 120,
+                            //       decoration: const BoxDecoration(
+                            //         borderRadius: BorderRadius.all(Radius.circular(8)),
+                            //         boxShadow: [
+                            //           BoxShadow(
+                            //             offset: Offset(0, 3),
+                            //             blurRadius: 7,
+                            //             spreadRadius: 1,
+                            //             color: Colors.black54,
+                            //           ),
+                            //         ],
+                            //       ),
+                            //       child: Material(
+                            //         color: _selecionado == 3
+                            //             ? Theme.of(context).brightness == Brightness.light
+                            //                 ? Theme.of(context).colorScheme.primary
+                            //                 : Theme.of(context).colorScheme.inversePrimary
+                            //             : Theme.of(context).brightness == Brightness.light
+                            //                 ? Colors.white
+                            //                 : const Color(0xff1c1c1c),
+                            //         borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //         child: InkWell(
+                            //           onTap: () {
+                            //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                            //             setState(() => _selecionado = 3);
+                            //           },
+                            //           borderRadius: const BorderRadius.all(Radius.circular(8)),
+                            //           child: Column(
+                            //             mainAxisAlignment: MainAxisAlignment.center,
+                            //             children: [
+                            //               Text(
+                            //                 'Emitir NFCe',
+                            //                 style: TextStyle(
+                            //                   fontSize: 16,
+                            //                   fontWeight: FontWeight.bold,
+                            //                   color: _selecionado == 3 ? Colors.white : null,
+                            //                 ),
+                            //               ),
+                            //               const SizedBox(height: 10),
+                            //               Icon(Icons.shopping_cart_checkout_outlined, size: 40, color: _selecionado == 3 ? Colors.white : null),
+                            //             ],
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            // ),
+                            // const Text('Desconto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                            // const SizedBox(height: 20),
+                            // const Text('Você pode dar desconto em percentual\nou até mesmo em Valor.', style: TextStyle(fontSize: 15), textAlign: TextAlign.center),
+                          ],
+                        ),
+                        Row(
+                          children: [
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'A PAGAR',
-                                    style: TextStyle(
-                                      fontSize: 11,
+                              child: TextField(
+                                controller: _dinheiroController,
+                                focusNode: focusNode,
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.primary,
+                                  letterSpacing: -0.3,
+                                ),
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: isDark
+                                      ? const Color(0xFF1F2937)
+                                      : Colors.white,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 14),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                        color:
+                                            cs.outline.withValues(alpha: 0.22)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                        color:
+                                            cs.outline.withValues(alpha: 0.22)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: BorderSide(
+                                        color: cs.primary, width: 1.6),
+                                  ),
+                                  prefixText: 'R\$  ',
+                                  prefixStyle: TextStyle(
+                                      fontSize: 20,
                                       fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.4,
-                                      color: cs.onPrimaryContainer
-                                          .withValues(alpha: 0.7),
-                                    ),
+                                      color:
+                                          cs.onSurface.withValues(alpha: 0.55)),
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      _dinheiroController.clear();
+                                      calcular();
+                                    },
+                                    icon: const Icon(Icons.close_rounded,
+                                        size: 20),
+                                    splashRadius: 20,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.totalReceber.obterReal(),
-                                    style: TextStyle(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w800,
-                                      color: cs.onPrimaryContainer,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
+                                ),
+                                onChanged: (_) => calcular(),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.deny(',',
+                                      replacementString: '.'),
+                                  FilteringTextInputFormatter.allow(
+                                      RegExp(r'(^\d*\.?\d{0,2})')),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        children: [
-                          Icon(Icons.attach_money_rounded,
-                              size: 18, color: cs.primary),
-                          const SizedBox(width: 8),
-                          const Text('Valor a receber',
-                              style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const Column(
-                        children: [
-                          // InformacoesApp.getLogoEscuraApp(context, width: 200, height: 100),
-                          // const SizedBox(height: 18),
-
-                          // Row(
-                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          //   children: [
-                          //     Container(
-                          //       width: 115,
-                          //       height: 120,
-                          //       decoration: const BoxDecoration(
-                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
-                          //         boxShadow: [
-                          //           BoxShadow(
-                          //             offset: Offset(0, 3),
-                          //             blurRadius: 7,
-                          //             spreadRadius: 1,
-                          //             color: Colors.black54,
-                          //           ),
-                          //         ],
-                          //       ),
-                          //       child: Material(
-                          //         color: _selecionado == 1
-                          //             ? Theme.of(context).brightness == Brightness.light
-                          //                 ? Theme.of(context).colorScheme.primary
-                          //                 // ? const Color(0xFF4f0073)
-                          //                 : Theme.of(context).colorScheme.inversePrimary
-                          //             : Theme.of(context).brightness == Brightness.light
-                          //                 ? Colors.white
-                          //                 : const Color(0xff1c1c1c),
-                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //         child: InkWell(
-                          //           onTap: () {
-                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          //             setState(() => _selecionado = 1);
-                          //           },
-                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //           child: Column(
-                          //             mainAxisAlignment: MainAxisAlignment.center,
-                          //             children: [
-                          //               Text(
-                          //                 'Não Fiscal',
-                          //                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _selecionado == 1 ? Colors.white : null),
-                          //               ),
-                          //               const SizedBox(height: 10),
-                          //               Icon(Icons.add_shopping_cart, size: 40, color: _selecionado == 1 ? Colors.white : null),
-                          //             ],
-                          //           ),
-                          //         ),
-                          //       ),
-                          //     ),
-                          //     Container(
-                          //       width: 115,
-                          //       height: 120,
-                          //       decoration: const BoxDecoration(
-                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
-                          //         boxShadow: [
-                          //           BoxShadow(
-                          //             offset: Offset(0, 3),
-                          //             blurRadius: 7,
-                          //             spreadRadius: 1,
-                          //             color: Colors.black54,
-                          //           ),
-                          //         ],
-                          //       ),
-                          //       child: Material(
-                          //         color: _selecionado == 2
-                          //             ? Theme.of(context).brightness == Brightness.light
-                          //                 ? Theme.of(context).colorScheme.primary
-                          //                 // ? const Color(0xFF4f0073)
-                          //                 : Theme.of(context).colorScheme.inversePrimary
-                          //             : Theme.of(context).brightness == Brightness.light
-                          //                 ? Colors.white
-                          //                 : const Color(0xff1c1c1c),
-                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //         child: InkWell(
-                          //           onTap: () {
-                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          //             setState(() => _selecionado = 2);
-                          //           },
-                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //           child: Column(
-                          //             mainAxisAlignment: MainAxisAlignment.center,
-                          //             children: [
-                          //               Text(
-                          //                 'Emitir NFe',
-                          //                 style: TextStyle(
-                          //                   fontSize: 16,
-                          //                   fontWeight: FontWeight.bold,
-                          //                   color: _selecionado == 2 ? Colors.white : null,
-                          //                 ),
-                          //               ),
-                          //               const SizedBox(height: 10),
-                          //               Icon(Icons.shopping_cart_outlined, size: 40, color: _selecionado == 2 ? Colors.white : null),
-                          //             ],
-                          //           ),
-                          //         ),
-                          //       ),
-                          //     ),
-                          //     Container(
-                          //       width: 115,
-                          //       height: 120,
-                          //       decoration: const BoxDecoration(
-                          //         borderRadius: BorderRadius.all(Radius.circular(8)),
-                          //         boxShadow: [
-                          //           BoxShadow(
-                          //             offset: Offset(0, 3),
-                          //             blurRadius: 7,
-                          //             spreadRadius: 1,
-                          //             color: Colors.black54,
-                          //           ),
-                          //         ],
-                          //       ),
-                          //       child: Material(
-                          //         color: _selecionado == 3
-                          //             ? Theme.of(context).brightness == Brightness.light
-                          //                 ? Theme.of(context).colorScheme.primary
-                          //                 : Theme.of(context).colorScheme.inversePrimary
-                          //             : Theme.of(context).brightness == Brightness.light
-                          //                 ? Colors.white
-                          //                 : const Color(0xff1c1c1c),
-                          //         borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //         child: InkWell(
-                          //           onTap: () {
-                          //             ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          //             setState(() => _selecionado = 3);
-                          //           },
-                          //           borderRadius: const BorderRadius.all(Radius.circular(8)),
-                          //           child: Column(
-                          //             mainAxisAlignment: MainAxisAlignment.center,
-                          //             children: [
-                          //               Text(
-                          //                 'Emitir NFCe',
-                          //                 style: TextStyle(
-                          //                   fontSize: 16,
-                          //                   fontWeight: FontWeight.bold,
-                          //                   color: _selecionado == 3 ? Colors.white : null,
-                          //                 ),
-                          //               ),
-                          //               const SizedBox(height: 10),
-                          //               Icon(Icons.shopping_cart_checkout_outlined, size: 40, color: _selecionado == 3 ? Colors.white : null),
-                          //             ],
-                          //           ),
-                          //         ),
-                          //       ),
-                          //     ),
-                          //   ],
-                          // ),
-                          // const Text('Desconto', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                          // const SizedBox(height: 20),
-                          // const Text('Você pode dar desconto em percentual\nou até mesmo em Valor.', style: TextStyle(fontSize: 15), textAlign: TextAlign.center),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _dinheiroController,
-                              focusNode: focusNode,
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                color: cs.primary,
-                                letterSpacing: -0.3,
-                              ),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: isDark
-                                    ? const Color(0xFF1F2937)
-                                    : Colors.white,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 14),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                      color:
-                                          cs.outline.withValues(alpha: 0.22)),
+                        const SizedBox(height: 16),
+                        if (_desconto > 0) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.green
+                                  .withValues(alpha: isDark ? 0.18 : 0.10),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: Colors.green.withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.savings_outlined,
+                                        color: Colors.green[700], size: 22),
+                                    const SizedBox(width: 8),
+                                    const Text('Troco',
+                                        style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700)),
+                                  ],
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                      color:
-                                          cs.outline.withValues(alpha: 0.22)),
+                                Text(
+                                  'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide:
-                                      BorderSide(color: cs.primary, width: 1.6),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                trocoEmCredito = !trocoEmCredito;
+                              });
+                            },
+                            splashColor: Colors.transparent,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                  width: 25,
+                                  child: Checkbox(
+                                    value: trocoEmCredito,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        trocoEmCredito = value ?? false;
+                                      });
+                                    },
+                                  ),
                                 ),
-                                prefixText: 'R\$  ',
-                                prefixStyle: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        cs.onSurface.withValues(alpha: 0.55)),
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    _dinheiroController.clear();
-                                    calcular();
-                                  },
-                                  icon:
-                                      const Icon(Icons.close_rounded, size: 20),
-                                  splashRadius: 20,
-                                ),
-                              ),
-                              onChanged: (_) => calcular(),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.deny(',',
-                                    replacementString: '.'),
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'(^\d*\.?\d{0,2})')),
+                                const SizedBox(width: 5),
+                                const Text('Troco em Crédito')
                               ],
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (_desconto > 0) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.green
-                                .withValues(alpha: isDark ? 0.18 : 0.10),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.green.withValues(alpha: 0.35)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.savings_outlined,
-                                      color: Colors.green[700], size: 22),
-                                  const SizedBox(width: 8),
-                                  const Text('Troco',
-                                      style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                              Text(
-                                'R\$ ${_desconto.toStringAsFixed(2).replaceAll('.', ',')}',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  color: Colors.green[700],
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              trocoEmCredito = !trocoEmCredito;
-                            });
-                          },
-                          splashColor: Colors.transparent,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              SizedBox(
-                                width: 25,
-                                child: Checkbox(
-                                  value: trocoEmCredito,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      trocoEmCredito = value ?? false;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              const Text('Troco em Crédito')
-                            ],
-                          ),
-                        ),
+                        // if (_desconto < 0) ...[
+                        //   Row(
+                        //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        //     children: [
+                        //       const Text('Falta ', style: TextStyle(fontSize: 25, color: Colors.red)),
+                        //       // const Spacer(),
+                        //       Text(
+                        //         'R\$ ${(_desconto * -1).toStringAsFixed(2).replaceAll('.', ',')}',
+                        //         style: const TextStyle(
+                        //           fontSize: 25,
+                        //           color: Colors.red,
+                        //           fontWeight: FontWeight.w600,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ],
                       ],
-                      // if (_desconto < 0) ...[
-                      //   Row(
-                      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      //     children: [
-                      //       const Text('Falta ', style: TextStyle(fontSize: 25, color: Colors.red)),
-                      //       // const Spacer(),
-                      //       Text(
-                      //         'R\$ ${(_desconto * -1).toStringAsFixed(2).replaceAll('.', ',')}',
-                      //         style: const TextStyle(
-                      //           fontSize: 25,
-                      //           color: Colors.red,
-                      //           fontWeight: FontWeight.w600,
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ],
-                    ],
-                  ),
-                  if (ehDelivery)
-                    Positioned(
-                      left: 14,
-                      right: 14,
-                      bottom: 82,
-                      child: _acoesWhatsappDelivery(
-                        cores: cs,
-                        temaEscuro: isDark,
-                        dinheiro: ehDinheiroDelivery,
-                      ),
                     ),
-                ],
-              ),
+                    if (ehDelivery)
+                      Positioned(
+                        left: 14,
+                        right: 14,
+                        bottom: 82,
+                        child: _acoesWhatsappDelivery(
+                          cores: cs,
+                          temaEscuro: isDark,
+                          dinheiro: ehDinheiroDelivery,
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
