@@ -1100,10 +1100,12 @@ class ServicoDelivery {
           'Documento fiscal indisponível. Confira a venda no módulo fiscal.');
     }
     final servidor =
-        enderecoApi((await Apis().getConexao()).servidor).resolve('../../../');
+        enderecoApi((await Apis().getConexao()).servidor).resolve('../../');
     final modelo = pedido.texto('cp16') == '55' ? 'NF-e' : 'NFCe';
+    final ambiente =
+        pedido.texto('ambienteFiscal') == '2' ? 'homologacao' : 'producao';
     return servidor.resolve(
-        'fiscal/Arquivos_XML/$modelo/$documento/producao/enviadas/aprovadas/${DateFormat('yy/MM').format(data)}/$chave-${xml ? 'nfe.xml' : 'pdf.pdf'}');
+        'fiscal/Arquivos_XML/$modelo/$documento/$ambiente/enviadas/aprovadas/${DateFormat('yy/MM').format(data)}/$chave-${xml ? 'nfe.xml' : 'pdf.pdf'}');
   }
 
   Future<void> prepararClone(
