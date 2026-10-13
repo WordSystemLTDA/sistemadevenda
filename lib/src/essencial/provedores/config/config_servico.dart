@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:app/src/essencial/api/conexao.dart';
@@ -17,6 +18,24 @@ class ServicoConfig {
 
   static const caminhoAPI = 'config';
 
+  /// Os links de atualização são públicos e independem do usuário ou da empresa.
+  Future<ConfigModelo> consultarAtualizacao({CancelToken? cancelToken}) async {
+    final servidor = (await Apis().getConexao(tipo: 'online')).servidor;
+    final resposta = await dio.cliente.get(
+      '$caminhoAPI/listar.php',
+      cancelToken: cancelToken,
+      options: Options(
+        receiveTimeout: const Duration(seconds: 10),
+        extra: {'servidorFixo': servidor, 'semCache': true},
+      ),
+    );
+    final dados = resposta.data is String
+        ? jsonDecode(resposta.data as String)
+        : resposta.data;
+    return ConfigModelo.fromMap(
+        Map<String, dynamic>.from(dados['dadosConfig'] as Map));
+  }
+
   Future<ConfigModelo?> listar() async {
     var idEmpresa = usuarioProvedor.usuario!.empresa!;
 
@@ -30,7 +49,8 @@ class ServicoConfig {
         ),
       );
 
-      final List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
+      final List<ConnectivityResult> connectivityResult =
+          await (Connectivity().checkConnectivity());
 
       Dio novodio;
 
@@ -40,7 +60,8 @@ class ServicoConfig {
         novodio = novoDioCliente;
       }
 
-      var response = await novodio.get('$caminhoAPI/listar.php?empresa=$idEmpresa');
+      var response =
+          await novodio.get('$caminhoAPI/listar.php?empresa=$idEmpresa');
       var jsonData = response.data;
       var config = ConfigModelo.fromMap(jsonData['dadosConfig']);
       configProvedor.setConfig(config);

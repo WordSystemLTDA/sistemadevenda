@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_servico.dart';
 import 'package:app/src/essencial/shared_prefs/chaves_sharedpreferences.dart';
+import 'package:app/src/essencial/widgets/dialogo_atualizacao_disponivel.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_configuracao.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_pre_cadastro.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
@@ -26,6 +29,14 @@ class _PaginaLoginState extends State<PaginaLogin> {
   var verificando = true;
   var isLoading = false;
   CancelToken? _loginEmAndamento;
+  CancelToken? _atualizacaoEmAndamento;
+
+  bool get _atualizando => _atualizacaoEmAndamento != null;
+
+  bool _atualizacaoAtual(CancelToken tentativa) =>
+      mounted &&
+      identical(_atualizacaoEmAndamento, tentativa) &&
+      !tentativa.isCancelled;
 
   bool _tentativaAtual(CancelToken tentativa) =>
       mounted &&
@@ -43,7 +54,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
   }
 
   void entrar() async {
-    if (isLoading || verificando) return;
+    if (isLoading || verificando || _atualizando) return;
     if (usuarioController.text.isEmpty || senhaController.text.isEmpty) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -119,13 +130,80 @@ class _PaginaLoginState extends State<PaginaLogin> {
   void _abrirConfiguracoes() {
     _loginEmAndamento?.cancel();
     _loginEmAndamento = null;
+    _atualizacaoEmAndamento?.cancel();
     setState(() {
       verificando = false;
       isLoading = false;
+      _atualizacaoEmAndamento = null;
     });
     Navigator.push(
         context, MaterialPageRoute(builder: (_) => const PaginaConfiguracao()));
   }
+
+  Future<void> _abrirAtualizacao() async {
+    if (_atualizando) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    // Atualizar antes do login também deve interromper a entrada automática.
+    _loginEmAndamento?.cancel();
+    _loginEmAndamento = null;
+    final tentativa = CancelToken();
+    setState(() {
+      verificando = false;
+      isLoading = false;
+      _atualizacaoEmAndamento = tentativa;
+    });
+    try {
+      final config = await Future.any([
+        Modular.get<ServicoConfig>()
+            .consultarAtualizacao(cancelToken: tentativa),
+        tentativa.whenCancel.then((_) => null),
+      ]).timeout(const Duration(seconds: 15));
+      if (!_atualizacaoAtual(tentativa) || config == null) return;
+      final link = Platform.isIOS
+          ? config.linkAtualizacaoIos
+          : config.linkAtualizacaoAndroid;
+      if (link.trim().isEmpty) {
+        _mostrarErro(
+            'O link de atualização ainda não está disponível. Entre em contato com o suporte.');
+        return;
+      }
+      final abriu = await abrirLinkExternoAtualizacao(link);
+      if (_atualizacaoAtual(tentativa) && !abriu) {
+        _mostrarErro(
+            'Não foi possível abrir a atualização. Tente novamente ou entre em contato com o suporte.');
+      }
+    } catch (_) {
+      if (_atualizacaoAtual(tentativa)) {
+        _mostrarErro(
+            'Não foi possível buscar a atualização. Confira sua conexão com a internet e tente novamente.');
+      }
+    } finally {
+      tentativa.cancel();
+      if (mounted && identical(_atualizacaoEmAndamento, tentativa)) {
+        setState(() => _atualizacaoEmAndamento = null);
+      }
+    }
+  }
+
+  Widget _botaoAtualizacao() => SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _atualizando ? null : _abrirAtualizacao,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+          ),
+          icon: _atualizando
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.system_update_alt_rounded),
+          label: Text(_atualizando
+              ? 'Buscando atualização...'
+              : 'Atualizar aplicativo'),
+        ),
+      );
 
   Future<void> _conectarServidorLocal() async {
     try {
@@ -150,6 +228,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
   @override
   void dispose() {
     _loginEmAndamento?.cancel();
+    _atualizacaoEmAndamento?.cancel();
     usuarioController.dispose();
     senhaController.dispose();
     super.dispose();
@@ -159,6 +238,24 @@ class _PaginaLoginState extends State<PaginaLogin> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: _botaoAtualizacao(),
+            ),
+          ),
+        ),
+      ),
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: verificando == true
@@ -241,7 +338,7 @@ class _PaginaLoginState extends State<PaginaLogin> {
                             textStyle: const WidgetStatePropertyAll(
                                 TextStyle(fontSize: 18)),
                           ),
-                          onPressed: isLoading ? null : entrar,
+                          onPressed: isLoading || _atualizando ? null : entrar,
                           child: isLoading
                               ? const CircularProgressIndicator()
                               : const Text('Entrar'),
@@ -253,14 +350,16 @@ class _PaginaLoginState extends State<PaginaLogin> {
                         child: const Text('Configurações'),
                       ),
                       TextButton(
+                        onPressed: _atualizando
+                            ? null
+                            : () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            const PaginaPreCadastro()));
+                              },
                         child: const Text("Não está cadastrado? Cadastre-se"),
-                        onPressed: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const PaginaPreCadastro()));
-                        },
                       ),
                     ],
                   ),
