@@ -47,9 +47,8 @@ class ImpressaoDelivery {
     if ((await servico.pedidosComCancelamentoLocal()).contains(pedido.id)) {
       throw StateError('O cancelamento deste pedido ja esta salvo.');
     }
-    final numeroPedido =
-        numeroPedidoOperacionalConfirmado(dados.numeroPedido) ??
-            exigirNumeroPedidoOperacional(pedido.numeroOperacional);
+    final numeroPedido = numeroPedidoParaImpressao(dados.numeroPedido,
+        alternativo: pedido.numeroOperacional);
     final pedidoConfirmado = PedidoDelivery.fromMap({
       ...pedido.dados,
       'numeroPedido': numeroPedido,
@@ -522,8 +521,7 @@ class ImpressaoDelivery {
     if (pedido.aguardandoPagamentoOnline) {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
-    final numeroPedido =
-        exigirNumeroPedidoOperacional(pedido.numeroOperacional);
+    final numeroPedido = numeroPedidoParaImpressao(pedido.numeroOperacional);
     final grupos = <String, List<Modelowordprodutos>>{};
     if (tipo == TipoCardapio.balcao) {
       grupos[''] = produtos;
