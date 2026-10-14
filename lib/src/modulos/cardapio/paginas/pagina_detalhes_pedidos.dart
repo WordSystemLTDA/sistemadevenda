@@ -162,9 +162,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
         final recebimento = await RecebimentosAtendimento(
                 sincronizador.banco, sincronizador.escopo)
             .detalhePendente(idComandaPedido);
-        if (!sincronizador.online ||
-            pendentes.isNotEmpty ||
-            recebimento != null) {
+        if (pendentes.isNotEmpty || recebimento != null) {
           atendimentoServidor = await prepararLocal();
         } else {
           idServidor = await AtendimentosLocais(

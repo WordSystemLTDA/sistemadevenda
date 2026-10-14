@@ -224,6 +224,37 @@ void main() {
   }
 
   for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+    test('${tipo.nome} finaliza sem caixa aberto e reenvia o mesmo recebimento',
+        () async {
+      final estado = Map<String, dynamic>.from(
+          jsonDecode((await banco.ler('estado:${sync.escopo}'))!));
+      estado['caixa_id'] = '0';
+      await banco.gravar('estado:${sync.escopo}', jsonEncode(estado));
+      final id = await abrir(tipo);
+      expect((await recebimentos.preparar(id, tipo.name)).valorTotal, '50.00');
+      final pagamento = await pagar(id, tipo);
+      expect(pagamento.sucesso, isTrue);
+      expect(pagamento.finalizou, isTrue);
+      await sync.enviarPendentes();
+      final pendente = (await banco.operacoes(sync.escopo))
+          .singleWhere((op) => op['acao'] == 'recebimento');
+      final dadosOriginais =
+          Map<String, dynamic>.from(jsonDecode(pendente['dados'] as String));
+      expect(dadosOriginais['recebimento_offline']['caixa_id'], '0');
+      expect(dadosOriginais['recebimento_offline']['total_centavos'], 5000);
+      conectado = perderResposta = true;
+      await banco.db.update('operacoes', {'proxima': 0});
+      await sync.enviarPendentes();
+      final tentativa = enviados.last;
+      expect(tentativa['recebimento_offline']['caixa_id'], '0');
+      expect(tentativa['id_operacao'], pendente['id']);
+      await banco.db.update('operacoes', {'proxima': 0});
+      await sync.enviarPendentes();
+      expect(enviados.last, tentativa);
+      expect(await banco.operacoes(sync.escopo), isEmpty);
+      expect(recibos.values.last['somaValorHistorico'], '50.00');
+    });
+
     test(
         '${tipo.nome} da empresa 2 aceita configuracao antiga com nomes das colunas',
         () async {

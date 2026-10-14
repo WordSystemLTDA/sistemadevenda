@@ -14,9 +14,11 @@ class _AdaptadorPagamento implements HttpClientAdapter {
   final chamadas = <RequestOptions>[];
   final bool perderPrimeiraResposta;
   final String resposta;
+  final String contentType;
 
   _AdaptadorPagamento({
     this.perderPrimeiraResposta = false,
+    this.contentType = Headers.jsonContentType,
     this.resposta = '{"sucesso":true,"mensagem":"ok","finalizouPedido":"0",'
         '"idVenda":"0","somaValorHistorico":"6.00"}',
   });
@@ -35,7 +37,7 @@ class _AdaptadorPagamento implements HttpClientAdapter {
       resposta,
       200,
       headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType]
+        Headers.contentTypeHeader: [contentType]
       },
     );
   }
@@ -66,6 +68,51 @@ Modelowordprodutos _produto() => Modelowordprodutos(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  for (final tipo in TipoCardapio.values) {
+    if (![
+      TipoCardapio.comanda,
+      TipoCardapio.mesa,
+      TipoCardapio.balcao,
+      TipoCardapio.delivery
+    ].contains(tipo)) continue;
+    test(
+        '${tipo.nome} recebe sem falso erro quando PHP retorna JSON como texto',
+        () async {
+      final api = DioCliente(servidor: 'https://servidor.test/api42/');
+      addTearDown(() => api.cliente.close());
+      final adaptador = _AdaptadorPagamento(
+          contentType: 'text/html',
+          resposta: '{"sucesso":true,"mensagem":"Pagamento registrado",'
+              '"finalizouPedido":"1","idVenda":"301",'
+              '"somaValorHistorico":"6.00"}');
+      api.cliente.httpClientAdapter = adaptador;
+      final usuario = UsuarioProvedor()
+        ..setUsuario(UsuarioModelo(id: '7', empresa: '9', nome: 'Operador'));
+      addTearDown(usuario.dispose);
+      final resultado = await ServicoFinalizarPagamento(api, usuario)
+          .pagarContaAtendimento(
+              id: '104',
+              idComanda: tipo == TipoCardapio.comanda ? '3' : '0',
+              idMesa: tipo == TipoCardapio.mesa ? '3' : '0',
+              cliente: '0',
+              tipo: tipo,
+              valorLancamento: 6,
+              valorOriginal: 6,
+              valorAPagar: 6,
+              troco: 0,
+              pagamentoSelecionado: 1,
+              quantidadePessoas: 1,
+              vencimento: DateTime(2026, 10, 14),
+              produtosParaFinalizar: const [],
+              modoProdutoParcial: false);
+      expect(resultado.sucesso, isTrue);
+      expect(resultado.finalizou, isTrue);
+      expect(resultado.idVenda, '301');
+      expect(resultado.totalPago, 6);
+      expect(adaptador.chamadas, hasLength(1));
+    });
+  }
 
   test('envia pagamento parcial para o endpoint correto da comanda', () async {
     final api = DioCliente(servidor: 'https://servidor.test/api1/');

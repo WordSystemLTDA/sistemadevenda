@@ -6,14 +6,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AdaptadorApiTeste implements HttpClientAdapter {
   final int status;
+  final String corpo;
+  final String? contentType;
   final chamadas = <RequestOptions>[];
-  AdaptadorApiTeste(this.status);
+  AdaptadorApiTeste(this.status,
+      {this.corpo = '{}', this.contentType = Headers.jsonContentType});
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
-    return ResponseBody.fromString('{}', status, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType]
+    return ResponseBody.fromString(corpo, status, headers: {
+      if (contentType != null) Headers.contentTypeHeader: [contentType!]
     });
   }
 
@@ -24,6 +27,72 @@ class AdaptadorApiTeste implements HttpClientAdapter {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final contentType in [null, 'text/plain', 'text/html']) {
+    test('JSON completo sem header correto conserva contrato: $contentType',
+        () async {
+      final api = DioCliente(servidor: 'https://servidor/api/');
+      addTearDown(() => api.cliente.close());
+      api.cliente.httpClientAdapter = AdaptadorApiTeste(200,
+          corpo: '{"sucesso":true,"idcliente":7}', contentType: contentType);
+      final resposta = await api.cliente.post('comandas/inserir_cliente.php');
+      expect(resposta.data, {'sucesso': true, 'idcliente': 7});
+      expect(resposta.statusCode, 200);
+    });
+  }
+  test('lista JSON completa com header texto conserva contrato', () async {
+    final api = DioCliente(servidor: 'https://servidor/api/');
+    addTearDown(() => api.cliente.close());
+    api.cliente.httpClientAdapter =
+        AdaptadorApiTeste(200, corpo: '[{"id":7}]', contentType: 'text/plain');
+    expect((await api.cliente.get('comandas/listar.php')).data, [
+      {'id': 7}
+    ]);
+  });
+  for (final corpo in [
+    '<html>{"sucesso":true}</html>',
+    'PHP Warning: falha\n{"sucesso":true}',
+    '{"sucesso":true',
+    'true',
+    '"ok"'
+  ]) {
+    test('resposta sem contrato JSON completo permanece intacta: $corpo',
+        () async {
+      final api = DioCliente(servidor: 'https://servidor/api/');
+      addTearDown(() => api.cliente.close());
+      api.cliente.httpClientAdapter =
+          AdaptadorApiTeste(200, corpo: corpo, contentType: 'text/html');
+      expect((await api.cliente.post('salvar.php')).data, corpo);
+    });
+  }
+  test('recusa HTTP conserva status e mensagem JSON de instalacao antiga',
+      () async {
+    final api = DioCliente(servidor: 'https://servidor/api/');
+    addTearDown(() => api.cliente.close());
+    final adaptador = AdaptadorApiTeste(409,
+        corpo: '{"sucesso":false,"mensagem":"Confira o saldo."}',
+        contentType: 'text/plain');
+    api.cliente.httpClientAdapter = adaptador;
+    await expectLater(
+        api.cliente.post('comandas/pagar_pedido.php'),
+        throwsA(isA<DioException>()
+            .having((e) => e.response?.statusCode, 'status', 409)
+            .having((e) => e.response?.data, 'recusa',
+                {'sucesso': false, 'mensagem': 'Confira o saldo.'})));
+    expect(adaptador.chamadas, hasLength(1));
+  });
+  test('consulta explicitamente textual conserva a resposta JSON como texto',
+      () async {
+    final api = DioCliente(servidor: 'https://servidor/api/');
+    addTearDown(() => api.cliente.close());
+    const corpo = '{"texto":"comprovante"}';
+    api.cliente.httpClientAdapter =
+        AdaptadorApiTeste(200, corpo: corpo, contentType: 'text/plain');
+    expect(
+        (await api.cliente.get('comprovante.php',
+                options: Options(responseType: ResponseType.plain)))
+            .data,
+        corpo);
+  });
   test('servidor fixo preserva contexto da requisicao', () async {
     final api = DioCliente(servidor: 'https://servidor-a/api/');
     addTearDown(() => api.cliente.close());

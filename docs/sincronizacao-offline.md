@@ -1,5 +1,29 @@
 # Pedidos offline do garcom
 
+## Gravacao e recebimento em 14/10/2026
+
+O cliente HTTP aceita objetos e listas JSON completos mesmo quando uma
+instalacao PHP antiga envia Content-Type de texto. Preserva codigos HTTP,
+recusas, autenticacao e respostas incompletas; nao extrai JSON de HTML ou
+avisos PHP e nao confirma uma gravacao sem resposta valida do servidor.
+
+Uma falha anterior de rede nao impede consultar a API novamente para preparar
+aberturas. Ao finalizar mesa/comanda sem alteracoes locais pendentes, o app
+consulta o atendimento atual antes de recorrer ao snapshot offline, mesmo
+quando a ultima sincronizacao ainda indicava desconectado.
+
+Recebimentos offline de mesas/comandas preparados nao exigem caixa aberto.
+O campo caixa_id permanece no payload por compatibilidade; a API42 grava
+no caixa atual ou com ID0 quando nao houver caixa. Identidade, saldo, versao,
+permissoes, dependencia dos itens e recibo idempotente continuam conferidos.
+Trocar/fechar caixa entre preparo e envio tambem nao recusa Balcao/Delivery;
+publicar a API42 corrigida e recompilar o aplicativo para aplicar as duas partes.
+
+Os dados ja salvos e as filas permanecem no aparelho durante falha de rede.
+Cadastro/edicao de clientes e enderecos ainda usam confirmacao direta da API:
+esta correcao nao acrescenta identidades locais ou novos protocolos para esses
+cadastros. Erro na tela conserva os campos preenchidos para corrigir/repetir.
+
 ## Integracao Online com o painel (10/10/2026)
 
 A preparacao completa de clientes e enderecos adicionada nesta integracao so
@@ -12,7 +36,7 @@ incluindo clientes fora da primeira pagina de quinze resultados. Enderecos
 tambem sao preparados sem precisar abrir antes a modal de novo pedido.
 Primeiro login/preparo requer conexao; dados desconhecidos nao sao inventados.
 Recebimentos de mesas/comandas existentes ja usam o protocolo proprio
-de atendimento, com caixa e saldo/itens capturados. Pagamentos de aberturas
+de atendimento, com saldo/itens capturados. Pagamentos de aberturas
 locais dependem da confirmacao da abertura; a resposta perdida conserva o ID.
 O painel `sistemarestaurante` possui journal e endpoints desktop proprios para
 pedidos e financeiro. Cada app envia sua fila para a API online e consulta o
@@ -64,8 +88,8 @@ recurso esteja livre novamente. Os produtos dependentes nao sao enviados nem
 impressos automaticamente. Arquivar a abertura nao libera esses produtos.
 
 Vendas de balcao recebem identidade `venda-local:`. O recibo, os itens e o pagamento
-sao gravados na mesma transacao no servidor. O caixa capturado na preparacao e
-comparado com o atual: troca de caixa gera conflito. Pagamentos de uma venda
+sao gravados na mesma transacao no servidor. O caixa e definido na confirmacao
+do pagamento, inclusive ID0 quando nao houver caixa aberto. Pagamentos de uma venda
 cancelada ou com abertura em conflito tambem exigem conferencia. Nao se deve
 registrar manualmente a mesma venda no servidor enquanto ela estiver pendente.
 

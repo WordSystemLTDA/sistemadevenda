@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
 import 'politica_consultas_http.dart';
@@ -42,12 +44,37 @@ class DioCliente {
                 requestOptions: options, error: erro, stackTrace: stack));
           }
         },
+        onResponse: (response, handler) {
+          _normalizarJsonLegado(response);
+          handler.next(response);
+        },
+        onError: (erro, handler) {
+          final resposta = erro.response;
+          if (resposta != null) _normalizarJsonLegado(resposta);
+          handler.next(erro);
+        },
       ),
     );
     final banco = BancoLocal.instancia;
     if (banco != null && cache == null) {
       cache = CacheConsultas(cliente, banco);
       cliente.interceptors.add(cache!);
+    }
+  }
+
+  // Algumas instalacoes PHP antigas devolvem JSON com Content-Type de texto.
+  // O contrato continua sendo objeto/lista; respostas incompletas e HTML
+  // permanecem intactos para que nenhuma operacao seja confirmada sem prova.
+  static void _normalizarJsonLegado(Response resposta) {
+    if (resposta.requestOptions.responseType != ResponseType.json ||
+        resposta.data is! String) {
+      return;
+    }
+    try {
+      final dados = jsonDecode(resposta.data as String);
+      if (dados is Map || dados is List) resposta.data = dados;
+    } on FormatException {
+      // A tela conserva a falha original do servidor.
     }
   }
 }

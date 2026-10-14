@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/widgets/tempo_aberto.dart';
+import 'package:app/src/essencial/sincronizacao/banco_local.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_destino_impressao.dart';
@@ -14,10 +18,24 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
+import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+class _SincronizadorSemConsultaRecente extends Fake implements Sincronizador {
+  _SincronizadorSemConsultaRecente(this.banco);
+  @override
+  final BancoLocal banco;
+  @override
+  String get escopo => '["https://api.exemplo/","2","1"]';
+  @override
+  bool get online => false;
+  @override
+  Future<void> configurar() async {}
+}
 
 class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
   bool falhar = false;
@@ -213,6 +231,45 @@ void main() {
   });
 
   for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+    testWidgets(
+        '${tipo.name} consulta a API antes de escolher offline pela ultima sincronizacao',
+        (tester) async {
+      sqfliteFfiInit();
+      final armazenamento = (await tester.runAsync(() async {
+        final pasta =
+            await Directory.systemTemp.createTemp('recebimento-atual-');
+        final banco = await BancoLocal.abrir(
+            factory: databaseFactoryFfi, path: '${pasta.path}/dados.db');
+        return (pasta: pasta, banco: banco);
+      }))!;
+      final banco = armazenamento.banco;
+      Sincronizador.instancia = _SincronizadorSemConsultaRecente(banco);
+      addTearDown(() async {
+        Sincronizador.instancia = null;
+        await banco.db.close();
+        await armazenamento.pasta.delete(recursive: true);
+      });
+      modulo.config.permitirMesa = 'Sim';
+      modulo.config.permitirComanda = 'Sim';
+      await abrir(tester, tipo: tipo);
+      await tester.scrollUntilVisible(find.text('Finalizar Conta'), 120);
+      await tester.tap(find.text('Finalizar Conta'));
+      for (var i = 0; i < 8; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 15)));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      final pagina = tester.widget<PaginaFinalizarContaAtendimento>(
+          find.byType(PaginaFinalizarContaAtendimento));
+      expect(pagina.offline, isFalse);
+      expect(modulo.servico.consultasItens, ['Não', 'Não', 'Sim']);
+      expect(
+          find.textContaining('preparar o recebimento offline'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets(
         '${tipo.name} confirma e reimprime os itens completos do preparo',
         (tester) async {

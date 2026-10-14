@@ -342,6 +342,42 @@ void main() {
     return fila;
   }
 
+  for (final modo in ['online', 'local']) {
+    test('$modo atualiza capacidade de abertura apesar de queda anterior',
+        () async {
+      final estadoAnterior = Map<String, dynamic>.from(
+          jsonDecode((await banco.ler('estado:${sync.escopo}'))!));
+      await (await SharedPreferences.getInstance()).setString(
+          'conexao',
+          jsonEncode(
+              {'tipoConexao': modo, 'servidor': 'cozinha', 'porta': '9980'}));
+      await sync.configurar();
+      await banco.gravar('estado:${sync.escopo}', '{}');
+      api.cache!.servidorDisponivel = false;
+      var consultasEstado = 0;
+      api.cliente.interceptors.insert(1,
+          InterceptorsWrapper(onRequest: (op, handler) {
+        if (CacheConsultas.caminho(op) != 'sincronizacao/estado.php') {
+          return handler.next(op);
+        }
+        consultasEstado++;
+        handler.resolve(Response(
+            requestOptions: op,
+            statusCode: 200,
+            data: {'protocolo': 1, 'sucesso': true, ...estadoAnterior}));
+      }));
+      expect(await sync.prepararAberturasOffline(), isTrue);
+      expect(consultasEstado, 1);
+      expect(api.cache!.servidorDisponivel, isTrue);
+      expect(
+          jsonDecode(
+              (await banco.ler('estado:${sync.escopo}'))!)['abertura_offline'],
+          1);
+      expect(await sync.prepararAberturasOffline(), isTrue);
+      expect(consultasEstado, 1);
+    });
+  }
+
   test('Delivery recebe recibo antes de liberar finalizacao em uma API rapida',
       () async {
     final fila = await guardarDelivery();

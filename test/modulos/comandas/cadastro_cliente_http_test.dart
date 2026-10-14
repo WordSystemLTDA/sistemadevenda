@@ -11,8 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _AdapterClientes implements HttpClientAdapter {
-  _AdapterClientes(this.resposta);
+  _AdapterClientes(this.resposta, {this.contentType = Headers.jsonContentType});
   final Map<String, dynamic> resposta;
+  final String contentType;
   final chamadas = <RequestOptions>[];
 
   @override
@@ -20,7 +21,7 @@ class _AdapterClientes implements HttpClientAdapter {
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
     return ResponseBody.fromString(jsonEncode(resposta), 200, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
+      Headers.contentTypeHeader: [contentType],
     });
   }
 
@@ -68,7 +69,7 @@ void main() {
         expect(chamada.uri.host,
             modo == 'online' ? 'bigchef.com.br' : '192.168.2.113');
         expect(chamada.uri.path,
-            '/sistema/apis_restaurantes/api_restaurantes_venda/api39/comandas/inserir_cliente.php');
+            '/sistema/apis_restaurantes/api_restaurantes_venda/api42/comandas/inserir_cliente.php');
         expect(chamada.data['empresa'], '2');
         expect(chamada.data['acao'], 'cadastrar');
         expect(chamada.data, isNot(contains('id')));
@@ -95,6 +96,29 @@ void main() {
         expect(resposta.idcliente, '7');
         expect(resposta.nomecliente, "Cliente d'Agua");
         expect(adapter.chamadas.single.data['obs'], "Portao d'agua");
+      });
+
+      test('$modo salva cliente sem email quando resposta tem header de texto',
+          () async {
+        final adapter = _AdapterClientes({
+          'sucesso': true,
+          'idcliente': 8,
+          'nomecliente': 'Cliente sem email',
+          'mensagem': 'Cliente cadastrado',
+        }, contentType: 'text/html');
+        final api = DioCliente()..cliente.httpClientAdapter = adapter;
+        final usuario = UsuarioProvedor()
+          ..setUsuario(
+              UsuarioModelo(id: '311', empresa: '2', nome: 'Operador'));
+        addTearDown(() => api.cliente.close());
+        addTearDown(usuario.dispose);
+        final resposta = await ServicoComandas(api, usuario)
+            .inserirCliente('Cliente sem email', '', '', '');
+        expect(resposta.sucesso, isTrue);
+        expect(resposta.idcliente, '8');
+        expect(adapter.chamadas, hasLength(1));
+        expect(adapter.chamadas.single.data['email'], isEmpty);
+        expect(adapter.chamadas.single.data, isNot(contains('cpf')));
       });
 
       test('$modo nao confirma cadastro sem ID valido', () async {

@@ -561,7 +561,6 @@ class Sincronizador extends ChangeNotifier {
     final conta = usuario.usuario!;
     final estado = jsonDecode(await banco.ler('estado:$alvo') ?? '{}') as Map;
     if (estado['abertura_offline'] == 1) return true;
-    if (api.cache?.servidorDisponivel == false) return false;
     try {
       final resposta = await api.cliente.get('sincronizacao/estado.php',
           queryParameters: {'empresa': conta.empresa, 'id_usuario': conta.id},
@@ -569,6 +568,7 @@ class Sincronizador extends ChangeNotifier {
       if (alvo != escopo || !identical(conta, usuario.usuario)) return false;
       if (resposta.data is Map && resposta.data['protocolo'] == 1) {
         await banco.gravar('estado:$alvo', jsonEncode(resposta.data));
+        api.cache?.confirmarConexao();
         return resposta.data['abertura_offline'] == 1;
       }
       return false;

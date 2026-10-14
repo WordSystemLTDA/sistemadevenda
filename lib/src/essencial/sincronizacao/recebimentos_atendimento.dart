@@ -221,11 +221,9 @@ class RecebimentosAtendimento {
               : (estado['atendimentos'] as Map?)?[real]?['versao']),
       'caixa_id': estado['caixa_id']?.toString() ?? '0',
     };
-    if (snapshot['caixa_id'] == '0' ||
-        (abertura == null &&
-            '${snapshot['versao_atendimento'] ?? ''}'.isEmpty)) {
+    if (abertura == null && '${snapshot['versao_atendimento'] ?? ''}'.isEmpty) {
       throw StateError(
-          'Conecte uma vez com seu caixa aberto para preparar o recebimento offline.');
+          'Atualize esta conta conectado uma vez para preparar o recebimento offline.');
     }
     await banco.gravar(_chave(id), jsonEncode(snapshot));
     return detalhe;
