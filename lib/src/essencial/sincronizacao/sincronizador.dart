@@ -15,6 +15,7 @@ import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/servicos/armazenamento_carrinhos.dart';
 import 'package:app/src/modulos/delivery/servicos/preparacao_delivery_offline.dart';
+import 'package:app/src/modulos/delivery/servicos/cancelamentos_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -1334,11 +1335,14 @@ class Sincronizador extends ChangeNotifier {
   // Recupera tambem pedidos aceitos antes do clique em Preparar ou por uma
   // versao anterior da API. Concluir a venda nao apaga a etapa da copia LAN.
   Future<void> _reconciliarPreparosDelivery(String alvo, String url) async {
+    final cancelados =
+        await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos();
     final operacoes = await banco.db.query('operacoes',
         where:
             "escopo = ? AND acao = 'delivery' AND estado IN ('registrado', 'concluido')",
         whereArgs: [alvo]);
     for (final op in operacoes) {
+      if (CancelamentosDeliveryOffline.afetaOperacao(op, cancelados)) continue;
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
       final recibo = jsonDecode(op['resposta'] as String? ?? '{}') as Map;
       if (recibo['etapa_rede_confirmada'] == true) continue;
@@ -1382,17 +1386,37 @@ class Sincronizador extends ChangeNotifier {
   }
 
   Future<void> _enviarPendentes(String alvo, String url) async {
+    final cancelados =
+        await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos();
     // Uma operacao antiga aguardando a API nao segura a cozinha das seguintes.
     for (final op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo) return;
-      if (op['estado'] == 'pendente') await _pedidosRede.preparar(op);
+      if (op['estado'] == 'pendente' &&
+          !CancelamentosDeliveryOffline.afetaOperacao(op, cancelados)) {
+        await _pedidosRede.preparar(op);
+      }
     }
     unawaited(_pedidosRede.processar());
     final bloqueados = <String>{};
-    for (var op in await banco.operacoes(alvo)) {
+    final fila = await banco.operacoes(alvo);
+    // O cancelamento precede preparos antigos do mesmo pedido. Uma venda
+    // cancelada nao volta para a cozinha quando a conexao retorna.
+    final operacoes = [
+      ...fila.where((op) => op['acao'] == 'cancelar_delivery'),
+      ...fila.where((op) => op['acao'] != 'cancelar_delivery'),
+    ];
+    for (var op in operacoes) {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
       final id = op['id'] as String;
       final atendimento = op['atendimento'] as String;
+      if (op['acao'] == 'cancelar_delivery' && op['estado'] == 'conflito') {
+        // Uma senha recusada nao segura nova autorizacao do mesmo pedido.
+        continue;
+      }
+      if (op['acao'] != 'cancelar_delivery' &&
+          CancelamentosDeliveryOffline.afetaOperacao(op, cancelados)) {
+        continue;
+      }
       final dadosOriginais = AtendimentosLocais.dados(op);
       if (op['acao'] == 'recebimento' && op['estado'] != 'registrado') {
         final dependencias = <String>{
@@ -1541,8 +1565,13 @@ class Sincronizador extends ChangeNotifier {
           }
         } on DioException catch (e) {
           final mensagem = e.response?.data;
+          final rejeicaoCancelamento = op['acao'] == 'cancelar_delivery' &&
+              (e.response?.statusCode ?? 0) >= 400 &&
+              (e.response?.statusCode ?? 0) < 500 &&
+              !{408, 429}.contains(e.response?.statusCode);
           if ((e.response?.statusCode == 409 ||
-                  e.response?.statusCode == 422) &&
+                  e.response?.statusCode == 422 ||
+                  rejeicaoCancelamento) &&
               mensagem is Map &&
               (mensagem['protocolo'] == 1 || op['acao'] == 'recebimento') &&
               mensagem['sucesso'] == false) {
@@ -1634,6 +1663,13 @@ class Sincronizador extends ChangeNotifier {
           throw StateError(
               'O servidor nao confirmou a identidade do Delivery.');
         }
+        if (op['acao'] == 'cancelar_delivery' &&
+            (resultado['idDelivery']?.toString() != atendimento ||
+                resultado['status'] != 'Cancelado' ||
+                resultado['cancelamento_operacional'] != true)) {
+          throw StateError(
+              'O servidor nao confirmou o cancelamento do pedido.');
+        }
         if (op['acao'] == 'editar_item' &&
             (int.tryParse('${resultado['id_itens_venda']}') ?? 0) <= 0) {
           throw StateError('O servidor nao confirmou a edicao do produto.');
@@ -1688,7 +1724,7 @@ class Sincronizador extends ChangeNotifier {
       unawaited(_pedidosRede.processar());
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
-        'tipo': op['acao'] == 'delivery'
+        'tipo': const {'delivery', 'cancelar_delivery'}.contains(op['acao'])
             ? 'Delivery'
             : op['acao'] == 'venda'
                 ? 'Balcão'
@@ -1702,7 +1738,9 @@ class Sincronizador extends ChangeNotifier {
       }
       // Impressao possui fila duravel e processamento proprio. Ela comeca
       // agora, mas nunca segura o POST da proxima mesa, comanda ou pedido.
-      unawaited(socket.processarImpressoesPendentes());
+      if (op['acao'] != 'cancelar_delivery') {
+        unawaited(socket.processarImpressoesPendentes());
+      }
       // O servidor nao devolve o aviso WebSocket ao aparelho que o enviou.
       // Atualiza a tela de origem somente depois de persistir o recibo e
       // liberar o pedido local; a API ja conserva a etapa operacional confirmada.

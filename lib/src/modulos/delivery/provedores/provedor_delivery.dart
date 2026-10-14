@@ -40,6 +40,7 @@ class ProvedorDelivery extends ChangeNotifier {
   int _consulta = 0;
   bool _descartado = false;
   final _pedidosRecentes = <String, ({PedidoDelivery pedido, DateTime ate})>{};
+  Set<String> _cancelamentosLocais = {};
 
   final _atualizacao = AtualizacaoAgrupada();
 
@@ -66,7 +67,10 @@ class ProvedorDelivery extends ChangeNotifier {
             horaFim: horaFim,
             pesquisa: pesquisa,
             tipo: tipo);
+        final cancelamentos = await servico.pedidosComCancelamentoLocal();
         if (_descartado || consulta != _consulta) return;
+        _cancelamentosLocais = cancelamentos;
+        _pedidosRecentes.removeWhere((id, _) => cancelamentos.contains(id));
         etapas = _ordenarEtapas(
             _mesclarPedidosRecentes(lista, consultaConcluida: true));
         // A lista recebida ja pode ser exibida. Uma consulta auxiliar lenta
@@ -98,6 +102,15 @@ class ProvedorDelivery extends ChangeNotifier {
 
   void atualizarPedido(PedidoDelivery pedido,
       {Duration validade = const Duration(seconds: 45)}) {
+    if (pedido.dados['cancelamentoLocal'] == true) {
+      // Invalida tambem uma resposta de listagem iniciada antes do clique.
+      ++_consulta;
+      carregando = false;
+      _cancelamentosLocais.add(pedido.id);
+      removerPedido(pedido.id);
+      return;
+    }
+    if (_cancelamentosLocais.contains(pedido.id)) return;
     if (!pedido.visivelNoPainelDelivery ||
         (pedido.salvoNoAparelho && pedido.pagamentoMercadoPagoObrigatorio)) {
       removerPedido(pedido.id);
@@ -138,7 +151,10 @@ class ProvedorDelivery extends ChangeNotifier {
         for (final etapa in origem)
           EtapaDelivery.comPedidos(
             etapa,
-            [...etapa.pedidos]..sort(_compararPedidos),
+            [
+              ...etapa.pedidos
+                  .where((pedido) => !_cancelamentosLocais.contains(pedido.id))
+            ]..sort(_compararPedidos),
           ),
       ];
 

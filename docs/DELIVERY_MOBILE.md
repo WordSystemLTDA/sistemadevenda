@@ -1,5 +1,42 @@
 # Delivery no aplicativo
 
+## Cancelamento operacional de qualquer pagamento (14/10/2026)
+
+Cancelar Venda aceita pedidos Pix MP, Cartao MP e formas comuns, antes ou depois
+do pagamento. O menu usa o pedido ja carregado para abrir o dialogo, sem exigir
+uma nova consulta online; senha Admin e motivo obrigatorio continuam validados.
+Nenhum recebimento, item ou pagamento do Mercado Pago e apagado ou estornado.
+
+Com o sincronizador ativo, a solicitacao entra atomicamente na fila SQLite
+existente como `cancelar_delivery`, sem impressao, com UUID imutavel. O envio
+inicial espera ate 1,5s; sem resposta confirmada, o pedido fica oculto no aparelho
+e a solicitacao aparece em Envio dos pedidos para sincronizar ao reconectar.
+A senha recusada vira conflito, exibe a recusa e permite nova autorizacao;
+uma consulta seguinte restaura o pedido. A solicitacao offline permanece sujeita
+a validacao da API, sem declarar cancelamento remoto confirmado antes do recibo.
+
+O registro da fila guarda somente `autorizacao_cancelamento`: HMAC-SHA256 com
+chave UTF-8 `senha.trim()` e mensagem JSON UTF-8
+`['cancelar_delivery', UUID, empresa, usuario, idPedido]`, todos os elementos
+strings. A API42 usa JSON sem escapes de Unicode/barras e confere a prova contra
+a senha Admin configurada. A prova fica vinculada a essa operacao e pedido;
+senha em texto puro nao entra na fila. `crypto`3.0.7, ja existente transitivamente,
+foi declarado diretamente sem atualizar versao.
+
+O recibo exige `protocolo:1`, o mesmo `id_operacao`, `sucesso:true`, `idDelivery`,
+`status:'Cancelado'` e `cancelamento_operacional:true`. Resposta perdida conserva
+UUID/prova/dados para replay idempotente. Tombstones permanecem depois do ACK,
+filtrando cache antigo, notificacoes otimistas e respostas de consulta em voo.
+Preparos antigos da API/LAN associados ao mesmo pedido nao sao retomados;
+seus registros originais continuam preservados. Outros pedidos e as guardas
+de pagamento/preparo mantem o fluxo existente.
+
+Validacao:174 testes Flutter unicos aprovados, incluindo19 novos de SQLite,
+reconexao/resposta perdida, HMAC comum com PHP, cache/concorrencia, senha recusada,
+preparo/LAN e dialogos320/1180px. Analyze dos10 Dart alterados sem apontamentos.
+Nenhuma API real, venda, pagamento ou impressao fisica foi acionada. Publicar
+API42 compativel e recompilar/reiniciar o app.
+
 ## Visibilidade do Mercado Pago (14/10/2026)
 
 Pedidos com `pagamento_online_obrigatorio` e tipo `5` (Pix MP) ou `6`

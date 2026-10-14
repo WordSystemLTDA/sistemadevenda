@@ -21,6 +21,7 @@ import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'fila_delivery_offline.dart';
 import 'etapas_delivery_rede.dart';
+import 'cancelamentos_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -76,6 +77,21 @@ class ServicoDelivery {
   Future<List<PedidoDelivery>> pedidosLocais() async =>
       await (await _filaLocal())?.listar() ?? [];
 
+  Future<CancelamentosDeliveryOffline?> _cancelamentos() async {
+    final sync = Sincronizador.instancia;
+    if (sync == null) return null;
+    await sync.configurar();
+    if (sync.escopo.isEmpty ||
+        usuario.usuario?.empresa != sync.usuario.usuario?.empresa ||
+        usuario.usuario?.id != sync.usuario.usuario?.id) {
+      return null;
+    }
+    return CancelamentosDeliveryOffline(sync.banco, sync.escopo);
+  }
+
+  Future<Set<String>> pedidosComCancelamentoLocal() async =>
+      await (await _cancelamentos())?.pedidosOcultos() ?? {};
+
   Future<void> definirAjustesLocais(String id,
           {required double desconto, required double acrescimo}) async =>
       (await _exigirFilaLocal())
@@ -109,6 +125,12 @@ class ServicoDelivery {
       }
       throw StateError(
           'Este Delivery está salvo no aparelho. Conclua sua sincronização antes desta ação.');
+    }
+    if ((int.tryParse(id) ?? 0) > 0 &&
+        (await pedidosComCancelamentoLocal()).contains(id) &&
+        !(rota == 'delivery/acoes_pedido.php' &&
+            campos['acao'] == 'cancelar')) {
+      throw StateError('O cancelamento deste pedido ja esta salvo.');
     }
     final resposta = await _requisicao(rota, campos, true);
     if (resposta is! Map || resposta['sucesso'] != true) {
@@ -218,10 +240,18 @@ class ServicoDelivery {
                   .toLowerCase()
                   .contains(termo));
     }).toList();
-    return mesclarEtapasDeliveryRede([
-      for (final e in json['dados'] as List? ?? [])
-        EtapaDelivery.fromMap(Map<String, dynamic>.from(e as Map))
-    ], locais);
+    final cancelados = await pedidosComCancelamentoLocal();
+    return [
+      for (final etapa in mesclarEtapasDeliveryRede([
+        for (final e in json['dados'] as List? ?? [])
+          EtapaDelivery.fromMap(Map<String, dynamic>.from(e as Map))
+      ], locais))
+        EtapaDelivery.comPedidos(
+            etapa,
+            etapa.pedidos
+                .where((pedido) => !cancelados.contains(pedido.id))
+                .toList())
+    ];
   }
 
   Future<void> prepararPelaRede(String id) async {
@@ -331,10 +361,17 @@ class ServicoDelivery {
     final pedido =
         PedidoDelivery.fromMap(Map<String, dynamic>.from(json['dados'] as Map));
     if (pedido.id != id) throw StateError('Pedido não encontrado.');
+    if ((await pedidosComCancelamentoLocal()).contains(id)) {
+      return PedidoDelivery.fromMap(
+          {...pedido.dados, 'status': 'Cancelado', 'cancelamentoLocal': true});
+    }
     return pedido;
   }
 
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async {
+    if ((await pedidosComCancelamentoLocal()).contains(id)) {
+      throw StateError('O cancelamento deste pedido ja esta salvo.');
+    }
     if (FilaDeliveryOffline.local(id)) {
       final local = await pedido(id);
       return Modeloworddadoscardapio.fromMap({
@@ -549,24 +586,24 @@ class ServicoDelivery {
   }
 
   Future<Map<String, dynamic>> avancar(
-          PedidoDelivery pedido, EtapaDelivery destino,
-          {String entregador = '',
-          String valorEntrega = '0',
-          List<String> impressoes = const []}) async {
+      PedidoDelivery pedido, EtapaDelivery destino,
+      {String entregador = '',
+      String valorEntrega = '0',
+      List<String> impressoes = const []}) async {
     if (pedido.aguardandoPagamentoOnline) {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
     return salvar('delivery/mudar_status_delivery.php', {
-        'id': pedido.id,
-        'status': destino.id,
-        'statusOrigem': pedido.etapa,
-        'tipoImpressaoEsperado': destino.impressao,
-        'valorOriginal': pedido.total,
-        if (impressoes.isNotEmpty) 'impressoes': impressoes,
-        'irParaProximo': false,
-        'idEntregador': entregador,
-        'valor_da_entrega': valorEntrega,
-      });
+      'id': pedido.id,
+      'status': destino.id,
+      'statusOrigem': pedido.etapa,
+      'tipoImpressaoEsperado': destino.impressao,
+      'valorOriginal': pedido.total,
+      if (impressoes.isNotEmpty) 'impressoes': impressoes,
+      'irParaProximo': false,
+      'idEntregador': entregador,
+      'valor_da_entrega': valorEntrega,
+    });
   }
 
   Future<void> concluir(PedidoDelivery pedido,
@@ -650,14 +687,51 @@ class ServicoDelivery {
   }
 
   Future<Map<String, dynamic>> acao(String acao, PedidoDelivery pedido,
-          [Map<String, dynamic> campos = const {}]) =>
-      salvar('delivery/acoes_pedido.php', {
-        ...campos,
-        'acao': acao,
-        if (acao == 'clonarCompleto') 'origemPedido': 'garcom',
-        'id': pedido.id,
-        'statusOrigem': pedido.etapa,
-      });
+      [Map<String, dynamic> campos = const {}]) async {
+    if (acao == 'cancelar') {
+      final fila = await _cancelamentos();
+      final sync = Sincronizador.instancia;
+      if (fila != null && sync != null) {
+        final operacao = await fila.guardar(
+          id: pedido.id,
+          empresa: usuario.usuario!.empresa!,
+          usuario: usuario.usuario!.id!,
+          senha: '${campos['senha'] ?? ''}',
+          motivo: '${campos['motivo'] ?? ''}',
+          etapa: pedido.etapa,
+          destino: sync.destino,
+        );
+        // A tentativa curta recupera erros de permissao sem travar a tela
+        // durante uma queda. O HTTP continua pela fila depois do timeout.
+        await sync
+            .enviarPendentes()
+            .timeout(const Duration(milliseconds: 1500), onTimeout: () {});
+        final salvo = await fila.operacao(operacao);
+        if (salvo?['estado'] == 'conflito') {
+          throw StateError(
+              '${salvo?['erro'] ?? 'Cancelamento nao autorizado.'}');
+        }
+        notificarPedidoAtualizado(PedidoDelivery.fromMap({
+          ...pedido.dados,
+          'status': 'Cancelado',
+          'cancelamentoLocal': true,
+        }));
+        return {
+          'sucesso': true,
+          'salvo_no_aparelho': salvo?['estado'] != 'concluido',
+          'id_operacao': operacao,
+          'cancelamento_operacional': true,
+        };
+      }
+    }
+    return salvar('delivery/acoes_pedido.php', {
+      ...campos,
+      'acao': acao,
+      if (acao == 'clonarCompleto') 'origemPedido': 'garcom',
+      'id': pedido.id,
+      'statusOrigem': pedido.etapa,
+    });
+  }
 
   Future<PedidoDelivery> alterarEntrega(
     PedidoDelivery pedido, {
@@ -1166,7 +1240,8 @@ class ServicoDelivery {
       String? dataLancamento,
       List<ParcelasModelo> parcelasLista = const []}) async {
     if (pedido.pagamentoOnlineObrigatorio) {
-      throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
+      throw StateError(
+          'O pagamento deste pedido é confirmado pelo Mercado Pago.');
     }
     final totalOriginal = valorOriginal ?? pedido.total;
     final totalAPagar = valorAPagar ?? pedido.restante;

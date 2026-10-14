@@ -7,6 +7,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/utils/dados_impressao_preparo.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/delivery/servicos/fila_delivery_offline.dart';
+import 'package:app/src/modulos/delivery/servicos/cancelamentos_delivery_offline.dart';
 import 'package:flutter/foundation.dart';
 
 import 'banco_local.dart';
@@ -80,6 +81,10 @@ class PedidosNaRede {
   Future<String?> _preparar(Map<String, Object?> op) async {
     final alvo = op['escopo'] as String;
     final id = op['id'] as String;
+    if (CancelamentosDeliveryOffline.afetaOperacao(
+        op, await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos())) {
+      return null;
+    }
     final salvo = await banco.ler(chave(alvo, id));
     if (salvo != null) {
       // Migra tambem uma copia criada pela versao anterior, sem alterar o
@@ -329,6 +334,10 @@ class PedidosNaRede {
         return;
       }
       if (op == null) continue;
+      if (CancelamentosDeliveryOffline.afetaOperacao(op,
+          await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos())) {
+        continue;
+      }
       final estado = op['estado'];
       final confirmado = const {'registrado', 'concluido'}.contains(estado);
       final conflito = const {'conflito', 'arquivado'}.contains(estado);

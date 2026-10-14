@@ -335,6 +335,9 @@ class PendenciasSincronizacao extends StatelessWidget {
                           ? 'Abertura: ${dados['detalhe']['nome']}'
                           : null) ??
                       (op['acao'] == 'delivery' ? 'Pedido Delivery' : null) ??
+                      (op['acao'] == 'cancelar_delivery'
+                          ? 'Cancelar Delivery #${op['atendimento']}'
+                          : null) ??
                       (op['acao'] == 'recebimento'
                           ? 'Recebimento: ${dados['tipo']} ${dados[dados['tipo'] == 'Mesa' ? 'id_mesa' : 'id_comanda']}'
                           : null) ??

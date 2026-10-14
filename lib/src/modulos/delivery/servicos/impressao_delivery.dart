@@ -34,6 +34,9 @@ class ImpressaoDelivery {
     if (pedido.aguardandoPagamentoOnline) {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
+    if ((await servico.pedidosComCancelamentoLocal()).contains(pedido.id)) {
+      throw StateError('O cancelamento deste pedido ja esta salvo.');
+    }
     final resultados = await Future.wait([
       servico.dadosCardapio(pedido.id),
       servico.detalhesLocais(pedido.id),
@@ -41,6 +44,9 @@ class ImpressaoDelivery {
     final dados = resultados[0] as Modeloworddadoscardapio;
     final detalhesLocais = resultados[1] as List<Modelowordprodutos>;
     final configuracao = config ?? await _configuracao(servico);
+    if ((await servico.pedidosComCancelamentoLocal()).contains(pedido.id)) {
+      throw StateError('O cancelamento deste pedido ja esta salvo.');
+    }
     final numeroPedido =
         numeroPedidoOperacionalConfirmado(dados.numeroPedido) ??
             exigirNumeroPedidoOperacional(pedido.numeroOperacional);

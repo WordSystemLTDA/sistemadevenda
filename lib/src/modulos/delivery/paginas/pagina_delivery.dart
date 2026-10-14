@@ -324,7 +324,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       final acao = await mostrarMenuPedidoDelivery(context, pedido, etapa);
       if (acao == null || !mounted) return;
       setState(() => _ocupado = pedido.id);
-      final atual = await _provedor.servico.pedido(pedido.id);
+      final atual = acao == AcaoPedidoDelivery.cancelar
+          ? pedido
+          : await _provedor.servico.pedido(pedido.id);
       if (!mounted) return;
       await executarAcaoDelivery(context, _provedor.servico, atual, acao);
     } catch (e) {
@@ -424,7 +426,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     }
     if (_ocupado != null) return false;
     if (pedido.aguardandoPagamentoOnline) {
-      if (exibirFalha) _mensagem('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+      if (exibirFalha) {
+        _mensagem('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+      }
       return false;
     }
     if (pedido.quantidade == 0) {
@@ -437,7 +441,8 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       var atual = await _provedor.servico.pedido(pedido.id);
       if (!mounted) return false;
       if (atual.aguardandoPagamentoOnline) {
-        throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
+        throw StateError(
+            'Aguarde a confirmação do pagamento pelo Mercado Pago.');
       }
       if (!atual.podeAvancar(origem) || atual.etapa != origem.id) {
         throw StateError(
@@ -1182,25 +1187,25 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                 : '${DateTime.now().difference(p.abertura!).inMinutes.clamp(0, 99999)} min';
                             final label = p.aguardandoPagamentoOnline
                                 ? 'Preparar'
-                                : p.recebidoNaRede &&
-                                    !p.preparandoNaRede
-                                ? 'Preparar'
-                                : p.salvoNoAparelho
-                                    ? p.aguardandoSincronizacao
-                                        ? 'Ver sincronização'
-                                        : 'Continuar pedido'
-                                    : p.quantidade == 0
-                                        ? 'Adicionar produtos'
-                                        : widget.config?.exigePagamento(
-                                                    p, destino ?? etapa) ==
-                                                true
-                                            ? (destino ?? etapa).impressao ==
-                                                    '3'
-                                                ? 'FINALIZAR'
-                                                : 'Receber ${p.restante.obterReal()}'
-                                            : etapa.impressao == '3'
-                                                ? 'Concluir pedido'
-                                                : etapa.botao;
+                                : p.recebidoNaRede && !p.preparandoNaRede
+                                    ? 'Preparar'
+                                    : p.salvoNoAparelho
+                                        ? p.aguardandoSincronizacao
+                                            ? 'Ver sincronização'
+                                            : 'Continuar pedido'
+                                        : p.quantidade == 0
+                                            ? 'Adicionar produtos'
+                                            : widget.config?.exigePagamento(
+                                                        p, destino ?? etapa) ==
+                                                    true
+                                                ? (destino ?? etapa)
+                                                            .impressao ==
+                                                        '3'
+                                                    ? 'FINALIZAR'
+                                                    : 'Receber ${p.restante.obterReal()}'
+                                                : etapa.impressao == '3'
+                                                    ? 'Concluir pedido'
+                                                    : etapa.botao;
                             final podeAvancar = p.salvoNoAparelho
                                 ? !p.preparandoNaRede
                                 : p.podeAvancar(etapa) && destino != null;
@@ -1452,10 +1457,17 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                               ],
                                               if (p.aguardandoPagamentoOnline)
                                                 Padding(
-                                                  padding: const EdgeInsets.only(top: 6),
-                                                  child: Text('Aguardando pagamento', style: TextStyle(fontSize: 12, color: cs.error)),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 6),
+                                                  child: Text(
+                                                      'Aguardando pagamento',
+                                                      style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: cs.error)),
                                                 ),
-                                              if (p.pago > 0 && !p.aguardandoPagamentoOnline)
+                                              if (p.pago > 0 &&
+                                                  !p.aguardandoPagamentoOnline)
                                                 Padding(
                                                     padding:
                                                         const EdgeInsets.only(
@@ -1492,7 +1504,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                 ),
                                               if (podeAvancar ||
                                                   podeImprimir ||
-                                                  podeVerDetalhes || p.aguardandoPagamentoOnline) ...[
+                                                  podeVerDetalhes ||
+                                                  p.aguardandoPagamentoOnline) ...[
                                                 const SizedBox(height: 12),
                                                 Row(children: [
                                                   if (podeExcluirRascunho) ...[
@@ -1593,7 +1606,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     const SizedBox(width: 8),
                                                   ],
                                                   if (podeAvancar ||
-                                                      podeVerDetalhes || p.aguardandoPagamentoOnline)
+                                                      podeVerDetalhes ||
+                                                      p.aguardandoPagamentoOnline)
                                                     Expanded(
                                                       flex:
                                                           podeExcluirRascunho ||
@@ -1603,8 +1617,9 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                       child: FilledButton.icon(
                                                         key: ValueKey(
                                                             '${podeVerDetalhes ? 'detalhes-venda-delivery' : 'avancar-delivery'}-${p.id}'),
-                                                        onPressed: (!podeAvancar && !podeVerDetalhes) || widget
-                                                                        .ocupado !=
+                                                        onPressed: (!podeAvancar &&
+                                                                    !podeVerDetalhes) ||
+                                                                widget.ocupado !=
                                                                     null ||
                                                                 widget
                                                                     .modoSelecao
