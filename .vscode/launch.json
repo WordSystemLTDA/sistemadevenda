@@ -5,30 +5,29 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "app",
+      "name": "Sistema de Venda - Simulador iOS",
       "request": "launch",
       "type": "dart",
-      "cwd": "${workspaceFolder}",
-      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder:sistemadevenda}",
+      "program": "${workspaceFolder:sistemadevenda}/lib/main.dart",
       "deviceId": "43F51EC6-173E-4579-BD42-43AE429711BD",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "templateFor": ""
     },
     {
-      "name": "app (profile mode)",
+      "name": "Sistema de Venda - Aparelho fisico (profile)",
       "request": "launch",
       "type": "dart",
-      "cwd": "${workspaceFolder}",
-      "program": "lib/main.dart",
-      //"deviceId": "00008150-000634503488401C",
+      "cwd": "${workspaceFolder:sistemadevenda}",
+      "program": "${workspaceFolder:sistemadevenda}/lib/main.dart",
       "flutterMode": "profile"
     },
     {
-      "name": "app (release mode)",
+      "name": "Sistema de Venda - Aparelho fisico (release)",
       "request": "launch",
       "type": "dart",
-      "cwd": "${workspaceFolder}",
-      "program": "lib/main.dart",
-      //"deviceId": "00008150-000634503488401C",
+      "cwd": "${workspaceFolder:sistemadevenda}",
+      "program": "${workspaceFolder:sistemadevenda}/lib/main.dart",
       "flutterMode": "release"
     }
   ]
