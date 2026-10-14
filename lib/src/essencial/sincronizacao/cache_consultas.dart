@@ -146,7 +146,6 @@ class CacheConsultas extends Interceptor {
       'tela_nfe_saida/listar_bancos.php',
       'balcao/listar.php',
       'delivery/listar_opcoes.php',
-      'entregador/listar_por_nome.php',
       'permissoes_bigchef/listar_permissoes_bigchef.php',
       'enderecos_clientes/listar_por_cliente.php',
       'recorrentes/listar.php',
@@ -345,26 +344,6 @@ class CacheConsultas extends Interceptor {
   Future<Object?> _derivar(RequestOptions opcoes, String alvo) async {
     final rota = caminho(opcoes);
     final q = opcoes.uri.queryParameters;
-    if (rota == 'entregador/listar_por_nome.php' &&
-        (q['pesquisa'] ?? '').trim().isNotEmpty) {
-      final completa = opcoes.copyWith(
-          queryParameters: {...opcoes.queryParameters, 'pesquisa': ''});
-      final consulta = await banco.consulta(alvo, chave(completa));
-      if (consulta != null) {
-        final dados = jsonDecode(consulta['valor'] as String);
-        final lista = dados is List ? dados : (dados as Map)['dados'] as List?;
-        final termo = normalizarBusca(q['pesquisa']!);
-        final encontrados = (lista ?? [])
-            .whereType<Map>()
-            .where((item) => ['nomecompleto', 'nome', 'telefone', 'id'].any(
-                (campo) =>
-                    normalizarBusca('${item[campo] ?? ''}').contains(termo)))
-            .toList();
-        return dados is List
-            ? encontrados
-            : {...dados as Map, 'dados': encontrados};
-      }
-    }
     if (rota == _rotaClientes) {
       final completo = await banco.ler('clientes-completos:$alvo');
       if (completo != null) {

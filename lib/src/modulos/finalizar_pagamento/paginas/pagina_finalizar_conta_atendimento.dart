@@ -386,7 +386,8 @@ class _PaginaFinalizarContaAtendimentoState
     final produtos = atendimento?.produtos ?? const <Modelowordprodutos>[];
     if (atendimento == null || produtos.isEmpty) return false;
     final numeroPedido =
-        numeroPedidoOperacionalConfirmado(atendimento.numeroPedido) ?? '';
+        numeroPedidoOperacionalConfirmado(atendimento.numeroPedido);
+    if (numeroPedido == null) return false;
     final abertura = DateTime.tryParse(atendimento.dataAbertura ?? '');
     final permanencia = abertura == null
         ? ''

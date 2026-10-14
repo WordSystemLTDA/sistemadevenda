@@ -126,15 +126,11 @@ class PedidoDelivery {
   bool get produtosConfirmadosLocal =>
       dados['produtosConfirmadosLocal'] == true;
   bool get possuiRascunhoLocal => dados['possuiRascunhoLocal'] == true;
-  String get numeroOperacional {
-    final numero = texto('numeroPedido').trim();
-    return (int.tryParse(numero) ?? 0) > 0 ? numero : '';
-  }
-
+  String get numeroOperacional => texto('numeroPedido').trim();
   String get numero => numeroOperacional.isNotEmpty
       ? numeroOperacional
       : salvoNoAparelho
-          ? 'Local ${id.split(':').last.substring(0, math.min(6, id.split(':').last.length)).toUpperCase()}'
+          ? 'Aguardando'
           : id;
   String get etapa => texto('idopcoescarrossel');
   String get origemPedido =>

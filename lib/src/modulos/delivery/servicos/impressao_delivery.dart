@@ -15,13 +15,11 @@ class ImpressaoDelivery {
       {bool preparo = false,
       bool ambos = false,
       String? chaveRecorrente,
-      bool usarDadosDoPedido = false,
       ConfigDelivery? config}) async {
     final mensagens = await prepararMensagens(servico, pedido,
         preparo: preparo,
         ambos: ambos,
         chaveRecorrente: chaveRecorrente,
-        usarDadosDoPedido: usarDadosDoPedido,
         config: config);
     await server.enviarImpressoes(mensagens);
   }
@@ -32,7 +30,6 @@ class ImpressaoDelivery {
       {bool preparo = false,
       bool ambos = false,
       String? chaveRecorrente,
-      bool usarDadosDoPedido = false,
       ConfigDelivery? config}) async {
     if (pedido.aguardandoPagamentoOnline) {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
@@ -40,29 +37,19 @@ class ImpressaoDelivery {
     if ((await servico.pedidosComCancelamentoLocal()).contains(pedido.id)) {
       throw StateError('O cancelamento deste pedido ja esta salvo.');
     }
-    final detalhesLocais = await servico.detalhesLocais(pedido.id);
-    final produtosLocais = produtosComDetalhesDoPedido(pedido, pedido.produtos,
-        detalhesLocais: detalhesLocais);
-    final dadosLocaisCompletos = produtosLocais.isNotEmpty &&
-        (pedido.salvoNoAparelho ||
-            pedido.dados['dadosImpressaoCompletos'] == true ||
-            produtosLocais.any((p) => _temDestino(p.destinoDeImpressao)));
-    final dados = usarDadosDoPedido && dadosLocaisCompletos
-        ? Modeloworddadoscardapio.fromMap({
-            ...pedido.dados,
-            'nomeEmpresa': pedido.texto(
-                'nomeEmpresa', servico.usuario.usuario?.nomeEmpresa ?? ''),
-            'produtos': produtosLocais.map((p) => p.toMap()).toList(),
-          })
-        : await servico.dadosCardapio(pedido.id);
+    final resultados = await Future.wait([
+      servico.dadosCardapio(pedido.id),
+      servico.detalhesLocais(pedido.id),
+    ]);
+    final dados = resultados[0] as Modeloworddadoscardapio;
+    final detalhesLocais = resultados[1] as List<Modelowordprodutos>;
     final configuracao = config ?? await _configuracao(servico);
     if ((await servico.pedidosComCancelamentoLocal()).contains(pedido.id)) {
       throw StateError('O cancelamento deste pedido ja esta salvo.');
     }
     final numeroPedido =
         numeroPedidoOperacionalConfirmado(dados.numeroPedido) ??
-            numeroPedidoOperacionalConfirmado(pedido.numeroOperacional) ??
-            '';
+            exigirNumeroPedidoOperacional(pedido.numeroOperacional);
     final pedidoConfirmado = PedidoDelivery.fromMap({
       ...pedido.dados,
       'numeroPedido': numeroPedido,
@@ -190,10 +177,6 @@ class ImpressaoDelivery {
     if (local == null) return base;
     final mapa = base.toMap();
     final mapaLocal = local.toMap();
-    if (!_temDestino(base.destinoDeImpressao) &&
-        _temDestino(local.destinoDeImpressao)) {
-      mapa['destinoDeImpressao'] = local.destinoDeImpressao!.toMap();
-    }
     for (final campo in [
       'opcoesPacotesListaFinal',
       'opcoesPacotes',
@@ -540,7 +523,7 @@ class ImpressaoDelivery {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
     final numeroPedido =
-        numeroPedidoOperacionalConfirmado(pedido.numeroOperacional) ?? '';
+        exigirNumeroPedidoOperacional(pedido.numeroOperacional);
     final grupos = <String, List<Modelowordprodutos>>{};
     if (tipo == TipoCardapio.balcao) {
       grupos[''] = produtos;

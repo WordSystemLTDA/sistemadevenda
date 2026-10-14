@@ -59,8 +59,6 @@ class PreparacaoDeliveryOffline {
       await Future.wait([
         opcional('config_bigchef/listar.php', {}),
         opcional('permissoes_bigchef/listar_permissoes_bigchef.php', {}),
-        opcional('entregador/listar_por_nome.php',
-            {'pesquisa': '', 'cliente': '0'}),
         opcional('delivery/listar_opcoes.php', {
           'dataInicio': hoje,
           'dataFim': hoje,
