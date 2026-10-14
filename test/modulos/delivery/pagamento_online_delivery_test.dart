@@ -87,7 +87,7 @@ void main() {
 
     for (final largura in [320.0, 1180.0]) {
       testWidgets(
-          'MP $tipo em $largura fica visivel e bloqueado, polling approved libera sem caixa',
+          'MP $tipo em $largura fica oculto e polling approved mostra sem caixa',
           (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(largura, 800);
@@ -125,9 +125,10 @@ void main() {
                 })));
         await tester.pumpAndSettle();
         final botao = find.byKey(const ValueKey('avancar-delivery-25'));
-        expect(botao, findsOneWidget);
-        expect(tester.widget<FilledButton>(botao).onPressed, isNull);
-        expect(find.text('Aguardando pagamento'), findsOneWidget);
+        expect(botao, findsNothing);
+        expect(find.text('Aguardando pagamento'), findsNothing);
+        expect(provedor.etapas.every((etapa) => etapa.pedidos.isEmpty), isTrue);
+        final consultasInicial = servico.consultas;
         expect(servico.gravacoes, isEmpty);
         servico.atual = pedidoOnline(
             tipo: tipo,
@@ -136,6 +137,8 @@ void main() {
             campos: {'somaValorHistorico': '86.00'});
         await tester.pump(const Duration(seconds: 6));
         await tester.pumpAndSettle();
+        expect(servico.consultas, greaterThan(consultasInicial));
+        expect(botao, findsOneWidget);
         expect(tester.widget<FilledButton>(botao).onPressed, isNotNull);
         await tester.ensureVisible(botao);
         await tester.tap(botao);
@@ -176,9 +179,7 @@ void main() {
     provedor.atualizarPedido(pago);
     servico.atual = pedidoOnline(status: 'refunded');
     await provedor.listar();
-    expect(provedor.etapas.single.pedidos.single.aguardandoPagamentoOnline,
-        isTrue);
-    expect(provedor.etapas.single.pedidos.single.pago, 0);
+    expect(provedor.etapas.single.pedidos, isEmpty);
   });
 
   testWidgets('menu MP nao oferece receber, editar valor nem preparo pendente',

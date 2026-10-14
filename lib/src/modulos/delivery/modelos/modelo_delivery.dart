@@ -88,7 +88,9 @@ class EtapaDelivery {
           impressao: etapa.impressao,
           cor: etapa.cor,
           selecionarEntregador: etapa.selecionarEntregador,
-          pedidos: pedidos);
+          pedidos: pedidos
+              .where((pedido) => pedido.visivelNoPainelDelivery)
+              .toList());
 
   EtapaDelivery.fromMap(Map<String, dynamic> map)
       : id = '${map['id']}',
@@ -101,7 +103,7 @@ class EtapaDelivery {
           for (final p in (map['vendas'] as List? ?? []))
             if (_pedidoOperacional(p))
               PedidoDelivery.fromMap(Map<String, dynamic>.from(p as Map)),
-        ];
+        ].where((pedido) => pedido.visivelNoPainelDelivery).toList();
 }
 
 class PedidoDelivery {
@@ -167,7 +169,16 @@ class PedidoDelivery {
       valorDeliverySim(dados['pagamento_online_obrigatorio']);
   String get pagamentoOnlineStatus => texto('pagamento_online_status');
   String get pagamentoOnlineTipo => texto('pagamento_online_tipo');
-  bool get aguardandoPagamentoOnline => pagamentoOnlineObrigatorio &&
+  bool get pagamentoMercadoPagoObrigatorio =>
+      pagamentoOnlineObrigatorio &&
+      {'5', '6'}.contains(pagamentoOnlineTipo.trim());
+  // Projeta apenas os pedidos liberados para operacao, sem apagar o retrato
+  // original do cache ou da fila. A proxima consulta traz novas aprovacoes.
+  bool get visivelNoPainelDelivery =>
+      !pagamentoMercadoPagoObrigatorio ||
+      (!cancelado && !aguardandoPagamentoOnline);
+  bool get aguardandoPagamentoOnline =>
+      pagamentoOnlineObrigatorio &&
       !(valorDeliverySim(dados['pagamento_online_liberado']) &&
           pagamentoOnlineStatus.trim().toLowerCase() == 'approved');
   // A venda pode estar paga antes de o pedido entrar em preparo.

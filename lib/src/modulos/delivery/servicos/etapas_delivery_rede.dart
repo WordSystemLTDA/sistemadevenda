@@ -4,7 +4,13 @@ import '../modelos/modelo_delivery.dart';
 /// mas o atendimento ja participa de Aguardando/Preparo na tela operacional.
 List<EtapaDelivery> mesclarEtapasDeliveryRede(
     List<EtapaDelivery> etapas, List<PedidoDelivery> locais) {
-  final rede = locais
+  // MP vem do checkout online. Uma copia antiga do Wi-Fi nao confirma pagamento
+  // nem substitui o pedido oficial depois de estorno/cancelamento remoto.
+  final visiveis = locais
+      .where((p) =>
+          p.visivelNoPainelDelivery && !p.pagamentoMercadoPagoObrigatorio)
+      .toList();
+  final rede = visiveis
       .where((p) =>
           p.recebidoNaRede && p.texto('estadoSincronizacao') != 'conflito')
       .toList();
@@ -13,7 +19,7 @@ List<EtapaDelivery> mesclarEtapasDeliveryRede(
       .map((p) => p.texto('idDeliveryConfirmado'))
       .where((id) => id.isNotEmpty)
       .toSet();
-  final rascunhos = locais.where((p) => !rede.contains(p)).toList();
+  final rascunhos = visiveis.where((p) => !rede.contains(p)).toList();
   final quadro = [...etapas];
   if (rede.isNotEmpty && quadro.isEmpty) {
     quadro.addAll([

@@ -67,7 +67,8 @@ class ProvedorDelivery extends ChangeNotifier {
             pesquisa: pesquisa,
             tipo: tipo);
         if (_descartado || consulta != _consulta) return;
-        etapas = _ordenarEtapas(_mesclarPedidosRecentes(lista));
+        etapas = _ordenarEtapas(
+            _mesclarPedidosRecentes(lista, consultaConcluida: true));
         // A lista recebida ja pode ser exibida. Uma consulta auxiliar lenta
         // de configuracao nao segura Aguardando nem o ACK recebido pelo Wi-Fi.
         carregando = false;
@@ -97,6 +98,11 @@ class ProvedorDelivery extends ChangeNotifier {
 
   void atualizarPedido(PedidoDelivery pedido,
       {Duration validade = const Duration(seconds: 45)}) {
+    if (!pedido.visivelNoPainelDelivery ||
+        (pedido.salvoNoAparelho && pedido.pagamentoMercadoPagoObrigatorio)) {
+      removerPedido(pedido.id);
+      return;
+    }
     if (pedido.salvoNoAparelho &&
         pedido.texto('estadoSincronizacao') == 'concluido' &&
         (int.tryParse(pedido.texto('idDeliveryConfirmado')) ?? 0) > 0 &&
@@ -163,8 +169,9 @@ class ProvedorDelivery extends ChangeNotifier {
         : comparacao;
   }
 
-  List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem) {
-    if (_pedidosRecentes.isEmpty || origem.isEmpty) return origem;
+  List<EtapaDelivery> _mesclarPedidosRecentes(List<EtapaDelivery> origem,
+      {bool consultaConcluida = false}) {
+    if (_pedidosRecentes.isEmpty) return origem;
     final agora = DateTime.now();
     final remotos = {
       for (final etapa in origem)
@@ -172,12 +179,19 @@ class ProvedorDelivery extends ChangeNotifier {
     };
     _pedidosRecentes.removeWhere((id, item) {
       final remoto = remotos[id];
+      // A API omite MP nao liberado. Uma aprovacao otimista anterior nao pode
+      // recolocar o pedido depois de estorno/cancelamento ou fora do filtro.
+      final pagamentoOnlineOmitido = consultaConcluida &&
+          item.pedido.pagamentoMercadoPagoObrigatorio &&
+          remoto == null;
       // Confirmacao/rejeicao/estorno do provedor financeiro sempre prevalece
       // sobre o retrato otimista guardado no telefone.
       final pagamentoOnlineAtualizado = remoto != null &&
-          (remoto.pagamentoOnlineObrigatorio || item.pedido.pagamentoOnlineObrigatorio) &&
+          (remoto.pagamentoOnlineObrigatorio ||
+              item.pedido.pagamentoOnlineObrigatorio) &&
           (remoto.pagamentoOnlineStatus != item.pedido.pagamentoOnlineStatus ||
-              remoto.aguardandoPagamentoOnline != item.pedido.aguardandoPagamentoOnline);
+              remoto.aguardandoPagamentoOnline !=
+                  item.pedido.aguardandoPagamentoOnline);
       final confirmado = remoto != null &&
           remoto.etapa == item.pedido.etapa &&
           remoto.quantidade >= item.pedido.quantidade &&
@@ -185,6 +199,7 @@ class ProvedorDelivery extends ChangeNotifier {
           remoto.total >= item.pedido.total - 0.009;
       // O ACK do PC prevalece sobre a exibicao otimista do rascunho local.
       return item.ate.isBefore(agora) ||
+          pagamentoOnlineOmitido ||
           pagamentoOnlineAtualizado ||
           confirmado ||
           remoto?.recebidoNaRede == true && item.pedido.salvoNoAparelho;

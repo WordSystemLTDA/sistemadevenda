@@ -1,12 +1,36 @@
 # Delivery no aplicativo
 
+## Visibilidade do Mercado Pago (14/10/2026)
+
+Pedidos com `pagamento_online_obrigatorio` e tipo `5` (Pix MP) ou `6`
+(Cartao MP) aparecem no painel somente quando a API confirma `approved` e
+`pagamento_online_liberado`. Pedidos cancelados dessa origem ficam ocultos.
+A projecao abrange etapas, contadores, dados recuperados do cache, notificacoes
+locais e mescla Wi-Fi, sem apagar o JSON original, a fila ou o registro remoto.
+Formas comuns e tipos fora de 5/6 conservam a exibicao existente.
+Copias MP da fila/Wi-Fi nao criam nem substituem o pedido oficial: a resposta
+da API continua sendo a autoridade financeira, inclusive depois de estorno.
+
+A consulta periodica de cinco segundos continua mesmo com todas as etapas
+vazias, exibindo automaticamente uma nova aprovacao. Uma resposta que omite
+um MP antes aprovado elimina seu retrato otimista da tela, evitando que um
+estorno/cancelamento volte a aparecer por 45 segundos. Preparo, recebimento
+e impressao conservam as validacoes financeiras anteriores. Recompilar o app
+e publicar a listagem compativel da API; nenhum pagamento ou envio real foi
+executado nesta validacao.
+
+Validacao: 213 testes Flutter aprovados (40 de visibilidade/pagamento/Wi-Fi/
+atualizacao e 173 de fluxo comum, fila, finalizacao, ordenacao e preparo).
+Analyze dos cinco arquivos Dart alterados sem apontamentos.
+
 ## Pagamento online pelo Mercado Pago (13/10/2026)
 
 O checkout Delivery identifica as cobrancas Pix/cartao pelos campos
 `pagamento_online_obrigatorio`, `pagamento_online_tipo`,
-`pagamento_online_status` e `pagamento_online_liberado`. O pedido fica visivel
-com **Preparar** desabilitado e **Aguardando pagamento** ate a API confirmar
-`approved` e a liberacao. Saldo local, Pagar Depois e recebimento manual nao
+`pagamento_online_status` e `pagamento_online_liberado`. Na regra inicial, o
+pedido ficava visivel com **Preparar** desabilitado ate a API confirmar
+`approved` e a liberacao; essa exibicao foi substituida pela regra de
+14/10/2026 acima. Saldo local, Pagar Depois e recebimento manual nao
 substituem a confirmacao do provedor financeiro.
 
 Menu/detalhes nao permitem mudar valor, pagamento ou entrega dessa cobranca.
