@@ -39,6 +39,9 @@ import 'montagem_pizza_test.dart' show CategoriasTeste;
 class ApiFinalizacaoTeste extends Fake implements DioCliente {
   @override
   final cliente = Dio();
+  @override
+  Future<String> obterServidor() async =>
+      'http://cozinha/sistema/apis_restaurantes/api_restaurantes_venda/api42/';
   final pedidos = <Map<String, dynamic>>[];
   String? idResposta;
   String celularCliente = '';
@@ -66,6 +69,8 @@ class ApiFinalizacaoTeste extends Fake implements DioCliente {
           'observacaoDoPedido': 'Cliente $numero',
           'nomeEmpresa': 'Pizzaria',
         };
+      } else if (opcoes.path.contains('config_bigchef/listar.php')) {
+        dados = <String, dynamic>{};
       } else if (opcoes.method == 'POST') {
         pedidos.add(jsonDecode(opcoes.data as String) as Map<String, dynamic>);
         dados = {'sucesso': true, 'mensagem': 'Ok'};
@@ -236,7 +241,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   ModuloFinalizacaoTeste iniciar() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': 'Cozinha', 'porta': '9980'})
+    });
     final modulo = ModuloFinalizacaoTeste();
     app.usuarioProvedor = modulo.usuario;
     Modular.init(modulo);

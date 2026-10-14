@@ -75,7 +75,9 @@ void main() {
       TipoCardapio.mesa,
       TipoCardapio.balcao,
       TipoCardapio.delivery
-    ].contains(tipo)) continue;
+    ].contains(tipo)) {
+      continue;
+    }
     test(
         '${tipo.nome} recebe sem falso erro quando PHP retorna JSON como texto',
         () async {
