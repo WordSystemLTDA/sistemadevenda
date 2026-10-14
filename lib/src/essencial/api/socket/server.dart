@@ -35,6 +35,7 @@ class Server extends ChangeNotifier {
   final DescobertaAtualizacaoOnline _descobertaOnline;
   String? _escopoOnline;
   String? _empresaOnline;
+  String _nomeServidorImpressao = '';
   String? executorPedidosRede;
   String? get escopoPedidosRede => _escopoOnline;
   void Function(Map<String, dynamic>)? aoResponderPedidoRede;
@@ -477,6 +478,7 @@ class Server extends ChangeNotifier {
       if (!_tentativaConexaoAtual(geracao)) return false;
       _escopoOnline = escopo;
       _empresaOnline = null;
+      var nomeServidorImpressao = '';
       // String vazia significa online ainda sem uma sessao de empresa valida.
       if (escopo == '') return false;
       if (escopo != null) {
@@ -492,6 +494,7 @@ class Server extends ChangeNotifier {
           if (descoberto != null) {
             ip = descoberto.ip;
             portaConvertida = descoberto.porta;
+            nomeServidorImpressao = descoberto.nome.trim();
           }
         } catch (erro) {
           log('Descoberta indisponivel; tentando o IP configurado',
@@ -570,6 +573,7 @@ class Server extends ChangeNotifier {
           !identical(channel, canalConexao)) {
         return false;
       }
+      _nomeServidorImpressao = nomeServidorImpressao;
       connected = true;
       _consultasImpressao.clear();
       _tentativaReconexao = 0;
@@ -644,6 +648,7 @@ class Server extends ChangeNotifier {
 
     channel = null;
     connected = false;
+    _nomeServidorImpressao = '';
     executorPedidosRede = null;
 
     if (haviaConexao && !_descartado) {
@@ -926,20 +931,25 @@ class Server extends ChangeNotifier {
     try {
       final dynamic mensagemDecodificada = jsonDecode(mensagem);
       if (mensagemDecodificada is Map && mensagemDecodificada['tipo'] != null) {
+        final dadosEnvio = Map<String, dynamic>.from(mensagemDecodificada);
+        if (dadosEnvio['tipoImpressao']?.toString() == '3' &&
+            (dadosEnvio['nomedopc']?.toString().trim() ?? '').isEmpty &&
+            _nomeServidorImpressao.isNotEmpty) {
+          // Centrais anteriores devolvem o entregador sem destino ao celular.
+          // O servidor descoberto no mesmo escopo resolve a impressora do caixa.
+          dadosEnvio['nomedopc'] = _nomeServidorImpressao;
+        }
         if (_escopoOnline != null) {
-          final escopoMensagem =
-              mensagemDecodificada[CanalAtualizacaoOnline.chaveEscopo];
+          final escopoMensagem = dadosEnvio[CanalAtualizacaoOnline.chaveEscopo];
           if (escopoMensagem != null && escopoMensagem != _escopoOnline) {
             return false;
           }
-          final dados = CanalAtualizacaoOnline.mensagem(
-              Map<String, dynamic>.from(mensagemDecodificada), _escopoOnline!);
+          final dados =
+              CanalAtualizacaoOnline.mensagem(dadosEnvio, _escopoOnline!);
           if (dados == null) return false;
           mensagemParaEnviar = _serializarMensagemEnvelope(dados);
         } else {
-          mensagemParaEnviar = _serializarMensagemEnvelope(
-            Map<String, dynamic>.from(mensagemDecodificada),
-          );
+          mensagemParaEnviar = _serializarMensagemEnvelope(dadosEnvio);
         }
       } else if (_escopoOnline != null) {
         return false;
