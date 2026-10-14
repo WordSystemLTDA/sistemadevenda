@@ -286,26 +286,31 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
   }
 
   Future<void> _imprimir(PedidoDelivery pedido) async {
-    if (_ocupado != null || _rotaAberta || pedido.salvoNoAparelho) return;
+    if (_ocupado != null ||
+        _rotaAberta ||
+        pedido.salvoNoAparelho && !pedido.aguardandoSincronizacao) {
+      return;
+    }
     setState(() {
       _ocupado = pedido.id;
       _imprimindo = pedido.id;
     });
     try {
-      final atualizado = await _provedor.servico.pedido(pedido.id);
-      final config = await _provedor.servico.configuracao();
+      final atualizado = await _provedor.servico.pedidoParaOperacao(pedido);
+      final config = _provedor.config ?? await _provedor.servico.configuracao();
       if (!mounted) return;
       await ImpressaoDelivery.imprimir(
         _provedor.servico,
         Modular.get<Server>(),
         atualizado,
         ambos: config.imprimirPreparoSeparado,
+        usarDadosDoPedido: true,
         config: config,
       );
     } catch (erro) {
       _mensagem(erro is StateError
           ? erro.message.toString()
-          : 'NÃ£o foi possÃ­vel imprimir o pedido. Confira a fila de impressÃ£o.');
+          : 'Não foi possível imprimir o pedido. Confira a fila de impressão.');
     } finally {
       if (mounted) {
         setState(() {
@@ -400,31 +405,20 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     ConfigDelivery? configuracao,
     String entregadorSelecionado = '',
   }) async {
-    if (pedido.salvoNoAparelho) {
-      if (pedido.recebidoNaRede && !pedido.preparandoNaRede) {
-        if (_ocupado != null) return false;
-        setState(() => _ocupado = pedido.id);
-        try {
-          await _provedor.servico.prepararPelaRede(pedido.id);
-          return true;
-        } catch (erro) {
-          if (exibirFalha) {
-            _mensagem(erro is StateError
-                ? erro.message.toString()
-                : 'Não foi possível confirmar a preparação no PC.');
-          }
-          return false;
-        } finally {
-          if (mounted) {
-            setState(() => _ocupado = null);
-            await _provedor.listar();
-          }
-        }
-      }
+    if (pedido.salvoNoAparelho && !pedido.aguardandoSincronizacao) {
       await _retomarLocal(pedido);
       return false;
     }
     if (_ocupado != null) return false;
+    if (atualizarProvedor) {
+      final exibido = _provedor.etapas
+          .expand((etapa) => etapa.pedidos)
+          .where((atual) => atual.id == pedido.id)
+          .firstOrNull;
+      // O botão anterior pode receber outro toque antes do próximo frame.
+      if (exibido != null && exibido.etapa != origem.id) return false;
+      pedido = exibido ?? pedido;
+    }
     if (pedido.aguardandoPagamentoOnline) {
       if (exibirFalha) {
         _mensagem('Aguarde a confirmação do pagamento pelo Mercado Pago.');
@@ -438,7 +432,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     if (gerenciarOcupado) setState(() => _ocupado = pedido.id);
     bool alterado = false;
     try {
-      var atual = await _provedor.servico.pedido(pedido.id);
+      var atual = await _provedor.servico.pedidoParaOperacao(pedido);
       if (!mounted) return false;
       if (atual.aguardandoPagamentoOnline) {
         throw StateError(
@@ -449,13 +443,17 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             'O pedido foi atualizado em outro aparelho. Confira a etapa atual.');
       }
       final alvo = destino ?? origem;
-      final config = configuracao ?? await _provedor.servico.configuracao();
+      final config = configuracao ??
+          _provedor.config ??
+          await _provedor.servico.configuracao();
       if (!mounted) return false;
       var precisaRevalidar = false;
       if (config.exigePagamento(atual, alvo)) {
         final recebeu = await _receberNoFluxoNormal(atual);
         if (recebeu != true || !mounted) return false;
-        atual = await _provedor.servico.pedido(pedido.id);
+        atual = atual.salvoNoAparelho
+            ? await _provedor.servico.pedidoParaOperacao(atual)
+            : await _provedor.servico.pedido(pedido.id);
         if (atual.restante > .009) {
           if (exibirFalha) {
             _mensagem(
@@ -480,10 +478,11 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         entregador = '${res['id']}';
         precisaRevalidar = true;
       }
-      // O servidor também revalida a etapa e o total na gravação. Uma nova
-      // consulta aqui só é necessária quando houve espera em outro diálogo.
-      final conferido =
-          precisaRevalidar ? await _provedor.servico.pedido(pedido.id) : atual;
+      // Revalida as alterações locais depois de diálogos. O servidor confere
+      // novamente a etapa e os valores ao consumir a operação durável.
+      final conferido = precisaRevalidar
+          ? await _provedor.servico.pedidoParaOperacao(atual)
+          : atual;
       if (!conferido.podeAvancar(origem) ||
           conferido.etapa != origem.id ||
           (conferido.total - atual.total).abs() > .009 ||
@@ -501,12 +500,13 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
               _provedor.servico, conferido.comEtapa(alvo.id),
               preparo: imprimirPreparo,
               ambos: imprimirPreparo && imprimirComprovante,
+              usarDadosDoPedido: true,
               config: config)
           : <String>[];
       if (!mounted) return false;
       var preparoPersistido = false;
       var etapaJaConfirmada = false;
-      if (alvo.impressao == '3' && !conferido.encerrado) {
+      if (destino == null && alvo.impressao == '3' && !conferido.encerrado) {
         await _provedor.servico.concluir(conferido, enviarChavePix: false);
       }
       if (destino != null) {
@@ -521,9 +521,17 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
         etapaJaConfirmada = res['jaNaEtapa'] == true;
         alterado = true;
         if (atualizarProvedor) {
-          _provedor.moverPedidoParaEtapa(conferido, alvo.id);
-          _provedor.servico
-              .notificarPedidoAtualizado(conferido.comEtapa(alvo.id));
+          final atualizado = res['pedido'] is Map
+              ? PedidoDelivery.fromMap(
+                  Map<String, dynamic>.from(res['pedido'] as Map))
+              : conferido.comEtapa(alvo.id);
+          _provedor.atualizarPedido(atualizado);
+          _provedor.servico.notificarPedidoAtualizado(atualizado);
+        }
+        if (res['salvo_no_aparelho'] == true) {
+          // O serviço conserva a impressão junto à operação e à fila local.
+          // A UI não emite uma segunda via ao confirmar a mudança de etapa.
+          return true;
         }
       }
       if (mensagens.isNotEmpty && !etapaJaConfirmada) {
@@ -544,7 +552,9 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     } finally {
       if (mounted && gerenciarOcupado) {
         setState(() => _ocupado = null);
-        if (atualizarAoFinal) await _provedor.listar();
+        if (atualizarAoFinal) {
+          unawaited(_provedor.listar(mostrarCarregamento: false));
+        }
       }
     }
   }
@@ -657,7 +667,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     final movidosDaOrigem = <String>{};
     final chegaramAoDestino = <String>{};
     try {
-      final config = await _provedor.servico.configuracao();
+      final config = _provedor.config ?? await _provedor.servico.configuracao();
       if (!mounted) return const {};
       final destino = await _selecionarDestinoLote(
           pedidos, origem, proxima, etapas, config);
@@ -732,14 +742,14 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             configuracao: config,
             entregadorSelecionado: entregadorLote,
           );
-          PedidoDelivery? confirmadoNoServidor;
+          PedidoDelivery? confirmadoLocalmente;
           if (!avancou) {
-            // Se a conexão caiu depois da gravação, a resposta pode ter sido
-            // perdida mesmo com o pedido já movido. Confere antes de tratá-lo
-            // como falha para não deixar cards para trás indevidamente.
+            // Recupera um commit local concluído antes de uma falha auxiliar.
+            // A recuperação do lote também não aguarda uma resposta HTTP.
             try {
-              confirmadoNoServidor = await _provedor.servico.pedido(pedido.id);
-              avancou = confirmadoNoServidor.etapa == etapaDestino.id;
+              confirmadoLocalmente =
+                  await _provedor.servico.pedidoParaOperacao(atual);
+              avancou = confirmadoLocalmente.etapa == etapaDestino.id;
             } catch (_) {
               avancou = false;
             }
@@ -749,7 +759,7 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
             break;
           }
           movidosDaOrigem.add(pedido.id);
-          atual = confirmadoNoServidor ?? atual.comEtapa(etapaDestino.id);
+          atual = confirmadoLocalmente ?? atual.comEtapa(etapaDestino.id);
           etapaAtual = etapaDestino;
         }
         if (chegou) chegaramAoDestino.add(pedido.id);
@@ -772,17 +782,14 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       return movidosDaOrigem;
     } finally {
       if (mounted) {
-        try {
-          if (iniciouMovimento) await _provedor.listar();
-        } finally {
-          if (mounted) {
-            setState(() {
-              _processandoLote = false;
-              _progressoLote = 0;
-              _totalLote = 0;
-            });
-          }
+        if (iniciouMovimento) {
+          unawaited(_provedor.listar(mostrarCarregamento: false));
         }
+        setState(() {
+          _processandoLote = false;
+          _progressoLote = 0;
+          _totalLote = 0;
+        });
       }
     }
   }
@@ -1016,7 +1023,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
     EtapaDelivery etapa,
     EtapaDelivery? destino,
   ) =>
-      !pedido.salvoNoAparelho &&
+      (!pedido.salvoNoAparelho || pedido.aguardandoSincronizacao) &&
       pedido.quantidade > 0 &&
       pedido.podeAvancar(etapa) &&
       destino != null;
@@ -1187,28 +1194,25 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                 : '${DateTime.now().difference(p.abertura!).inMinutes.clamp(0, 99999)} min';
                             final label = p.aguardandoPagamentoOnline
                                 ? 'Preparar'
-                                : p.recebidoNaRede && !p.preparandoNaRede
-                                    ? 'Preparar'
-                                    : p.salvoNoAparelho
-                                        ? p.aguardandoSincronizacao
-                                            ? 'Ver sincronização'
-                                            : 'Continuar pedido'
-                                        : p.quantidade == 0
-                                            ? 'Adicionar produtos'
-                                            : widget.config?.exigePagamento(
-                                                        p, destino ?? etapa) ==
-                                                    true
-                                                ? (destino ?? etapa)
-                                                            .impressao ==
-                                                        '3'
-                                                    ? 'FINALIZAR'
-                                                    : 'Receber ${p.restante.obterReal()}'
-                                                : etapa.impressao == '3'
-                                                    ? 'Concluir pedido'
-                                                    : etapa.botao;
-                            final podeAvancar = p.salvoNoAparelho
-                                ? !p.preparandoNaRede
-                                : p.podeAvancar(etapa) && destino != null;
+                                : p.salvoNoAparelho &&
+                                        !p.aguardandoSincronizacao
+                                    ? 'Continuar pedido'
+                                    : p.quantidade == 0
+                                        ? 'Adicionar produtos'
+                                        : widget.config?.exigePagamento(
+                                                    p, destino ?? etapa) ==
+                                                true
+                                            ? (destino ?? etapa).impressao ==
+                                                    '3'
+                                                ? 'FINALIZAR'
+                                                : 'Receber ${p.restante.obterReal()}'
+                                            : etapa.impressao == '3'
+                                                ? 'Concluir pedido'
+                                                : etapa.botao;
+                            final podeAvancar =
+                                p.salvoNoAparelho && !p.aguardandoSincronizacao
+                                    ? true
+                                    : p.podeAvancar(etapa) && destino != null;
                             final podeVerDetalhes = etapa.impressao == '3' &&
                                 !p.salvoNoAparelho &&
                                 !p.cancelado;
@@ -1222,7 +1226,8 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                             final avancando = widget.ocupado == p.id &&
                                 !excluindo &&
                                 !imprimindo;
-                            final podeImprimir = !p.salvoNoAparelho &&
+                            final podeImprimir = (!p.salvoNoAparelho ||
+                                    p.aguardandoSincronizacao) &&
                                 !p.aguardandoPagamentoOnline &&
                                 p.quantidade > 0 &&
                                 !_etapaAguardando(etapa);
@@ -1346,6 +1351,31 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                         size: 20)),
                                               ]),
                                               const SizedBox(height: 10),
+                                              if (p.dados['etapaLocalPendente'] ==
+                                                      true &&
+                                                  (!p.salvoNoAparelho ||
+                                                      p.texto('estadoEtapaLocal') ==
+                                                          'conflito'))
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 8),
+                                                  child: Text(
+                                                    p.texto('estadoEtapaLocal') ==
+                                                            'conflito'
+                                                        ? 'Alteração precisa de conferência'
+                                                        : 'Etapa salva no aparelho',
+                                                    style: TextStyle(
+                                                      color:
+                                                          p.texto('estadoEtapaLocal') ==
+                                                                  'conflito'
+                                                              ? cs.error
+                                                              : cs.primary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
                                               if (p.salvoNoAparelho &&
                                                   !p.recebidoNaRede)
                                                 Padding(

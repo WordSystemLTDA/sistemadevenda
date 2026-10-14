@@ -27,6 +27,7 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
   int pessoasPagasDivisao = 1;
   String totalInicial = '85.00';
   String pagoInicial = '20.00';
+  String? numeroPedido = '44';
   int quantidadeInicial = 2;
   String statusInicial = 'Andamento';
 
@@ -49,7 +50,7 @@ class _CardapioFinalizacaoFake extends Fake implements ServicoCardapio {
       cnpjEmpresa: '00.000.000/0001-00',
       enderecoEmpresa: 'Rua do Restaurante, 10',
       dataAbertura: '2026-09-24T18:00:00',
-      numeroPedido: '44',
+      numeroPedido: numeroPedido,
       status: status,
       valorTotal: divisaoPersistida ? '123.00' : totalInicial,
       somaValorHistorico: pagamentoCompleto
@@ -612,10 +613,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+  for (final caso in [
+    for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa])
+      for (final numero in <String?>['44', null, '0'])
+        (tipo: tipo, numero: numero),
+  ]) {
+    final tipo = caso.tipo;
     testWidgets(
-        'finalização de ${tipo.name} salva comprovante de consumo no caixa',
+        'finalização de ${tipo.name} salva comprovante com número ${caso.numero}',
         (tester) async {
+      cardapio.numeroPedido = caso.numero;
       tester.view.physicalSize = const Size(430, 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -656,6 +663,8 @@ void main() {
       expect(impressao.containsKey('nomedopc'), isFalse);
       expect(impressao['somaValorHistorico'], '85.00');
       expect(impressao['local'], '${tipo.nome}: 3');
+      expect(impressao['comanda'], '${tipo.nome}: 3');
+      expect(impressao['numeroPedido'], caso.numero == '44' ? '44' : '');
       expect(impressao['idEmpresa'], '9');
       expect(tester.takeException(), isNull);
     });

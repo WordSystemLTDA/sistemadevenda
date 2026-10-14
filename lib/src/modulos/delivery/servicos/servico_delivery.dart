@@ -21,6 +21,7 @@ import 'package:app/src/modulos/recorrentes/modelos/modelo_recorrente.dart';
 import 'package:app/src/modulos/recorrentes/servicos/servicos_recorrentes.dart';
 import 'fila_delivery_offline.dart';
 import 'etapas_delivery_rede.dart';
+import 'etapas_delivery_offline.dart';
 import 'cancelamentos_delivery_offline.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -76,6 +77,26 @@ class ServicoDelivery {
 
   Future<List<PedidoDelivery>> pedidosLocais() async =>
       await (await _filaLocal())?.listar() ?? [];
+
+  Future<EtapasDeliveryOffline?> _etapasLocais() async {
+    final fila = await _filaLocal();
+    return fila == null ? null : EtapasDeliveryOffline(fila.banco, fila.escopo);
+  }
+
+  /// A operação usa o retrato exibido e as intenções já salvas no aparelho.
+  /// A conferência concorrente da API acontece ao sincronizar o recibo.
+  Future<PedidoDelivery> pedidoParaOperacao(PedidoDelivery snapshot) async {
+    final base = FilaDeliveryOffline.local(snapshot.id)
+        ? PedidoDelivery.fromMap({
+            ...(await (await _exigirFilaLocal()).pedido(snapshot.id)).dados,
+            'idopcoescarrossel': snapshot.etapa,
+          })
+        : snapshot;
+    if ((await pedidosComCancelamentoLocal()).contains(snapshot.id)) {
+      throw StateError('O cancelamento deste pedido já está salvo.');
+    }
+    return await (await _etapasLocais())?.projetar(base) ?? base;
+  }
 
   Future<CancelamentosDeliveryOffline?> _cancelamentos() async {
     final sync = Sincronizador.instancia;
@@ -174,6 +195,7 @@ class ServicoDelivery {
     final consultaOffline = !post &&
         {
           'delivery/listar_opcoes.php',
+          'entregador/listar_por_nome.php',
           'permissoes_bigchef/listar_permissoes_bigchef.php',
           'config_bigchef/listar.php',
           'enderecos_clientes/listar_por_cliente.php',
@@ -183,6 +205,8 @@ class ServicoDelivery {
       extra: {
         'servidorFixo': servidor,
         'semCache': !consultaOffline,
+        if (!post && rota == 'entregador/listar_por_nome.php')
+          'cachePrimeiro': true,
       },
     );
     final resposta = post
@@ -241,7 +265,7 @@ class ServicoDelivery {
                   .contains(termo));
     }).toList();
     final cancelados = await pedidosComCancelamentoLocal();
-    return [
+    final quadro = [
       for (final etapa in mesclarEtapasDeliveryRede([
         for (final e in json['dados'] as List? ?? [])
           EtapaDelivery.fromMap(Map<String, dynamic>.from(e as Map))
@@ -252,6 +276,23 @@ class ServicoDelivery {
                 .where((pedido) => !cancelados.contains(pedido.id))
                 .toList())
     ];
+    final etapasLocais = await _etapasLocais();
+    await etapasLocais?.prepararEtapas(quadro);
+    return await etapasLocais?.projetarQuadro(quadro, filtro: (p) {
+          final data = p.abertura;
+          final termo = pesquisa.toLowerCase().trim();
+          return data != null &&
+              !data.isBefore(periodo.inicio) &&
+              !data.isAfter(periodo.fim) &&
+              (tipo == '0' || tipo == p.tipoEntrega) &&
+              !cancelados.contains(p.id) &&
+              !cancelados.contains(p.texto('idDeliveryConfirmado')) &&
+              (termo.isEmpty ||
+                  '${p.nome} ${p.numero} ${p.texto('celularCliente')}'
+                      .toLowerCase()
+                      .contains(termo));
+        }) ??
+        quadro;
   }
 
   Future<void> prepararPelaRede(String id) async {
@@ -260,10 +301,13 @@ class ServicoDelivery {
     await sync.prepararDeliveryNaRede(id);
   }
 
-  Future<ConfigDelivery> configuracao() async =>
-      ConfigDelivery.fromMap(Map<String, dynamic>.from(
-          await consultar('permissoes_bigchef/listar_permissoes_bigchef.php')
-              as Map));
+  Future<ConfigDelivery> configuracao() async {
+    final config = ConfigDelivery.fromMap(Map<String, dynamic>.from(
+        await consultar('permissoes_bigchef/listar_permissoes_bigchef.php')
+            as Map));
+    await (await _etapasLocais())?.prepararConfig(config);
+    return config;
+  }
 
   Future<List<Map<String, dynamic>>> entregadores(
       [String pesquisa = '']) async {
@@ -351,7 +395,8 @@ class ServicoDelivery {
 
   Future<PedidoDelivery> pedido(String id) async {
     if (FilaDeliveryOffline.local(id)) {
-      return (await _exigirFilaLocal()).pedido(id);
+      final pedido = await (await _exigirFilaLocal()).pedido(id);
+      return await (await _etapasLocais())?.projetar(pedido) ?? pedido;
     }
     final json = await consultar(
         'delivery/listar_opcoes_por_id.php', {'id': id, 'nomedopcLocal': ''});
@@ -365,7 +410,7 @@ class ServicoDelivery {
       return PedidoDelivery.fromMap(
           {...pedido.dados, 'status': 'Cancelado', 'cancelamentoLocal': true});
     }
-    return pedido;
+    return await (await _etapasLocais())?.projetar(pedido) ?? pedido;
   }
 
   Future<Modeloworddadoscardapio> dadosCardapio(String id) async {
@@ -593,6 +638,41 @@ class ServicoDelivery {
     if (pedido.aguardandoPagamentoOnline) {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
+    final fila = await _filaLocal();
+    if (fila != null) {
+      final atualizado = await EtapasDeliveryOffline(fila.banco, fila.escopo)
+          .avancar(
+              pedido: pedido,
+              destino: destino,
+              empresa: fila.empresa,
+              usuario: fila.usuario,
+              conexao: fila.destino,
+              entregador: entregador,
+              valorEntrega: valorEntrega,
+              impressoes: impressoes);
+      notificarPedidoAtualizado(atualizado);
+      final sync = Sincronizador.instancia;
+      if (sync != null) {
+        try {
+          await sync.registrarImpressaoEtapaDelivery(
+              atualizado.texto('idOperacaoEtapaLocal'));
+        } catch (erro) {
+          // O journal mantém as mensagens para recuperação, mesmo quando a
+          // fila auxiliar não pode ser gravada neste instante.
+          debugPrint('[Delivery] Impressão salva no avanço: $erro');
+        }
+        unawaited(sync.enviarPendentes());
+      }
+      return {
+        'sucesso': true,
+        'salvo_no_aparelho': true,
+        'pedido': atualizado.dados,
+        'impressoes_enfileiradas': true,
+      };
+    }
+    if (destino.impressao == '3' && !pedido.encerrado) {
+      await concluir(pedido, enviarChavePix: false);
+    }
     return salvar('delivery/mudar_status_delivery.php', {
       'id': pedido.id,
       'status': destino.id,
@@ -657,13 +737,13 @@ class ServicoDelivery {
       await (await _exigirFilaLocal())
           .confirmar(id, pagamentoPendente: pagarDepois);
       final sync = Sincronizador.instancia;
-      try {
-        await sync
-            ?.enviarDeliveryAoFinalizar(id.substring('delivery-local:'.length));
-      } catch (erro) {
-        // O pedido ja esta duravel. A tentativa rapida e opcional e sua
-        // indisponibilidade nao transforma o commit em uma falha de venda.
-        debugPrint('[Delivery] Envio imediato pendente: $erro');
+      if (sync != null) {
+        unawaited(sync
+            .enviarDeliveryAoFinalizar(id.substring('delivery-local:'.length),
+                espera: Duration.zero)
+            .catchError((Object erro) {
+          debugPrint('[Delivery] Envio imediato pendente: $erro');
+        }));
       }
       sync?.solicitar();
       NotificadorAtualizacao.atendimento('Delivery');
@@ -701,6 +781,7 @@ class ServicoDelivery {
           etapa: pedido.etapa,
           destino: sync.destino,
         );
+        await sync.cancelarImpressoesEtapasDelivery(pedido.id);
         // A tentativa curta recupera erros de permissao sem travar a tela
         // durante uma queda. O HTTP continua pela fila depois do timeout.
         await sync

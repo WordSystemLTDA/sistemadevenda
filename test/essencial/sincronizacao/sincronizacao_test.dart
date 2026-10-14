@@ -1099,21 +1099,16 @@ void main() {
     });
   }
 
-  test('abertura sem numero oficial permanece pendente e nao imprime',
-      () async {
+  test('abertura com identidade confirmada dispensa numero oficial', () async {
     final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');
     conectado = true;
     reciboAberturaIncompleto = true;
 
     await sync.tentarNovamente();
 
-    expect(await banco.operacoes(sync.escopo), hasLength(1));
-    expect(socket.filaImpressao.itens, isEmpty);
-
-    reciboAberturaIncompleto = false;
-    await banco.atualizarOperacao(id.substring(6), {'proxima': 0});
-    await sync.tentarNovamente();
     expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(socket.filaImpressao.itens, isEmpty);
+    expect(await AtendimentosLocais(banco, sync.escopo).idServidor(id), '201');
   });
 
   test(

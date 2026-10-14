@@ -142,6 +142,102 @@ class Sincronizador extends ChangeNotifier {
     await _pedidosRede.prepararDelivery(id);
   }
 
+  /// A fila da cozinha é liberada pelo commit local, sem aguardar o POST.
+  /// Repetir os IDs recupera uma queda entre os dois commits sem duplicar.
+  Future<void> registrarImpressaoEtapaDelivery(String id) async {
+    final alvo = escopo;
+    final escopoImpressao = _escopoImpressaoOnline;
+    bool ativa() =>
+        !_descartado &&
+        escopo == alvo &&
+        _escopoImpressaoOnline == escopoImpressao;
+    final op = (await banco.db.query('operacoes',
+            where: "escopo = ? AND id = ? AND acao = 'etapa_delivery'",
+            whereArgs: [alvo, id],
+            limit: 1))
+        .firstOrNull;
+    if (!ativa() || op == null) return;
+    if (['conflito', 'arquivado'].contains(op['estado'])) {
+      await _cancelarImpressoesEtapasAtendimento(
+          alvo, op['atendimento'] as String);
+      return;
+    }
+    final dados = AtendimentosLocais.dados(op);
+    if (dados['impressao_local'] != true) return;
+    final idsCancelados =
+        await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos();
+    if (!ativa()) return;
+    var idServidor = dados['id']?.toString() ?? '';
+    if ((op['atendimento'] as String).startsWith('delivery-local:')) {
+      final origem = (await banco.db.query('operacoes',
+              where: "escopo = ? AND atendimento = ? AND acao = 'delivery'",
+              whereArgs: [alvo, op['atendimento']],
+              limit: 1))
+          .firstOrNull;
+      if (origem != null) {
+        if (['conflito', 'arquivado'].contains(origem['estado'])) {
+          await _cancelarImpressoesEtapasAtendimento(
+              alvo, op['atendimento'] as String);
+          return;
+        }
+        idServidor =
+            AtendimentosLocais.recibo(origem)['idDelivery']?.toString() ??
+                idServidor;
+      }
+    }
+    if (!ativa()) return;
+    if (idsCancelados.contains(op['atendimento']) ||
+        idsCancelados.contains(idServidor)) {
+      await socket.filaImpressao.cancelarLote({
+        for (final mensagem in dados['impressoes'] as List? ?? [])
+          (jsonDecode(mensagem as String) as Map)['idRequisicao'].toString()
+      });
+      return;
+    }
+    final mensagens =
+        List<String>.from(dados['impressoes'] as List? ?? []).map((mensagem) {
+      final mapa = Map<String, dynamic>.from(jsonDecode(mensagem) as Map);
+      if (escopoImpressao != null) {
+        mapa[CanalAtualizacaoOnline.chaveEscopo] = escopoImpressao;
+      }
+      return jsonEncode(mapa);
+    }).toList();
+    if (mensagens.isEmpty) return;
+    await socket.filaImpressao
+        .registrar(mensagens, servidor: op['destino'] as String);
+    if (ativa()) unawaited(socket.processarImpressoesPendentes());
+  }
+
+  Future<void> _cancelarImpressoesEtapasAtendimento(
+      String alvo, String atendimento) async {
+    final etapas = await banco.db.query('operacoes',
+        where: "escopo = ? AND atendimento = ? AND acao = 'etapa_delivery'",
+        whereArgs: [alvo, atendimento]);
+    final ids = <String>{};
+    for (final etapa in etapas) {
+      for (final mensagem
+          in AtendimentosLocais.dados(etapa)['impressoes'] as List? ?? []) {
+        final id =
+            (jsonDecode(mensagem as String) as Map)['idRequisicao']?.toString();
+        if (id != null && id.isNotEmpty) ids.add(id);
+      }
+    }
+    if (ids.isNotEmpty) await socket.filaImpressao.cancelarLote(ids);
+  }
+
+  Future<void> cancelarImpressoesEtapasDelivery(String pedido) async {
+    final alvo = escopo;
+    await _cancelarImpressoesEtapasAtendimento(alvo, pedido);
+    for (final origem in await banco.db.query('operacoes',
+        where: "escopo = ? AND acao = 'delivery'", whereArgs: [alvo])) {
+      if (AtendimentosLocais.recibo(origem)['idDelivery']?.toString() ==
+          pedido) {
+        await _cancelarImpressoesEtapasAtendimento(
+            alvo, origem['atendimento'] as String);
+      }
+    }
+  }
+
   void _sessaoMudou() {
     // Invalida imediatamente as respostas em voo da conta anterior.
     escopo = '';
@@ -1388,6 +1484,12 @@ class Sincronizador extends ChangeNotifier {
   Future<void> _enviarPendentes(String alvo, String url) async {
     final cancelados =
         await CancelamentosDeliveryOffline(banco, alvo).pedidosOcultos();
+    for (final op in await banco.operacoes(alvo)) {
+      if (_descartado || escopo != alvo) return;
+      if (op['acao'] == 'etapa_delivery') {
+        await registrarImpressaoEtapaDelivery(op['id'] as String);
+      }
+    }
     // Uma operacao antiga aguardando a API nao segura a cozinha das seguintes.
     for (final op in await banco.operacoes(alvo)) {
       if (_descartado || escopo != alvo) return;
@@ -1418,6 +1520,33 @@ class Sincronizador extends ChangeNotifier {
         continue;
       }
       final dadosOriginais = AtendimentosLocais.dados(op);
+      if (op['acao'] == 'etapa_delivery' &&
+          atendimento.startsWith('delivery-local:')) {
+        final origem = (await banco.db.query('operacoes',
+                where: "escopo = ? AND atendimento = ? AND acao = 'delivery'",
+                whereArgs: [alvo, atendimento],
+                limit: 1))
+            .firstOrNull;
+        if (origem == null ||
+            ['conflito', 'arquivado'].contains(origem['estado'])) {
+          await banco.atualizarOperacao(id, {
+            'estado': 'conflito',
+            'codigo_erro': 'origem_nao_confirmada',
+            'erro':
+                'A criação do Delivery precisa de conferência antes deste avanço.'
+          });
+          bloqueados.add(atendimento);
+          continue;
+        }
+        if (!['registrado', 'concluido'].contains(origem['estado'])) {
+          bloqueados.add(atendimento);
+          continue;
+        }
+        final reciboOrigem = AtendimentosLocais.recibo(origem);
+        if (cancelados.contains(reciboOrigem['idDelivery']?.toString())) {
+          continue;
+        }
+      }
       if (op['acao'] == 'recebimento' && op['estado'] != 'registrado') {
         final dependencias = <String>{
           ...List<String>.from(dadosOriginais['dependencias'] as List? ?? []),
@@ -1507,6 +1636,17 @@ class Sincronizador extends ChangeNotifier {
         var dados = jsonDecode(op['dados'] as String) as Map<String, dynamic>;
         if (op['tentativas'] == 0) {
           final normalizados = _normalizarDadosOperacao(dados);
+          if (op['acao'] == 'etapa_delivery' &&
+              atendimento.startsWith('delivery-local:')) {
+            final origem = (await banco.db.query('operacoes',
+                    where:
+                        "escopo = ? AND atendimento = ? AND acao = 'delivery'",
+                    whereArgs: [alvo, atendimento],
+                    limit: 1))
+                .single;
+            normalizados['id'] =
+                AtendimentosLocais.recibo(origem)['idDelivery'].toString();
+          }
           if (op['acao'] == 'recebimento' && dados['id_abertura'] != null) {
             final abertura = (await banco.db.query('operacoes',
                     where: 'escopo = ? AND id = ?',
@@ -1558,18 +1698,31 @@ class Sincronizador extends ChangeNotifier {
                   if (executorRede != null)
                     'executor_impressao_rede': executorRede,
                   if (preparoRede != null) 'preparo_rede': preparoRede,
-                  'impressoes': jsonDecode(op['impressoes'] as String),
+                  'impressoes': op['acao'] == 'etapa_delivery'
+                      ? dados['impressoes'] ?? []
+                      : jsonDecode(op['impressoes'] as String),
                   'dados': dados
                 }),
                 options: _opcoes(url));
           }
         } on DioException catch (e) {
           final mensagem = e.response?.data;
+          // Uma API anterior pode ainda não reconhecer o novo recibo de etapa.
+          // Isso não é uma recusa das regras do pedido e não interrompe o
+          // trabalho local enquanto os arquivos da API são atualizados.
+          final apiEtapaDesatualizada = op['acao'] == 'etapa_delivery' &&
+              e.response?.statusCode == 422 &&
+              mensagem is Map &&
+              mensagem['protocolo'] == 1 &&
+              mensagem['sucesso'] == false &&
+              mensagem['codigo'] == 'sincronizacao_indisponivel' &&
+              mensagem['mensagem'] == 'Operacao invalida.';
           final rejeicaoCancelamento = op['acao'] == 'cancelar_delivery' &&
               (e.response?.statusCode ?? 0) >= 400 &&
               (e.response?.statusCode ?? 0) < 500 &&
               !{408, 429}.contains(e.response?.statusCode);
-          if ((e.response?.statusCode == 409 ||
+          if (!apiEtapaDesatualizada &&
+              (e.response?.statusCode == 409 ||
                   e.response?.statusCode == 422 ||
                   rejeicaoCancelamento) &&
               mensagem is Map &&
@@ -1581,6 +1734,9 @@ class Sincronizador extends ChangeNotifier {
               'erro': mensagem['mensagem']?.toString() ??
                   'O atendimento mudou. Confira este pedido com o responsavel.'
             });
+            if (op['acao'] == 'etapa_delivery') {
+              await _cancelarImpressoesEtapasAtendimento(alvo, atendimento);
+            }
             bloqueados.add(atendimento);
             continue;
           }
@@ -1599,14 +1755,17 @@ class Sincronizador extends ChangeNotifier {
             'proxima': DateTime.now()
                 .add(Duration(milliseconds: segundos * 1000 + jitter))
                 .millisecondsSinceEpoch,
-            'erro': mensagem is Map &&
-                    mensagem['protocolo'] == 1 &&
-                    mensagem['sucesso'] == false
-                ? mensagem['mensagem']?.toString() ??
-                    'A API nao confirmou o pedido. O envio sera tentado novamente.'
-                : CacheConsultas.falhaDeConexao(e)
-                    ? 'Sem conexao com a API. O pedido continua salvo no aparelho.'
-                    : 'A API nao confirmou o pedido. O envio sera tentado novamente.',
+            'erro': apiEtapaDesatualizada
+                ? 'Atualize a API para sincronizar as etapas. '
+                    'Os avanços continuam salvos no aparelho.'
+                : mensagem is Map &&
+                        mensagem['protocolo'] == 1 &&
+                        mensagem['sucesso'] == false
+                    ? mensagem['mensagem']?.toString() ??
+                        'A API nao confirmou o pedido. O envio sera tentado novamente.'
+                    : CacheConsultas.falhaDeConexao(e)
+                        ? 'Sem conexao com a API. O pedido continua salvo no aparelho.'
+                        : 'A API nao confirmou o pedido. O envio sera tentado novamente.',
           });
           unawaited(_pedidosRede.processar());
           rethrow;
@@ -1623,9 +1782,7 @@ class Sincronizador extends ChangeNotifier {
         }
         if (op['acao'] == 'abertura' &&
             ((int.tryParse('${resultado['id_comanda_pedido']}') ?? 0) <= 0 ||
-                '${resultado['versao_atendimento'] ?? ''}'.isEmpty ||
-                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
-                    null)) {
+                '${resultado['versao_atendimento'] ?? ''}'.isEmpty)) {
           throw StateError(
               'O servidor nao confirmou a identidade da abertura.');
         }
@@ -1651,17 +1808,22 @@ class Sincronizador extends ChangeNotifier {
         }
         resultado['confirmado_em'] = DateTime.now().millisecondsSinceEpoch;
         if (op['acao'] == 'venda' &&
-            ((int.tryParse('${resultado['idVenda']}') ?? 0) <= 0 ||
-                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
-                    null)) {
+            (int.tryParse('${resultado['idVenda']}') ?? 0) <= 0) {
           throw StateError('O servidor nao confirmou a identidade da venda.');
         }
         if (op['acao'] == 'delivery' &&
-            ((int.tryParse('${resultado['idDelivery']}') ?? 0) <= 0 ||
-                numeroPedidoOperacionalConfirmado(resultado['numeroPedido']) ==
-                    null)) {
+            (int.tryParse('${resultado['idDelivery']}') ?? 0) <= 0) {
           throw StateError(
               'O servidor nao confirmou a identidade do Delivery.');
+        }
+        if (op['acao'] == 'etapa_delivery' &&
+            (resultado['idDelivery']?.toString() != dados['id']?.toString() ||
+                resultado['status']?.toString() !=
+                    dados['status']?.toString() ||
+                resultado['etapaConfirmada'] != true ||
+                dados['concluir'] == true &&
+                    (int.tryParse('${resultado['idVenda']}') ?? 0) <= 0)) {
+          throw StateError('O servidor não confirmou a etapa deste Delivery.');
         }
         if (op['acao'] == 'cancelar_delivery' &&
             (resultado['idDelivery']?.toString() != atendimento ||
@@ -1693,12 +1855,15 @@ class Sincronizador extends ChangeNotifier {
           (await banco.db.query('operacoes', where: 'id = ?', whereArgs: [id]))
               .single;
       final recibo = AtendimentosLocais.recibo(atual);
-      final mensagens =
-          List<String>.from(jsonDecode(op['impressoes'] as String))
-              .where((mensagem) =>
-                  recibo['impressao_persistida'] != true ||
-                  jsonDecode(mensagem)['tipoImpressao']?.toString() != '1')
-              .map((mensagem) {
+      final mensagensOriginais = op['acao'] == 'etapa_delivery'
+          ? List<String>.from(
+              AtendimentosLocais.dados(atual)['impressoes'] as List? ?? [])
+          : List<String>.from(jsonDecode(op['impressoes'] as String));
+      final mensagens = mensagensOriginais
+          .where((mensagem) =>
+              recibo['impressao_persistida'] != true ||
+              jsonDecode(mensagem)['tipoImpressao']?.toString() != '1')
+          .map((mensagem) {
         final dados = jsonDecode(mensagem) as Map<String, dynamic>;
         if (_escopoImpressaoOnline != null) {
           dados[CanalAtualizacaoOnline.chaveEscopo] = _escopoImpressaoOnline;
@@ -1724,7 +1889,8 @@ class Sincronizador extends ChangeNotifier {
       unawaited(_pedidosRede.processar());
       _detalhesAtualizados.remove(atendimento);
       socket.write(jsonEncode({
-        'tipo': const {'delivery', 'cancelar_delivery'}.contains(op['acao'])
+        'tipo': const {'delivery', 'cancelar_delivery', 'etapa_delivery'}
+                .contains(op['acao'])
             ? 'Delivery'
             : op['acao'] == 'venda'
                 ? 'Balcão'

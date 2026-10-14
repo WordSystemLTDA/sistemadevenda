@@ -33,13 +33,13 @@ void main() {
     expect(preparado.last.pedidos.single.etapa, '20');
   });
   test(
-      'rascunhos e pedidos ainda nao recebidos continuam no aparelho; Online intacto',
+      'rascunho fica no aparelho e confirmado opera antes do ACK; Online intacto',
       () {
     final lista = mesclarEtapasDeliveryRede(
         etapas, [pedido(recebido: false), pedido(rascunho: true)]);
     expect(lista.first.id, 'local');
-    expect(lista.first.pedidos, hasLength(2));
-    expect(lista[1].pedidos, isEmpty);
+    expect(lista.first.pedidos, hasLength(1));
+    expect(lista[1].pedidos.single.aguardandoSincronizacao, isTrue);
     expect(
         mesclarEtapasDeliveryRede(etapas, []).map((e) => e.id), ['10', '20']);
   });

@@ -103,6 +103,10 @@ class _ServicoLoteDelivery extends ServicoDeliveryTeste {
   @override
   Future<PedidoDelivery> pedido(String id) async => pedidos[id]!;
 
+  @override
+  Future<PedidoDelivery> pedidoParaOperacao(PedidoDelivery snapshot) async =>
+      pedidos[snapshot.id]!;
+
   Future<bool> quitar(PedidoDelivery pedido) async {
     recebimentos++;
     pedidos[pedido.id] = PedidoDelivery.fromMap({

@@ -1,7 +1,7 @@
 import '../modelos/modelo_delivery.dart';
 
-/// O PC confirmou o recebimento. A identidade provisoria continua na fila,
-/// mas o atendimento ja participa de Aguardando/Preparo na tela operacional.
+/// A confirmação local libera a operação. A identidade provisória continua
+/// durável enquanto o servidor confirma a criação e os avanços em ordem.
 List<EtapaDelivery> mesclarEtapasDeliveryRede(
     List<EtapaDelivery> etapas, List<PedidoDelivery> locais) {
   // MP vem do checkout online. Uma copia antiga do Wi-Fi nao confirma pagamento
@@ -12,7 +12,8 @@ List<EtapaDelivery> mesclarEtapasDeliveryRede(
       .toList();
   final rede = visiveis
       .where((p) =>
-          p.recebidoNaRede && p.texto('estadoSincronizacao') != 'conflito')
+          p.aguardandoSincronizacao &&
+          p.texto('estadoSincronizacao') != 'conflito')
       .toList();
   final oficiaisEmReconciliacao = rede
       .where((p) => p.preparandoNaRede)

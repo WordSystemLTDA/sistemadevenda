@@ -219,7 +219,9 @@ void main() {
     expect(m.delivery.acrescimoSalvo, 2);
     expect(m.delivery.consultasRemotas, 0);
     expect(find.byType(PaginaSelecionarPagamento), findsNothing);
-    expect(find.text('Ver sincronização'), findsOneWidget);
+    expect(find.text('Ver sincronização'), findsNothing);
+    expect(find.text('Salvo no aparelho · aguardando sincronização'),
+        findsOneWidget);
     expect(find.text('Excluir'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });

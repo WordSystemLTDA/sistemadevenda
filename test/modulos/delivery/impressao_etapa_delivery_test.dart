@@ -60,6 +60,11 @@ void main() {
         'idopcoescarrossel': '3',
         'somaValorHistorico': '86.00'
       });
+    servico.respostaLista = () async => [
+          for (final etapa in etapasTeste())
+            EtapaDelivery.comPedidos(
+                etapa, etapa.id == '3' ? [servico.atual] : etapa.pedidos),
+        ];
     final provedor = ProvedorDelivery(servico);
     addTearDown(provedor.dispose);
     await tester
@@ -84,11 +89,15 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets('falha ao preparar impressao impede mudanca de etapa', (tester) async {
-    final servico = _ServicoFalha()..config = const ConfigDelivery(receberNoFinal: true, imprimirPreparo: true);
+  testWidgets('falha ao preparar impressao impede mudanca de etapa',
+      (tester) async {
+    final servico = _ServicoFalha()
+      ..config =
+          const ConfigDelivery(receberNoFinal: true, imprimirPreparo: true);
     final provedor = ProvedorDelivery(servico);
     addTearDown(provedor.dispose);
-    await tester.pumpWidget(MaterialApp(home: PaginaDelivery(provedor: provedor)));
+    await tester
+        .pumpWidget(MaterialApp(home: PaginaDelivery(provedor: provedor)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Iniciar preparo').first);
     await tester.pumpAndSettle();
@@ -98,29 +107,42 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  test('envia etapa e mensagens com os mesmos IDs preparados antes da gravacao', () async {
+  test('envia etapa e mensagens com os mesmos IDs preparados antes da gravacao',
+      () async {
     final servidor = impressao.ServidorTeste();
     Modular.init(impressao.ModuloImpressaoTeste(servidor));
     addTearDown(Modular.destroy);
-    final servico = ServicoDeliveryTeste()..produtosCardapio = [impressao.produto(computador: 'COZINHA')];
-    final mensagens = await ImpressaoDelivery.prepararMensagens(servico, servico.atual, preparo: true);
+    final servico = ServicoDeliveryTeste()
+      ..produtosCardapio = [impressao.produto(computador: 'COZINHA')];
+    final mensagens = await ImpressaoDelivery.prepararMensagens(
+        servico, servico.atual,
+        preparo: true);
     expect(servidor.mensagens, isEmpty);
     expect(mensagens, isNotEmpty);
-    await servico.avancar(servico.atual, etapasTeste()[1], impressoes: mensagens);
+    await servico.avancar(servico.atual, etapasTeste()[1],
+        impressoes: mensagens);
     expect(servico.gravacoes.single.$2['impressoes'], mensagens);
     expect(servico.gravacoes.single.$2['tipoImpressaoEsperado'],
         etapasTeste()[1].impressao);
     await ImpressaoDelivery.enviarPreparadas(servidor, mensagens);
-    expect(servidor.mensagens.single['idRequisicao'], (jsonDecode(mensagens.single) as Map)['idRequisicao']);
+    expect(servidor.mensagens.single['idRequisicao'],
+        (jsonDecode(mensagens.single) as Map)['idRequisicao']);
   });
 
-  test('persistencia confirmada deixa cozinha na API e encaminha outros comprovantes', () async {
+  test(
+      'persistencia confirmada deixa cozinha na API e encaminha outros comprovantes',
+      () async {
     final servidor = impressao.ServidorTeste();
-    final preparo = jsonEncode({'idRequisicao': 'cozinha-1', 'tipoImpressao': '1'});
-    final comprovante = jsonEncode({'idRequisicao': 'cliente-1', 'tipoImpressao': '2'});
-    await ImpressaoDelivery.enviarPreparadas(servidor, [preparo, comprovante], preparoPersistido: true);
+    final preparo =
+        jsonEncode({'idRequisicao': 'cozinha-1', 'tipoImpressao': '1'});
+    final comprovante =
+        jsonEncode({'idRequisicao': 'cliente-1', 'tipoImpressao': '2'});
+    await ImpressaoDelivery.enviarPreparadas(servidor, [preparo, comprovante],
+        preparoPersistido: true);
     expect(servidor.mensagens.where((m) => m['tipoImpressao'] == '1'), isEmpty);
-    expect(servidor.mensagens.where((m) => m['tipo'] == 'PreparoPendente'), hasLength(1));
-    expect(servidor.mensagens.where((m) => m['idRequisicao'] == 'cliente-1'), hasLength(1));
+    expect(servidor.mensagens.where((m) => m['tipo'] == 'PreparoPendente'),
+        hasLength(1));
+    expect(servidor.mensagens.where((m) => m['idRequisicao'] == 'cliente-1'),
+        hasLength(1));
   });
 }

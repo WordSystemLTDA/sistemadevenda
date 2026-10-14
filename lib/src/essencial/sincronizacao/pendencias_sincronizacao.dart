@@ -335,6 +335,9 @@ class PendenciasSincronizacao extends StatelessWidget {
                           ? 'Abertura: ${dados['detalhe']['nome']}'
                           : null) ??
                       (op['acao'] == 'delivery' ? 'Pedido Delivery' : null) ??
+                      (op['acao'] == 'etapa_delivery'
+                          ? 'Avançar Delivery #${op['atendimento']}'
+                          : null) ??
                       (op['acao'] == 'cancelar_delivery'
                           ? 'Cancelar Delivery #${op['atendimento']}'
                           : null) ??
@@ -373,7 +376,8 @@ class PendenciasSincronizacao extends StatelessWidget {
                 Text(
                     'Pagamento: R\$ ${dados['valor_lancamento']} · Troco: R\$ ${dados['valortroco']}'),
               if (produtos.isEmpty &&
-                  !['abertura', 'recebimento'].contains(op['acao']))
+                  !['abertura', 'recebimento', 'etapa_delivery']
+                      .contains(op['acao']))
                 Text(
                   'Nao foi possivel detalhar os itens salvos neste registro.',
                   style: Theme.of(context).textTheme.bodySmall,

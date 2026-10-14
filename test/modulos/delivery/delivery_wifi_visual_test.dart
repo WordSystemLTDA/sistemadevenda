@@ -43,9 +43,22 @@ class _DeliveryWifi extends ServicoDeliveryTeste {
         })
       ]);
   @override
-  Future<void> prepararPelaRede(String id) async {
+  Future<PedidoDelivery> pedidoParaOperacao(PedidoDelivery snapshot) async =>
+      snapshot;
+
+  @override
+  Future<Map<String, dynamic>> avancar(
+      PedidoDelivery pedido, EtapaDelivery destino,
+      {String entregador = '',
+      String valorEntrega = '0',
+      List<String> impressoes = const []}) async {
     pedidosPreparo++;
     preparando = true;
+    return {
+      'sucesso': true,
+      'salvo_no_aparelho': true,
+      'pedido': pedido.comEtapa(destino.id).dados,
+    };
   }
 }
 
