@@ -156,23 +156,27 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: ListView(
+            padding: const EdgeInsets.only(bottom: 10),
             children: [
-              DropdownMenu(
-                key: ValueKey(tipoConexaoController.text),
-                enabled: !isLoading,
-                width: MediaQuery.of(context).size.width - 20,
-                onSelected: (value) =>
-                    setState(() => tipoConexaoController.text = value ?? ''),
-                label: const Text('Conexão'),
-                initialSelection: tipoConexaoController.text,
-                dropdownMenuEntries: const [
-                  DropdownMenuEntry(value: 'localhost', label: 'Local'),
-                  DropdownMenuEntry(value: 'online', label: 'Online'),
-                ],
-                inputDecorationTheme: const InputDecorationTheme(
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                  border: OutlineInputBorder(),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: DropdownMenu(
+                  key: ValueKey(tipoConexaoController.text),
+                  enabled: !isLoading,
+                  width: MediaQuery.of(context).size.width - 20,
+                  onSelected: (value) =>
+                      setState(() => tipoConexaoController.text = value ?? ''),
+                  label: const Text('Conexão'),
+                  initialSelection: tipoConexaoController.text,
+                  dropdownMenuEntries: const [
+                    DropdownMenuEntry(value: 'localhost', label: 'Local'),
+                    DropdownMenuEntry(value: 'online', label: 'Online'),
+                  ],
+                  inputDecorationTheme: const InputDecorationTheme(
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
