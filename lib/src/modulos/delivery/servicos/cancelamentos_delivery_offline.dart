@@ -26,6 +26,23 @@ class CancelamentosDeliveryOffline {
           op['atendimento'] as String,
       };
 
+  Future<String?> statusFinalDoPedido(String id) async {
+    final linha = (await banco.db.query('operacoes',
+            columns: ['dados'],
+            where:
+                "escopo = ? AND atendimento = ? AND acao = 'cancelar_delivery' "
+                "AND estado NOT IN ('conflito', 'arquivado')",
+            whereArgs: [escopo, id],
+            orderBy: 'criado DESC',
+            limit: 1))
+        .firstOrNull;
+    if (linha == null) return null;
+    final dados = jsonDecode(linha['dados'] as String? ?? '{}');
+    return dados is Map && dados['status_final'] == 'Recusado'
+        ? 'Recusado'
+        : 'Cancelado';
+  }
+
   static bool afetaOperacao(Map<String, Object?> op, Set<String> cancelados) {
     if (cancelados.contains(op['atendimento'])) return true;
     if (op['acao'] != 'delivery') return false;
@@ -41,12 +58,16 @@ class CancelamentosDeliveryOffline {
     required String motivo,
     required String etapa,
     required String destino,
+    String statusFinal = 'Cancelado',
   }) async {
     if (escopo.isEmpty || (int.tryParse(id) ?? 0) <= 0) {
       throw StateError('Pedido invalido para cancelamento.');
     }
     if (senha.trim().isEmpty) {
       throw StateError('Informe a senha Admin.');
+    }
+    if (!{'Cancelado', 'Recusado'}.contains(statusFinal)) {
+      throw StateError('Situação final inválida para o pedido.');
     }
     return banco.db.transaction((tx) async {
       final anterior = (await tx.query('operacoes',
@@ -79,6 +100,7 @@ class CancelamentosDeliveryOffline {
           'id': id,
           'autorizacao_cancelamento': autorizacao,
           'motivo': motivo.trim(),
+          'status_final': statusFinal,
           'statusOrigem': etapa,
         }),
         'impressoes': '[]',

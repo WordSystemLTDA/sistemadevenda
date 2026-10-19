@@ -3,7 +3,7 @@ import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 
-enum AlteracaoDelivery { cancelar, entrega, pagamento }
+enum AlteracaoDelivery { cancelar, recusar, entrega, pagamento }
 
 class AlterarPedidoDelivery extends StatefulWidget {
   final ServicoDelivery servico;
@@ -35,6 +35,12 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
     '4': 'Cartão de crédito'
   };
   ConfigDelivery? _config;
+
+  bool get _encerramento =>
+      widget.alteracao == AlteracaoDelivery.cancelar ||
+      widget.alteracao == AlteracaoDelivery.recusar;
+
+  bool get _recusando => widget.alteracao == AlteracaoDelivery.recusar;
   @override
   void initState() {
     super.initState();
@@ -51,7 +57,7 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
 
   Future<void> _carregar() async {
     try {
-      if (widget.alteracao == AlteracaoDelivery.cancelar) {
+      if (_encerramento) {
         _config = await widget.servico.configuracao();
       } else if (widget.alteracao == AlteracaoDelivery.entrega) {
         _config = await widget.servico.configuracao();
@@ -120,15 +126,39 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
     try {
       switch (widget.alteracao) {
         case AlteracaoDelivery.cancelar:
+        case AlteracaoDelivery.recusar:
           if (_senha.text.trim().isEmpty) {
             throw StateError('Informe a senha Admin.');
           }
           if ((_config?.motivoCancelamentoObrigatorio ?? false) &&
               _motivo.text.trim().isEmpty) {
-            throw StateError('Informe o motivo do cancelamento.');
+            throw StateError(_recusando
+                ? 'Informe o motivo da recusa.'
+                : 'Informe o motivo do cancelamento.');
           }
-          await widget.servico.acao('cancelar', widget.pedido,
+          await widget.servico.acao(
+              _recusando ? 'recusar' : 'cancelar',
+              widget.pedido,
               {'senha': _senha.text, 'motivo': _motivo.text.trim()});
+          if (_recusando) {
+            var aviso = 'Pedido recusado e cliente avisado pelo WhatsApp.';
+            var corAviso = Colors.green;
+            try {
+              await widget.servico.notificarRecusaPedido(widget.pedido);
+            } catch (erro) {
+              final detalhe = erro is StateError ? erro.message.toString() : '';
+              aviso =
+                  'Pedido recusado, mas não foi possível avisar o cliente pelo WhatsApp.${detalhe.isEmpty ? '' : ' $detalhe'}';
+              corAviso = Colors.orange;
+            }
+            if (mounted) {
+              final mensageiro = ScaffoldMessenger.maybeOf(context);
+              Navigator.pop(context, true);
+              mensageiro?.showSnackBar(
+                  SnackBar(content: Text(aviso), backgroundColor: corAviso));
+            }
+            return;
+          }
         case AlteracaoDelivery.entrega:
           if (_tipo == '1' && _endereco == null) {
             throw StateError('Selecione o endereço da entrega.');
@@ -169,11 +199,13 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
     final cs = Theme.of(context).colorScheme;
     final titulo = switch (widget.alteracao) {
       AlteracaoDelivery.cancelar => 'Cancelar Venda',
+      AlteracaoDelivery.recusar => 'Recusar Pedido',
       AlteracaoDelivery.entrega => 'Mudar Tipo de Entrega',
       AlteracaoDelivery.pagamento => 'Alterar Forma de Pagamento',
     };
     final icone = switch (widget.alteracao) {
       AlteracaoDelivery.cancelar => Icons.cancel_outlined,
+      AlteracaoDelivery.recusar => Icons.block_outlined,
       AlteracaoDelivery.entrega => Icons.delivery_dining_outlined,
       AlteracaoDelivery.pagamento => Icons.payments_outlined,
     };
@@ -182,6 +214,10 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
         (_config?.motivoCancelamentoObrigatorio ?? false)
             ? 'Confirme com a senha Admin e informe o motivo.'
             : 'Confirme com a senha Admin. O motivo é opcional.',
+      AlteracaoDelivery.recusar => (_config?.motivoCancelamentoObrigatorio ??
+              false)
+          ? 'Confirme com a senha Admin e informe por que o pedido foi recusado.'
+          : 'Confirme com a senha Admin. O motivo da recusa é opcional.',
       AlteracaoDelivery.entrega => 'Atualize como o pedido será entregue.',
       AlteracaoDelivery.pagamento => 'Escolha o lançamento e a nova forma.',
     };
@@ -210,15 +246,13 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                          color: widget.alteracao ==
-                                                  AlteracaoDelivery.cancelar
+                                          color: _encerramento
                                               ? cs.errorContainer
                                               : cs.primaryContainer,
                                           borderRadius:
                                               BorderRadius.circular(8)),
                                       child: Icon(icone,
-                                          color: widget.alteracao ==
-                                                  AlteracaoDelivery.cancelar
+                                          color: _encerramento
                                               ? cs.onErrorContainer
                                               : cs.onPrimaryContainer)),
                                   const SizedBox(width: 14),
@@ -293,8 +327,7 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                       borderRadius: BorderRadius.circular(8),
                                       child: const LinearProgressIndicator()),
                                 if (!_carregando) ...[
-                                  if (widget.alteracao ==
-                                      AlteracaoDelivery.cancelar) ...[
+                                  if (_encerramento) ...[
                                     TextField(
                                         controller: _senha,
                                         autofocus: true,
@@ -303,8 +336,9 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                         enableSuggestions: false,
                                         decoration: InputDecoration(
                                             filled: true,
-                                            labelText:
-                                                'Senha Admin de cancelamento',
+                                            labelText: _recusando
+                                                ? 'Senha Admin para recusar'
+                                                : 'Senha Admin de cancelamento',
                                             prefixIcon:
                                                 const Icon(Icons.lock_outline),
                                             suffixIcon: IconButton(
@@ -333,8 +367,12 @@ class _AlterarPedidoDeliveryState extends State<AlterarPedidoDelivery> {
                                             labelText: (_config
                                                         ?.motivoCancelamentoObrigatorio ??
                                                     false)
-                                                ? 'Motivo do cancelamento *'
-                                                : 'Motivo do cancelamento (opcional)',
+                                                ? (_recusando
+                                                    ? 'Motivo da recusa *'
+                                                    : 'Motivo do cancelamento *')
+                                                : (_recusando
+                                                    ? 'Motivo da recusa (opcional)'
+                                                    : 'Motivo do cancelamento (opcional)'),
                                             prefixIcon: const Padding(
                                                 padding:
                                                     EdgeInsets.only(bottom: 54),

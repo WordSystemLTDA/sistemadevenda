@@ -676,6 +676,30 @@ void main() {
     expect(dados['empresa'], '3');
     expect(dados['id_usuario'], '2');
   });
+  test('aviso de recusa usa o pedido confirmado na rota do WhatsApp', () async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode(
+          {'tipoConexao': 'local', 'servidor': '127.0.0.1', 'porta': '8080'})
+    });
+    final dio = DioCliente();
+    final adapter = AdaptadorDelivery();
+    dio.cliente.httpClientAdapter = adapter;
+    addTearDown(() => dio.cliente.close());
+    final usuario = UsuarioProvedor()
+      ..setUsuario(UsuarioModelo(id: '2', empresa: '3'));
+    addTearDown(usuario.dispose);
+
+    await ServicoDelivery(dio, usuario)
+        .notificarRecusaPedido(pedidoTeste(campos: {'status': 'Recusado'}));
+
+    final requisicao = adapter.chamadas.single;
+    expect(requisicao.uri.path, endsWith('/delivery/notificar_cliente.php'));
+    final dados = jsonDecode(requisicao.data as String) as Map;
+    expect(dados['acao'], 'recusar');
+    expect(dados['id_delivery'], '25');
+    expect(dados['empresa'], '3');
+    expect(dados['id_usuario'], '2');
+  });
   test('pergunta de troco envia a acao e o valor total do pedido', () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode(

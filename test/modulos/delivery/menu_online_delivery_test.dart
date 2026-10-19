@@ -12,7 +12,7 @@ import 'delivery_test.dart' show AdaptadorDelivery, pedidoTeste;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('ações do menu Online usam API42, empresa e pedido atuais', () async {
+  test('ações do menu Online usam API43, empresa e pedido atuais', () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode({
         'tipoConexao': 'online',
@@ -44,13 +44,14 @@ void main() {
       'venda',
       'enviarNota',
       'cancelar',
+      'recusar',
     ]) {
       await servico.acao(acao, pedido, {'idDelivery': pedido.id});
       final chamada = adapter.chamadas.last;
       expect(chamada.uri.scheme, 'https');
       expect(chamada.uri.host, 'bigchef.com.br');
       expect(chamada.uri.path,
-          '/sistema/apis_restaurantes/api_restaurantes_venda/api42/delivery/acoes_pedido.php');
+          '/sistema/apis_restaurantes/api_restaurantes_venda/api43/delivery/acoes_pedido.php');
       final payload = jsonDecode(chamada.data as String) as Map;
       expect(payload['empresa'], '2');
       expect(payload['id_usuario'], '2');

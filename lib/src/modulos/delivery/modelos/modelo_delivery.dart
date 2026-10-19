@@ -155,7 +155,7 @@ class PedidoDelivery {
         _ => 'Entrega',
       };
   bool get encerrado =>
-      ['Finalizado', 'Cancelado'].contains(texto('status')) ||
+      ['Finalizado', 'Cancelado', 'Recusado'].contains(texto('status')) ||
       (int.tryParse(texto('idVenda')) ?? 0) > 0;
   bool? get recorrenteVinculado {
     final valor = dados['recorrenteVinculado'] ?? dados['recorrente_vinculado'];
@@ -165,6 +165,8 @@ class PedidoDelivery {
   }
 
   bool get cancelado => texto('status') == 'Cancelado';
+  bool get recusado => texto('status') == 'Recusado';
+  bool get encerradoOperacional => cancelado || recusado;
   bool get pagamentoOnlineObrigatorio =>
       valorDeliverySim(dados['pagamento_online_obrigatorio']);
   String get pagamentoOnlineStatus => texto('pagamento_online_status');
@@ -175,15 +177,17 @@ class PedidoDelivery {
   // Projeta apenas os pedidos liberados para operacao, sem apagar o retrato
   // original do cache ou da fila. A proxima consulta traz novas aprovacoes.
   bool get visivelNoPainelDelivery =>
-      !pagamentoMercadoPagoObrigatorio ||
-      (!cancelado && !aguardandoPagamentoOnline);
+      !encerradoOperacional &&
+      (!pagamentoMercadoPagoObrigatorio || !aguardandoPagamentoOnline);
   bool get aguardandoPagamentoOnline =>
       pagamentoOnlineObrigatorio &&
       !(valorDeliverySim(dados['pagamento_online_liberado']) &&
           pagamentoOnlineStatus.trim().toLowerCase() == 'approved');
   // A venda pode estar paga antes de o pedido entrar em preparo.
   bool podeAvancar(EtapaDelivery origem) =>
-      !cancelado && !aguardandoPagamentoOnline && origem.impressao != '3';
+      !encerradoOperacional &&
+      !aguardandoPagamentoOnline &&
+      origem.impressao != '3';
   double get taxaEntrega =>
       tipoEntrega == '1' ? valorDelivery(dados['valordaentrega']) : 0;
 

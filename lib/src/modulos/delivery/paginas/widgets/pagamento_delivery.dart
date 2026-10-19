@@ -122,7 +122,7 @@ class _PagamentoDeliveryState extends State<_PagamentoDelivery> {
         throw StateError('O pagamento deste pedido é confirmado pelo Mercado Pago.');
       }
       if ((atual.restante - _pedido!.restante).abs() > .009 ||
-          atual.cancelado ||
+          atual.encerradoOperacional ||
           atual.pagamentoConcluido) {
         throw StateError(
             'O saldo do pedido mudou. Feche e abra o pagamento novamente.');

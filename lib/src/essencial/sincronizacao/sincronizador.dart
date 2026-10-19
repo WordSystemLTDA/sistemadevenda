@@ -1663,12 +1663,14 @@ class Sincronizador extends ChangeNotifier {
           throw StateError(
               'O servidor nao confirmou a identidade do Delivery.');
         }
+        final statusFinalEsperado =
+            dados['status_final'] == 'Recusado' ? 'Recusado' : 'Cancelado';
         if (op['acao'] == 'cancelar_delivery' &&
             (resultado['idDelivery']?.toString() != atendimento ||
-                resultado['status'] != 'Cancelado' ||
+                resultado['status'] != statusFinalEsperado ||
                 resultado['cancelamento_operacional'] != true)) {
           throw StateError(
-              'O servidor nao confirmou o cancelamento do pedido.');
+              'O servidor nao confirmou o encerramento do pedido.');
         }
         if (op['acao'] == 'editar_item' &&
             (int.tryParse('${resultado['id_itens_venda']}') ?? 0) <= 0) {

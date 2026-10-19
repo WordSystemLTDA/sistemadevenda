@@ -156,7 +156,9 @@ void main() {
           'id_operacao': id,
           'sucesso': true,
           'idDelivery': (dados['dados'] as Map)['id'],
-          'status': 'Cancelado',
+          'status': (dados['dados'] as Map)['status_final'] == 'Recusado'
+              ? 'Recusado'
+              : 'Cancelado',
           if (!reciboIncompleto) 'cancelamento_operacional': true,
         }));
         return;
@@ -204,6 +206,11 @@ void main() {
       servico.acao('cancelar', pedido,
           {'senha': senha, 'motivo': 'Solicitado pelo cliente'});
 
+  Future<Map<String, dynamic>> recusar(PedidoDelivery pedido,
+          {String senha = 'senha-apenas-teste'}) =>
+      servico.acao(
+          'recusar', pedido, {'senha': senha, 'motivo': 'Sem disponibilidade'});
+
   for (final tipo in ['5', '6']) {
     for (final status in ['pending', 'approved', 'refunded']) {
       test('MP $tipo $status permite cancelamento offline sem mexer financeiro',
@@ -248,6 +255,24 @@ void main() {
     await cancelar(p);
     expect(p.pago, 20);
     expect(await fila.pedidosOcultos(), {'25'});
+  });
+
+  test('recusa reutiliza a fila idempotente e preserva o estado Recusado',
+      () async {
+    final resposta = await recusar(pedidoTeste());
+    expect(resposta['sucesso'], isTrue);
+    final op = (await banco.operacoes(sync.escopo)).single;
+    final dados = jsonDecode(op['dados'] as String) as Map;
+    expect(op['acao'], 'cancelar_delivery');
+    expect(dados['status_final'], 'Recusado');
+    expect(await fila.statusFinalDoPedido('25'), 'Recusado');
+    expect((await servico.pedido('25')).recusado, isTrue);
+
+    conectado = true;
+    await banco.atualizarOperacao(op['id'] as String, {'proxima': 0});
+    await sync.enviarPendentes();
+    expect((await fila.operacao(op['id'] as String))?['estado'], 'concluido');
+    expect(chamadas.last['dados']['status_final'], 'Recusado');
   });
 
   test('cliques concorrentes e reinicio conservam unico UUID e tombstone',

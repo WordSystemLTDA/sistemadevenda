@@ -129,8 +129,8 @@ class ServicoDelivery {
     if ((int.tryParse(id) ?? 0) > 0 &&
         (await pedidosComCancelamentoLocal()).contains(id) &&
         !(rota == 'delivery/acoes_pedido.php' &&
-            campos['acao'] == 'cancelar')) {
-      throw StateError('O cancelamento deste pedido ja esta salvo.');
+            {'cancelar', 'recusar'}.contains(campos['acao']))) {
+      throw StateError('O encerramento deste pedido já está salvo.');
     }
     final resposta = await _requisicao(rota, campos, true);
     if (resposta is! Map || resposta['sucesso'] != true) {
@@ -362,8 +362,11 @@ class ServicoDelivery {
         PedidoDelivery.fromMap(Map<String, dynamic>.from(json['dados'] as Map));
     if (pedido.id != id) throw StateError('Pedido não encontrado.');
     if ((await pedidosComCancelamentoLocal()).contains(id)) {
+      final statusFinal =
+          await (await _cancelamentos())?.statusFinalDoPedido(id) ??
+              'Cancelado';
       return PedidoDelivery.fromMap(
-          {...pedido.dados, 'status': 'Cancelado', 'cancelamentoLocal': true});
+          {...pedido.dados, 'status': statusFinal, 'cancelamentoLocal': true});
     }
     return pedido;
   }
@@ -688,7 +691,8 @@ class ServicoDelivery {
 
   Future<Map<String, dynamic>> acao(String acao, PedidoDelivery pedido,
       [Map<String, dynamic> campos = const {}]) async {
-    if (acao == 'cancelar') {
+    if ({'cancelar', 'recusar'}.contains(acao)) {
+      final statusFinal = acao == 'recusar' ? 'Recusado' : 'Cancelado';
       final fila = await _cancelamentos();
       final sync = Sincronizador.instancia;
       if (fila != null && sync != null) {
@@ -700,6 +704,7 @@ class ServicoDelivery {
           motivo: '${campos['motivo'] ?? ''}',
           etapa: pedido.etapa,
           destino: sync.destino,
+          statusFinal: statusFinal,
         );
         // A tentativa curta recupera erros de permissao sem travar a tela
         // durante uma queda. O HTTP continua pela fila depois do timeout.
@@ -709,11 +714,11 @@ class ServicoDelivery {
         final salvo = await fila.operacao(operacao);
         if (salvo?['estado'] == 'conflito') {
           throw StateError(
-              '${salvo?['erro'] ?? 'Cancelamento nao autorizado.'}');
+              '${salvo?['erro'] ?? 'Encerramento não autorizado.'}');
         }
         notificarPedidoAtualizado(PedidoDelivery.fromMap({
           ...pedido.dados,
-          'status': 'Cancelado',
+          'status': statusFinal,
           'cancelamentoLocal': true,
         }));
         return {
@@ -731,6 +736,30 @@ class ServicoDelivery {
       'id': pedido.id,
       'statusOrigem': pedido.etapa,
     });
+  }
+
+  Future<Map<String, dynamic>> notificarRecusaPedido(
+      PedidoDelivery pedido) async {
+    if (pedido.salvoNoAparelho || (int.tryParse(pedido.id) ?? 0) <= 0) {
+      throw StateError(
+          'Sincronize o pedido antes de avisar a recusa pelo WhatsApp.');
+    }
+    final resposta = await _requisicao(
+      'delivery/notificar_cliente.php',
+      {
+        'acao': 'recusar',
+        'id_delivery': pedido.id,
+      },
+      true,
+    );
+    if (resposta is! Map || resposta['sucesso'] != true) {
+      throw StateError(resposta is Map
+          ? (resposta['mensagem'] ??
+                  'O pedido foi recusado, mas não foi possível avisar o cliente.')
+              .toString()
+          : 'Resposta inválida do envio pelo WhatsApp.');
+    }
+    return Map<String, dynamic>.from(resposta);
   }
 
   Future<PedidoDelivery> alterarEntrega(
@@ -1247,7 +1276,7 @@ class ServicoDelivery {
     final totalAPagar = valorAPagar ?? pedido.restante;
     if (forma < 1 ||
         forma > 9 ||
-        pedido.cancelado ||
+        pedido.encerradoOperacional ||
         pedido.restante <= 0.009 ||
         totalAPagar <= 0.009 ||
         recebido <= 0 ||

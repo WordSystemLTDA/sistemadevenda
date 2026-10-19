@@ -324,7 +324,8 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
       final acao = await mostrarMenuPedidoDelivery(context, pedido, etapa);
       if (acao == null || !mounted) return;
       setState(() => _ocupado = pedido.id);
-      final atual = acao == AcaoPedidoDelivery.cancelar
+      final atual = {AcaoPedidoDelivery.cancelar, AcaoPedidoDelivery.recusar}
+              .contains(acao)
           ? pedido
           : await _provedor.servico.pedido(pedido.id);
       if (!mounted) return;
@@ -1211,7 +1212,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                 : p.podeAvancar(etapa) && destino != null;
                             final podeVerDetalhes = etapa.impressao == '3' &&
                                 !p.salvoNoAparelho &&
-                                !p.cancelado;
+                                !p.encerradoOperacional;
                             final selecionavel =
                                 _podeSelecionar(p, etapa, destino);
                             final selecionado = _selecionados.contains(p.id);

@@ -112,6 +112,7 @@ Future<String?> executarAcaoDelivery(
                 alteracao: AlteracaoDelivery.pagamento));
       }
     case AcaoPedidoDelivery.entrega:
+    case AcaoPedidoDelivery.recusar:
     case AcaoPedidoDelivery.cancelar:
       final mudou = await showDialog<bool>(
           context: context,
@@ -119,9 +120,11 @@ Future<String?> executarAcaoDelivery(
           builder: (_) => AlterarPedidoDelivery(
               servico: servico,
               pedido: pedido,
-              alteracao: acao == AcaoPedidoDelivery.entrega
-                  ? AlteracaoDelivery.entrega
-                  : AlteracaoDelivery.cancelar));
+              alteracao: switch (acao) {
+                AcaoPedidoDelivery.entrega => AlteracaoDelivery.entrega,
+                AcaoPedidoDelivery.recusar => AlteracaoDelivery.recusar,
+                _ => AlteracaoDelivery.cancelar,
+              }));
       if (mudou == true) {
         return null;
       }

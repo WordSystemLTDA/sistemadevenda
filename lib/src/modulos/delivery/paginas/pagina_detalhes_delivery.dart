@@ -40,7 +40,7 @@ class _PaginaDetalhesDeliveryState extends State<PaginaDetalhesDelivery> {
   String? _erro;
   ServicoEdicaoPedido get _edicao => ServicoEdicaoPedido(widget.servico);
   bool get _podeEditar =>
-      _pedido != null && !_pedido!.cancelado && !_pedido!.pagamentoOnlineObrigatorio && !_ocupado && !_carregando;
+      _pedido != null && !_pedido!.encerradoOperacional && !_pedido!.pagamentoOnlineObrigatorio && !_ocupado && !_carregando;
 
   @override
   void initState() {

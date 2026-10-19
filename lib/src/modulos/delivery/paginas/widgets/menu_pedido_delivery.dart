@@ -26,6 +26,7 @@ enum AcaoPedidoDelivery {
   nota,
   xml,
   enviarNota,
+  recusar,
   cancelar,
 }
 
@@ -125,7 +126,7 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
       [
         if (pedido.quantidade > 0 &&
             !pedido.pagamentoOnlineObrigatorio &&
-            !pedido.cancelado &&
+            !pedido.encerradoOperacional &&
             !pedido.pagamentoConcluido)
           (
             AcaoPedidoDelivery.receber,
@@ -183,10 +184,16 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
           ],
         ]
       ),
-    if (!pedido.cancelado)
+    if (!pedido.encerradoOperacional)
       (
         'Cancelamento',
         [
+          if (pedido.texto('status').trim().toLowerCase() == 'pendente')
+            (
+              AcaoPedidoDelivery.recusar,
+              'Recusar Pedido',
+              Icons.block_outlined
+            ),
           (
             AcaoPedidoDelivery.cancelar,
             'Cancelar Venda',
@@ -237,10 +244,16 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
                           .contains(item.$1)
                       ? const Text('Integração fiscal pendente')
                       : null,
-                  textColor: item.$1 == AcaoPedidoDelivery.cancelar
+                  textColor: {
+                    AcaoPedidoDelivery.cancelar,
+                    AcaoPedidoDelivery.recusar
+                  }.contains(item.$1)
                       ? Theme.of(context).colorScheme.error
                       : null,
-                  iconColor: item.$1 == AcaoPedidoDelivery.cancelar
+                  iconColor: {
+                    AcaoPedidoDelivery.cancelar,
+                    AcaoPedidoDelivery.recusar
+                  }.contains(item.$1)
                       ? Theme.of(context).colorScheme.error
                       : null,
                   onTap: () => Navigator.pop(context, item.$1)),
