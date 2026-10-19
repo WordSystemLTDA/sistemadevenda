@@ -193,12 +193,31 @@ void main() {
     await abrir(tester);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('Tentar novamente'), findsWidgets);
+    expect(find.byType(SnackBar), findsNothing);
     modulo.servico.falhar = false;
     await tester.tap(find.widgetWithText(OutlinedButton, 'Tentar novamente'));
     await tester.pumpAndSettle();
     expect(find.text('Comanda: 4'), findsOneWidget);
     expect(tester.widget<TempoAberto>(find.byType(TempoAberto)).dataAbertura,
         '2026-09-12T16:00:00');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+      'falha de atualizacao preserva atendimento sem exibir notificacao',
+      (tester) async {
+    await abrir(tester);
+    expect(find.text('Comanda: 4'), findsOneWidget);
+
+    modulo.servico.falhar = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Comanda: 4'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text('Não foi possível atualizar o atendimento.'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

@@ -261,12 +261,14 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
       idCliente = value.idCliente ?? '0';
     } catch (_) {
       if (!mounted) return;
-      erroConsulta = 'Não foi possível atualizar o atendimento.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(erroConsulta!),
-        action: SnackBarAction(
-            label: 'Tentar novamente', onPressed: listarComandasPedidos),
-      ));
+      // Atualizações automáticas não interrompem o trabalho. Se o atendimento
+      // já foi carregado, os dados locais permanecem na tela e uma nova
+      // tentativa acontecerá pelas atualizações seguintes. Na primeira carga,
+      // o erro continua disponível dentro da própria página para permitir uma
+      // tentativa manual sem exibir um alerta sobre outras telas.
+      erroConsulta = dados == null
+          ? 'Não foi possível carregar os dados deste atendimento.'
+          : null;
     } finally {
       if (mounted) setState(() => carregando = false);
     }
