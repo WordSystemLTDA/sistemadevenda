@@ -142,11 +142,12 @@ class _TabCustomState extends State<TabCustom>
   void _atualizarSelecao() {
     if (!provedor.carregando &&
         !provedor.carregandoMais &&
-        provedor.erro == null) {
+        provedor.erro == null &&
+        !provedor.aguardandoServidor) {
       _retentativaConexaoRealizada = false;
       widget.onProdutosAtualizados?.call(provedor.produtos);
     } else if (!provedor.carregando &&
-        provedor.erro != null &&
+        provedor.aguardandoServidor &&
         provedor.produtos.isEmpty &&
         _sincronizador?.online == true) {
       _agendarRetentativaAposConexao();
@@ -167,7 +168,7 @@ class _TabCustomState extends State<TabCustom>
         !widget.ativa ||
         provedor.carregando ||
         provedor.produtos.isNotEmpty ||
-        provedor.erro == null) {
+        !provedor.aguardandoServidor) {
       return;
     }
     _retentativaConexaoAgendada = true;
@@ -177,7 +178,7 @@ class _TabCustomState extends State<TabCustom>
           !widget.ativa ||
           provedor.carregando ||
           provedor.produtos.isNotEmpty ||
-          provedor.erro == null ||
+          !provedor.aguardandoServidor ||
           _sincronizador?.online != true) {
         return;
       }
@@ -266,9 +267,8 @@ class _TabCustomState extends State<TabCustom>
                 .where((p) => widget.favoritos?.contem(p.id) ?? false)
                 .toList()
             : provedor.produtos;
-        final aguardandoSincronizacao = produtos.isEmpty &&
-            provedor.erro != null &&
-            _sincronizador?.sincronizando == true;
+        final aguardandoSincronizacao =
+            produtos.isEmpty && provedor.aguardandoServidor;
         return Column(
           children: [
             Padding(

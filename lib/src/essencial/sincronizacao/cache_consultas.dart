@@ -96,12 +96,15 @@ class CacheConsultas extends Interceptor {
     if (retomou) aoConectar?.call();
   }
 
-  static bool falhaDeConexao(DioException erro) =>
-      erro.type == DioExceptionType.connectionError ||
-      erro.type == DioExceptionType.connectionTimeout ||
-      erro.type == DioExceptionType.receiveTimeout ||
-      erro.type == DioExceptionType.sendTimeout ||
-      erro.error is SocketException;
+  static bool falhaDeConexao(DioException erro) {
+    final status = erro.response?.statusCode;
+    return erro.type == DioExceptionType.connectionError ||
+        erro.type == DioExceptionType.connectionTimeout ||
+        erro.type == DioExceptionType.receiveTimeout ||
+        erro.type == DioExceptionType.sendTimeout ||
+        erro.error is SocketException ||
+        const {408, 502, 503, 504, 521, 522, 523, 524}.contains(status);
+  }
 
   static String caminho(RequestOptions opcoes) =>
       Uri.parse(opcoes.path).path.replaceFirst(RegExp(r'^/+'), '');

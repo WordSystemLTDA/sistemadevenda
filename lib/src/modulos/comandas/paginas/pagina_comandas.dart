@@ -1,5 +1,6 @@
 import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';
 import 'dart:async';
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/essencial/widgets/campo_busca.dart';
 import 'package:app/src/modulos/voz/abertura_falada.dart';
 import 'package:app/src/modulos/voz/botao_abertura_voz.dart';
@@ -74,8 +75,8 @@ class _PaginaComandasState extends State<PaginaComandas> {
       if (provedor.erro != null) {
         _mostrarErroAtualizacao(provedor.erro!);
       }
-    } catch (_) {
-      if (!mounted) return;
+    } catch (falha) {
+      if (!mounted || EstadoServidor.indisponivel(falha)) return;
       _mostrarErroAtualizacao('Não foi possível atualizar as comandas.');
     } finally {
       if (mounted) setState(() => isLoading = false);

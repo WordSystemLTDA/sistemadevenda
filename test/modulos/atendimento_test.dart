@@ -982,7 +982,7 @@ void main() {
     expect(card.dataultimopedido, isNotNull);
   });
 
-  test('comandas libera carregamento apos timeout e preserva lista antiga',
+  test('comandas preserva lista sem exibir erro durante timeout offline',
       () async {
     await modulo.provedorComandas.listarComandas('');
     final listaAntiga = modulo.provedorComandas.comandas;
@@ -996,7 +996,7 @@ void main() {
     final retorno = await consulta;
     expect(retorno, same(listaAntiga));
     expect(modulo.provedorComandas.comandas, same(listaAntiga));
-    expect(modulo.provedorComandas.erro, isNotNull);
+    expect(modulo.provedorComandas.erro, isNull);
     expect(modulo.provedorComandas.listando, isFalse);
 
     final tentativa = modulo.provedorComandas.listarComandas('');
@@ -1023,7 +1023,7 @@ void main() {
     expect(modulo.provedorComandas.listando, isFalse);
   });
 
-  test('mesas libera carregamento apos timeout e preserva lista antiga',
+  test('mesas preserva lista sem exibir erro durante timeout offline',
       () async {
     await modulo.provedorMesas.listarMesas('');
     final listaAntiga = modulo.provedorMesas.mesas;
@@ -1037,7 +1037,7 @@ void main() {
     final retorno = await consulta;
     expect(retorno, same(listaAntiga));
     expect(modulo.provedorMesas.mesas, same(listaAntiga));
-    expect(modulo.provedorMesas.erro, isNotNull);
+    expect(modulo.provedorMesas.erro, isNull);
     expect(modulo.provedorMesas.listando, isFalse);
 
     final tentativa = modulo.provedorMesas.listarMesas('');

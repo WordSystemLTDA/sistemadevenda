@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:flutter/material.dart';
@@ -87,10 +88,11 @@ class ProvedorDelivery extends ChangeNotifier {
           throw StateError(
               'Não foi possível consultar a configuração do Delivery.');
         }
-      } catch (_) {
+      } catch (falha) {
         if (_descartado || consulta != _consulta) return;
-        erro =
-            'Não foi possível atualizar o Delivery. Verifique a conexão e tente novamente.';
+        erro = EstadoServidor.indisponivel(falha)
+            ? null
+            : 'Não foi possível atualizar o Delivery. Tente novamente.';
       } finally {
         if (!_descartado && consulta == _consulta) {
           carregando = false;

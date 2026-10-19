@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
@@ -94,8 +95,8 @@ class _PaginaCarrinhoItensRecorrentesState
         dados = resposta;
         configBigchef = configuracao;
       }
-    } catch (_) {
-      if (mounted) {
+    } catch (erro) {
+      if (mounted && !EstadoServidor.indisponivel(erro)) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Text('Não foi possível consultar o atendimento.'),
           action: SnackBarAction(

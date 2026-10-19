@@ -22,14 +22,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Server extends ChangeNotifier {
   final FilaImpressao filaImpressao;
-  Timer? _avisoImpressao;
-  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
-      _avisoImpressaoVisivel;
   bool _descartado = false;
   Timer? _retentativaImpressao;
   Timer? _proximoLoteImpressao;
   final Map<String, DateTime> _consultasImpressao = {};
-  DateTime? _ultimoAvisoImpressao;
   final DateTime Function() _agora;
   final Future<String?> Function()? _obterEscopoOnline;
   final DescobertaAtualizacaoOnline _descobertaOnline;
@@ -69,7 +65,6 @@ class Server extends ChangeNotifier {
       _retentativaImpressao?.cancel();
       _retentativaImpressao = null;
       _consultasImpressao.clear();
-      _fecharAvisoImpressao();
     } else if (!_descartado && !_desconexaoIntencional) {
       _retentativaImpressao ??= Timer.periodic(
         const Duration(seconds: 5),
@@ -100,56 +95,6 @@ class Server extends ChangeNotifier {
 
   void Function(String tipo)? aoAtualizarDados;
 
-  void _fecharAvisoImpressao() {
-    final aviso = _avisoImpressaoVisivel;
-    _avisoImpressaoVisivel = null;
-    if (aviso == null) return;
-
-    try {
-      aviso.close();
-    } catch (erro, stack) {
-      // O ScaffoldMessenger pode ter removido o SnackBar por navegacao ou por
-      // outro aviso. Fechar novamente e apenas uma limpeza e nao deve afetar o
-      // socket nem a fila de impressoes.
-      log('Aviso de impressao ja estava encerrado',
-          error: erro, stackTrace: stack);
-    }
-  }
-
-  void _acompanharAvisoImpressao(
-      ScaffoldFeatureController<SnackBar, SnackBarClosedReason> aviso) {
-    _avisoImpressaoVisivel = aviso;
-    unawaited(aviso.closed.then((_) {
-      if (identical(_avisoImpressaoVisivel, aviso)) {
-        _avisoImpressaoVisivel = null;
-      }
-    }));
-  }
-
-  void _avisarImpressaoPendente() {
-    if (_descartado || filaImpressao.itens.isEmpty) return;
-    if (_ultimoAvisoImpressao != null &&
-        _agora().difference(_ultimoAvisoImpressao!) <
-            const Duration(minutes: 1)) {
-      return;
-    }
-    final context = navigatorKey?.currentContext;
-    if (context == null || !context.mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    _ultimoAvisoImpressao = _agora();
-    _fecharAvisoImpressao();
-    final aviso = messenger.showSnackBar(SnackBar(
-      duration: const Duration(seconds: 5),
-      persist: false,
-      content: const Text('Impressão pendente. O atendimento pode continuar.'),
-      action: SnackBarAction(
-          label: 'Conferir',
-          onPressed: () => abrirPendenciasImpressao(context)),
-    ));
-    _acompanharAvisoImpressao(aviso);
-  }
-
   Future<void> enviarImpressoes(List<String> mensagens) async {
     if (mensagens.isEmpty) return;
     await filaImpressao.registrar(await _identificarEscopoImpressoes(mensagens),
@@ -158,7 +103,6 @@ class Server extends ChangeNotifier {
     if (connected) {
       await _reenviarMensagensPendentes();
     }
-    if (!connected) _avisarImpressaoPendente();
   }
 
   Future<void> prepararImpressoes(List<String> mensagens) async =>
@@ -244,7 +188,6 @@ class Server extends ChangeNotifier {
     } catch (erro, stack) {
       log('Falha na recuperacao automatica da impressao',
           error: erro, stackTrace: stack);
-      _avisarImpressaoPendente();
     }
   }
 
@@ -359,12 +302,6 @@ class Server extends ChangeNotifier {
         break;
       }
     }
-    if (filaImpressao.itens.isNotEmpty) {
-      _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
-        _avisoImpressao = null;
-        _avisarImpressaoPendente();
-      });
-    }
   }
 
   WebSocketChannel? channel;
@@ -425,14 +362,8 @@ class Server extends ChangeNotifier {
       return false;
     }
     var portaConvertida = portaInicial;
-    unawaited(filaImpressao.carregar().then((_) {
-      if (!_descartado && filaImpressao.itens.isNotEmpty) {
-        _avisoImpressao ??= Timer(const Duration(seconds: 20), () {
-          _avisoImpressao = null;
-          _avisarImpressaoPendente();
-        });
-      }
-    }).catchError((Object erro, StackTrace stack) {
+    unawaited(
+        filaImpressao.carregar().catchError((Object erro, StackTrace stack) {
       log('Falha ao recuperar impressoes pendentes',
           error: erro, stackTrace: stack);
     }));
@@ -706,8 +637,7 @@ class Server extends ChangeNotifier {
       if (conexao == null ||
           conexao.servidor.isEmpty ||
           conexao.porta.isEmpty) {
-        _mostrarAvisoFalhaReconexao(
-            'Dados de conexao nao encontrados para reconectar.');
+        log('Dados de conexao nao encontrados para reconectar.');
         return;
       }
 
@@ -718,25 +648,6 @@ class Server extends ChangeNotifier {
   Duration _calcularAtrasoReconexao() {
     final int segundos = (2 * (1 << _tentativaReconexao)).clamp(2, 30);
     return Duration(seconds: segundos);
-  }
-
-  void _mostrarAvisoFalhaReconexao([String? mensagem]) {
-    final BuildContext? context = navigatorKey?.currentContext;
-    if (context == null || !context.mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..removeCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(mensagem ??
-              'Falha ao reconectar. Verifique o servidor e a rede.'),
-          backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 5),
-          showCloseIcon: true,
-        ),
-      );
   }
 
   Future<void> _enviarHandshakeRede() async {
@@ -1101,7 +1012,6 @@ class Server extends ChangeNotifier {
           error: e, stackTrace: stackTrace);
       _novoEnvioSolicitado = false;
       loteConcluido = false;
-      _avisarImpressaoPendente();
     } finally {
       _reenviandoMensagensPendentes = false;
       if (loteConcluido &&
@@ -1218,7 +1128,6 @@ class Server extends ChangeNotifier {
                 idRequisicao,
                 mensagem['mensagemErro']?.toString() ??
                     'Falha no servidor de impressao.');
-            _avisarImpressaoPendente();
           } else if (mensagem['statusResposta'] == 'sucesso' &&
               !protocoloConfirmado) {
             await filaImpressao.registrarErro(idRequisicao,
@@ -1226,10 +1135,6 @@ class Server extends ChangeNotifier {
           }
         }
 
-        if (filaImpressao.itens.isEmpty) {
-          _avisoImpressao?.cancel();
-          _avisoImpressao = null;
-        }
         if (!_descartado) notifyListeners();
         return;
       }
@@ -1258,7 +1163,6 @@ class Server extends ChangeNotifier {
     unawaited(_encerrarCanalAtual());
     _temporizadorReconexao?.cancel();
     _retentativaImpressao?.cancel();
-    _avisoImpressao?.cancel();
     filaImpressao.removeListener(_atualizarFilaImpressao);
     filaImpressao.dispose();
     super.dispose();

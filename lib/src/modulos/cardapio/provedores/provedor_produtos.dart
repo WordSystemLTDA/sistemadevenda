@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class ProvedorProdutos extends ChangeNotifier {
   bool carregandoMais = false;
   bool temMais = true;
   bool erroAoCarregarMais = false;
+  bool aguardandoServidor = false;
   String? erro;
   String _pesquisa = '';
   bool _consultaCompleta = false;
@@ -50,6 +52,7 @@ class ProvedorProdutos extends ChangeNotifier {
     carregando = false;
     carregandoMais = false;
     temMais = true;
+    aguardandoServidor = false;
     erro = null;
     _pesquisa = '';
     _consultaCompleta = false;
@@ -66,6 +69,7 @@ class ProvedorProdutos extends ChangeNotifier {
     carregando = true;
     carregandoMais = false;
     erro = null;
+    aguardandoServidor = false;
     notifyListeners();
   }
 
@@ -91,6 +95,7 @@ class ProvedorProdutos extends ChangeNotifier {
     carregando = !carregarMais;
     carregandoMais = carregarMais;
     erro = null;
+    aguardandoServidor = false;
     erroAoCarregarMais = false;
     if (restaurarCategoria) {
       _produtos = [...?cacheCategoria];
@@ -102,6 +107,7 @@ class ProvedorProdutos extends ChangeNotifier {
           cachePrimeiro: cachePrimeiro && !carregarMais);
       if (requisicao != _requisicao) return;
       _guardarProdutosCompletos(res);
+      aguardandoServidor = false;
       final ids = carregarMais ? produtos.map((p) => p.id).toSet() : <String>{};
       final novos = res.where((p) => ids.add(p.id)).toList();
       _produtos = carregarMais ? [...produtos, ...novos] : novos;
@@ -109,12 +115,17 @@ class ProvedorProdutos extends ChangeNotifier {
       temMais = res.length >= _itensPorPagina && novos.isNotEmpty;
       _produtosPorCategoria[category] = [..._produtos];
       _temMaisPorCategoria[category] = temMais;
-    } catch (_) {
+    } catch (falha) {
       if (requisicao != _requisicao) return;
       if (restaurarCategoria && cacheCategoria != null) {
         erro = null;
         erroAoCarregarMais = false;
+      } else if (EstadoServidor.indisponivel(falha)) {
+        erro = null;
+        erroAoCarregarMais = false;
+        aguardandoServidor = true;
       } else {
+        aguardandoServidor = false;
         erro = 'Não foi possível carregar os produtos.';
         erroAoCarregarMais = carregarMais;
       }
@@ -136,6 +147,7 @@ class ProvedorProdutos extends ChangeNotifier {
     carregando = true;
     carregandoMais = false;
     erro = null;
+    aguardandoServidor = false;
     erroAoCarregarMais = false;
     notifyListeners();
     try {
@@ -146,6 +158,7 @@ class ProvedorProdutos extends ChangeNotifier {
       // Uma busca nova nao pode completar os precos de pizza com uma consulta
       // anterior. APIs antigas ainda recebem o fallback, mas consultado agora.
       _produtosCompletosPorId.clear();
+      aguardandoServidor = false;
       var itens = res;
       if (filtro.codigoExato != null) {
         itens = itens
@@ -159,9 +172,12 @@ class ProvedorProdutos extends ChangeNotifier {
       _produtos = itens;
       paginas[categoria] = 1;
       temMais = false;
-    } catch (_) {
+    } catch (falha) {
       if (requisicao != _requisicao) return;
-      erro = 'Não foi possível pesquisar os produtos.';
+      aguardandoServidor = EstadoServidor.indisponivel(falha);
+      erro = aguardandoServidor
+          ? null
+          : 'Não foi possível pesquisar os produtos.';
     } finally {
       if (requisicao == _requisicao) {
         carregando = false;

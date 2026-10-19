@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/modulos/mesas/modelos/mesa_modelo.dart';
 import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
@@ -221,9 +222,9 @@ class ProvedorMesas extends ChangeNotifier {
         _preservarPedidosRecentes(res);
         mesas = res;
         return;
-      } catch (_) {
+      } catch (falha) {
         if (consulta == _consulta) {
-          erro = _mensagemFalha;
+          erro = EstadoServidor.indisponivel(falha) ? null : _mensagemFalha;
         }
         return;
       } finally {
@@ -243,9 +244,9 @@ class ProvedorMesas extends ChangeNotifier {
       if (consulta != _consultaLista) return;
       mesasLista = res;
       erro = null;
-    } catch (_) {
+    } catch (falha) {
       if (consulta == _consultaLista) {
-        erro = _mensagemFalha;
+        erro = EstadoServidor.indisponivel(falha) ? null : _mensagemFalha;
       }
     } finally {
       if (consulta == _consultaLista) notifyListeners();
@@ -255,8 +256,8 @@ class ProvedorMesas extends ChangeNotifier {
   Future<List<dynamic>> listarClientes(String pesquisa) async {
     try {
       return await _servico.listarClientes(pesquisa);
-    } catch (_) {
-      erro = _mensagemFalha;
+    } catch (falha) {
+      erro = EstadoServidor.indisponivel(falha) ? null : _mensagemFalha;
       notifyListeners();
       return [];
     }

@@ -155,18 +155,9 @@ class _PaginaInicioState extends State<PaginaInicio>
       var conexao = await config.getConexao();
       if (!mounted || conexao == null) return;
 
-      await _server.connect(conexao.servidor, conexao.porta).then((sucesso) {
-        if (sucesso == false && !_server.connected) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: const Text(
-                  'Canal da cozinha desconectado. A reconexão será automática.'),
-              showCloseIcon: true,
-              duration: const Duration(seconds: 6),
-            ));
-          }
-        }
-      });
+      // A ausência do servidor é um estado esperado: o ícone superior informa
+      // a situação, enquanto a reconexão e as filas seguem em segundo plano.
+      await _server.connect(conexao.servidor, conexao.porta);
     } catch (erro) {
       debugPrint('Falha ao conectar ao PC: $erro');
     }

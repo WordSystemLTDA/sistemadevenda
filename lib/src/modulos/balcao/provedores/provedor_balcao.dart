@@ -1,4 +1,5 @@
 import 'package:app/src/essencial/api/socket/atualizacao_agrupada.dart';
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_enderecos_clientes.dart';
 import 'package:app/src/modulos/balcao/modelos/modelo_vendas_balcao.dart';
 import 'package:app/src/modulos/balcao/servicos/servico_balcao.dart';
@@ -72,9 +73,11 @@ class ProvedorBalcao extends ChangeNotifier {
         if (consulta != _consulta) return;
         dados = novosItens;
         temMaisParaCarregar = novosItens.length >= limite;
-      } catch (_) {
+      } catch (falha) {
         if (consulta != _consulta) return;
-        erro = 'Não foi possível atualizar as vendas.';
+        erro = EstadoServidor.indisponivel(falha)
+            ? null
+            : 'Não foi possível atualizar as vendas.';
       } finally {
         if (consulta == _consulta) {
           listando = false;

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
+
 import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -102,11 +104,13 @@ class _PaginaItensRecorrentesState extends State<PaginaItensRecorrentes>
     } catch (erro, stack) {
       log('Falha ao abrir itens recorrentes', error: erro, stackTrace: stack);
       if (!mounted) return;
-      setState(() {
-        dados = null;
-        _erroConsulta =
-            'Não foi possível carregar os itens recorrentes. Confira a conexão e tente novamente.';
-      });
+      if (!EstadoServidor.indisponivel(erro)) {
+        setState(() {
+          dados = null;
+          _erroConsulta =
+              'Não foi possível carregar os itens recorrentes. Tente novamente.';
+        });
+      }
     } finally {
       _carregando = false;
       if (mounted) setState(() {});

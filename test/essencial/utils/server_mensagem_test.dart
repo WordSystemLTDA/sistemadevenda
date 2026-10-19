@@ -59,7 +59,7 @@ void main() {
     expect(server.filaImpressao.itens.single.id, 'pedido-pendente');
   });
 
-  testWidgets('pode mostrar outro aviso depois que o anterior foi removido',
+  testWidgets('mantem impressoes offline na fila sem aviso automatico',
       (tester) async {
     final navigator = GlobalKey<NavigatorState>();
     final scaffoldMessenger = GlobalKey<ScaffoldMessengerState>();
@@ -70,8 +70,7 @@ void main() {
       home: const Scaffold(body: SizedBox()),
     ));
 
-    var agora = DateTime(2026, 9, 20, 11);
-    final server = Server(agora: () => agora);
+    final server = Server(agora: () => DateTime(2026, 9, 20, 11));
     addTearDown(server.dispose);
 
     await server.enviarImpressoes([
@@ -85,11 +84,10 @@ void main() {
     await server.disconnect();
     await tester.pump();
     expect(find.text('Impressão pendente. O atendimento pode continuar.'),
-        findsOneWidget);
-    scaffoldMessenger.currentState!.removeCurrentSnackBar();
-    await tester.pump();
+        findsNothing);
+    expect(server.filaImpressao.itens.map((item) => item.id),
+        contains('primeiro-aviso'));
 
-    agora = agora.add(const Duration(minutes: 2));
     await server.enviarImpressoes([
       jsonEncode({
         'tipo': 'Comanda',
@@ -100,6 +98,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Impressão pendente. O atendimento pode continuar.'),
-        findsOneWidget);
+        findsNothing);
+    expect(server.filaImpressao.itens.map((item) => item.id),
+        containsAll(<String>['primeiro-aviso', 'segundo-aviso']));
   });
 }
