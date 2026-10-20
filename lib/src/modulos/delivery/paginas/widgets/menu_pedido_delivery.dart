@@ -31,7 +31,8 @@ enum AcaoPedidoDelivery {
 }
 
 Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
-    BuildContext context, PedidoDelivery pedido, EtapaDelivery etapa) {
+    BuildContext context, PedidoDelivery pedido, EtapaDelivery etapa,
+    {bool permitirRecusa = false}) {
   final fiscal = (int.tryParse(pedido.texto('idVenda')) ?? 0) > 0;
   final nota = ['Autorizada', 'Autorizada (CCE)', 'Cancelada']
           .contains(pedido.texto('statusSefaz')) &&
@@ -188,7 +189,8 @@ Future<AcaoPedidoDelivery?> mostrarMenuPedidoDelivery(
       (
         'Cancelamento',
         [
-          if (pedido.texto('status').trim().toLowerCase() == 'pendente')
+          if (permitirRecusa &&
+              pedido.texto('status').trim().toLowerCase() == 'pendente')
             (
               AcaoPedidoDelivery.recusar,
               'Recusar Pedido',

@@ -321,7 +321,13 @@ class _PaginaDeliveryState extends State<PaginaDelivery>
     if (_ocupado != null || _rotaAberta) return;
     _rotaAberta = true;
     try {
-      final acao = await mostrarMenuPedidoDelivery(context, pedido, etapa);
+      final indiceEtapa = _provedor.etapas.indexWhere((item) => item.id == etapa.id);
+      final acao = await mostrarMenuPedidoDelivery(
+        context,
+        pedido,
+        etapa,
+        permitirRecusa: indiceEtapa >= 0 && indiceEtapa < 2,
+      );
       if (acao == null || !mounted) return;
       setState(() => _ocupado = pedido.id);
       final atual = {AcaoPedidoDelivery.cancelar, AcaoPedidoDelivery.recusar}

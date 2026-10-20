@@ -8,6 +8,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'delivery_test.dart';
 
 void main() {
+  for (final permitirRecusa in [true, false]) {
+    testWidgets('menu ${permitirRecusa ? 'mostra' : 'oculta'} Recusar Pedido conforme a etapa', (tester) async {
+      final pedido = pedidoTeste(campos: {'status': 'Pendente'});
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => mostrarMenuPedidoDelivery(
+                context,
+                pedido,
+                etapasTeste().first,
+                permitirRecusa: permitirRecusa,
+              ),
+              child: const Text('Opções'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('Opções'));
+      await tester.pumpAndSettle();
+      if (permitirRecusa) {
+        await tester.scrollUntilVisible(
+          find.text('Recusar Pedido'),
+          160,
+          scrollable: find.byType(Scrollable).last,
+        );
+      }
+      expect(
+        find.text('Recusar Pedido'),
+        permitirRecusa ? findsOneWidget : findsNothing,
+      );
+    });
+  }
+
   for (final largura in [320.0, 1180.0]) {
     for (final caso in [
       'cancelar',
