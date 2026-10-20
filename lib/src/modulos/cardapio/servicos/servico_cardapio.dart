@@ -24,6 +24,72 @@ class ServicoCardapio {
 
   ServicoCardapio(this.dio, this.usuarioProvedor);
 
+  Future<Modeloworddadoscardapio?> _detalheSalvo({
+    required Sincronizador sync,
+    required String id,
+    required TipoCardapio tipo,
+    required String empresa,
+    required String idUsuario,
+    required String mostrarItens,
+    String? codigoQrcode,
+  }) async {
+    for (final itens in <String>{mostrarItens, 'Não', 'Sim'}) {
+      try {
+        final chave = CacheConsultas.chave(RequestOptions(
+          path: 'cardapio/listar_por_id.php',
+          queryParameters: {
+            'id': id,
+            'codigoQrcode': '$codigoQrcode',
+            'empresa': empresa,
+            'id_usuario': idUsuario,
+            'tipo': tipo.nome,
+            'mostrar_itens': itens,
+          },
+        ));
+        final registro = await sync.banco.consulta(sync.escopo, chave);
+        if (registro == null) continue;
+        final salvo = jsonDecode(registro['valor'] as String);
+        if (salvo is! Map || '${salvo['id']}' != id) continue;
+        final projetado = await AtendimentosLocais(sync.banco, sync.escopo)
+            .projetarDetalhe(Map<String, dynamic>.from(salvo),
+                tipo == TipoCardapio.mesa ? 'mesa' : 'comanda');
+        return Modeloworddadoscardapio.fromMap(projetado);
+      } catch (_) {
+        // Tenta o outro retrato e, por ultimo, o estado compacto sincronizado.
+      }
+    }
+
+    try {
+      final texto = await sync.banco.ler('estado:${sync.escopo}');
+      if (texto == null) return null;
+      final estado = jsonDecode(texto) as Map;
+      final atendimento = (estado['atendimentos'] as Map?)?[id] as Map?;
+      if (atendimento == null) return null;
+      final campoRecurso = tipo == TipoCardapio.mesa ? 'id_mesa' : 'id_comanda';
+      final idRecurso = '${atendimento[campoRecurso] ?? '0'}';
+      if (idRecurso.isEmpty || idRecurso == '0') return null;
+      final recurso =
+          (estado['recursos'] as Map?)?['${tipo.name}:$idRecurso'] as Map?;
+      return Modeloworddadoscardapio(
+        id: id,
+        codigo: recurso?['codigo']?.toString() ?? '',
+        nome: recurso?['nome']?.toString() ?? tipo.nome,
+        status: atendimento['status']?.toString() ?? 'Andamento',
+        versaoAtendimento: atendimento['versao']?.toString(),
+        idComanda: tipo == TipoCardapio.comanda ? idRecurso : '0',
+        idMesa: tipo == TipoCardapio.mesa ? idRecurso : '0',
+        idCliente: '0',
+        nomeCliente: '',
+        produtos: const [],
+        valorTotal: '0',
+        numeroPedido: '',
+        nomeEmpresa: usuarioProvedor.usuario?.nomeEmpresa ?? '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
       {String? codigoQrcode, bool semCache = false}) async {
@@ -59,8 +125,15 @@ class ServicoCardapio {
                 .atualizarStatus(empresa ?? '', id, remoto.status);
             return remoto;
           }
-        } on DioException catch (e) {
-          if (!CacheConsultas.falhaDeConexao(e)) rethrow;
+        } catch (erro, stack) {
+          // A abertura ja foi salva no aparelho e pode ter recebido o numero
+          // definitivo poucos milissegundos antes desta consulta. A API de
+          // detalhes pode ainda nao enxergar esse registro, ou pode ficar
+          // indisponivel enquanto o canal local esta fora da rede. Nesse
+          // intervalo o retrato local continua sendo a fonte segura para o
+          // carrinho; o envio duravel abaixo sera validado pela API.
+          log('Falha ao atualizar atendimento confirmado; usando dados locais',
+              name: 'ServicoCardapio', error: erro, stackTrace: stack);
         }
       }
       return Modeloworddadoscardapio.fromMap(detalhe);
@@ -77,11 +150,13 @@ class ServicoCardapio {
           valorTotal: '0');
     }
 
-    final response = await dio.cliente.get(
-        'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens',
-        options: semCache ? Options(extra: {'semCache': true}) : null);
-
-    if (response.statusCode == 200) {
+    try {
+      final response = await dio.cliente.get(
+          'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens',
+          options: semCache ? Options(extra: {'semCache': true}) : null);
+      if (response.statusCode != 200 || response.data is! Map) {
+        throw StateError('O servidor nao retornou os dados do atendimento.');
+      }
       final projetado = sync != null &&
               [TipoCardapio.comanda, TipoCardapio.mesa].contains(tipo)
           ? await AtendimentosLocais(sync.banco, sync.escopo).projetarDetalhe(
@@ -90,12 +165,35 @@ class ServicoCardapio {
           : response.data;
       final dados = Modeloworddadoscardapio.fromMap(projetado);
       if (tipo == TipoCardapio.comanda || tipo == TipoCardapio.mesa) {
+        if (dados.id != id) {
+          throw StateError('O servidor retornou outro atendimento.');
+        }
         await ArmazenamentoCarrinhos.instancia
             .atualizarStatus(empresa ?? '', id, dados.status);
       }
       return dados;
-    } else {
-      return Future.error("Ops! Um erro ocorreu.");
+    } catch (erro, stack) {
+      if (!semCache &&
+          sync != null &&
+          [TipoCardapio.comanda, TipoCardapio.mesa].contains(tipo)) {
+        final salvo = await _detalheSalvo(
+          sync: sync,
+          id: id,
+          tipo: tipo,
+          empresa: empresa ?? '',
+          idUsuario: idUsuario ?? '',
+          mostrarItens: mostraritens,
+          codigoQrcode: codigoQrcode,
+        );
+        if (salvo != null) {
+          log('Consulta online indisponivel; usando atendimento sincronizado',
+              name: 'ServicoCardapio', error: erro, stackTrace: stack);
+          await ArmazenamentoCarrinhos.instancia
+              .atualizarStatus(empresa ?? '', id, salvo.status);
+          return salvo;
+        }
+      }
+      rethrow;
     }
   }
 

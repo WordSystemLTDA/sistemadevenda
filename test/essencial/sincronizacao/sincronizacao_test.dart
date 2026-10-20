@@ -1099,6 +1099,58 @@ void main() {
     });
   }
 
+  test(
+      'carrinho conserva retrato local se detalhe online ainda nao estiver disponivel',
+      () async {
+    Sincronizador.instancia = sync;
+    final id = await sync.abrirAtendimento(
+        tipo: 'comanda', idComanda: '5', obs: 'Atendimento online');
+    conectado = true;
+    await sync.tentarNovamente();
+
+    // O fake devolve uma resposta sem o contrato de detalhes, simulando o
+    // curto intervalo em que a abertura ja tem recibo mas ainda nao aparece
+    // na leitura do atendimento.
+    final detalhe = await ServicoCardapio(api, usuario)
+        .listarPorId(id, TipoCardapio.comanda, 'Não');
+
+    expect(detalhe.id, id);
+    expect(detalhe.idComanda, '5');
+    expect(detalhe.status, 'Andamento');
+    expect(detalhe.observacaoDoPedido, 'Atendimento online');
+  });
+
+  test('carrinho usa estado sincronizado quando detalhe online falha',
+      () async {
+    Sincronizador.instancia = sync;
+    final estado =
+        jsonDecode((await banco.ler('estado:${sync.escopo}'))!) as Map;
+    await banco.gravar(
+        'estado:${sync.escopo}',
+        jsonEncode({
+          ...estado,
+          'atendimentos': {
+            ...estado['atendimentos'] as Map,
+            '104': {
+              'id': '104',
+              'id_mesa': '0',
+              'id_comanda': '5',
+              'status': 'Andamento',
+              'versao': 'versao-original',
+            },
+          }
+        }));
+    conectado = true;
+
+    final detalhe = await ServicoCardapio(api, usuario)
+        .listarPorId('104', TipoCardapio.comanda, 'Não');
+
+    expect(detalhe.id, '104');
+    expect(detalhe.idComanda, '5');
+    expect(detalhe.status, 'Andamento');
+    expect(detalhe.versaoAtendimento, 'versao-original');
+  });
+
   test('abertura sem numero oficial permanece pendente e nao imprime',
       () async {
     final id = await sync.abrirAtendimento(tipo: 'comanda', idComanda: '5');

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
@@ -78,8 +77,6 @@ class _PaginaCarrinhoItensRecorrentesState
 
   Future<void> listar() async {
     try {
-      dados = null;
-      configBigchef = null;
       await provedorItensRecorrentes
           .listarComandasPedidos(widget.idComandaPedido);
       final resposta = await servicoCardapio.listarPorId(
@@ -95,18 +92,9 @@ class _PaginaCarrinhoItensRecorrentesState
         dados = resposta;
         configBigchef = configuracao;
       }
-    } catch (erro) {
-      if (mounted && !EstadoServidor.indisponivel(erro)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Não foi possível consultar o atendimento.'),
-          action: SnackBarAction(
-              label: 'Tentar novamente',
-              onPressed: () {
-                setState(() => carregando = true);
-                listar();
-              }),
-        ));
-      }
+    } catch (_) {
+      // Mantem o ultimo retrato valido enquanto a sincronizacao pela API
+      // continua em segundo plano.
     } finally {
       if (mounted) setState(() => carregando = false);
     }
@@ -547,13 +535,23 @@ class _PaginaCarrinhoItensRecorrentesState
 
   Future<void> _aoFinalizar() async {
     if (isLoading ||
-        carregando ||
         provedorItensRecorrentes.contexto?.idAtendimento !=
             widget.idComandaPedido ||
-        dados == null ||
         (provedorItensRecorrentes.itensCarrinho.isEmpty &&
             !_finalizacao.pedidoRegistrado)) {
       return;
+    }
+    if (dados == null) {
+      if (carregando) return;
+      setState(() => carregando = true);
+      await listar();
+      if (!mounted ||
+          isLoading ||
+          provedorItensRecorrentes.contexto?.idAtendimento !=
+              widget.idComandaPedido ||
+          dados == null) {
+        return;
+      }
     }
     setState(() => isLoading = true);
     final tipo = _tipo;

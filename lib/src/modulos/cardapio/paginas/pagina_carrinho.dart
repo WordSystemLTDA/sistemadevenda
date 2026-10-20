@@ -6,7 +6,6 @@ import 'dart:developer' as developer;
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';
-import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 
 import 'package:app/src/essencial/utils/finalizacao_com_preparo.dart';
@@ -150,7 +149,6 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
   Future<void> listar() async {
     final contextoCarrinho = _contextoCarrinho;
     try {
-      dados = null;
       if (contextoCarrinho == null || !contextoCarrinho.valido) {
         throw StateError('Carrinho sem atendimento.');
       }
@@ -169,18 +167,12 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
         }
       }
       if (mounted) dados = resposta;
-    } catch (erro) {
-      if (mounted && !EstadoServidor.indisponivel(erro)) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Não foi possível consultar o atendimento.'),
-          action: SnackBarAction(
-              label: 'Tentar novamente',
-              onPressed: () {
-                setState(() => carregando = true);
-                listar();
-              }),
-        ));
-      }
+    } catch (erro, stack) {
+      // O carrinho e o envio duravel continuam disponiveis com o ultimo
+      // retrato valido. A sincronizacao tenta novamente em segundo plano sem
+      // interromper o atendimento com um alerta de conectividade local.
+      developer.log('Falha ao atualizar dados do atendimento no carrinho',
+          name: 'PaginaCarrinho', error: erro, stackTrace: stack);
     } finally {
       if (mounted) setState(() => carregando = false);
     }
@@ -302,13 +294,22 @@ class _PaginaCarrinhoState extends State<PaginaCarrinho>
 
   Future<void> _finalizar({bool voz = false}) async {
     if (_ocupado ||
-        carregando ||
         _contextoCarrinho == null ||
         carrinhoProvedor.contexto?.chave != _contextoCarrinho?.chave ||
-        dados == null ||
         (carrinhoProvedor.itensCarrinho.listaComandosPedidos.isEmpty &&
             !_finalizacao.pedidoRegistrado)) {
       return;
+    }
+    if (dados == null) {
+      if (carregando) return;
+      setState(() => carregando = true);
+      await listar();
+      if (!mounted ||
+          _ocupado ||
+          carrinhoProvedor.contexto?.chave != _contextoCarrinho?.chave ||
+          dados == null) {
+        return;
+      }
     }
     provedorFinalizarPagamento.idVenda = _contextoCarrinho!.idAtendimento;
     provedorFinalizarPagamento.valor =

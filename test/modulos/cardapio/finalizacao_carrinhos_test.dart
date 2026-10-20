@@ -45,11 +45,20 @@ class ApiFinalizacaoTeste extends Fake implements DioCliente {
   final pedidos = <Map<String, dynamic>>[];
   String? idResposta;
   String celularCliente = '';
+  int falhasDetalhe = 0;
 
   ApiFinalizacaoTeste() {
     cliente.interceptors.add(InterceptorsWrapper(onRequest: (opcoes, handler) {
       Object dados = [];
       if (opcoes.path.startsWith('cardapio/listar_por_id.php')) {
+        if (falhasDetalhe > 0) {
+          falhasDetalhe--;
+          handler.reject(DioException.connectionError(
+            requestOptions: opcoes,
+            reason: 'API temporariamente indisponivel',
+          ));
+          return;
+        }
         final id = idResposta ?? opcoes.uri.queryParameters['id']!;
         final tipoParametro = opcoes.uri.queryParameters['tipo']?.toLowerCase();
         final tipo =
@@ -410,6 +419,27 @@ void main() {
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
     expect(m.servidor.impressos.single['produtos'], hasLength(2));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Finalizar repete a consulta apos uma falha inicial no 5G',
+      (tester) async {
+    final m = iniciar();
+    await m.selecionar('4');
+    await m.adicionar('Coca Cola 2L', '1010');
+    m.api.falhasDetalhe = 1;
+    await m.montar(tester);
+    await m.abrir(tester);
+
+    expect(m.api.pedidos, isEmpty);
+    expect(find.text('Finalizar'), findsOneWidget);
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+
+    expect(m.api.falhasDetalhe, 0);
+    expect(m.api.pedidos.single['id_comanda_pedido'], '104');
+    expect(m.servidor.impressos.single['produtos'].single['id'], '1010');
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
