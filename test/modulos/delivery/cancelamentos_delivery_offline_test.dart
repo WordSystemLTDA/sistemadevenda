@@ -87,6 +87,7 @@ void main() {
   var senhaValida = true;
   var perderResposta = false;
   var reciboIncompleto = false;
+  String? statusResposta;
   final chamadas = <Map<String, dynamic>>[];
   final aplicados = <String>{};
 
@@ -95,6 +96,7 @@ void main() {
     senhaValida = true;
     perderResposta = false;
     reciboIncompleto = false;
+    statusResposta = null;
     chamadas.clear();
     aplicados.clear();
     SharedPreferences.setMockInitialValues({
@@ -156,9 +158,10 @@ void main() {
           'id_operacao': id,
           'sucesso': true,
           'idDelivery': (dados['dados'] as Map)['id'],
-          'status': (dados['dados'] as Map)['status_final'] == 'Recusado'
-              ? 'Recusado'
-              : 'Cancelado',
+          'status': statusResposta ??
+              ((dados['dados'] as Map)['status_final'] == 'Recusado'
+                  ? 'Recusado'
+                  : 'Cancelado'),
           if (!reciboIncompleto) 'cancelamento_operacional': true,
         }));
         return;
@@ -273,6 +276,20 @@ void main() {
     await sync.enviarPendentes();
     expect((await fila.operacao(op['id'] as String))?['estado'], 'concluido');
     expect(chamadas.last['dados']['status_final'], 'Recusado');
+  });
+
+  test('recibo idempotente com outro status final libera a fila', () async {
+    final resposta = await recusar(pedidoTeste());
+    final id = resposta['id_operacao'] as String;
+    statusResposta = 'Cancelado';
+    conectado = true;
+    await banco.atualizarOperacao(id, {'proxima': 0});
+
+    await sync.enviarPendentes();
+
+    final op = await fila.operacao(id);
+    expect(op?['estado'], 'concluido');
+    expect(jsonDecode(op?['resposta'] as String)['status'], 'Cancelado');
   });
 
   test('cliques concorrentes e reinicio conservam unico UUID e tombstone',
