@@ -92,7 +92,9 @@ class ServicoCardapio {
 
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode, bool semCache = false}) async {
+      {String? codigoQrcode,
+      bool semCache = false,
+      bool cachePrimeiro = false}) async {
     if (tipo == TipoCardapio.delivery) {
       return ServicoDelivery(dio, usuarioProvedor).dadosCardapio(id);
     }
@@ -100,6 +102,11 @@ class ServicoCardapio {
     final idUsuario = usuarioProvedor.usuario!.id;
 
     final sync = Sincronizador.instancia;
+    // A página de detalhes pode ser aberta antes da primeira sincronização
+    // terminar de configurar o escopo. Sem aguardar esta leitura local, a
+    // primeira tentativa não encontra o retrato já salvo no SQLite e exibe um
+    // erro transitório até a próxima atualização automática.
+    if (sync != null) await sync.configurar();
     if (sync != null &&
         !semCache &&
         [TipoCardapio.mesa, TipoCardapio.comanda].contains(tipo)) {
@@ -118,7 +125,7 @@ class ServicoCardapio {
           !['conflito', 'arquivado'].contains(abertura!['estado'])) {
         try {
           final remoto = await listarPorId(real.toString(), tipo, mostraritens,
-              semCache: semCache);
+              semCache: semCache, cachePrimeiro: cachePrimeiro);
           if (remoto.id == real.toString()) {
             remoto.id = id;
             await ArmazenamentoCarrinhos.instancia
@@ -153,7 +160,12 @@ class ServicoCardapio {
     try {
       final response = await dio.cliente.get(
           'cardapio/listar_por_id.php?id=$id&codigoQrcode=$codigoQrcode&empresa=$empresa&id_usuario=$idUsuario&tipo=${tipo.nome}&mostrar_itens=$mostraritens',
-          options: semCache ? Options(extra: {'semCache': true}) : null);
+          options: semCache || cachePrimeiro
+              ? Options(extra: {
+                  if (semCache) 'semCache': true,
+                  if (cachePrimeiro) 'cachePrimeiro': true,
+                })
+              : null);
       if (response.statusCode != 200 || response.data is! Map) {
         throw StateError('O servidor nao retornou os dados do atendimento.');
       }

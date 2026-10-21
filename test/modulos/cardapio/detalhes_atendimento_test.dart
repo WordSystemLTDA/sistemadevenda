@@ -22,6 +22,7 @@ import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_con
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -39,15 +40,25 @@ class _SincronizadorSemConsultaRecente extends Fake implements Sincronizador {
 
 class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
   bool falhar = false;
+  bool falharConexao = false;
   int leituras = 0;
   int fechamentos = 0;
   final List<String> consultasItens = [];
+  final List<bool> consultasCachePrimeiro = [];
   @override
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
-      {String? codigoQrcode, bool semCache = false}) async {
+      {String? codigoQrcode,
+      bool semCache = false,
+      bool cachePrimeiro = false}) async {
     leituras++;
     consultasItens.add(mostraritens);
+    consultasCachePrimeiro.add(cachePrimeiro);
+    if (falharConexao) {
+      throw DioException(
+          requestOptions: RequestOptions(path: 'cardapio/listar_por_id.php'),
+          type: DioExceptionType.connectionError);
+    }
     if (falhar) throw Exception('Queda de conexao');
     return Modeloworddadoscardapio(
         id: '104',
@@ -204,6 +215,51 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('primeira abertura prioriza o retrato salvo no aparelho',
+      (tester) async {
+    await abrir(tester);
+    expect(modulo.servico.consultasCachePrimeiro, [true]);
+    expect(find.text('Comanda: 4'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+      'queda do servidor local aguarda recuperação sem exibir tentar novamente',
+      (tester) async {
+    sqfliteFfiInit();
+    final armazenamento = (await tester.runAsync(() async {
+      final pasta = await Directory.systemTemp.createTemp('detalhe-offline-');
+      final banco = await BancoLocal.abrir(
+          factory: databaseFactoryFfi, path: '${pasta.path}/dados.db');
+      return (pasta: pasta, banco: banco);
+    }))!;
+    Sincronizador.instancia =
+        _SincronizadorSemConsultaRecente(armazenamento.banco);
+    addTearDown(() async {
+      Sincronizador.instancia = null;
+      await armazenamento.banco.db.close();
+      await armazenamento.pasta.delete(recursive: true);
+    });
+
+    modulo.servico.falharConexao = true;
+    tester.view.physicalSize = const Size(430, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(
+        home: PaginaDetalhesPedido(
+            idComandaPedido: '104', tipo: TipoCardapio.comanda)));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(find.text('Tentar novamente'), findsNothing);
+    expect(find.text('Abrindo os dados salvos no aparelho…'), findsOneWidget);
+    expect(
+        find.text('A tela será atualizada automaticamente.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
       'falha de atualizacao preserva atendimento sem exibir notificacao',
       (tester) async {
@@ -217,7 +273,8 @@ void main() {
 
     expect(find.text('Comanda: 4'), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
-    expect(find.text('Não foi possível atualizar o atendimento.'), findsNothing);
+    expect(
+        find.text('Não foi possível atualizar o atendimento.'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

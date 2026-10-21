@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:app/src/essencial/sincronizacao/recebimentos_atendimento.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
@@ -66,6 +67,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   bool _reimprimindoPreparo = false;
   bool _preparandoFinalizacao = false;
   String? erroConsulta;
+  bool _recuperandoDadosLocais = false;
+  Timer? _novaTentativa;
+  int _tentativasAutomaticas = 0;
   bool _fechamentoDiretoExibido = false;
   bool _permiteFinalizarConta = false;
   String idComanda = '0';
@@ -90,6 +94,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
 
   @override
   void dispose() {
+    _novaTentativa?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _server.removeListener(_aoReceberEventoSocket);
     super.dispose();
@@ -247,28 +252,45 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
 
   Future<void> listarComandasPedidos() async {
     if (!mounted || carregando) return;
+    final primeiraCarga = dados == null;
     setState(() => carregando = true);
     try {
       final value = await servicoCardapio.listarPorId(
           widget.idComandaPedido ?? '0', widget.tipo, 'Não',
-          codigoQrcode: widget.codigoQrcode);
+          codigoQrcode: widget.codigoQrcode, cachePrimeiro: primeiraCarga);
       if (!mounted) return;
       erroConsulta = null;
+      _recuperandoDadosLocais = false;
+      _tentativasAutomaticas = 0;
+      _novaTentativa?.cancel();
       dados = value;
       idComanda = value.idComanda ?? '0';
       idComandaPedido = value.id ?? '0';
       idMesa = value.idMesa ?? '0';
       idCliente = value.idCliente ?? '0';
-    } catch (_) {
+    } catch (erro) {
       if (!mounted) return;
       // Atualizações automáticas não interrompem o trabalho. Se o atendimento
       // já foi carregado, os dados locais permanecem na tela e uma nova
       // tentativa acontecerá pelas atualizações seguintes. Na primeira carga,
-      // o erro continua disponível dentro da própria página para permitir uma
-      // tentativa manual sem exibir um alerta sobre outras telas.
-      erroConsulta = dados == null
-          ? 'Não foi possível carregar os dados deste atendimento.'
-          : null;
+      // uma queda de conexão aguarda o retrato local sem oferecer uma ação que
+      // o usuário não precisa executar.
+      final falhaDeConexao =
+          erro is DioException && CacheConsultas.falhaDeConexao(erro);
+      final atendimentoOffline = Sincronizador.instancia != null &&
+          const [TipoCardapio.mesa, TipoCardapio.comanda]
+              .contains(widget.tipo) &&
+          falhaDeConexao;
+      if (dados == null && atendimentoOffline) {
+        erroConsulta = null;
+        _recuperandoDadosLocais = true;
+        _agendarTentativaAutomatica();
+      } else {
+        _recuperandoDadosLocais = false;
+        erroConsulta = dados == null
+            ? 'Não foi possível carregar os dados deste atendimento.'
+            : null;
+      }
     } finally {
       if (mounted) setState(() => carregando = false);
     }
@@ -280,6 +302,19 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
       _fechamentoDiretoExibido = true;
       fechar();
     }
+  }
+
+  void _agendarTentativaAutomatica() {
+    if (_novaTentativa?.isActive == true || _tentativasAutomaticas >= 3) {
+      return;
+    }
+    _tentativasAutomaticas++;
+    final espera = Duration(milliseconds: 250 * _tentativasAutomaticas);
+    _novaTentativa = Timer(espera, () {
+      if (mounted && dados == null && !carregando) {
+        listarComandasPedidos();
+      }
+    });
   }
 
   Future<bool?> _confirmar({
@@ -564,18 +599,37 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
               style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
         body: Center(
-            child: erroConsulta == null || carregando
-                ? const CircularProgressIndicator()
-                : Padding(
+            child: _recuperandoDadosLocais
+                ? Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(erroConsulta!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                          onPressed: listarComandasPedidos,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Tentar novamente')),
-                    ]))),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 20),
+                      const Text('Abrindo os dados salvos no aparelho…',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'A tela será atualizada automaticamente.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ]),
+                  )
+                : erroConsulta == null || carregando
+                    ? const CircularProgressIndicator()
+                    : Padding(
+                        padding: const EdgeInsets.all(24),
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text(erroConsulta!, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                              onPressed: listarComandasPedidos,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Tentar novamente')),
+                        ]))),
       );
     }
 
@@ -759,7 +813,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
               ),
             ],
           ),
-          if (carregando || _reimprimindoPreparo || _preparandoFinalizacao)
+          if ((carregando && dados == null) ||
+              _reimprimindoPreparo ||
+              _preparandoFinalizacao)
             Positioned.fill(
               child: ColoredBox(
                 color: cs.scrim.withValues(alpha: 0.4),

@@ -48,6 +48,7 @@ class _ServicoCardapioAgrupamento extends Fake implements ServicoCardapio {
     String mostraritens, {
     String? codigoQrcode,
     bool semCache = false,
+    bool cachePrimeiro = false,
   }) async {
     return Modeloworddadoscardapio(
       id: '138',
