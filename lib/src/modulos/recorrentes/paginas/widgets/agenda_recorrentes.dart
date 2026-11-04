@@ -230,6 +230,7 @@ class _AgendaRecorrentesState extends State<AgendaRecorrentes>
               children: [
                 CamposRecorrencia(
                     valor: configuracao,
+                    tempoParaEnvioDecorrente: item.tempoParaEnvioDecorrente,
                     permitirEnderecos: item.tipoEntrega == '1',
                     enderecoPadraoId: item.idEnderecoBase,
                     enderecos: item.enderecosDisponiveis,

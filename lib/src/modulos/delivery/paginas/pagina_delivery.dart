@@ -10,6 +10,7 @@ import 'package:app/src/modulos/delivery/paginas/pagina_detalhes_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/pagina_novo_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/busca_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/filtros_delivery.dart';
+import 'package:app/src/modulos/delivery/paginas/widgets/indicador_pedido_recorrente.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/menu_pedido_delivery.dart';
 import 'package:app/src/modulos/delivery/paginas/widgets/acoes_menu_delivery.dart';
 import 'package:app/src/modulos/delivery/provedores/provedor_delivery.dart';
@@ -1325,20 +1326,33 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     ),
                                                   ),
                                                 ),
-                                                Icon(
-                                                    p.tipoEntrega == '1'
-                                                        ? Icons.delivery_dining
-                                                        : Icons
-                                                            .shopping_bag_outlined,
-                                                    size: 18,
-                                                    color: cs.onSurfaceVariant),
-                                                const SizedBox(width: 5),
-                                                Text(p.nomeEntrega,
-                                                    style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: cs
-                                                            .onSurfaceVariant)),
-                                                const SizedBox(width: 8),
+                                                if (idade.isNotEmpty) ...[
+                                                  const SizedBox(width: 8),
+                                                  Tooltip(
+                                                    message: 'Tempo do pedido',
+                                                    child: Row(
+                                                      key: ValueKey(
+                                                          'tempo-delivery-${p.id}'),
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                            Icons
+                                                                .timer_outlined,
+                                                            size: 14,
+                                                            color: cs
+                                                                .onSurfaceVariant),
+                                                        const SizedBox(
+                                                            width: 4),
+                                                        Text(idade,
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: cs
+                                                                    .onSurfaceVariant)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                                 IconButton(
                                                     tooltip:
                                                         'Opções do pedido #${p.numero}',
@@ -1379,11 +1393,22 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                                     style: TextStyle(
                                                         color: cs.primary,
                                                         fontSize: 12)),
-                                              Text(p.nome,
-                                                  style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 4,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  Text(p.nome,
+                                                      style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                  if (p.recorrenteVinculado ==
+                                                      true)
+                                                    const IndicadorPedidoRecorrente(),
+                                                ],
+                                              ),
                                               if (p.tipoEntrega == '1' &&
                                                   p.endereco.isNotEmpty)
                                                 Padding(
@@ -1402,7 +1427,7 @@ class _CarrosselDeliveryState extends State<_CarrosselDelivery>
                                               Row(children: [
                                                 Expanded(
                                                     child: Text(
-                                                        '${p.quantidade} itens${idade.isEmpty ? '' : ' · $idade'}',
+                                                        '${p.nomeEntrega} · ${p.quantidade} itens',
                                                         style: TextStyle(
                                                             fontSize: 12,
                                                             color: cs
@@ -2022,12 +2047,15 @@ class _BotaoNovoPedido extends StatelessWidget {
                     children: [
                       Icon(Icons.add_rounded, color: Colors.white, size: 28),
                       SizedBox(width: 10),
-                      Text(
-                        'Novo Delivery',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          'Novo Delivery',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],

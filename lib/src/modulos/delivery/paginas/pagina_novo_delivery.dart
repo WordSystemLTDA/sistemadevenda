@@ -789,6 +789,12 @@ class _PaginaNovoDeliveryState extends State<PaginaNovoDelivery>
                                 if (widget.recorrente && _abaRecorrente == 1)
                                   CamposRecorrencia(
                                       valor: _recorrencia,
+                                      tempoParaEnvioDecorrente: int.tryParse(
+                                              Modular.tryGet<UsuarioProvedor>()
+                                                      ?.configbigchef
+                                                      ?.tempoparaenviodecorrente ??
+                                                  '') ??
+                                          20,
                                       primeiroPedido: true,
                                       exibirErro: _exibirErroRecorrencia,
                                       onChanged: (valor) => setState(() {

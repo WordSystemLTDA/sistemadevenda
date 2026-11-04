@@ -163,6 +163,26 @@ class ConfiguracaoRecorrencia {
               ? '$horario–$horarioFim'
               : 'Às $horario';
 
+  String? horarioEnvioTexto({required int minutosAntes}) {
+    if (!['fixo', 'intervalo'].contains(horarioTipo)) return null;
+    final partes = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$').firstMatch(horario);
+    if (partes == null) return null;
+    final antecedencia = minutosAntes < 0 ? 20 : minutosAntes;
+    final minutos =
+        int.parse(partes[1]!) * 60 + int.parse(partes[2]!) - antecedencia;
+    final minutosNoDia = minutos % (24 * 60);
+    final hora = (minutosNoDia ~/ 60).toString().padLeft(2, '0');
+    final minuto = (minutosNoDia % 60).toString().padLeft(2, '0');
+    final diasAntes =
+        minutos < 0 ? -(minutos ~/ (24 * 60)) + (minutosNoDia == 0 ? 0 : 1) : 0;
+    final complemento = diasAntes == 1
+        ? ' (dia anterior)'
+        : diasAntes > 1
+            ? ' ($diasAntes dias antes)'
+            : '';
+    return '$hora:$minuto$complemento';
+  }
+
   bool get pagamentoMensal => pagamentoModo == 'mensal';
   String get pagamentoTexto => pagamentoModo.isEmpty
       ? 'Pagamento não selecionado'

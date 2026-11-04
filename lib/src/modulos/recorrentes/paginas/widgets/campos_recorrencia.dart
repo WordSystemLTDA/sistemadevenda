@@ -8,6 +8,7 @@ class CamposRecorrencia extends StatelessWidget {
   final bool exibirErro;
   final bool permitirEnderecos;
   final bool somenteEnderecos;
+  final int tempoParaEnvioDecorrente;
   final String enderecoPadraoId;
   final List<EnderecoRecorrente> enderecos;
   const CamposRecorrencia(
@@ -18,6 +19,7 @@ class CamposRecorrencia extends StatelessWidget {
       this.exibirErro = true,
       this.permitirEnderecos = false,
       this.somenteEnderecos = false,
+      this.tempoParaEnvioDecorrente = 20,
       this.enderecoPadraoId = '',
       this.enderecos = const []});
 
@@ -322,6 +324,10 @@ class CamposRecorrencia extends StatelessWidget {
             'Pedidos para retirada não utilizam endereço de entrega.'),
       );
     }
+    final antecedencia =
+        tempoParaEnvioDecorrente < 0 ? 20 : tempoParaEnvioDecorrente;
+    final horarioEnvio = valor.horarioEnvioTexto(minutosAntes: antecedencia);
+    final cores = Theme.of(context).colorScheme;
     return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -414,6 +420,44 @@ class CamposRecorrencia extends StatelessWidget {
                       icon: const Icon(Icons.schedule, size: 18),
                       label: Text('Até ${valor.horarioFim}')),
               ]),
+            ],
+            if (horarioEnvio != null) ...[
+              const SizedBox(height: 8),
+              Semantics(
+                liveRegion: true,
+                child: Container(
+                  key: const ValueKey('recorrencia-previa-envio-delivery'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cores.primaryContainer.withValues(alpha: .35),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.outbox_outlined,
+                            size: 20, color: cores.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text('Enviar ao Delivery: $horarioEnvio',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text(
+                                  valor.horarioTipo == 'intervalo'
+                                      ? '$antecedencia min antes do início do horário da empresa.'
+                                      : '$antecedencia min antes do horário de entrega.',
+                                  style: Theme.of(context).textTheme.bodySmall),
+                            ])),
+                      ]),
+                ),
+              ),
             ],
             const SizedBox(height: 20),
             _titulo(context, 'Pagamento', Icons.payments_outlined),
