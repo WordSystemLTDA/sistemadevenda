@@ -1238,6 +1238,146 @@ void main() {
     });
   }
 
+  for (final recorrente in [false, true]) {
+    testWidgets(
+        'acai no carrinho troca acompanhamentos e adicionais antes de enviar (recorrente: $recorrente)',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final tamanho = ModeloOpcoesPacotes.fromMap({
+        ...grupo(4, 'Tamanho', [opcao('Copo 500ml', '32')]).toMap(),
+        'tipo': 1
+      });
+      final acompanhamentos = ModeloOpcoesPacotes.fromMap({
+        ...grupo(5, 'Acompanhamentos', [
+          opcao('Leite Condensado', '0'),
+          opcao('Leite em Pó', '0')
+        ]).toMap(),
+        'tipo': 2
+      });
+      final adicionais = ModeloOpcoesPacotes.fromMap({
+        ...grupo(7, 'Adicionais', [
+          opcao('Morango', '6', quantidade: 1),
+          opcao('Creme de Leite Ninho', '6', quantidade: 1)
+        ]).toMap(),
+        'tipo': 3
+      });
+      final item = api.pizza()
+        ..nome = 'Açaí no Copo'
+        ..habilTipo = 'Pacote'
+        ..valorVenda = '44.00'
+        ..observacao = 'Sem gelo'
+        ..opcoesPacotesListaFinal = [tamanho, acompanhamentos, adicionais];
+      api.respostaPersonalizada = Modelowordprodutos.fromMap(item.toMap())
+        ..opcoesPacotes = [
+          ModeloOpcoesPacotes.fromMap(tamanho.toMap()),
+          ModeloOpcoesPacotes.fromMap(acompanhamentos.toMap())
+            ..dados!.add(opcao('Granola', '1.50')),
+          ModeloOpcoesPacotes.fromMap(adicionais.toMap())
+            ..dados!.add(opcao('Banana', '4', quantidade: 1)),
+        ];
+      final modulo = ModuloEdicaoTeste(usuario, api);
+      Modular.init(modulo);
+      addTearDown(() {
+        modulo.carrinho.dispose();
+        modulo.recorrentes.dispose();
+        Modular.destroy();
+      });
+      await modulo.carrinho.selecionarAtendimento(
+          tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
+      modulo.recorrentes.selecionarAtendimento(
+          tipo: 'comanda', idAtendimento: '104', idRecurso: '4');
+      await modulo.servico.armazenamento.alterar(
+          modulo.carrinho.contexto!, (itens) => itens.add(item),
+          recorrentes: recorrente);
+      await modulo.carrinho.listarComandasPedidos();
+      await modulo.recorrentes.listarComandasPedidos('104');
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: ListenableBuilder(
+        listenable: recorrente ? modulo.recorrentes : modulo.carrinho,
+        builder: (context, _) {
+          final atual = recorrente
+              ? modulo.recorrentes.itensCarrinho.single
+              : modulo.carrinho.itensCarrinho.listaComandosPedidos.single;
+          return SingleChildScrollView(
+              child: recorrente
+                  ? CardCarrinhoItensRecorrentes(
+                      item: atual,
+                      index: 0,
+                      idComanda: '4',
+                      idComandaPedido: '104',
+                      idMesa: '0',
+                      value: null,
+                      setarQuantidade: (_) {},
+                      configBigchef: configBigchef())
+                  : CardCarrinho(
+                      item: atual,
+                      index: 0,
+                      idComanda: '4',
+                      idMesa: '0',
+                      value: null,
+                      setarQuantidade: (_) async => true,
+                      aoExcluirItem: () {}));
+        },
+      ))));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Editar Produto'));
+      await tester.pumpAndSettle();
+      for (final (grupoId, retirar, incluir) in [
+        (5, 'Leite em Pó', 'Granola'),
+        (7, 'Creme de Leite Ninho', 'Banana')
+      ]) {
+        final abrir = find.byKey(ValueKey('abrir_edicao_opcao_$grupoId'));
+        await mostrar(tester, abrir);
+        await tester.tap(abrir);
+        await tester.pumpAndSettle();
+        await tester.tap(grupoId == 7 ? find.byTooltip('Diminuir $retirar') : find.text(retirar));
+        await tester.tap(find.text(incluir));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('salvar_etapa_produto')));
+        await tester.pumpAndSettle();
+      }
+      final antesDeSalvar = await modulo.servico.armazenamento
+          .listar(modulo.carrinho.contexto!, recorrentes: recorrente);
+      expect(antesDeSalvar.single.valorVenda, '44.00');
+      expect(
+          antesDeSalvar.single.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 5)
+              .dados!
+              .map((d) => d.nome),
+          ['Leite Condensado', 'Leite em Pó']);
+      await tester.tap(find.byKey(const Key('salvar_edicao_produto')));
+      await tester.pumpAndSettle();
+      final itens = await modulo.servico.armazenamento
+          .listar(modulo.carrinho.contexto!, recorrentes: recorrente);
+      expect(itens, hasLength(1));
+      expect(itens.single.valorVenda, '43.50');
+      expect(itens.single.quantidade, 2);
+      expect(itens.single.observacao, 'Sem gelo');
+      expect(
+          itens.single.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 4)
+              .dados!
+              .single
+              .nome,
+          'Copo 500ml');
+      expect(
+          itens.single.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 5)
+              .dados!
+              .map((d) => d.nome),
+          ['Leite Condensado', 'Granola']);
+      expect(
+          itens.single.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 7)
+              .dados!
+              .map((d) => d.nome),
+          ['Morango', 'Banana']);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   for (final (largura, escala) in [
     (320.0, 1.0),
     (390.0, 1.0),

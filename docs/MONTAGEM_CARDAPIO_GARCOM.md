@@ -1,5 +1,22 @@
 # Montagem do cardapio no garcom
 
+## Edicao de acompanhamentos e adicionais no carrinho (18/11/2026)
+
+Antes de enviar, o botao Editar Produto do carrinho abre as secoes de
+acompanhamentos e adicionais tambem para produtos comuns/Pacote. Cada etapa
+trabalha em copia: Salvar da etapa volta ao resumo; Salvar alteracoes atualiza
+o mesmo item e seu armazenamento. As escolhas so entram no carrinho ao salvar
+o editor completo. O controle menos remove um adicional quando chega a zero.
+
+O fluxo existente foi conferido com um acai de R$ 44,00, tamanho 500 ml, dois
+acompanhamentos e dois adicionais. Trocar leite em po por granola de R$ 1,50 e
+creme de leite ninho de R$ 6,00 por banana de R$ 4,00 resulta em R$ 43,50 por
+unidade, conservando quantidade, tamanho e observacao. Os testes passaram nos
+carrinhos comum e recorrente sem duplicar o item e sem gravar as etapas antes
+da confirmacao final. Foram 41 testes de edicao aprovados e analyze limpo.
+Regressao em test/modulos/cardapio/edicao_produto_carrinho_test.dart; nenhuma
+alteracao de API ou do editor foi necessaria no app Garcom.
+
 ## Preco de Mais em 08/10/2026
 
 A consulta Online da empresa 2 confirmou a Marmita P (23601) por R$ 20,00,
