@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Sistema de Venda - Bruno Masson (cabo)",
+      "name": "Sistema de Venda - Debug no iPhone Bruno Masson",
       "request": "launch",
       "type": "dart",
       "cwd": "${workspaceFolder:sistemadevenda}",
       "program": "${workspaceFolder:sistemadevenda}/lib/main.dart",
       "deviceId": "00008150-000634503488401C",
-      "flutterMode": "release"
+      "flutterMode": "debug"
     }
   ]
 }
