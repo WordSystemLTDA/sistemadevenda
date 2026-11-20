@@ -1,10 +1,13 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
+import 'package:app/src/essencial/api/socket/server.dart';
 import 'package:app/src/essencial/sincronizacao/impressoes_aguardando_pedido.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   Map<String, Object?> operacao(String estado, Object? mensagens) => {
         'estado': estado,
         'impressoes': jsonEncode(mensagens),
@@ -60,5 +63,29 @@ void main() {
     ], empresa: '34', escopoOnline: escopo);
     expect(itensOnline.single.dados['escopoAtualizacao'], escopo);
     expect(impressoesAguardandoPedido([conflito], empresa: ''), isEmpty);
+  });
+
+  test('mesmo comprovante e contado uma vez e conserva o estado real',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final server = Server();
+    addTearDown(server.dispose);
+    final mensagem = jsonEncode(comprovante('unica'));
+    server.atualizarImpressoesAguardandoPedido(impressoesAguardandoPedido([
+      operacao('pendente', [mensagem]),
+    ], empresa: '34'));
+    expect(server.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoPedido);
+    expect(server.filaImpressao.itens, isEmpty);
+    await server.filaImpressao.registrar([mensagem]);
+    expect(server.impressoesParaConferencia, hasLength(1));
+    expect(server.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoEnvio);
+    server.atualizarImpressoesAguardandoPedido(const []);
+    await server.filaImpressao.iniciarEnvio('unica');
+    expect(server.impressoesParaConferencia.single.estado,
+        EstadoImpressao.semConfirmacao);
+    await server.filaImpressao.confirmar('unica');
+    expect(server.impressoesParaConferencia, isEmpty);
   });
 }

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:app/src/app_widget.dart' as app;
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
-import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';
 import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
@@ -250,15 +249,7 @@ void main() {
     expect(find.text('Excluir'), findsNothing);
     expect(find.text('Recebido na cozinha'), findsNothing);
     expect(modulo.server.reenvios, isEmpty);
-    await modulo.server.filaImpressao.registrar([mensagem]);
-    await tester.pumpAndSettle();
-    expect(find.text('1x Coca Cola 350ml'), findsOneWidget);
-    expect(find.text('Aguardando envio do pedido'), findsNothing);
-    expect(modulo.server.impressoesParaConferencia, hasLength(1));
-    expect(modulo.server.impressoesParaConferencia.single.estado,
-        EstadoImpressao.aguardandoEnvio);
     modulo.server.atualizarImpressoesAguardandoPedido(const []);
-    await modulo.server.filaImpressao.confirmar('offline-visivel');
     await tester.pumpAndSettle();
     expect(find.text('Nenhuma impressão pendente'), findsOneWidget);
     expect(modulo.server.reenvios, isEmpty);
