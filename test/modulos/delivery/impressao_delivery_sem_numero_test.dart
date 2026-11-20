@@ -58,7 +58,8 @@ void main() {
         expect(mensagem['numeroPedido'], '');
         expect(mensagem['comanda'], 'Delivery 25');
         expect(mensagem['nomeCliente'], 'Bruno Masson');
-        expect(mensagem['nomedopc'], 'COZINHA');
+        expect(mensagem['nomedopc'],
+            mensagem['tipoImpressao'] == '1' ? 'COZINHA' : '');
         expect(mensagem['ativarnumerooperacionalpedido'], 'Não');
         expect(mensagem['idRequisicao'], isNotEmpty);
       }

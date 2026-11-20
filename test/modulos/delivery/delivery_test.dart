@@ -925,7 +925,7 @@ void main() {
       impressao.produto(computador: 'CAIXA'),
       impressao.produto(computador: 'COZINHA')
     ]);
-    expect(mensagens, hasLength(2));
+    expect(mensagens, hasLength(1));
     final json = jsonDecode(mensagens.first) as Map;
     expect(json['tipo'], 'Delivery');
     expect(json['tipoImpressao'], '3');
@@ -935,7 +935,8 @@ void main() {
     expect(json['complementoCliente'], 'Fundos');
     expect(json['bairroCliente'], 'Centro');
     expect(json['cidadeCliente'], 'Lobato');
-    expect(json['nomedopc'], 'CAIXA');
+    expect(json['nomedopc'], isEmpty);
+    expect(json['produtos'], hasLength(2));
     expect(json['numeroPedido'], '14');
     expect(json['comanda'], 'Delivery 25');
     expect(json['protocoloImpressao'], 2);
@@ -1226,7 +1227,7 @@ void main() {
     final mensagem = servidor.mensagens.single;
     final produto = (mensagem['produtos'] as List).single as Map;
     expect(mensagem['tipoImpressao'], '3');
-    expect(mensagem['nomedopc'], 'COZINHA');
+    expect(mensagem['nomedopc'], isEmpty);
     expect(mensagem['enderecoCliente'], 'Rua das Flores');
     expect(mensagem['numeroCliente'], '123');
     expect(produto['nome'], 'Pizza');

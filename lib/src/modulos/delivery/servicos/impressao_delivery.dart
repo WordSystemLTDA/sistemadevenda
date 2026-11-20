@@ -522,15 +522,7 @@ class ImpressaoDelivery {
       throw StateError('Aguarde a confirmação do pagamento pelo Mercado Pago.');
     }
     final numeroPedido = numeroPedidoParaImpressao(pedido.numeroOperacional);
-    final grupos = <String, List<Modelowordprodutos>>{};
-    if (tipo == TipoCardapio.balcao) {
-      grupos[''] = produtos;
-    } else {
-      for (final p in produtos) {
-        final computador = p.destinoDeImpressao?.nomedopc ?? '';
-        grupos.putIfAbsent(computador, () => []).add(p);
-      }
-    }
+    if (produtos.isEmpty) return const [];
     final usuario = servico.usuario.usuario;
     final comanda = tipo == TipoCardapio.balcao
         ? 'Balcão ${pedido.id}'
@@ -551,48 +543,49 @@ class ImpressaoDelivery {
           ]
         : pedido.pagamentos;
     return [
-      for (final grupo in grupos.entries)
-        jsonEncode({
-          'idRequisicao':
-              'delivery-${pedido.id}-${DateTime.now().microsecondsSinceEpoch}-${grupo.key}',
-          'tipo': tipo.nome,
-          'tipoImpressao': pedido.tipoEntrega == '1' ? '3' : '2',
-          'protocoloImpressao': 2,
-          'nomedopc': grupo.key,
-          'nomeConexao': usuario?.nome ?? '',
-          'produtos': grupo.value
-              .map((produto) => somenteResumo
-                  ? _produtoSomenteResumo(produto)
-                  : produto.toMap())
-              .toList(),
-          'nomelancamento': pagamentos,
-          'somaValorHistorico': pedido.pago.toStringAsFixed(2),
-          'comanda': comanda,
-          for (final campo in [
-            'celularEmpresa',
-            'cnpjEmpresa',
-            'enderecoEmpresa',
-            'nomeEmpresa',
-            'celularCliente'
-          ])
-            campo: pedido.texto(campo),
-          ...camposEnderecoComprovante(pedido),
-          'total': pedido.total.toStringAsFixed(2),
-          'permanencia': '',
-          'valorentrega': pedido.texto('valordaentrega', '0'),
-          'numeroPedido': numeroPedido,
-          'tipodeentrega': pedido.tipoEntrega,
-          'nomeCliente': pedido.nome.trim(),
-          'valortroco': pedido.texto('valortroco', '0'),
-          'observacaoDoPedido': pedido.observacao,
-          'valordesconto': pedido.texto('valorDesconto', '0'),
-          'valoracrescimo': pedido.texto('valorAcrescimo', '0'),
-          'nomeUsuario': usuario?.nome ?? '',
-          'idEmpresa': usuario?.empresa ?? '',
-          'idUsuario': usuario?.id ?? '',
-          ..._camposNumeroOperacional(config),
-          'enviarDeVolta': true,
-        })
+      jsonEncode({
+        'idRequisicao':
+            'delivery-${pedido.id}-${DateTime.now().microsecondsSinceEpoch}-caixa',
+        'tipo': tipo.nome,
+        'tipoImpressao': pedido.tipoEntrega == '1' ? '3' : '2',
+        'protocoloImpressao': 2,
+        // O comprovante e do pedido inteiro. O servidor resolve a impressora
+        // do caixa; os destinos dos produtos servem somente ao preparo.
+        'nomedopc': '',
+        'nomeConexao': usuario?.nome ?? '',
+        'produtos': produtos
+            .map((produto) => somenteResumo
+                ? _produtoSomenteResumo(produto)
+                : produto.toMap())
+            .toList(),
+        'nomelancamento': pagamentos,
+        'somaValorHistorico': pedido.pago.toStringAsFixed(2),
+        'comanda': comanda,
+        for (final campo in [
+          'celularEmpresa',
+          'cnpjEmpresa',
+          'enderecoEmpresa',
+          'nomeEmpresa',
+          'celularCliente'
+        ])
+          campo: pedido.texto(campo),
+        ...camposEnderecoComprovante(pedido),
+        'total': pedido.total.toStringAsFixed(2),
+        'permanencia': '',
+        'valorentrega': pedido.texto('valordaentrega', '0'),
+        'numeroPedido': numeroPedido,
+        'tipodeentrega': pedido.tipoEntrega,
+        'nomeCliente': pedido.nome.trim(),
+        'valortroco': pedido.texto('valortroco', '0'),
+        'observacaoDoPedido': pedido.observacao,
+        'valordesconto': pedido.texto('valorDesconto', '0'),
+        'valoracrescimo': pedido.texto('valorAcrescimo', '0'),
+        'nomeUsuario': usuario?.nome ?? '',
+        'idEmpresa': usuario?.empresa ?? '',
+        'idUsuario': usuario?.id ?? '',
+        ..._camposNumeroOperacional(config),
+        'enviarDeVolta': true,
+      })
     ];
   }
 
