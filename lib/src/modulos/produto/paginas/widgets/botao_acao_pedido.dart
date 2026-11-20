@@ -103,8 +103,17 @@ class BotaoAcaoPedido extends StatelessWidget {
                                 ],
                               ),
                             );
-                      final textoTotal = Text(total,
-                          textAlign: TextAlign.end, style: estiloValor);
+                      final textoTotal = FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          total,
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.end,
+                          style: estiloValor,
+                        ),
+                      );
                       final contador = quantidade == null
                           ? null
                           : Container(

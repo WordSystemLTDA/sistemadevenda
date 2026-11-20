@@ -48,7 +48,8 @@ class PaginaProduto extends StatefulWidget {
   State<PaginaProduto> createState() => _PaginaProdutoState();
 }
 
-class _PaginaProdutoState extends State<PaginaProduto> {
+class _PaginaProdutoState extends State<PaginaProduto>
+    with SingleTickerProviderStateMixin {
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
@@ -71,6 +72,9 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   ModeloDadosOpcoesPacotes? _destinoTrocaCardapio;
   String? _tipoDestinoTrocaCardapio;
   int _quantidadeTrocaCardapio = 1;
+  int _indiceEtapa = 0;
+  bool _trocandoEtapa = false;
+  late final AnimationController _animacaoEtapa;
 
   String get _valorEmbalagemSeparada =>
       (double.tryParse(provedorCardapio.configBigchef?.valorembalagemseparada
@@ -82,6 +86,11 @@ class _PaginaProdutoState extends State<PaginaProduto> {
   @override
   void initState() {
     super.initState();
+    _animacaoEtapa = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+      value: 1,
+    );
     if (widget.editar) obsController.text = widget.produto.observacao ?? '';
     _pesquisaOpcoesController.addListener(_atualizarPesquisaOpcoes);
     _carregarBaseHostImagens();
@@ -203,6 +212,7 @@ class _PaginaProdutoState extends State<PaginaProduto> {
 
   @override
   void dispose() {
+    _animacaoEtapa.dispose();
     _pesquisaOpcoesController.removeListener(_atualizarPesquisaOpcoes);
     _pesquisaOpcoesController.dispose();
     _pesquisaMontagemController.dispose();
@@ -723,6 +733,85 @@ class _PaginaProdutoState extends State<PaginaProduto> {
       !_grupoMontagemCardapio(opcoesPacote) &&
       (opcoesPacote.id == 7 || opcoesPacote.id == 8);
 
+  List<ModeloOpcoesPacotes> get _etapasProduto {
+    if (widget.montagemPizza || widget.editar || _produtoTemMontagemCardapio) {
+      return const [];
+    }
+    final opcoes = itemProduto?.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
+    if (!opcoes.any((grupo) => grupo.id == 4 || grupo.id == 5)) {
+      return const [];
+    }
+    final etapas = opcoes
+        .where((grupo) =>
+            grupo.id != 6 &&
+            !grupoObservacaoProduto(grupo) &&
+            !_grupoMontagemCardapio(grupo) &&
+            ((grupo.dados?.isNotEmpty ?? false) ||
+                (grupo.produtos?.isNotEmpty ?? false)))
+        .toList();
+    const ordem = [4, 11, 1, 2, 5, 7, 8];
+    int prioridade(ModeloOpcoesPacotes grupo) {
+      final index = ordem.indexOf(grupo.id);
+      return index < 0 ? ordem.length : index;
+    }
+
+    etapas.sort((a, b) => prioridade(a).compareTo(prioridade(b)));
+    return etapas.length > 1 ? etapas : const [];
+  }
+
+  String _nomeEtapa(ModeloOpcoesPacotes grupo) => switch (grupo.id) {
+        4 => 'Tamanho',
+        5 => 'Acompanhamentos',
+        7 => 'Adicionais',
+        8 => 'Itens para retirar',
+        11 => 'Sabor',
+        1 => 'Cortesia',
+        2 => 'Combo',
+        _ => grupo.titulo,
+      };
+
+  bool _validarEtapa(ModeloOpcoesPacotes grupo) {
+    final obrigatorio = grupo.obrigatorio || grupo.id == 4 || grupo.id == 11;
+    if (!obrigatorio ||
+        (grupo.produtos?.isNotEmpty ?? false) ||
+        _provedorProduto
+            .retornarDadosPorID([grupo.id], false, '0').isNotEmpty) {
+      return true;
+    }
+    final mensagem = switch (grupo.id) {
+      4 => 'Selecione um tamanho antes de continuar.',
+      11 => 'Selecione um sabor antes de continuar.',
+      _ =>
+        'Selecione uma opção de ${_nomeEtapa(grupo).toLowerCase()} antes de continuar.',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(mensagem),
+        showCloseIcon: true,
+      ));
+    return false;
+  }
+
+  Future<void> _trocarEtapa(int indice) async {
+    if (_trocandoEtapa || carregando || indice == _indiceEtapa) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    setState(() {
+      _indiceEtapa = indice;
+      _trocandoEtapa = true;
+      _filtroComplementos = _FiltroComplementos.todos;
+      _pesquisaOpcoesController.clear();
+    });
+    try {
+      await _animacaoEtapa.forward(from: 0).orCancel;
+    } on TickerCanceled {
+      return;
+    } finally {
+      if (mounted) setState(() => _trocandoEtapa = false);
+    }
+  }
+
   bool _mostrarGrupoOpcoes(ModeloOpcoesPacotes opcoesPacote) {
     if (_grupoMontagemCardapio(opcoesPacote)) return false;
     if (opcoesPacote.id == 6) return false;
@@ -943,201 +1032,290 @@ class _PaginaProdutoState extends State<PaginaProduto> {
               !_grupoMontagemCardapio(opcao) &&
               opcao.id == 8 &&
               (opcao.dados?.isNotEmpty ?? false));
+          final etapas = _etapasProduto;
+          final emEtapas = etapas.isNotEmpty;
+          final etapaAtual = emEtapas ? etapas[_indiceEtapa] : null;
+          final ultimaEtapa = !emEtapas || _indiceEtapa == etapas.length - 1;
+          final opcoesPagina = emEtapas ? [etapaAtual!] : opcoesProduto;
+          final mostrarAdicionais =
+              temAdicionais && (!emEtapas || etapaAtual?.id == 7);
+          final mostrarRetirada =
+              temRetirada && (!emEtapas || etapaAtual?.id == 8);
 
-          return Scaffold(
-            extendBody: alturaTeclado == 0,
-            backgroundColor: VisualAtendimento.fundo(context),
-            appBar: AppBar(
-              backgroundColor: cs.inversePrimary,
-              elevation: 0,
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.fastfood_outlined,
-                        size: 18, color: cs.onPrimaryContainer),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "${itemProduto!.nome}${itemProduto!.tamanho.isNotEmpty ? ' ${itemProduto!.tamanho}' : ''}",
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            bottomNavigationBar: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(14, 8, 14, 12 + alturaTeclado),
-                child: TextFieldTapRegion(
-                    child: BotaoAcaoPedido(
-                  key: const Key('adicionar_produto_carrinho'),
-                  rotulo: quantidadeAdicionaisSelecionados > 0
-                      ? 'Adicionar ao ($quantidadeAdicionaisSelecionados)'
-                      : 'Adicionar ao',
-                  iconeRotulo: Icons.shopping_cart_outlined,
-                  rotuloSemantico: 'Adicionar ao carrinho',
-                  carregando: carregando,
-                  quantidade: _provedorProduto.quantidade,
-                  total: total,
-                  onPressed: inserirNoCarrinho,
-                )),
-              ),
-            ),
-            body: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.only(
-                bottom: alturaTeclado > 0
-                    ? 16
-                    : MediaQuery.paddingOf(context).bottom +
-                        MediaQuery.textScalerOf(context).scale(88),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ResumoProduto(
-                    foto: itemProduto!.foto,
-                    baseHost: _baseHostImagens,
-                    descricao: itemProduto!.descricao,
-                    quantidade: _provedorProduto.quantidade,
-                    precoExibido: precoExibido,
-                    total: total,
-                    onDiminuir: _provedorProduto.aoDiminuirQuantidade,
-                    onAumentar: _provedorProduto.aoAumentarQuantidade,
-                  ),
-                  if (opcoesProduto.isNotEmpty) ...[
-                    if (temAdicionais || temRetirada)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-                        child: _FiltroComplementosProduto(
-                          controller: _pesquisaOpcoesController,
-                          filtro: _filtroComplementos,
-                          temAdicionais: temAdicionais,
-                          temRetirada: temRetirada,
-                          onFiltroAlterado: (filtro) =>
-                              setState(() => _filtroComplementos = filtro),
+          return PopScope(
+            canPop: !emEtapas || _indiceEtapa == 0,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop && emEtapas && _indiceEtapa > 0) {
+                _trocarEtapa(_indiceEtapa - 1);
+              }
+            },
+            child: Scaffold(
+              extendBody: !emEtapas && alturaTeclado == 0,
+              backgroundColor: VisualAtendimento.fundo(context),
+              appBar: AppBar(
+                backgroundColor: cs.inversePrimary,
+                elevation: 0,
+                leading: emEtapas && _indiceEtapa > 0
+                    ? BackButton(
+                        onPressed: () => _trocarEtapa(_indiceEtapa - 1),
+                      )
+                    : null,
+                bottom: emEtapas
+                    ? PreferredSize(
+                        preferredSize: Size.fromHeight(
+                          MediaQuery.textScalerOf(context).scale(20) + 16,
                         ),
-                      ),
-                    ...opcoesProduto
-                        .where(_mostrarGrupoOpcoes)
-                        .map((opcoesPacote) {
-                      final dados = _dadosFiltrados(opcoesPacote);
-                      final count = opcoesPacote.id == 2
-                          ? opcoesPacote.produtos!.length
-                          : dados.length;
-
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                        child: _SecaoProduto(
-                          icon: _iconePorTipo(opcoesPacote.id),
-                          titulo: opcoesPacote.titulo,
-                          contagem: count,
-                          obrigatorio: opcoesPacote.obrigatorio,
-                          child: count == 0 &&
-                                  _grupoComplemento(opcoesPacote) &&
-                                  _pesquisaOpcoesController.text
-                                      .trim()
-                                      .isNotEmpty
-                              ? const _EstadoOpcoesVazio()
-                              : ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: count,
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  itemBuilder: (context, index) {
-                                    if (opcoesPacote.id == 2) {
-                                      return CardKit(
-                                          item: opcoesPacote.produtos![index]);
-                                    }
-                                    return CardOpcoesPacotes(
-                                      opcoesPacote: opcoesPacote,
-                                      item: dados[index],
-                                      kit: false,
-                                      idProduto: '0',
-                                    );
-                                  },
-                                ),
-                        ),
-                      );
-                    }),
-                  ],
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-                    child: _SecaoProduto(
-                      icon: Icons.edit_note_rounded,
-                      titulo: 'Observação do Produto',
-                      contagem: null,
-                      obrigatorio: false,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
-                            key: const Key('observacao_adicionais_produto'),
-                            controller: obsController,
-                            focusNode: _focoObservacao,
-                            minLines: 2,
-                            maxLines: 4,
-                            textCapitalization: TextCapitalization.sentences,
-                            keyboardType: TextInputType.multiline,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => _focoObservacao.unfocus(),
-                            onTapUpOutside: (_) => _focoObservacao.unfocus(),
-                            scrollPadding:
-                                const EdgeInsets.fromLTRB(20, 20, 20, 64),
-                            decoration: InputDecoration(
-                              suffixIcon: _focoObservacao.hasFocus
-                                  ? IconButton(
-                                      tooltip: 'Ocultar teclado',
-                                      onPressed: _focoObservacao.unfocus,
-                                      icon: const Icon(
-                                          Icons.keyboard_hide_outlined),
-                                    )
-                                  : null,
-                              alignLabelWithHint: true,
-                              hintText: "Ex.: Sem cebola, ponto da carne...",
-                              hintStyle: TextStyle(
-                                fontWeight: FontWeight.w300,
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                              ),
-                              filled: true,
-                              fillColor: isDark
-                                  ? Colors.white.withValues(alpha: 0.04)
-                                  : cs.surface,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: cs.outline.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: cs.outline.withValues(alpha: 0.25),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide:
-                                    BorderSide(color: cs.primary, width: 1.4),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _nomeEtapa(etapaAtual!),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                      '${_indiceEtapa + 1} de ${etapas.length}'),
+                                ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          SugestoesObservacao(controller: obsController),
-                          const SizedBox(height: 12),
-                        ],
+                            LinearProgressIndicator(
+                              value: (_indiceEtapa + 1) / etapas.length,
+                              minHeight: 3,
+                              backgroundColor:
+                                  cs.primary.withValues(alpha: 0.12),
+                            ),
+                          ],
+                        ),
+                      )
+                    : null,
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.fastfood_outlined,
+                          size: 18, color: cs.onPrimaryContainer),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "${itemProduto!.nome}${itemProduto!.tamanho.isNotEmpty ? ' ${itemProduto!.tamanho}' : ''}",
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                  ],
+                ),
+              ),
+              bottomNavigationBar: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(14, 8, 14, 12 + alturaTeclado),
+                  child: TextFieldTapRegion(
+                      child: BotaoAcaoPedido(
+                    key: Key(ultimaEtapa
+                        ? 'adicionar_produto_carrinho'
+                        : 'avancar_etapa_produto'),
+                    rotulo: !ultimaEtapa
+                        ? 'Continuar'
+                        : quantidadeAdicionaisSelecionados > 0
+                            ? 'Adicionar ao ($quantidadeAdicionaisSelecionados)'
+                            : 'Adicionar ao',
+                    iconeRotulo:
+                        ultimaEtapa ? Icons.shopping_cart_outlined : null,
+                    rotuloSemantico: ultimaEtapa
+                        ? 'Adicionar ao carrinho'
+                        : 'Continuar para ${_nomeEtapa(etapas[_indiceEtapa + 1])}',
+                    carregando: carregando,
+                    habilitado: !_trocandoEtapa,
+                    quantidade: _provedorProduto.quantidade,
+                    total: total,
+                    onPressed: () {
+                      if (emEtapas && !_validarEtapa(etapaAtual!)) return;
+                      if (ultimaEtapa) {
+                        inserirNoCarrinho();
+                      } else {
+                        _trocarEtapa(_indiceEtapa + 1);
+                      }
+                    },
+                  )),
+                ),
+              ),
+              body: FadeTransition(
+                opacity: _animacaoEtapa,
+                child: SingleChildScrollView(
+                  key: PageStorageKey(
+                      'produto_${itemProduto!.id}_etapa_${etapaAtual?.id ?? 0}'),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.only(
+                    bottom: emEtapas || alturaTeclado > 0
+                        ? 16
+                        : MediaQuery.paddingOf(context).bottom +
+                            MediaQuery.textScalerOf(context).scale(88),
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ResumoProduto(
+                        foto: itemProduto!.foto,
+                        baseHost: _baseHostImagens,
+                        descricao: itemProduto!.descricao,
+                        quantidade: _provedorProduto.quantidade,
+                        precoExibido: precoExibido,
+                        total: total,
+                        onDiminuir: _provedorProduto.aoDiminuirQuantidade,
+                        onAumentar: _provedorProduto.aoAumentarQuantidade,
+                      ),
+                      if (opcoesProduto.isNotEmpty) ...[
+                        if (mostrarAdicionais || mostrarRetirada)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                            child: _FiltroComplementosProduto(
+                              controller: _pesquisaOpcoesController,
+                              filtro: _filtroComplementos,
+                              temAdicionais: mostrarAdicionais,
+                              temRetirada: mostrarRetirada,
+                              onFiltroAlterado: (filtro) =>
+                                  setState(() => _filtroComplementos = filtro),
+                            ),
+                          ),
+                        ...opcoesPagina
+                            .where(_mostrarGrupoOpcoes)
+                            .map((opcoesPacote) {
+                          final dados = _dadosFiltrados(opcoesPacote);
+                          final count = opcoesPacote.id == 2
+                              ? opcoesPacote.produtos!.length
+                              : dados.length;
+
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                            child: _SecaoProduto(
+                              icon: _iconePorTipo(opcoesPacote.id),
+                              titulo: opcoesPacote.titulo,
+                              contagem: count,
+                              obrigatorio: opcoesPacote.obrigatorio,
+                              child: count == 0 &&
+                                      _grupoComplemento(opcoesPacote) &&
+                                      _pesquisaOpcoesController.text
+                                          .trim()
+                                          .isNotEmpty
+                                  ? const _EstadoOpcoesVazio()
+                                  : ListView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: count,
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      itemBuilder: (context, index) {
+                                        if (opcoesPacote.id == 2) {
+                                          return CardKit(
+                                              item: opcoesPacote
+                                                  .produtos![index]);
+                                        }
+                                        return CardOpcoesPacotes(
+                                          opcoesPacote: opcoesPacote,
+                                          item: dados[index],
+                                          kit: false,
+                                          idProduto: '0',
+                                        );
+                                      },
+                                    ),
+                            ),
+                          );
+                        }),
+                      ],
+                      if (ultimaEtapa)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                          child: _SecaoProduto(
+                            icon: Icons.edit_note_rounded,
+                            titulo: 'Observação do Produto',
+                            contagem: null,
+                            obrigatorio: false,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  key: const Key(
+                                      'observacao_adicionais_produto'),
+                                  controller: obsController,
+                                  focusNode: _focoObservacao,
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _focoObservacao.unfocus(),
+                                  onTapUpOutside: (_) =>
+                                      _focoObservacao.unfocus(),
+                                  scrollPadding:
+                                      const EdgeInsets.fromLTRB(20, 20, 20, 64),
+                                  decoration: InputDecoration(
+                                    suffixIcon: _focoObservacao.hasFocus
+                                        ? IconButton(
+                                            tooltip: 'Ocultar teclado',
+                                            onPressed: _focoObservacao.unfocus,
+                                            icon: const Icon(
+                                                Icons.keyboard_hide_outlined),
+                                          )
+                                        : null,
+                                    alignLabelWithHint: true,
+                                    hintText:
+                                        "Ex.: Sem cebola, ponto da carne...",
+                                    hintStyle: TextStyle(
+                                      fontWeight: FontWeight.w300,
+                                      color:
+                                          cs.onSurface.withValues(alpha: 0.5),
+                                    ),
+                                    filled: true,
+                                    fillColor: isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : cs.surface,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color:
+                                            cs.outline.withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color:
+                                            cs.outline.withValues(alpha: 0.25),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: cs.primary, width: 1.4),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SugestoesObservacao(controller: obsController),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           );
