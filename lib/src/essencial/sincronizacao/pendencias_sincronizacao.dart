@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:app/src/essencial/widgets/pendencias_impressao.dart';
+import 'package:app/src/essencial/widgets/painel_pendencias.dart';
+import 'package:app/src/essencial/widgets/visual_atendimento.dart';
 import 'package:intl/intl.dart';
 import 'sincronizador.dart';
 import 'seguranca_pendencias.dart';
@@ -144,9 +145,49 @@ class EstadoSincronizacao extends StatelessWidget {
   }
 }
 
-class PendenciasSincronizacao extends StatelessWidget {
+class PendenciasSincronizacao extends StatefulWidget {
   final Sincronizador sincronizador;
   const PendenciasSincronizacao({super.key, required this.sincronizador});
+
+  @override
+  State<PendenciasSincronizacao> createState() =>
+      _PendenciasSincronizacaoState();
+}
+
+class _PendenciasSincronizacaoState extends State<PendenciasSincronizacao> {
+  Sincronizador get sincronizador => widget.sincronizador;
+  bool _atualizando = false;
+  (String, int)? _chaveRascunhos;
+  Future<List<Map<String, dynamic>>>? _rascunhos;
+
+  Future<List<Map<String, dynamic>>> _consultarRascunhos() {
+    final chave = (sincronizador.escopo, sincronizador.conflitos);
+    if (_rascunhos == null || _chaveRascunhos != chave) {
+      _chaveRascunhos = chave;
+      _rascunhos = sincronizador.rascunhosBloqueados();
+    }
+    return _rascunhos!;
+  }
+
+  Future<void> _atualizar() async {
+    if (_atualizando || sincronizador.sincronizando) return;
+    setState(() => _atualizando = true);
+    try {
+      await sincronizador.tentarNovamente();
+      if (!mounted) return;
+      setState(() => _chaveRascunhos = null);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Verificação concluída. Confira os status abaixo.')));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível atualizar agora. Os dados salvos foram mantidos.')));
+      }
+    } finally {
+      if (mounted) setState(() => _atualizando = false);
+    }
+  }
 
   static Map<String, dynamic> _mapa(Object? valor) {
     if (valor is Map) {
@@ -184,118 +225,313 @@ class PendenciasSincronizacao extends StatelessWidget {
         listenable: Listenable.merge([sincronizador, sincronizador.socket]),
         builder: (context, _) {
           final cs = Theme.of(context).colorScheme;
+          final impressoes = sincronizador.socket.filaImpressao.itens
+              .where(sincronizador.socket.pertenceAEmpresaAtual)
+              .length;
+          final temPedidos = sincronizador.pendencias.isNotEmpty ||
+              sincronizador.conflitos > 0;
           return Scaffold(
-            appBar: AppBar(title: const Text('Envio dos pedidos'), actions: [
-              IconButton(
-                  tooltip: 'Sincronizar agora',
-                  onPressed: sincronizador.sincronizando
-                      ? null
-                      : sincronizador.tentarNovamente,
-                  icon: const Icon(Icons.sync)),
-            ]),
-            body: ListView(padding: const EdgeInsets.all(16), children: [
-              if (sincronizador.erro != null)
-                Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(sincronizador.erro!,
-                        style: TextStyle(color: cs.error))),
-              if (sincronizador.conflitos > 0)
-                Card(
-                  color: cs.errorContainer,
-                  child: const ListTile(
-                    leading: Icon(Icons.warning_amber_rounded),
-                    title: Text('Existem pedidos que precisam de conferencia'),
-                    subtitle: Text(
-                        'Pedidos recusados nao serao enviados automaticamente. '
-                        'Confira antes de excluir da sincronizacao. '
-                        'Os demais atendimentos continuam sendo enviados.'),
+            backgroundColor: VisualAtendimento.fundo(context),
+            appBar: AppBar(
+              title: const Text('Envio dos pedidos',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              actions: [
+                IconButton(
+                    tooltip: 'Sincronizar agora',
+                    onPressed: _ocupado ? null : _atualizar,
+                    icon: const Icon(Icons.sync)),
+              ],
+            ),
+            body: SafeArea(
+                top: false,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: RefreshIndicator(
+                      onRefresh: _atualizar,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _resumo(context, impressoes),
+                          if (sincronizador.erro != null)
+                            Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: AvisoPainelPendencias(
+                                    texto: sincronizador.erro!,
+                                    cor: cs.error,
+                                    icone: Icons.error_outline)),
+                          if (temPedidos) ...[
+                            const TituloPainelPendencias('Pedidos'),
+                            if (sincronizador.conflitos > 0)
+                              Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: AvisoPainelPendencias(
+                                    cor: corAtencaoPendencias(context),
+                                    icone: Icons.warning_amber_rounded,
+                                    texto:
+                                        'Existem pedidos que precisam de conferência. '
+                                        'Pedidos recusados não são reenviados automaticamente. '
+                                        'Confira os itens abaixo; os demais continuam sendo enviados.',
+                                  )),
+                            for (final op in sincronizador.pendencias)
+                              _pedido(context, op),
+                          ],
+                          FutureBuilder<List<Map<String, dynamic>>>(
+                            future: _consultarRascunhos(),
+                            builder: (context, snapshot) => Column(children: [
+                              if (snapshot.hasError)
+                                const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: Text(
+                                        'Não foi possível consultar os rascunhos. Toque em atualizar para tentar novamente.')),
+                              for (final rascunho
+                                  in snapshot.data ?? <Map<String, dynamic>>[])
+                                _pedido(context, {
+                                  'atendimento': rascunho['idAtendimento'],
+                                  'estado': 'rascunho',
+                                  'rascunho': rascunho,
+                                  'impressoes': '[]',
+                                  'erro':
+                                      'Rascunho preservado. O atendimento foi fechado ou bloqueado no servidor.',
+                                  'dados': jsonEncode({
+                                    'produtos': [
+                                      ...rascunho['itens'] as List? ?? [],
+                                      ...rascunho['recorrentes'] as List? ?? [],
+                                    ]
+                                  }),
+                                }),
+                            ]),
+                          ),
+                          if (impressoes > 0) ...[
+                            const TituloPainelPendencias('Impressões'),
+                            _impressoes(context, impressoes),
+                          ],
+                          const TituloPainelPendencias('Conexões'),
+                          _conexoes(context),
+                          if (!temPedidos) ...[
+                            const TituloPainelPendencias('Pedidos'),
+                            CartaoPainelPendencias(
+                                child: _estado(context,
+                                    icone: Icons.task_alt,
+                                    titulo: 'Nenhum pedido aguardando envio',
+                                    subtitulo:
+                                        'Não há pedidos na fila de envio deste aparelho.',
+                                    cor: VisualAtendimento.verde(context))),
+                          ],
+                          if (impressoes == 0) ...[
+                            const TituloPainelPendencias('Impressões'),
+                            _impressoes(context, impressoes),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              for (final op in sincronizador.pendencias) _pedido(context, op),
-              ListTile(
-                leading: Icon(sincronizador.online
-                    ? Icons.cloud_done_outlined
-                    : Icons.cloud_off_outlined),
-                title: const Text('Servidor de dados'),
-                subtitle: Text(sincronizador.online
-                    ? (sincronizador.sincronizando
-                        ? 'Atualizando dados'
-                        : 'Conectado')
-                    : 'Sem conexao'),
-              ),
-              ListTile(
-                leading: Icon(sincronizador.socket.connected
-                    ? Icons.print_outlined
-                    : Icons.print_disabled_outlined),
-                title: const Text('Canal da cozinha'),
-                subtitle: Text(sincronizador.socket.connected
-                    ? 'Conectado'
-                    : 'Aguardando reconexao'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.restaurant_menu),
-                title: const Text('Cardapio offline'),
-                subtitle: Text(sincronizador.catalogoPronto
-                    ? 'Disponivel no aparelho'
-                    : 'Primeira sincronizacao pendente'),
-              ),
-              if (sincronizador.ultimaAtualizacao != null)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    'Ultima atualizacao: ${DateFormat('dd/MM HH:mm').format(sincronizador.ultimaAtualizacao!)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              const Divider(),
-              if (sincronizador.pendencias.isEmpty)
-                const ListTile(
-                    leading: Icon(Icons.cloud_done_outlined),
-                    title: Text('Nenhum pedido aguardando envio')),
-              ListTile(
-                leading: const Icon(Icons.print_outlined),
-                title: const Text('Conferir impressoes'),
-                subtitle: Text(sincronizador.impressoesPendentes == 0
-                    ? 'Nenhuma confirmacao pendente'
-                    : '${sincronizador.impressoesPendentes} aguardando confirmacao'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => PendenciasImpressao(
-                          fila: sincronizador.socket.filaImpressao,
-                          reenviar: (id) async {
-                            await sincronizador.socket.filaImpressao
-                                .autorizarReenvio(id);
-                            await sincronizador.socket
-                                .processarImpressoesPendentes();
-                          },
-                        ))),
-              ),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: sincronizador.rascunhosBloqueados(),
-                builder: (context, snapshot) => Column(children: [
-                  for (final rascunho
-                      in snapshot.data ?? <Map<String, dynamic>>[])
-                    _pedido(context, {
-                      'atendimento': rascunho['idAtendimento'],
-                      'estado': 'rascunho',
-                      'rascunho': rascunho,
-                      'impressoes': '[]',
-                      'erro':
-                          'Rascunho preservado. O atendimento foi fechado ou bloqueado no servidor.',
-                      'dados': jsonEncode({
-                        'produtos': [
-                          ...rascunho['itens'] as List? ?? [],
-                          ...rascunho['recorrentes'] as List? ?? [],
-                        ]
-                      }),
-                    }),
-                ]),
-              ),
-            ]),
+                )),
           );
         },
       );
+
+  bool get _ocupado => _atualizando || sincronizador.sincronizando;
+
+  Widget _resumo(BuildContext context, int impressoes) {
+    final cs = Theme.of(context).colorScheme;
+    final pedidos = sincronizador.pendencias.length;
+    final precisaConferir =
+        pedidos > 0 || impressoes > 0 || sincronizador.conflitos > 0;
+    final tudoConectado = sincronizador.online &&
+        sincronizador.socket.connected &&
+        sincronizador.catalogoPronto &&
+        sincronizador.erro == null &&
+        !_ocupado;
+    return CartaoPainelPendencias(
+        child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          IconePainelPendencias(
+              icone: precisaConferir
+                  ? Icons.receipt_long_outlined
+                  : tudoConectado
+                      ? Icons.cloud_done_outlined
+                      : Icons.sync,
+              cor: precisaConferir || !tudoConectado
+                  ? cs.primary
+                  : VisualAtendimento.verde(context)),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  precisaConferir
+                      ? 'Há pendências para conferir'
+                      : tudoConectado
+                          ? 'Envios em dia'
+                          : 'Acompanhe os envios',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(
+                  'Veja a conexão e acompanhe os pedidos e comprovantes deste aparelho.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
+            ],
+          )),
+        ]),
+        const SizedBox(height: 16),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          StatusAtendimento(
+              texto:
+                  '$pedidos ${pedidos == 1 ? 'pedido na fila' : 'pedidos na fila'}',
+              cor: pedidos > 0
+                  ? corAtencaoPendencias(context)
+                  : VisualAtendimento.verde(context),
+              icone: Icons.cloud_upload_outlined),
+          StatusAtendimento(
+              texto:
+                  '$impressoes ${impressoes == 1 ? 'impressão pendente' : 'impressões pendentes'}',
+              cor: impressoes > 0
+                  ? corAtencaoPendencias(context)
+                  : VisualAtendimento.verde(context),
+              icone: Icons.print_outlined),
+        ]),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: _ocupado ? null : _atualizar,
+          style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12))),
+          icon: const Icon(Icons.sync),
+          label: Text(_ocupado ? 'Verificando…' : 'Atualizar conexão e envios'),
+        ),
+      ],
+    ));
+  }
+
+  Widget _impressoes(BuildContext context, int quantidade) =>
+      CartaoPainelPendencias(
+          child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _estado(context,
+              icone: Icons.print_outlined,
+              titulo: quantidade == 0
+                  ? 'Nenhuma impressão pendente'
+                  : '$quantidade ${quantidade == 1 ? 'comprovante para conferir' : 'comprovantes para conferir'}',
+              subtitulo: quantidade == 0
+                  ? 'Você pode conferir a fila de impressão a qualquer momento.'
+                  : 'Confira se o papel já saiu antes de reenviar.',
+              cor: quantidade > 0
+                  ? corAtencaoPendencias(context)
+                  : VisualAtendimento.verde(context)),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () =>
+                sincronizador.socket.abrirPendenciasImpressao(context),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12))),
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('Conferir impressões'),
+          ),
+        ],
+      ));
+
+  Widget _conexoes(BuildContext context) => CartaoPainelPendencias(
+          child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _estado(context,
+              icone: sincronizador.online
+                  ? Icons.cloud_done_outlined
+                  : Icons.cloud_off_outlined,
+              titulo: 'Servidor de dados',
+              subtitulo: sincronizador.online
+                  ? (sincronizador.sincronizando
+                      ? 'Atualizando dados'
+                      : 'Conectado')
+                  : 'Sem conexão',
+              cor: sincronizador.online
+                  ? VisualAtendimento.verde(context)
+                  : corAtencaoPendencias(context)),
+          const Divider(height: 26),
+          _estado(context,
+              icone: sincronizador.socket.connected
+                  ? Icons.print_outlined
+                  : Icons.print_disabled_outlined,
+              titulo: 'Canal da cozinha',
+              subtitulo: sincronizador.socket.connected
+                  ? 'Conectado'
+                  : 'Aguardando reconexão',
+              cor: sincronizador.socket.connected
+                  ? VisualAtendimento.verde(context)
+                  : corAtencaoPendencias(context)),
+          if (!sincronizador.socket.connected) ...[
+            const SizedBox(height: 12),
+            AvisoPainelPendencias(
+                texto: sincronizador.socket.erroConexao ??
+                    'Confira se o computador de impressão está ligado e conectado à mesma rede.',
+                cor: corAtencaoPendencias(context)),
+          ],
+          const Divider(height: 26),
+          _estado(context,
+              icone: Icons.restaurant_menu,
+              titulo: 'Cardápio offline',
+              subtitulo: sincronizador.catalogoPronto
+                  ? 'Disponível no aparelho'
+                  : 'Primeira sincronização pendente',
+              cor: sincronizador.catalogoPronto
+                  ? VisualAtendimento.verde(context)
+                  : corAtencaoPendencias(context)),
+          if (sincronizador.ultimaAtualizacao != null) ...[
+            const Divider(height: 26),
+            Text(
+                'Última atualização: ${DateFormat('dd/MM HH:mm').format(sincronizador.ultimaAtualizacao!)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
+        ],
+      ));
+
+  Widget _estado(
+    BuildContext context, {
+    required IconData icone,
+    required String titulo,
+    required String subtitulo,
+    required Color cor,
+  }) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        IconePainelPendencias(icone: icone, cor: cor),
+        const SizedBox(width: 12),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(titulo,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(subtitulo,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cor, height: 1.35)),
+        ])),
+      ]);
 
   Widget _pedido(BuildContext context, Map<String, Object?> op) {
     final dados = _mapa(op['dados']);
@@ -322,13 +558,27 @@ class PendenciasSincronizacao extends StatelessWidget {
         SegurancaPendencias.podeRecuperar(op);
     final podeArquivar = conflito && idOperacao.isNotEmpty || rascunho;
     return Card(
-      color: conflito || rascunho ? cs.errorContainer : cs.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: VisualAtendimento.superficie(context),
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.6))),
       child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              StatusAtendimento(
+                  texto: rascunho
+                      ? 'Rascunho preservado'
+                      : conflito
+                          ? 'Precisa de conferência'
+                          : 'Aguardando confirmação',
+                  cor: conflito || rascunho
+                      ? corAtencaoPendencias(context)
+                      : VisualAtendimento.azul(context)),
+              const SizedBox(height: 10),
               Text(
                   comprovante['comanda']?.toString() ??
                       (dados['detalhe'] is Map
@@ -382,7 +632,7 @@ class PendenciasSincronizacao extends StatelessWidget {
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Expanded(child: Text(item['nome']?.toString() ?? 'Produto')),
                   const SizedBox(width: 12),
-                  Text('${item['quantidade']}x'),
+                  Text('${quantidadeConferencia(item['quantidade'])}x'),
                 ]),
                 if ((item['observacao'] ?? '').toString().isNotEmpty)
                   Text(item['observacao'].toString()),

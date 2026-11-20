@@ -36,6 +36,13 @@ import '../suporte/captura_tela.dart';
 class BancoVisual extends Fake implements Database {}
 
 class ServerVisual extends ServerTeste {
+  final reenvios = <String>[];
+
+  @override
+  Future<void> reenviarImpressao(String id) async {
+    reenvios.add(id);
+  }
+
   void mostrarConexao(bool valor) {
     connected = valor;
     notifyListeners();
@@ -175,20 +182,78 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
+      await capturarTela(tester, 'painel_envios_320_fonte_$escala');
+      await tester.scrollUntilVisible(find.text('Servidor de dados'), 200);
+      await tester.pumpAndSettle();
       expect(find.text('Conectado'), findsNWidgets(2));
       modulo.server.mostrarConexao(false);
       await tester.pumpAndSettle();
       expect(find.text('Conectado'), findsOneWidget);
-      expect(find.text('Aguardando reconexao'), findsOneWidget);
-      expect(find.text('Disponivel no aparelho'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Disponível no aparelho'), 150);
+      await tester.pumpAndSettle();
+      expect(find.text('Aguardando reconexão'), findsOneWidget);
+      expect(find.text('Disponível no aparelho'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capturarTela(tester, 'diagnostico_sincronizacao_320_fonte_$escala');
       modulo.server.mostrarConexao(true);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Servidor de dados'), -150);
       await tester.pumpAndSettle();
       expect(find.text('Conectado'), findsNWidgets(2));
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+
+  testWidgets('atalho abre conferencia da empresa com o reenvio seguro',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    modulo.usuario.setUsuario(UsuarioModelo(id: '1', empresa: '1'));
+    modulo.sync.mostrarEstado();
+    await tester.runAsync(() => modulo.server.filaImpressao.registrar([
+          for (final empresa in ['1', '2'])
+            jsonEncode({
+              'idRequisicao': 'empresa-$empresa',
+              'idEmpresa': empresa,
+              'tipoImpressao': '3',
+              'protocoloImpressao': 2,
+              'comanda': 'Delivery $empresa',
+              'produtos': [
+                {'nome': 'Pizza da empresa $empresa', 'quantidade': 1}
+              ],
+            }),
+        ]));
+    modulo.server.mostrarConexao(false);
+    await tester.pumpWidget(MaterialApp(
+        home: RepaintBoundary(
+      key: const ValueKey('captura'),
+      child: PendenciasSincronizacao(sincronizador: modulo.sync),
+    )));
+    await tester.pumpAndSettle();
+    await capturarTela(tester, 'painel_envios_pendencia_430');
+    final abrir = find.text('Conferir impressões');
+    await tester.scrollUntilVisible(abrir, 200);
+    await tester.pumpAndSettle();
+    await tester.tap(abrir);
+    await tester.pumpAndSettle();
+    expect(find.text('Impressões pendentes'), findsOneWidget);
+    expect(find.text('1x Pizza da empresa 1'), findsOneWidget);
+    expect(find.text('1x Pizza da empresa 2'), findsNothing);
+    expect(modulo.server.reenvios, isEmpty);
+    final reenviar = find.byKey(const ValueKey('reenviar_empresa-1'));
+    await tester.ensureVisible(reenviar);
+    await tester.pumpAndSettle();
+    await tester.tap(reenviar);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Reenviar').last);
+    await tester.pumpAndSettle();
+    expect(modulo.server.reenvios, ['empresa-1']);
+    expect(modulo.server.filaImpressao.itens, hasLength(2));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   for (final largura in [320.0, 393.0, 1024.0]) {
     testWidgets('login e navegacao com icone flutuante na largura $largura',

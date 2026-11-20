@@ -2127,6 +2127,8 @@ void main() {
                   textScaler: const TextScaler.linear(1.5)),
               child: PendenciasSincronizacao(sincronizador: sync))));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Atendimento encerrado'), 200);
+      await tester.pumpAndSettle();
       expect(find.text('Atendimento encerrado'), findsOneWidget);
       expect(find.text('Sem cebola'), findsOneWidget);
       expect(find.text('Reenviar para o Servidor'), findsNothing);

@@ -55,6 +55,15 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
       ));
       return;
     }
+    final numeroPorta = int.tryParse(porta);
+    if (porta.isNotEmpty &&
+        (numeroPorta == null || numeroPorta < 1 || numeroPorta > 65535)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Informe uma Porta WebSocket válida, entre 1 e 65535.'),
+        showCloseIcon: true,
+      ));
+      return;
+    }
 
     setState(() => isLoading = true);
     try {
@@ -106,8 +115,8 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
         if (mounted) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                'Não foi possível conectar ao servidor $ip:$porta, mude a conexão e a porta e tente novamente'),
+            content: Text('Não foi possível conectar ao servidor $ip:$porta. '
+                '${server.erroConexao ?? 'Confira no PC o IP e a Porta WebSocket do servidor local.'}'),
             backgroundColor: Colors.red,
             showCloseIcon: true,
             duration: const Duration(hours: 1),
@@ -206,6 +215,7 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                     width: 150,
                     child: TextField(
                       controller: portaController,
+                      keyboardType: TextInputType.number,
                       onSubmitted: (a) => verificar(),
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.all(12),
@@ -220,6 +230,16 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                   ),
                 ],
               ),
+              if (tipoConexaoController.text != 'online') ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Use a Porta WebSocket exibida em Local Server no computador. '
+                  'Ela pode ser diferente da Porta HTTP e da porta de Atualizações Online.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -275,12 +295,12 @@ class _PaginaConfiguracaoState extends State<PaginaConfiguracao> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       '1. No computador, abra Menu → Server Word System.\n\n'
                       '2. Confira o Modo de Rede: ele deve estar laranja (ativo). '
                       'Se estiver azul, clique para ativar.\n\n'
-                      '3. Em Atualizações Online, copie o endereço mostrado em '
-                      'Seu IP para o campo de IP acima.',
+                      '3. Em ${tipoConexaoController.text == 'online' ? 'Atualizações Online' : 'Local Server'}, '
+                      'copie Seu IP e a Porta WebSocket para os campos acima.',
                     ),
                     const SizedBox(height: 10),
                     Text(

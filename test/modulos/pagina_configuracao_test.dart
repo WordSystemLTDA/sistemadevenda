@@ -86,7 +86,7 @@ void main() {
     return jsonDecode(prefs.getString('conexao')!) as Map<String, dynamic>;
   }
 
-  testWidgets('online salva sem aguardar o servidor local e mantem api39',
+  testWidgets('online salva sem aguardar o servidor local e mantem api43',
       (tester) async {
     modulo.servidor.resposta = Completer<bool>();
     await abrir(tester);
@@ -97,7 +97,7 @@ void main() {
     expect(modulo.servidor.desconexoes, 1);
     expect((await configuracaoSalva())['tipoConexao'], 'online');
     expect((await Apis().getConexao()).servidor,
-        'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api39/');
+        'https://bigchef.com.br/sistema/apis_restaurantes/api_restaurantes_venda/api43/');
 
     modulo.servidor.resposta!.complete(false);
     await tester.pumpAndSettle();
@@ -152,7 +152,7 @@ void main() {
       expect(find.byType(PaginaConfiguracao), findsNothing);
       expect(modulo.servidor.chamadas, [('192.168.2.113', '9980')]);
       expect((await Apis().getConexao()).servidor,
-          'http://192.168.2.113/sistema/apis_restaurantes/api_restaurantes_venda/api39/');
+          'http://192.168.2.113/sistema/apis_restaurantes/api_restaurantes_venda/api43/');
       expect(
           find.textContaining(
               'Não foi possível conectar ao servidor 192.168.2.113:9980'),
@@ -160,4 +160,43 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
   }
+
+  testWidgets('local salva a porta WebSocket do PC sem mudar a API HTTP',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({
+        'tipoConexao': 'localhost',
+        'servidor': '192.168.2.113',
+        'porta': '9980',
+      }),
+    });
+    modulo.servidor.resposta = Completer<bool>()..complete(true);
+    await abrir(tester);
+    expect(find.textContaining('Use a Porta WebSocket exibida em Local Server'),
+        findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Porta'), '9990');
+    await salvar(tester);
+    expect(modulo.servidor.chamadas, [('192.168.2.113', '9990')]);
+    expect((await configuracaoSalva())['porta'], '9990');
+    expect((await Apis().getConexao()).servidor,
+        'http://192.168.2.113/sistema/apis_restaurantes/api_restaurantes_venda/api43/');
+    expect(find.text('Sucesso ao conectar ao servidor 192.168.2.113:9990'),
+        findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('porta invalida preserva configuracao e conexao em uso',
+      (tester) async {
+    await abrir(tester);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Porta (opcional)'), '70000');
+    await salvar(tester);
+    expect(find.byType(PaginaConfiguracao), findsOneWidget);
+    expect(find.text('Informe uma Porta WebSocket válida, entre 1 e 65535.'),
+        findsOneWidget);
+    expect((await configuracaoSalva())['porta'], '9980');
+    expect(modulo.servidor.chamadas, isEmpty);
+    expect(modulo.servidor.desconexoes, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
 }
