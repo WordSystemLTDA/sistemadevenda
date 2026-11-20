@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
@@ -17,7 +18,9 @@ import 'package:app/src/modulos/cardapio/paginas/pagina_cardapio.dart';
 import 'package:app/src/modulos/cardapio/paginas/pagina_detalhes_pedidos.dart';
 import 'package:app/src/modulos/cardapio/servicos/servico_cardapio.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
+import 'package:app/src/modulos/comandas/modelos/modelo_comandas.dart';
 import 'package:app/src/modulos/mesas/provedores/provedor_mesas.dart';
+import 'package:app/src/modulos/mesas/modelos/mesas_model.dart';
 import 'package:app/src/modulos/finalizar_pagamento/paginas/pagina_finalizar_conta_atendimento.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -41,10 +44,15 @@ class _SincronizadorSemConsultaRecente extends Fake implements Sincronizador {
 class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
   bool falhar = false;
   bool falharConexao = false;
+  bool permitirFechamento = false;
+  String statusAtendimento = 'Andamento';
+  List<Modelowordprodutos>? produtosCompletos;
+  Completer<({bool sucesso, String mensagem})>? fechamentoPendente;
   int leituras = 0;
   int fechamentos = 0;
   final List<String> consultasItens = [];
   final List<bool> consultasCachePrimeiro = [];
+  final List<bool> consultasSemCache = [];
   @override
   Future<Modeloworddadoscardapio> listarPorId(
       String id, TipoCardapio tipo, String mostraritens,
@@ -54,6 +62,7 @@ class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
     leituras++;
     consultasItens.add(mostraritens);
     consultasCachePrimeiro.add(cachePrimeiro);
+    consultasSemCache.add(semCache);
     if (falharConexao) {
       throw DioException(
           requestOptions: RequestOptions(path: 'cardapio/listar_por_id.php'),
@@ -64,62 +73,66 @@ class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
         id: '104',
         idComanda: tipo == TipoCardapio.comanda ? '4' : '0',
         idMesa: tipo == TipoCardapio.mesa ? '4' : '0',
-        status: 'Andamento',
+        status: statusAtendimento,
         nome: '${tipo.nome}: 4',
         nomeCliente: 'Cliente teste',
         nomeEmpresa: 'Restaurante teste',
         dataAbertura: '2026-09-12T16:00:00',
         numeroPedido: '30',
         valorTotal: '85.00',
+        valorTaxaServico: mostraritens == 'Sim' ? '4.00' : null,
+        valorDesconto: mostraritens == 'Sim' ? '5.00' : null,
+        valorAcrescimo: mostraritens == 'Sim' ? '1.00' : null,
         produtos: mostraritens == 'Sim'
-            ? [
-                Modelowordprodutos(
-                  id: '8',
-                  nome: 'Produto teste',
-                  codigo: '8',
-                  estoque: '0',
-                  tamanho: '',
-                  foto: '',
-                  ativo: 'Sim',
-                  descricao: '',
-                  valorVenda: '85.00',
-                  categoria: '1',
-                  nomeCategoria: 'Cozinha',
-                  habilTipo: '',
-                  ingredientes: const [],
-                  quantidade: 1,
-                  observacao: 'Sem cebola',
-                  opcoesPacotesListaFinal: [
-                    ModeloOpcoesPacotes(
-                      id: 6,
-                      titulo: 'Selecione as Bordas',
-                      obrigatorio: false,
-                      dados: [
-                        ModeloDadosOpcoesPacotes(
-                          id: '1',
-                          nome: 'Cheddar',
-                          valor: '6.00',
-                          valorOriginal: '12.00',
-                          somenteMetadeBorda: true,
-                        ),
-                        ModeloDadosOpcoesPacotes(
-                          id: '2',
-                          nome: 'Catupiry',
-                          valor: '6.00',
-                          valorOriginal: '12.00',
-                          somenteMetadeBorda: true,
-                        ),
-                      ],
+            ? produtosCompletos ??
+                [
+                  Modelowordprodutos(
+                    id: '8',
+                    nome: 'Produto teste',
+                    codigo: '8',
+                    estoque: '0',
+                    tamanho: '',
+                    foto: '',
+                    ativo: 'Sim',
+                    descricao: '',
+                    valorVenda: '85.00',
+                    categoria: '1',
+                    nomeCategoria: 'Cozinha',
+                    habilTipo: '',
+                    ingredientes: const [],
+                    quantidade: 1,
+                    observacao: 'Sem cebola',
+                    opcoesPacotesListaFinal: [
+                      ModeloOpcoesPacotes(
+                        id: 6,
+                        titulo: 'Selecione as Bordas',
+                        obrigatorio: false,
+                        dados: [
+                          ModeloDadosOpcoesPacotes(
+                            id: '1',
+                            nome: 'Cheddar',
+                            valor: '6.00',
+                            valorOriginal: '12.00',
+                            somenteMetadeBorda: true,
+                          ),
+                          ModeloDadosOpcoesPacotes(
+                            id: '2',
+                            nome: 'Catupiry',
+                            valor: '6.00',
+                            valorOriginal: '12.00',
+                            somenteMetadeBorda: true,
+                          ),
+                        ],
+                      ),
+                    ],
+                    destinoDeImpressao: ModeloDestinoImpressao(
+                      nome: '1',
+                      nomeDaImpressora: 'Cozinha',
+                      tamanhoDoPapel: '80',
+                      nomedopc: 'computador-cozinha',
                     ),
-                  ],
-                  destinoDeImpressao: ModeloDestinoImpressao(
-                    nome: '1',
-                    nomeDaImpressora: 'Cozinha',
-                    tamanhoDoPapel: '80',
-                    nomedopc: 'computador-cozinha',
                   ),
-                ),
-              ]
+                ]
             : null);
   }
 
@@ -127,22 +140,73 @@ class CardapioDetalhesTeste extends Fake implements ServicoCardapio {
   Future<({bool sucesso, String mensagem})> fecharAbrirComanda(
       String id, String status) async {
     fechamentos++;
+    if (fechamentoPendente != null) {
+      final resultado = await fechamentoPendente!.future;
+      if (resultado.sucesso) statusAtendimento = status;
+      return resultado;
+    }
+    if (permitirFechamento) {
+      statusAtendimento = status;
+      return (sucesso: true, mensagem: 'Conta em fechamento.');
+    }
     return (sucesso: false, mensagem: 'Fechamento recusado');
   }
 }
 
-class ComandasDetalhesTeste extends Fake implements ProvedorComanda {}
+class ComandasDetalhesTeste extends Fake implements ProvedorComanda {
+  @override
+  Future<List<ModeloComandas>> listarComandas(String pesquisa,
+          {bool mostrarCarregamento = true}) async =>
+      [];
+}
 
-class MesasDetalhesTeste extends Fake implements ProvedorMesas {}
+class MesasDetalhesTeste extends Fake implements ProvedorMesas {
+  @override
+  Future<List<MesasModel>> listarMesas(String pesquisa,
+          {bool mostrarCarregamento = true}) async =>
+      [];
+}
 
 class ServidorDetalhesTeste extends Server {
   final List<String> mensagens = [];
+  bool falharImpressao = false;
+
+  @override
+  bool write(String message) => true;
 
   @override
   Future<void> enviarImpressoes(List<String> novasMensagens) async {
+    if (falharImpressao) throw StateError('Falha ao salvar a impressao');
     mensagens.addAll(novasMensagens);
   }
 }
+
+Modelowordprodutos produtoConsumoTeste(
+        String nome, String valor, String? computador) =>
+    Modelowordprodutos(
+      id: nome,
+      nome: nome,
+      codigo: nome,
+      estoque: '0',
+      tamanho: '',
+      foto: '',
+      ativo: 'Sim',
+      descricao: '',
+      valorVenda: valor,
+      categoria: '1',
+      nomeCategoria: 'Produtos',
+      habilTipo: '',
+      ingredientes: [],
+      quantidade: 1,
+      destinoDeImpressao: computador == null
+          ? null
+          : ModeloDestinoImpressao(
+              nome: '1',
+              nomeDaImpressora: 'Preparo',
+              tamanhoDoPapel: '80',
+              nomedopc: computador,
+            ),
+    );
 
 class ConfigDetalhesTeste extends Fake implements ServicoConfigBigchef {
   String permitirMesa = 'Não';
@@ -307,6 +371,125 @@ void main() {
   });
 
   for (final tipo in [TipoCardapio.comanda, TipoCardapio.mesa]) {
+    testWidgets(
+        '${tipo.name} fecha e envia consumo completo ao caixa sem pagamento',
+        (tester) async {
+      modulo.servico.permitirFechamento = true;
+      modulo.servico.produtosCompletos = [
+        produtoConsumoTeste('Acai', '32', 'cozinha'),
+        produtoConsumoTeste('Agua', '5', 'bar'),
+        produtoConsumoTeste('Sorvete', '48', null),
+      ];
+      await abrir(tester, tipo: tipo);
+      await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+      await tester.tap(find.text('Fechar conta'));
+      await tester.pumpAndSettle();
+      final botao = tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Fechar'));
+      botao.onPressed!();
+      botao.onPressed!();
+      await tester.pumpAndSettle();
+
+      expect(modulo.servico.fechamentos, 1);
+      expect(modulo.servico.consultasItens, ['Não', 'Sim', 'Não']);
+      expect(modulo.servico.consultasSemCache, [false, true, false]);
+      expect(modulo.servidor.mensagens, hasLength(1));
+      final dados = ImpressaoPendente(modulo.servidor.mensagens.single).dados;
+      expect(dados['tipo'], tipo.nome);
+      expect(dados['tipoImpressao'], '2');
+      expect(dados['protocoloImpressao'], 2);
+      expect(dados.containsKey('nomedopc'), isFalse);
+      expect((dados['produtos'] as List).map((item) => item['nome']),
+          ['Acai', 'Agua', 'Sorvete']);
+      expect(dados['total'], '85.00');
+      expect(dados['valortaxadeservico'], '4.00');
+      expect(dados['valordesconto'], '5.00');
+      expect(dados['valoracrescimo'], '1.00');
+      expect(dados['nomelancamento'], isEmpty);
+      expect(dados['somaValorHistorico'], '0');
+      expect(dados['local'], '${tipo.nome}: 4');
+      expect(dados['comanda'], '${tipo.nome}: 4');
+      expect(dados['nomeCliente'], 'Cliente teste');
+      expect(find.text('Em fechamento'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('${tipo.name} falha na consulta nao fecha nem imprime',
+        (tester) async {
+      await abrir(tester, tipo: tipo);
+      modulo.servico.falhar = true;
+      await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+      await tester.tap(find.text('Fechar conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Fechar'));
+      await tester.pumpAndSettle();
+      expect(modulo.servico.fechamentos, 0);
+      expect(modulo.servidor.mensagens, isEmpty);
+      expect(find.textContaining('Não foi possível fechar a conta'),
+          findsOneWidget);
+      expect(find.text('Em andamento'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('${tipo.name} nao fecha conta com itens incompletos',
+        (tester) async {
+      modulo.servico.produtosCompletos = [];
+      await abrir(tester, tipo: tipo);
+      await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+      await tester.tap(find.text('Fechar conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Fechar'));
+      await tester.pumpAndSettle();
+      expect(modulo.servico.fechamentos, 0);
+      expect(modulo.servidor.mensagens, isEmpty);
+      expect(find.textContaining('carregar os itens da conta para impressão'),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('${tipo.name} informa falha na fila sem repetir fechamento',
+        (tester) async {
+      modulo.servico.permitirFechamento = true;
+      modulo.servidor.falharImpressao = true;
+      await abrir(tester, tipo: tipo);
+      await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+      await tester.tap(find.text('Fechar conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Fechar'));
+      await tester.pumpAndSettle();
+      expect(modulo.servico.fechamentos, 1);
+      expect(find.text('Em fechamento'), findsOneWidget);
+      expect(
+          find.textContaining(
+              'não foi possível salvar o comprovante de consumo'),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('${tipo.name} conserva impressao se sair durante o fechamento',
+        (tester) async {
+      final pendente = Completer<({bool sucesso, String mensagem})>();
+      modulo.servico.fechamentoPendente = pendente;
+      await abrir(tester, tipo: tipo);
+      await tester.scrollUntilVisible(find.text('Fechar conta'), 120);
+      await tester.tap(find.text('Fechar conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Fechar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(modulo.servico.fechamentos, 1);
+      expect(modulo.servidor.mensagens, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+      pendente.complete((sucesso: true, mensagem: 'Conta em fechamento.'));
+      await tester.pumpAndSettle();
+      expect(modulo.servidor.mensagens, hasLength(1));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
         '${tipo.name} consulta a API antes de escolher offline pela ultima sincronizacao',
         (tester) async {

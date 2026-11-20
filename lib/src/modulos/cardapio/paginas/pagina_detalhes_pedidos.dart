@@ -64,6 +64,8 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
 
   Modeloworddadoscardapio? dados;
   bool carregando = false;
+  bool _confirmandoFechamento = false;
+  bool _fechandoConta = false;
   bool _reimprimindoPreparo = false;
   bool _preparandoFinalizacao = false;
   String? erroConsulta;
@@ -109,7 +111,9 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   }
 
   void _aoReceberEventoSocket() {
-    if (!mounted || carregando || _reimprimindoPreparo) return;
+    if (!mounted || carregando || _reimprimindoPreparo || _fechandoConta) {
+      return;
+    }
     listarComandasPedidos();
   }
 
@@ -251,7 +255,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
   }
 
   Future<void> listarComandasPedidos() async {
-    if (!mounted || carregando) return;
+    if (!mounted || carregando || _fechandoConta) return;
     final primeiraCarga = dados == null;
     setState(() => carregando = true);
     try {
@@ -324,6 +328,13 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     required IconData iconeAcao,
     required String labelAcao,
   }) {
+    var respondeu = false;
+    void responder(BuildContext ctx, bool resposta) {
+      if (respondeu) return;
+      respondeu = true;
+      Navigator.pop(ctx, resposta);
+    }
+
     return showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -368,7 +379,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
                     runSpacing: 8,
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
+                        onPressed: () => responder(ctx, false),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 18, vertical: 12),
@@ -378,7 +389,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
                         child: const Text('Cancelar'),
                       ),
                       FilledButton.icon(
-                        onPressed: () => Navigator.pop(ctx, true),
+                        onPressed: () => responder(ctx, true),
                         icon: Icon(iconeAcao, size: 18),
                         label: Text(labelAcao),
                         style: FilledButton.styleFrom(
@@ -401,64 +412,139 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
     );
   }
 
-  void fechar() async {
-    if (dados!.status == 'Fechamento') return;
-    final ok = await _confirmar(
-      titulo: 'Fechar ${widget.tipo.nome.toLowerCase()}',
-      mensagem:
-          'Deseja realmente fechar essa ${widget.tipo.nome.toLowerCase()}? O comprovante de consumo será impresso em seguida.',
-      corAcao: Theme.of(context).colorScheme.error,
-      iconeAcao: Icons.print_outlined,
-      labelAcao: 'Fechar',
-    );
-    if (ok != true || !mounted) return;
-
-    await servicoCardapio
-        .fecharAbrirComanda(idComandaPedido, 'Fechamento')
-        .then((value) async {
-      if (!mounted) return;
-      if (value.sucesso) {
-        Modular.get<Server>().write(jsonEncode({'tipo': widget.tipo.nome}));
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value.mensagem),
-          backgroundColor: value.sucesso
-              ? _corAndamento
-              : Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+  Future<void> fechar() async {
+    if (_confirmandoFechamento ||
+        _fechandoConta ||
+        carregando ||
+        dados?.status != 'Andamento') {
+      return;
+    }
+    _confirmandoFechamento = true;
+    var fechamentoConfirmado = false;
+    try {
+      final ok = await _confirmar(
+        titulo: 'Fechar ${widget.tipo.nome.toLowerCase()}',
+        mensagem:
+            'Deseja realmente fechar essa ${widget.tipo.nome.toLowerCase()}? O comprovante de consumo será impresso em seguida.',
+        corAcao: Theme.of(context).colorScheme.error,
+        iconeAcao: Icons.print_outlined,
+        labelAcao: 'Fechar',
       );
-      if (!value.sucesso) return;
-      final abertura = DateTime.tryParse(dados!.dataAbertura ?? '');
-      final newDuration = abertura == null
+      if (ok != true || !mounted) return;
+      setState(() {
+        _confirmandoFechamento = false;
+        _fechandoConta = true;
+      });
+
+      final atendimento = await servicoCardapio.listarPorId(
+        idComandaPedido,
+        widget.tipo,
+        'Sim',
+        codigoQrcode: widget.codigoQrcode,
+        semCache: true,
+      );
+      if (!mounted) return;
+      if (atendimento.id != idComandaPedido ||
+          atendimento.status != 'Andamento') {
+        _mostrarErroFinalizacao(
+            'Não foi possível confirmar a conta aberta. Atualize a tela antes de fechar.');
+        return;
+      }
+      final produtos = atendimento.produtos ?? const [];
+      final total = double.tryParse(
+              (atendimento.valorTotal ?? '0').replaceAll(',', '.')) ??
+          0;
+      if (produtos.isEmpty && total > 0) {
+        _mostrarErroFinalizacao(
+            'Não foi possível carregar os itens da conta para impressão. Tente novamente.');
+        return;
+      }
+      final abertura = DateTime.tryParse(atendimento.dataAbertura ?? '');
+      final permanencia = abertura == null
           ? ''
           : ConfigSistema.formatarHora(DateTime.now().difference(abertura));
-      Impressao.comprovanteDeConsumo(
-        tipodeentrega: dados!.tipodeentrega ?? '',
-        valorentrega: dados!.valorentrega ?? '',
-        nomeEmpresa: dados!.nomeEmpresa!,
-        produtos: dados!.produtos!,
-        nomelancamento: dados!.nomelancamento!,
-        somaValorHistorico: dados!.somaValorHistorico!,
-        celularEmpresa: dados!.celularEmpresa!,
-        cnpjEmpresa: dados!.cnpjEmpresa!,
-        enderecoEmpresa: dados!.enderecoEmpresa!,
-        permanencia: newDuration,
-        local: dados!.nome!,
-        total: dados!.valorTotal!,
-        numeroPedido: dados!.numeroPedido!,
-        nomeCliente: (dados!.nomeCliente == '' ? null : dados!.nomeCliente) ??
-            'Sem Cliente',
+      final mensagens = Impressao.prepararComprovanteDeConsumo(
+        tipoTela: widget.tipo,
+        agruparPorDestino: false,
+        produtos: produtos,
+        nomelancamento: atendimento.nomelancamento ?? const [],
+        somaValorHistorico: atendimento.somaValorHistorico ?? '0',
+        celularEmpresa: atendimento.celularEmpresa ?? '',
+        cnpjEmpresa: atendimento.cnpjEmpresa ?? '',
+        enderecoEmpresa: atendimento.enderecoEmpresa ?? '',
+        nomeEmpresa: atendimento.nomeEmpresa ?? '',
+        numeroPedido: atendimento.numeroPedido ?? '',
+        total: atendimento.valorTotal ?? '0',
+        local: widget.tipo == TipoCardapio.mesa
+            ? (atendimento.nomeMesa ?? atendimento.nome ?? '')
+            : (atendimento.nome ?? ''),
+        permanencia: permanencia,
+        valorentrega: atendimento.valorentrega ?? '0',
+        valortaxadeservico: atendimento.valorTaxaServico ?? '0',
+        valordesconto: atendimento.valorDesconto ?? '0',
+        valoracrescimo: atendimento.valorAcrescimo ?? '0',
+        tipodeentrega: atendimento.tipodeentrega ?? '',
+        observacaoDoPedido: atendimento.observacaoDoPedido ?? '',
+        comanda: atendimento.nome ?? '',
+        nomeCliente: nomeClienteAtendimento(
+          atendimento.nomeCliente,
+          atendimento.observacaoDoPedido,
+        ),
       );
+      final resultado = await servicoCardapio.fecharAbrirComanda(
+          idComandaPedido, 'Fechamento');
+      if (!resultado.sucesso) {
+        if (mounted) _mostrarErroFinalizacao(resultado.mensagem);
+        return;
+      }
+      fechamentoConfirmado = true;
+      atendimento.status = 'Fechamento';
+      if (mounted) setState(() => dados = atendimento);
+
+      var impressaoSalva = false;
+      try {
+        await _server.enviarImpressoes(mensagens);
+        impressaoSalva = true;
+      } catch (_) {
+        // O fechamento ja foi confirmado; uma falha de impressao nao o desfaz.
+      }
+      _server.write(jsonEncode({'tipo': widget.tipo.nome}));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..removeCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(impressaoSalva
+                ? resultado.mensagem
+                : 'Conta fechada, mas não foi possível salvar o comprovante de consumo para impressão no caixa.'),
+            backgroundColor: impressaoSalva
+                ? _corAndamento
+                : Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            showCloseIcon: true,
+          ));
+      }
+    } catch (_) {
+      if (mounted) {
+        _mostrarErroFinalizacao(fechamentoConfirmado
+            ? 'Conta fechada. Não foi possível atualizar a tela; confira as impressões pendentes.'
+            : 'Não foi possível fechar a conta. Verifique a conexão e tente novamente.');
+      }
+    } finally {
+      _confirmandoFechamento = false;
+      _fechandoConta = false;
+      if (mounted) setState(() {});
+    }
+    if (!mounted || !fechamentoConfirmado) return;
+    try {
       if (widget.tipo == TipoCardapio.mesa) {
-        provedorMesas.listarMesas('');
+        await provedorMesas.listarMesas('');
       } else if (widget.tipo == TipoCardapio.comanda) {
-        provedorComanda.listarComandas('');
+        await provedorComanda.listarComandas('');
       }
       await listarComandasPedidos();
-    });
+    } catch (_) {
+      // Mantem os dados do fechamento confirmado ate a proxima atualizacao.
+    }
   }
 
   void abrir() async {
@@ -814,6 +900,7 @@ class _PaginaDetalhesPedidoState extends State<PaginaDetalhesPedido>
             ],
           ),
           if ((carregando && dados == null) ||
+              _fechandoConta ||
               _reimprimindoPreparo ||
               _preparandoFinalizacao)
             Positioned.fill(
