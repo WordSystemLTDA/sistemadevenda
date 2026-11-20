@@ -28,6 +28,7 @@ class PaginaProduto extends StatefulWidget {
   final bool editar;
   final bool montagemPizza;
   final bool detalhesJaCarregados;
+  final bool temEtapaBordasAnterior;
   final int? indexProduto;
   final Function(Modelowordprodutos produto)? inserirEmItensRecorrentes;
   final bool modeloRecorrente;
@@ -39,6 +40,7 @@ class PaginaProduto extends StatefulWidget {
     this.editar = false,
     this.montagemPizza = false,
     this.detalhesJaCarregados = false,
+    this.temEtapaBordasAnterior = false,
     this.indexProduto,
     this.inserirEmItensRecorrentes,
     this.modeloRecorrente = false,
@@ -432,7 +434,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
       }
       _provedorProduto.resetarTudo();
       if (mounted) Navigator.pop(context);
-      if (widget.valorVenda != null) {
+      if (widget.temEtapaBordasAnterior) {
         if (mounted) Navigator.pop(context);
       }
       return;
@@ -815,6 +817,11 @@ class _PaginaProdutoState extends State<PaginaProduto>
   bool _mostrarGrupoOpcoes(ModeloOpcoesPacotes opcoesPacote) {
     if (_grupoMontagemCardapio(opcoesPacote)) return false;
     if (opcoesPacote.id == 6) return false;
+    if (opcoesPacote.id == 2
+        ? (opcoesPacote.produtos?.isEmpty ?? true)
+        : (opcoesPacote.dados?.isEmpty ?? true)) {
+      return false;
+    }
     if (!_grupoComplemento(opcoesPacote)) return true;
     return switch (_filtroComplementos) {
       _FiltroComplementos.todos => true,

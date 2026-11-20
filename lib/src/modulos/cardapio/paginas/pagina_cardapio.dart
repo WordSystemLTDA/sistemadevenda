@@ -17,8 +17,10 @@ import 'package:app/src/modulos/cardapio/paginas/widgets/tab_custom.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_produtos.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
+import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_sabor_bordas.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
+import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 
@@ -100,6 +102,7 @@ class _PaginaCardapioState extends State<PaginaCardapio>
   int indexTabBar = 0;
   bool finalizar = false;
   bool _carregandoDados = false;
+  bool _abrindoPizza = false;
   bool _atualizandoCategorias = false;
   MonitorAtualizacaoTela? _monitorCatalogo;
   void _aoAlterarCatalogo() => _monitorCatalogo?.solicitar();
@@ -346,6 +349,60 @@ class _PaginaCardapioState extends State<PaginaCardapio>
     provedor.tipodeentrega = widget.tipodeentrega ?? '0';
   }
 
+  Future<void> _avancarPizza() async {
+    if (_abrindoPizza || provedor.saboresPizzaSelecionados.isEmpty) return;
+    final tamanho = provedor.tamanhosPizza;
+    if (tamanho == null) return;
+    final sabor = provedor.saboresPizzaSelecionados.first;
+    setState(() => _abrindoPizza = true);
+    try {
+      final servico = Modular.get<ServicoProduto>();
+      servico.anteciparDetalhesPorId(sabor.id, tamanho.id,
+          modeloRecorrente: widget.modeloRecorrente);
+      final produto = await servico.listarPorId(sabor.id, tamanho.id,
+          modeloRecorrente: widget.modeloRecorrente);
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+      if (produto == null) throw StateError('Produto não encontrado.');
+      if (provedor.tamanhosPizza?.id != tamanho.id ||
+          provedor.saboresPizzaSelecionados.firstOrNull?.id != sabor.id) {
+        return;
+      }
+      final temBordas = produto.opcoesPacotes?.any(
+              (grupo) => grupo.id == 6 && (grupo.dados?.isNotEmpty ?? false)) ??
+          false;
+      final valor = provedor.calcularPrecoPizza();
+      Modular.get<ProvedorProduto>().resetarTudo();
+      provedor.limiteSaborBordaSelecionado = -1;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => temBordas
+            ? PaginaSaborBordas(
+                produto: produto,
+                valorVenda: valor,
+                detalhesJaCarregados: true,
+                modeloRecorrente: widget.modeloRecorrente,
+              )
+            : PaginaProduto(
+                produto: produto,
+                valorVenda: valor,
+                montagemPizza: true,
+                detalhesJaCarregados: true,
+                modeloRecorrente: widget.modeloRecorrente,
+              ),
+      ));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content: Text('Não foi possível carregar as opções da pizza. '
+                'Tente novamente.'),
+          ));
+      }
+    } finally {
+      if (mounted) setState(() => _abrindoPizza = false);
+    }
+  }
+
   Future<void> _pedidoVoz() async {
     if (!_vozDisponivel || _vozAberta) return;
     final paradaManual = Completer<void>();
@@ -485,22 +542,8 @@ class _PaginaCardapioState extends State<PaginaCardapio>
                           child: BotaoAcaoPedido(
                             rotulo: 'Avançar ($quantidadeSabores)',
                             total: provedor.calcularPrecoPizza().obterReal(),
-                            onPressed: () {
-                              if (!context.mounted) return;
-                              final item = provedor.saboresPizzaSelecionados[0];
-                              Modular.get<ServicoProduto>()
-                                  .anteciparDetalhesPorId(
-                                item.id,
-                                provedor.tamanhosPizza!.id,
-                                modeloRecorrente: widget.modeloRecorrente,
-                              );
-                              Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => PaginaSaborBordas(
-                                  produto: item,
-                                  valorVenda: provedor.calcularPrecoPizza(),
-                                ),
-                              ));
-                            },
+                            carregando: _abrindoPizza,
+                            onPressed: _avancarPizza,
                           ),
                         ),
                         const SizedBox(width: 12),

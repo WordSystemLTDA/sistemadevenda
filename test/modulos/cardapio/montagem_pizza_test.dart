@@ -221,6 +221,25 @@ class ProdutosComBordasTeste extends ProdutosTeste {
         ];
 }
 
+class ProdutosPizzaOpcoesTeste extends ProdutosTeste {
+  List<ModeloOpcoesPacotes>? opcoes;
+  bool falhar = false;
+  bool produtoAusente = false;
+  Completer<Modelowordprodutos?>? resposta;
+
+  @override
+  Future<Modelowordprodutos?> listarPorId(String id, String tamanho,
+      {bool modeloRecorrente = false}) async {
+    consultasPorId.add((id, tamanho));
+    if (resposta != null) return resposta!.future;
+    if (falhar) throw StateError('Servidor indisponivel');
+    if (produtoAusente) return null;
+    return Modelowordprodutos.fromMap(
+        produtos.firstWhere((p) => p.id == id).toMap())
+      ..opcoesPacotes = opcoes;
+  }
+}
+
 class ProdutosComBordasEAdicionaisTeste extends ProdutosComBordasTeste {
   @override
   Modelowordprodutos produtoComBordas(String id) {
@@ -694,10 +713,7 @@ void main() {
       expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar (3)');
       await tester.tap(botao);
       await tester.pumpAndSettle();
-      expect(find.byType(PaginaSaborBordas), findsOneWidget);
-      expect(tester.widget<BotaoAcaoPedido>(botao).rotulo, 'Avançar');
-      await tester.tap(botao);
-      await tester.pumpAndSettle();
+      expect(find.byType(PaginaSaborBordas, skipOffstage: false), findsNothing);
       expect(
           tester
               .widget<PaginaProduto>(find.byType(PaginaProduto))
@@ -719,6 +735,248 @@ void main() {
           tester.widget<BotaoCarrinho>(find.byType(BotaoCarrinho)).quantidade,
           2);
       await capturarTela(tester, 'pizza_adicionada_${largura.toInt()}');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final cenario in ['sem grupos', 'grupos vazios', 'somente adicionais']) {
+    testWidgets(
+        'pizza pula bordas em $cenario e volta ao cardapio ao adicionar',
+        (tester) async {
+      final servico = ProdutosPizzaOpcoesTeste();
+      produtos = servico;
+      if (cenario != 'sem grupos') {
+        servico.opcoes = [
+          ModeloOpcoesPacotes(
+              id: 6, titulo: 'Bordas', obrigatorio: false, dados: null),
+          ModeloOpcoesPacotes(
+            id: 7,
+            titulo: 'Selecione os Adicionais',
+            obrigatorio: false,
+            tipo: 3,
+            dados: cenario == 'somente adicionais'
+                ? [
+                    ModeloDadosOpcoesPacotes(
+                        id: 'Milho', nome: 'Milho', valor: '3')
+                  ]
+                : [],
+          ),
+        ];
+      }
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+            builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () =>
+                        Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const PaginaCardapio(
+                          tipo: TipoCardapio.comanda,
+                          id: '10673',
+                          idComanda: '3'),
+                    )),
+                    child: const Text('Abrir cardapio'),
+                  ),
+                )),
+      ));
+      await tester.tap(find.text('Abrir cardapio'));
+      await tester.pumpAndSettle();
+      await tocarTamanho(tester, 'G');
+      await tocarProduto(tester, 'Mussarela');
+      await tocarProduto(tester, 'Calabresa especial');
+      // Uma borda da montagem anterior nao pode entrar na pizza nova.
+      Modular.get<ProvedorProduto>().opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes(
+          id: 6,
+          titulo: 'Bordas',
+          obrigatorio: false,
+          dados: [
+            ModeloDadosOpcoesPacotes(id: 'Antiga', nome: 'Antiga', valor: '12')
+          ],
+        ),
+      ];
+      await tester.tap(find.byType(BotaoAcaoPedido));
+      await tester.pumpAndSettle();
+      expect(find.byType(PaginaSaborBordas, skipOffstage: false), findsNothing);
+      expect(find.byType(PaginaProduto), findsOneWidget);
+      expect(produtos.consultasPorId, [('Mussarela', 'G')]);
+      expect(
+          tester
+              .widget<PaginaProduto>(find.byType(PaginaProduto))
+              .detalhesJaCarregados,
+          isTrue);
+      expect(tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido)).total,
+          contains('60,00'));
+      if (cenario == 'somente adicionais') {
+        await tester.tap(find.text('Milho'));
+        await tester.pumpAndSettle();
+      } else {
+        expect(find.text('Selecione os Adicionais'), findsNothing);
+      }
+      final obs = find.byKey(const Key('observacao_adicionais_produto'));
+      await tester.ensureVisible(obs);
+      await tester.enterText(obs, 'Bem assada');
+      await tester.tap(find.byType(BotaoAcaoPedido));
+      await tester.pumpAndSettle();
+      expect(find.byType(PaginaCardapio), findsOneWidget);
+      final carrinho = Modular.get<ProvedorCarrinho>();
+      final pizza = carrinho.itensCarrinho.listaComandosPedidos.single;
+      expect(pizza.valorVenda,
+          cenario == 'somente adicionais' ? '63.00' : '60.00');
+      expect(pizza.observacao, 'Bem assada');
+      expect(
+          pizza.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 9)
+              .dados!
+              .single
+              .id,
+          'G');
+      expect(
+          pizza.opcoesPacotesListaFinal!
+              .firstWhere((g) => g.id == 10)
+              .dados!
+              .map((d) => d.nome),
+          ['Mussarela', 'Calabresa especial']);
+      expect(
+          pizza.opcoesPacotesListaFinal!
+              .where((g) => g.id == 6)
+              .expand((g) => g.dados ?? <ModeloDadosOpcoesPacotes>[]),
+          isEmpty);
+      expect(carrinho.numeroAdicoes, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets(
+      'pizza com bordas conserva a etapa e consulta os detalhes uma vez',
+      (tester) async {
+    produtos = ProdutosComBordasEAdicionaisTeste();
+    Modular.init(ModuloTeste(cardapio, usuario, produtos));
+    addTearDown(Modular.destroy);
+    await tester.pumpWidget(const MaterialApp(
+      home: PaginaCardapio(
+          tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'),
+    ));
+    await tester.pumpAndSettle();
+    cardapio.configBigchef = configBigchef();
+    await tocarTamanho(tester, 'G');
+    await tocarProduto(tester, 'Mussarela');
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaSaborBordas), findsOneWidget);
+    expect(find.text('Cheddar'), findsOneWidget);
+    expect(find.text('Milho'), findsNothing);
+    expect(produtos.consultasPorId, [('Mussarela', 'G')]);
+    await tester.tap(find.text('1 sabor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cheddar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaProduto), findsOneWidget);
+    expect(find.text('Milho'), findsOneWidget);
+    expect(produtos.consultasPorId, hasLength(1));
+    await tester.tap(find.text('Milho'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BotaoAcaoPedido));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaginaCardapio), findsOneWidget);
+    final pizza = Modular.get<ProvedorCarrinho>()
+        .itensCarrinho
+        .listaComandosPedidos
+        .single;
+    expect(pizza.valorVenda, '65.00');
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final sair in [false, true]) {
+    testWidgets('consulta lenta da pizza evita telas duplicadas (sair: $sair)',
+        (tester) async {
+      final resposta = Completer<Modelowordprodutos?>();
+      final servico = ProdutosPizzaOpcoesTeste()..resposta = resposta;
+      produtos = servico;
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+      await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'),
+      ));
+      await tester.pumpAndSettle();
+      await tocarTamanho(tester, 'G');
+      await tocarProduto(tester, 'Mussarela');
+      final acao = tester.widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido));
+      acao.onPressed();
+      acao.onPressed();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(produtos.consultasPorId, hasLength(1));
+      expect(find.byType(PaginaProduto), findsNothing);
+      expect(find.byType(PaginaSaborBordas), findsNothing);
+      expect(
+          tester
+              .widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido))
+              .carregando,
+          isTrue);
+      if (sair) await tester.pumpWidget(const SizedBox.shrink());
+      resposta
+          .complete(Modelowordprodutos.fromMap(servico.produtos.first.toMap()));
+      await tester.pumpAndSettle();
+      if (sair) {
+        expect(find.byType(PaginaProduto), findsNothing);
+      } else {
+        expect(find.byType(PaginaProduto), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(find.byType(PaginaCardapio), findsOneWidget);
+        expect(cardapio.saboresPizzaSelecionados.single.id, 'Mussarela');
+        expect(cardapio.tamanhosPizza?.id, 'G');
+        expect(
+            tester
+                .widget<BotaoAcaoPedido>(find.byType(BotaoAcaoPedido))
+                .carregando,
+            isFalse);
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final ausente in [false, true]) {
+    testWidgets(
+        'falha ao conferir pizza preserva selecao e permite tentar novamente (ausente: $ausente)',
+        (tester) async {
+      final servico = ProdutosPizzaOpcoesTeste()
+        ..falhar = !ausente
+        ..produtoAusente = ausente;
+      produtos = servico;
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+      await tester.pumpWidget(const MaterialApp(
+        home: PaginaCardapio(
+            tipo: TipoCardapio.comanda, id: '10673', idComanda: '3'),
+      ));
+      await tester.pumpAndSettle();
+      await tocarTamanho(tester, 'G');
+      await tocarProduto(tester, 'Mussarela');
+      await tester.tap(find.byType(BotaoAcaoPedido));
+      await tester.pumpAndSettle();
+      expect(find.byType(PaginaProduto), findsNothing);
+      expect(find.byType(PaginaSaborBordas), findsNothing);
+      expect(
+          find.textContaining('Não foi possível carregar as opções da pizza'),
+          findsOneWidget);
+      expect(cardapio.saboresPizzaSelecionados.single.id, 'Mussarela');
+      expect(cardapio.tamanhosPizza?.id, 'G');
+      servico.falhar = false;
+      servico.produtoAusente = false;
+      await tester.tap(find.byType(BotaoAcaoPedido));
+      await tester.pumpAndSettle();
+      expect(find.byType(PaginaProduto), findsOneWidget);
+      expect(produtos.consultasPorId, hasLength(2));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     });

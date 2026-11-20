@@ -7,7 +7,6 @@ import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_carrinho.dart';
 import 'package:app/src/modulos/produto/paginas/pagina_produto.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/botao_acao_pedido.dart';
-import 'package:app/src/modulos/produto/paginas/widgets/card_kit.dart';
 import 'package:app/src/modulos/produto/paginas/widgets/card_opcoes_pacotes.dart';
 import 'package:app/src/modulos/produto/provedores/provedor_produto.dart';
 import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
@@ -18,11 +17,15 @@ import 'package:flutter_modular/flutter_modular.dart';
 class PaginaSaborBordas extends StatefulWidget {
   final Modelowordprodutos produto;
   final double? valorVenda;
+  final bool detalhesJaCarregados;
+  final bool modeloRecorrente;
 
   const PaginaSaborBordas({
     super.key,
     required this.produto,
     this.valorVenda,
+    this.detalhesJaCarregados = false,
+    this.modeloRecorrente = false,
   });
 
   @override
@@ -47,7 +50,11 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     // terminar. A tela acompanha o provedor e libera os controles assim que a
     // resposta chegar, sem acessar valores nulos durante esse intervalo.
     unawaited(provedorCardapio.garantirConfigBigChef().catchError((_) {}));
-    listar();
+    if (widget.detalhesJaCarregados) {
+      _detalhesCarregados = true;
+    } else {
+      listar();
+    }
   }
 
   void _prepararProdutoParaExibicao(Modelowordprodutos produto) {
@@ -121,7 +128,8 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
     var inicioServico = Modular.get<ServicoProduto>();
     try {
       final value = await inicioServico.listarPorId(
-          widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0');
+          widget.produto.id, provedorCardapio.tamanhosPizza?.id ?? '0',
+          modeloRecorrente: widget.modeloRecorrente);
       if (!mounted) return;
       itemProduto = value;
       if (value != null) {
@@ -181,6 +189,8 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
           valorVenda: widget.valorVenda,
           montagemPizza: true,
           detalhesJaCarregados: _detalhesCarregados,
+          temEtapaBordasAnterior: true,
+          modeloRecorrente: widget.modeloRecorrente,
         );
       },
     ));
@@ -204,8 +214,10 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
       );
     }
 
-    final opcoesProduto =
-        produto.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
+    final opcoesProduto = (produto.opcoesPacotes ??
+            const <ModeloOpcoesPacotes>[])
+        .where((grupo) => grupo.id == 6 && (grupo.dados?.isNotEmpty ?? false))
+        .toList();
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -253,11 +265,8 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                     if (carregando) const LinearProgressIndicator(),
                     if (opcoesProduto.isNotEmpty) ...[
                       ...opcoesProduto.map((opcoesPacote) {
-                        final produtos = opcoesPacote.produtos ?? const [];
                         final dados = opcoesPacote.dados ?? const [];
-                        final quantidade = opcoesPacote.id == 2
-                            ? produtos.length
-                            : dados.length;
+                        final quantidade = dados.length;
                         return ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Column(
@@ -306,9 +315,6 @@ class _PaginaSaborBordasState extends State<PaginaSaborBordas> {
                                 padding: const EdgeInsets.only(
                                     left: 14, right: 14, top: 20, bottom: 10),
                                 itemBuilder: (context, index) {
-                                  if (opcoesPacote.id == 2) {
-                                    return CardKit(item: produtos[index]);
-                                  }
                                   final item = dados[index];
 
                                   return CardOpcoesPacotes(
