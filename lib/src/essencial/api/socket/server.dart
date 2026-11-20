@@ -26,12 +26,15 @@ class Server extends ChangeNotifier {
   Timer? _retentativaImpressao;
   Timer? _proximoLoteImpressao;
   final Map<String, DateTime> _consultasImpressao = {};
+  final Map<String, Future<void>> _reenviosManuais = {};
   final DateTime Function() _agora;
   final Future<String?> Function()? _obterEscopoOnline;
   final DescobertaAtualizacaoOnline _descobertaOnline;
   String? _escopoOnline;
   String? _empresaOnline;
   String _nomeServidorImpressao = '';
+  String? _erroConexao;
+  String? get erroConexao => _erroConexao;
   String? executorPedidosRede;
   String? get escopoPedidosRede => _escopoOnline;
   void Function(Map<String, dynamic>)? aoResponderPedidoRede;
@@ -81,16 +84,62 @@ class Server extends ChangeNotifier {
               reenviar: reenviarImpressao,
               limpar: limparImpressoes,
               pertenceAoEscopo: pertenceAEmpresaAtual,
+              conexao: this,
+              conectado: () => connected,
+              mensagemConexao: () => erroConexao,
             )));
   }
 
-  Future<void> reenviarImpressao(String id) async {
+  Future<void> reenviarImpressao(String id) {
+    final emAndamento = _reenviosManuais[id];
+    if (emAndamento != null) return emAndamento;
+    late final Future<void> reenvio;
+    reenvio = _reenviarImpressao(id).whenComplete(() {
+      if (identical(_reenviosManuais[id], reenvio)) {
+        _reenviosManuais.remove(id);
+      }
+    });
+    _reenviosManuais[id] = reenvio;
+    return reenvio;
+  }
+
+  Future<void> _reenviarImpressao(String id) async {
+    if (_descartado || _desconexaoIntencional) {
+      throw StateError(
+          'Conecte ao servidor antes de reenviar. A impressão continua salva.');
+    }
+    await filaImpressao.carregar();
+    final item = filaImpressao.itens.where((item) => item.id == id).firstOrNull;
+    if (item == null) return;
+    if (!pertenceAEmpresaAtual(item)) {
+      throw StateError(
+          'Entre na empresa deste pedido para reenviar a impressão.');
+    }
+    final obterEscopo = _obterEscopoOnline;
+    final escopoAtual = obterEscopo != null
+        ? await obterEscopo()
+        : await _resolverEscopoOnline();
+    if (escopoAtual == '' ||
+        item.dados[CanalAtualizacaoOnline.chaveEscopo] != escopoAtual) {
+      throw StateError(
+          'Entre na conexão original deste pedido para reenviar a impressão.');
+    }
+    if (item.estado == EstadoImpressao.aguardandoPedido ||
+        item.estado == EstadoImpressao.cancelamentoPendente) {
+      throw StateError(
+          'Confira o atendimento antes de reenviar esta impressão.');
+    }
     _consultasImpressao.remove(id);
     final servidorAtual =
         connected && hostname.isNotEmpty && port > 0 ? '$hostname:$port' : '';
     await filaImpressao.autorizarReenvio(id,
-        manual: true, servidor: servidorAtual);
+        manual: item.estado != EstadoImpressao.aguardandoEnvio,
+        servidor: servidorAtual);
     await processarImpressoesPendentes(reconectarAgora: true);
+    if (!connected) {
+      throw StateError(
+          '${erroConexao ?? 'Não foi possível conectar ao servidor.'} A impressão continua salva e será enviada ao reconectar.');
+    }
   }
 
   void Function(String tipo)? aoAtualizarDados;
@@ -505,6 +554,7 @@ class Server extends ChangeNotifier {
         return false;
       }
       _nomeServidorImpressao = nomeServidorImpressao;
+      _erroConexao = null;
       connected = true;
       _consultasImpressao.clear();
       _tentativaReconexao = 0;
@@ -529,7 +579,13 @@ class Server extends ChangeNotifier {
       return true;
     } catch (e, stackTrace) {
       log('Excecao ao conectar', error: e, stackTrace: stackTrace);
-      if (_tentativaConexaoAtual(geracao)) _processarQuedaConexao();
+      if (_tentativaConexaoAtual(geracao)) {
+        _erroConexao = e is WebSocketException && e.httpStatusCode == 403
+            ? 'O servidor recusou a conexão. Confira no PC se a conexão (Local/Online) e a empresa são as mesmas do celular.'
+            : 'Não foi possível conectar ao servidor.';
+        _processarQuedaConexao();
+        if (!_descartado) notifyListeners();
+      }
       return false;
     } finally {
       cliente?.close(force: true);
@@ -562,6 +618,7 @@ class Server extends ChangeNotifier {
 
   Future<void> disconnect() async {
     _desconexaoIntencional = true;
+    _erroConexao = null;
     _cancelarTentativaConexao();
     _tentativaReconexao = 0;
     _temporizadorReconexao?.cancel();

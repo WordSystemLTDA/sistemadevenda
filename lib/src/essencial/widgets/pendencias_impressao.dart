@@ -1,21 +1,37 @@
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:flutter/material.dart';
 
-class PendenciasImpressao extends StatelessWidget {
+class PendenciasImpressao extends StatefulWidget {
   const PendenciasImpressao(
       {super.key,
       required this.fila,
       required this.reenviar,
       this.limpar,
-      this.pertenceAoEscopo});
+      this.pertenceAoEscopo,
+      this.conexao,
+      this.conectado,
+      this.mensagemConexao});
 
   final FilaImpressao fila;
   final Future<void> Function(String id) reenviar;
   final Future<void> Function(List<String> ids)? limpar;
   final bool Function(ImpressaoPendente)? pertenceAoEscopo;
+  final Listenable? conexao;
+  final bool Function()? conectado;
+  final String? Function()? mensagemConexao;
 
-  List<ImpressaoPendente> get _itens =>
-      fila.itens.where((item) => pertenceAoEscopo?.call(item) ?? true).toList();
+  @override
+  State<PendenciasImpressao> createState() => _PendenciasImpressaoState();
+}
+
+class _PendenciasImpressaoState extends State<PendenciasImpressao> {
+  final _confirmacoesAbertas = <String>{};
+  final _reenviosEmAndamento = <String>{};
+  FilaImpressao get fila => widget.fila;
+
+  List<ImpressaoPendente> get _itens => fila.itens
+      .where((item) => widget.pertenceAoEscopo?.call(item) ?? true)
+      .toList();
 
   Future<void> _limpar(BuildContext context) async {
     final ids = _itens
@@ -43,7 +59,7 @@ class PendenciasImpressao extends StatelessWidget {
             ));
     if (confirmou != true) return;
     try {
-      await limpar!(ids);
+      await widget.limpar!(ids);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -67,6 +83,17 @@ class PendenciasImpressao extends StatelessWidget {
 
   Future<void> _confirmar(
       BuildContext context, ImpressaoPendente item, bool reimprimir) async {
+    if (_reenviosEmAndamento.contains(item.id) ||
+        !_confirmacoesAbertas.add(item.id)) {
+      return;
+    }
+    var respondeu = false;
+    void responder(BuildContext context, bool resposta) {
+      if (respondeu) return;
+      respondeu = true;
+      Navigator.pop(context, resposta);
+    }
+
     final confirmou = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -74,31 +101,36 @@ class PendenciasImpressao extends StatelessWidget {
         title: Text(
             reimprimir ? 'Reenviar comprovante?' : 'Confirmar recebimento?'),
         content: Text(reimprimir
-            ? 'Confira antes com a cozinha. Se o comprovante ja chegou, reenviar pode gerar uma via duplicada. O pedido nao sera lancado novamente.'
+            ? 'Confira se este comprovante já foi impresso. Reenviar pode gerar uma via duplicada. Será reenviada somente esta impressão; o pedido não será lançado novamente.'
             : 'A cozinha recebeu este comprovante? A pendencia sera encerrada sem reenviar o pedido.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => responder(context, false),
               child: const Text('Cancelar')),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => responder(context, true),
               child: Text(reimprimir ? 'Reenviar' : 'Recebido')),
         ],
       ),
     );
-    if (confirmou != true) return;
+    _confirmacoesAbertas.remove(item.id);
+    if (confirmou != true || !mounted) return;
+    setState(() => _reenviosEmAndamento.add(item.id));
     try {
       if (reimprimir) {
-        await reenviar(item.id);
+        await widget.reenviar(item.id);
       } else {
         await fila.confirmar(item.id);
       }
-    } catch (_) {
+    } catch (erro) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'Nao foi possivel atualizar a impressao. A pendencia foi mantida.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(erro is StateError
+                ? erro.message.toString()
+                : 'Não foi possível atualizar a impressão. A pendência foi mantida.')));
       }
+    } finally {
+      if (mounted) setState(() => _reenviosEmAndamento.remove(item.id));
     }
   }
 
@@ -139,14 +171,16 @@ class PendenciasImpressao extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Impressões pendentes'), actions: [
-          if (limpar != null)
+          if (widget.limpar != null)
             IconButton(
                 tooltip: 'Limpar pendências',
-                onPressed: () => _limpar(context),
+                onPressed: _reenviosEmAndamento.isNotEmpty
+                    ? null
+                    : () => _limpar(context),
                 icon: const Icon(Icons.clear_all)),
         ]),
         body: ListenableBuilder(
-          listenable: fila,
+          listenable: Listenable.merge([fila, widget.conexao]),
           builder: (context, _) => _itens.isEmpty
               ? const Center(child: Text('Nenhuma impressão pendente'))
               : ListView.separated(
@@ -157,6 +191,7 @@ class PendenciasImpressao extends StatelessWidget {
                     final item = _itens[index];
                     final dados = item.dados;
                     final produtos = _produtos(dados['produtos']);
+                    final reenviando = _reenviosEmAndamento.contains(item.id);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -174,10 +209,14 @@ class PendenciasImpressao extends StatelessWidget {
                             switch (item.estado) {
                               EstadoImpressao.aguardandoPedido =>
                                 'Registro do pedido sem confirmacao. Confira o atendimento antes de imprimir.',
-                              EstadoImpressao.aguardandoEnvio =>
-                                'Aguardando envio automatico',
+                              EstadoImpressao.aguardandoEnvio => widget
+                                          .conectado
+                                          ?.call() ==
+                                      false
+                                  ? '${widget.mensagemConexao?.call() ?? 'Sem conexão com o servidor.'} Impressão salva para reenvio.'
+                                  : 'Impressão salva. Aguardando envio ao servidor.',
                               EstadoImpressao.semConfirmacao =>
-                                'Aguardando confirmacao. Recuperacao automatica em andamento.',
+                                'Enviada ao servidor. Aguardando confirmação da impressão.',
                               EstadoImpressao.erro =>
                                 item.erro ?? 'Falha informada pelo servidor',
                               EstadoImpressao.pausada => item.erro ??
@@ -196,7 +235,9 @@ class PendenciasImpressao extends StatelessWidget {
                                 style: TextButton.styleFrom(
                                     foregroundColor:
                                         Theme.of(context).colorScheme.error),
-                                onPressed: () => _excluir(context, item),
+                                onPressed: reenviando
+                                    ? null
+                                    : () => _excluir(context, item),
                                 icon: const Icon(Icons.delete_outline),
                                 label: const Text('Excluir'),
                               ),
@@ -204,20 +245,23 @@ class PendenciasImpressao extends StatelessWidget {
                                 item.estado !=
                                     EstadoImpressao.cancelamentoPendente)
                               TextButton.icon(
-                                onPressed: () =>
-                                    _confirmar(context, item, false),
+                                onPressed: reenviando
+                                    ? null
+                                    : () => _confirmar(context, item, false),
                                 icon: const Icon(Icons.check),
                                 label: const Text('Recebido na cozinha'),
                               ),
                             if (item.estado !=
-                                    EstadoImpressao.aguardandoEnvio &&
+                                    EstadoImpressao.aguardandoPedido &&
                                 item.estado !=
                                     EstadoImpressao.cancelamentoPendente)
                               TextButton.icon(
-                                onPressed: () =>
-                                    _confirmar(context, item, true),
+                                onPressed: reenviando
+                                    ? null
+                                    : () => _confirmar(context, item, true),
                                 icon: const Icon(Icons.print_outlined),
-                                label: const Text('Reenviar'),
+                                label: Text(
+                                    reenviando ? 'Reenviando…' : 'Reenviar'),
                               ),
                           ],
                         ),

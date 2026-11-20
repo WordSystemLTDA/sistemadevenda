@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/socket/fila_impressao.dart';
@@ -19,6 +20,128 @@ void main() {
           {'nome': 'Pizza de queijos especiais', 'quantidade': 1}
         ],
       });
+
+  for (final escala in [1.0, 2.0]) {
+    testWidgets(
+        'pendencia offline mantem reenvio e informa falha sem perder dados em escala $escala',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final fila = FilaImpressao();
+      final conectado = ValueNotifier(false);
+      addTearDown(fila.dispose);
+      addTearDown(conectado.dispose);
+      await fila.registrar([mensagem('offline')]);
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var reenvios = 0;
+      await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(escala)),
+          child: child!,
+        ),
+        home: PendenciasImpressao(
+          fila: fila,
+          conexao: conectado,
+          conectado: () => conectado.value,
+          reenviar: (_) async {
+            reenvios++;
+            throw StateError(
+                'Servidor indisponível. A impressão continua salva.');
+          },
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(
+          find.text(
+              'Sem conexão com o servidor. Impressão salva para reenvio.'),
+          findsOneWidget);
+      final acao = find.widgetWithText(TextButton, 'Reenviar');
+      await tester.ensureVisible(acao);
+      await tester.pumpAndSettle();
+      await tester.tap(acao);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Reenviar'));
+      await tester.pumpAndSettle();
+      expect(reenvios, 1);
+      expect(fila.itens.single.mensagem, mensagem('offline'));
+      expect(find.text('Servidor indisponível. A impressão continua salva.'),
+          findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Reenviar'), findsOneWidget);
+      conectado.value = true;
+      await tester.pumpAndSettle();
+      expect(find.text('Impressão salva. Aguardando envio ao servidor.'),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets(
+      'reenvio em andamento bloqueia toques repetidos e mantem pendencia',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([mensagem('uma-vez')]);
+    final concluir = Completer<void>();
+    var reenvios = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: PendenciasImpressao(
+      fila: fila,
+      reenviar: (_) async {
+        reenvios++;
+        await concluir.future;
+      },
+    )));
+    final acao = find.widgetWithText(TextButton, 'Reenviar');
+    final abrir = tester.widget<TextButton>(acao).onPressed!;
+    abrir();
+    abrir();
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    final confirmar = tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, 'Reenviar'))
+        .onPressed!;
+    confirmar();
+    confirmar();
+    await tester.pumpAndSettle();
+    expect(reenvios, 1);
+    expect(fila.itens, hasLength(1));
+    expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Reenviando…'))
+            .onPressed,
+        isNull);
+    expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Excluir'))
+            .onPressed,
+        isNull);
+    concluir.complete();
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextButton, 'Reenviar'), findsOneWidget);
+    expect(fila.itens, hasLength(1));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('pedido ainda sem gravacao nao permite reenvio manual',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final fila = FilaImpressao();
+    addTearDown(fila.dispose);
+    await fila.registrar([mensagem('gravando')],
+        estado: EstadoImpressao.aguardandoPedido);
+    await tester.pumpWidget(MaterialApp(
+        home: PendenciasImpressao(
+            fila: fila, reenviar: (_) async => fail('Pedido nao confirmado'))));
+    expect(find.widgetWithText(TextButton, 'Reenviar'), findsNothing);
+    expect(fila.itens.single.estado, EstadoImpressao.aguardandoPedido);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   for (final escala in [1.0, 2.0]) {
     testWidgets(
