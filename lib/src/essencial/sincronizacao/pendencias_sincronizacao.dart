@@ -225,9 +225,7 @@ class _PendenciasSincronizacaoState extends State<PendenciasSincronizacao> {
         listenable: Listenable.merge([sincronizador, sincronizador.socket]),
         builder: (context, _) {
           final cs = Theme.of(context).colorScheme;
-          final impressoes = sincronizador.socket.filaImpressao.itens
-              .where(sincronizador.socket.pertenceAEmpresaAtual)
-              .length;
+          final impressoes = sincronizador.impressoesPendentes;
           final temPedidos = sincronizador.pendencias.isNotEmpty ||
               sincronizador.conflitos > 0;
           return Scaffold(

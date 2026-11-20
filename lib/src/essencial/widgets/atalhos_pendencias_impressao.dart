@@ -49,7 +49,7 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
     _server?.abrirPendenciasImpressao(context);
   }
 
-  int get _quantidade => _fila.itens
+  int get _quantidade => (_server?.impressoesParaConferencia ?? _fila.itens)
       .where((item) => _server?.pertenceAEmpresaAtual(item) ?? true)
       .length;
 
@@ -59,7 +59,8 @@ class _CartaoPendenciasImpressaoState extends State<CartaoPendenciasImpressao> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListenableBuilder(
-      listenable: _fila,
+      listenable: Listenable.merge(
+          [_fila, _server?.alteracoesImpressoesAguardandoPedido]),
       builder: (context, _) {
         final quantidade = _quantidade;
         final temPendencia = quantidade > 0;
@@ -302,7 +303,7 @@ class _BotaoFlutuantePendenciasImpressaoState
     _server?.abrirPendenciasImpressao(context);
   }
 
-  int get _quantidade => _fila.itens
+  int get _quantidade => (_server?.impressoesParaConferencia ?? _fila.itens)
       .where((item) => _server?.pertenceAEmpresaAtual(item) ?? true)
       .length;
 
@@ -311,7 +312,8 @@ class _BotaoFlutuantePendenciasImpressaoState
     final cs = Theme.of(context).colorScheme;
 
     return ListenableBuilder(
-      listenable: _fila,
+      listenable: Listenable.merge(
+          [_fila, _server?.alteracoesImpressoesAguardandoPedido]),
       builder: (context, _) {
         final quantidade = _quantidade;
         final temPendencia = quantidade > 0;

@@ -24,6 +24,7 @@ import 'atendimentos_locais.dart';
 import 'cache_consultas.dart';
 import 'execucao_segundo_plano.dart';
 import 'seguranca_pendencias.dart';
+import 'impressoes_aguardando_pedido.dart';
 import 'pedidos_na_rede.dart';
 import 'recebimentos_atendimento.dart';
 import 'politica_offline_online.dart';
@@ -88,11 +89,9 @@ class Sincronizador extends ChangeNotifier {
   int get conflitos =>
       _rascunhosParaConferir +
       pendencias.where((e) => e['estado'] == 'conflito').length;
-  int get impressoesPendentes => socket.filaImpressao.itens
+  int get impressoesPendentes => socket.impressoesParaConferencia
       .where((p) =>
-          p.servidor == destino &&
-          p.dados[CanalAtualizacaoOnline.chaveEscopo] ==
-              _escopoImpressaoOnline &&
+          (p.dados['idEmpresa']?.toString() ?? '').isEmpty ||
           p.dados['idEmpresa']?.toString() == usuario.usuario?.empresa)
       .length;
 
@@ -1946,12 +1945,20 @@ class Sincronizador extends ChangeNotifier {
   }
 
   void _notificar() {
-    if (!_descartado) notifyListeners();
+    if (!_descartado) {
+      socket.atualizarImpressoesAguardandoPedido(impressoesAguardandoPedido(
+        escopo.isEmpty ? const [] : pendencias,
+        empresa: usuario.usuario?.empresa ?? '',
+        escopoOnline: _escopoImpressaoOnline,
+      ));
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
     _descartado = true;
+    socket.atualizarImpressoesAguardandoPedido(const []);
     _liberarRecebimentosDelivery();
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();

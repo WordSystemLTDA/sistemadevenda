@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/src/app_widget.dart' as app;
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/provedores/config/config_provedor.dart';
 import 'package:app/src/essencial/provedores/config/config_servico.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
@@ -11,6 +12,8 @@ import 'package:app/src/essencial/servicos/servico_config_bigchef.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/essencial/sincronizacao/impressoes_aguardando_pedido.dart';
+import 'package:app/src/essencial/widgets/atalhos_pendencias_impressao.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/servicos/servico_autenticacao.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -203,6 +206,65 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+
+  testWidgets('pedido offline atualiza contador e aparece na conferencia',
+      (tester) async {
+    modulo.usuario.setUsuario(UsuarioModelo(id: '1', empresa: '1'));
+    modulo.sync.mostrarEstado(conectado: false);
+    await tester.runAsync(() => modulo.server.filaImpressao.carregar());
+    final mensagem = jsonEncode({
+      'idRequisicao': 'offline-visivel',
+      'tipoImpressao': '1',
+      'comanda': 'Comanda: 1',
+      'idEmpresa': '1',
+      'produtos': [
+        {'nome': 'Coca Cola 350ml', 'quantidade': 1}
+      ],
+    });
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+      body: const CartaoPendenciasImpressao(),
+      floatingActionButton:
+          const BotaoFlutuantePendenciasImpressao(tag: 'teste'),
+    )));
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhuma pendência agora'), findsOneWidget);
+    modulo.server
+        .atualizarImpressoesAguardandoPedido(impressoesAguardandoPedido([
+      {
+        'estado': 'pendente',
+        'impressoes': jsonEncode([mensagem])
+      },
+    ], empresa: '1'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 impressão aguardando'), findsOneWidget);
+    expect(find.text('1'), findsNWidgets(2));
+    expect(modulo.sync.impressoesPendentes, 1);
+    expect(modulo.server.filaImpressao.itens, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('card_pendencias_impressao')));
+    await tester.pumpAndSettle();
+    expect(find.text('Aguardando envio do pedido'), findsOneWidget);
+    expect(find.text('Envio automático ao reconectar'), findsOneWidget);
+    expect(find.text('1x Coca Cola 350ml'), findsOneWidget);
+    expect(find.text('Reenviar'), findsNothing);
+    expect(find.text('Excluir'), findsNothing);
+    expect(find.text('Recebido na cozinha'), findsNothing);
+    expect(modulo.server.reenvios, isEmpty);
+    await modulo.server.filaImpressao.registrar([mensagem]);
+    await tester.pumpAndSettle();
+    expect(find.text('1x Coca Cola 350ml'), findsOneWidget);
+    expect(find.text('Aguardando envio do pedido'), findsNothing);
+    expect(modulo.server.impressoesParaConferencia, hasLength(1));
+    expect(modulo.server.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoEnvio);
+    modulo.server.atualizarImpressoesAguardandoPedido(const []);
+    await modulo.server.filaImpressao.confirmar('offline-visivel');
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhuma impressão pendente'), findsOneWidget);
+    expect(modulo.server.reenvios, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('atalho abre conferencia da empresa com o reenvio seguro',
       (tester) async {

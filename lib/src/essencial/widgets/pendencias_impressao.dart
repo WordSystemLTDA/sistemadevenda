@@ -14,7 +14,9 @@ class PendenciasImpressao extends StatefulWidget {
       this.pertenceAoEscopo,
       this.conexao,
       this.conectado,
-      this.mensagemConexao});
+      this.mensagemConexao,
+      this.itensParaConferencia,
+      this.pedidosAguardando});
 
   final FilaImpressao fila;
   final Future<void> Function(String id) reenviar;
@@ -23,6 +25,8 @@ class PendenciasImpressao extends StatefulWidget {
   final Listenable? conexao;
   final bool Function()? conectado;
   final String? Function()? mensagemConexao;
+  final List<ImpressaoPendente> Function()? itensParaConferencia;
+  final Listenable? pedidosAguardando;
 
   @override
   State<PendenciasImpressao> createState() => _PendenciasImpressaoState();
@@ -34,9 +38,10 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
   String _pesquisa = '';
   FilaImpressao get fila => widget.fila;
 
-  List<ImpressaoPendente> get _itens => fila.itens
-      .where((item) => widget.pertenceAoEscopo?.call(item) ?? true)
-      .toList();
+  List<ImpressaoPendente> get _itens =>
+      (widget.itensParaConferencia?.call() ?? fila.itens)
+          .where((item) => widget.pertenceAoEscopo?.call(item) ?? true)
+          .toList();
 
   Future<void> _limpar(BuildContext context) async {
     final ids = _itens
@@ -176,7 +181,9 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
   (String, Color) _status(BuildContext context, ImpressaoPendente item) =>
       switch (item.estado) {
         EstadoImpressao.aguardandoPedido => (
-            'Conferir pedido',
+            item.erro != null
+                ? 'Conferir pedido'
+                : 'Aguardando envio do pedido',
             corAtencaoPendencias(context)
           ),
         EstadoImpressao.aguardandoEnvio => (
@@ -202,8 +209,8 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
       };
 
   String _mensagem(ImpressaoPendente item) => switch (item.estado) {
-        EstadoImpressao.aguardandoPedido =>
-          'Registro do pedido sem confirmação. Confira o atendimento antes de imprimir.',
+        EstadoImpressao.aguardandoPedido => item.erro ??
+            'Pedido salvo no aparelho. A impressão será enviada automaticamente depois que o servidor confirmar o pedido.',
         EstadoImpressao.aguardandoEnvio => widget.conectado?.call() == false
             ? '${widget.mensagemConexao?.call() ?? 'Sem conexão com o servidor.'} Impressão salva para reenvio.'
             : 'Impressão salva. Aguardando envio ao servidor.',
@@ -282,6 +289,13 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
             ],
             const SizedBox(height: 14),
             AvisoPainelPendencias(texto: _mensagem(item), cor: cor),
+            if (item.estado == EstadoImpressao.aguardandoPedido &&
+                item.erro == null) ...[
+              const SizedBox(height: 12),
+              Text('Envio automático ao reconectar',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.primary, fontWeight: FontWeight.w600)),
+            ],
             const SizedBox(height: 14),
             if (podeReenviar)
               FilledButton.icon(
@@ -298,6 +312,7 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
                 label: Text(reenviando ? 'Reenviando…' : 'Reenviar'),
               ),
             if (item.dados['protocoloImpressao'] != 2 &&
+                item.estado != EstadoImpressao.aguardandoPedido &&
                 item.estado != EstadoImpressao.cancelamentoPendente)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -380,7 +395,8 @@ class _PendenciasImpressaoState extends State<PendenciasImpressao> {
                     icon: const Icon(Icons.clear_all)),
             ]),
         body: ListenableBuilder(
-          listenable: Listenable.merge([fila, widget.conexao]),
+          listenable: Listenable.merge(
+              [fila, widget.conexao, widget.pedidosAguardando]),
           builder: (context, _) {
             final itens = _itens;
             final filtrados = itens.where((item) =>

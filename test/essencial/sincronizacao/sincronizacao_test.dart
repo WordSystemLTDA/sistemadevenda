@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/api/socket/server.dart';
+import 'package:app/src/essencial/api/socket/fila_impressao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
@@ -1898,6 +1899,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  test('comprovante offline aparece sem ser liberado antes do pedido',
+      () async {
+    await guardar();
+    final salvo = (await banco.operacoes(sync.escopo)).single;
+    expect(socket.filaImpressao.itens, isEmpty);
+    expect(socket.impressoesParaConferencia.single.id, 'impressao-104');
+    expect(socket.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoPedido);
+    expect(sync.impressoesPendentes, 1);
+    expect(aplicados, isEmpty);
+
+    conectado = true;
+    await sync.tentarNovamente();
+    expect(aplicados, hasLength(1));
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    expect(socket.filaImpressao.itens.single.id, 'impressao-104');
+    expect(socket.impressoesParaConferencia, hasLength(1));
+    expect(socket.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoEnvio);
+    expect(socket.impressoesParaConferencia.single.mensagem,
+        (jsonDecode(salvo['impressoes'] as String) as List).single);
+    expect(sync.impressoesPendentes, 1);
+    await socket.filaImpressao.confirmar('impressao-104');
+    expect(sync.impressoesPendentes, 0);
+    expect(socket.impressoesParaConferencia, isEmpty);
+  });
+
+  test('preparo assumido pela API nao cria segunda via na fila local',
+      () async {
+    await guardar();
+    expect(sync.impressoesPendentes, 1);
+    conectado = true;
+    impressaoPersistidaApi = true;
+    await sync.tentarNovamente();
+    expect(aplicados, hasLength(1));
+    expect(socket.filaImpressao.itens, isEmpty);
+    expect(socket.impressoesParaConferencia, isEmpty);
+    expect(sync.impressoesPendentes, 0);
+  });
+
   test('reabrir o banco recupera os pedidos ainda nao enviados', () async {
     await guardar();
     final fila = await banco.operacoes(sync.escopo);
@@ -1910,6 +1951,10 @@ void main() {
     await sync.configurar();
     expect(
         (await banco.operacoes(sync.escopo)).single['id'], fila.single['id']);
+    expect(sync.impressoesPendentes, 1);
+    expect(socket.impressoesParaConferencia.single.estado,
+        EstadoImpressao.aguardandoPedido);
+    expect(socket.filaImpressao.itens, isEmpty);
     conectado = true;
     await sync.tentarNovamente();
     expect(aplicados, hasLength(1));

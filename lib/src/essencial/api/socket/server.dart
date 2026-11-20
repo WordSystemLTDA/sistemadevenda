@@ -22,6 +22,34 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Server extends ChangeNotifier {
   final FilaImpressao filaImpressao;
+  final _impressoesAguardandoPedido =
+      ValueNotifier<List<ImpressaoPendente>>(const []);
+
+  Listenable get alteracoesImpressoesAguardandoPedido =>
+      _impressoesAguardandoPedido;
+
+  /// Uma única conferência, sem alterar a fila que efetivamente envia ao PC.
+  List<ImpressaoPendente> get impressoesParaConferencia {
+    final itens = {for (final item in filaImpressao.itens) item.id: item};
+    for (final item in _impressoesAguardandoPedido.value) {
+      itens.putIfAbsent(item.id, () => item);
+    }
+    return List.unmodifiable(itens.values);
+  }
+
+  void atualizarImpressoesAguardandoPedido(List<ImpressaoPendente> itens) {
+    if (_descartado) return;
+    final atuais = _impressoesAguardandoPedido.value;
+    if (atuais.length == itens.length &&
+        Iterable.generate(itens.length).every((i) =>
+            atuais[i].mensagem == itens[i].mensagem &&
+            atuais[i].erro == itens[i].erro &&
+            atuais[i].servidor == itens[i].servidor)) {
+      return;
+    }
+    _impressoesAguardandoPedido.value = List.unmodifiable(itens);
+  }
+
   bool _descartado = false;
   Timer? _retentativaImpressao;
   Timer? _proximoLoteImpressao;
@@ -87,6 +115,8 @@ class Server extends ChangeNotifier {
               conexao: this,
               conectado: () => connected,
               mensagemConexao: () => erroConexao,
+              itensParaConferencia: () => impressoesParaConferencia,
+              pedidosAguardando: alteracoesImpressoesAguardandoPedido,
             )));
   }
 
@@ -1222,6 +1252,7 @@ class Server extends ChangeNotifier {
     _retentativaImpressao?.cancel();
     filaImpressao.removeListener(_atualizarFilaImpressao);
     filaImpressao.dispose();
+    _impressoesAguardandoPedido.dispose();
     super.dispose();
   }
 }
