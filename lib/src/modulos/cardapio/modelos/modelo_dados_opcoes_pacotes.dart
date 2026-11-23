@@ -40,6 +40,7 @@ Map<String, dynamic>? _mapa(Object? valor) {
 class ModeloDadosOpcoesPacotes {
   final String id;
   final String nome;
+  final int ordem;
   final String? codigo;
   final String? idProduto;
   final String imprimirCodigoProdutoPreparo;
@@ -62,6 +63,7 @@ class ModeloDadosOpcoesPacotes {
   ModeloDadosOpcoesPacotes({
     required this.id,
     required this.nome,
+    this.ordem = 0,
     this.codigo,
     this.idProduto,
     this.imprimirCodigoProdutoPreparo = 'Não',
@@ -92,6 +94,7 @@ class ModeloDadosOpcoesPacotes {
     return <String, dynamic>{
       'id': id,
       'nome': nome,
+      'ordem': ordem,
       'codigo': codigo,
       'idProduto': idProduto,
       'imprimirCodigoProdutoPreparo': imprimirCodigoProdutoPreparo,
@@ -126,6 +129,7 @@ class ModeloDadosOpcoesPacotes {
     return ModeloDadosOpcoesPacotes(
       id: _texto(map['id']),
       nome: _texto(map['nome']),
+      ordem: _inteiroOpcional(map['ordem']) ?? 0,
       codigo: map['codigo']?.toString(),
       idProduto: map['idProduto']?.toString() ?? map['id_produto']?.toString(),
       valor: map['valor']?.toString(),

@@ -94,15 +94,29 @@ class ModeloOpcoesPacotes {
   }
 
   factory ModeloOpcoesPacotes.fromMap(Map<String, dynamic> map) {
+    final id = _inteiro(map['id']);
+    final dados = _dados(map['dados']);
     return ModeloOpcoesPacotes(
-      id: _inteiro(map['id']),
+      id: id,
       titulo: map['titulo']?.toString() ?? '',
       obrigatorio: _booleano(map['obrigatorio']),
       tipo: map['tipo'] == null ? null : _inteiro(map['tipo']),
-      dados: _dados(map['dados']),
+      dados: const {1, 4, 5, 6, 7, 8, 11}.contains(id) ? _ordenarVinculos(dados) : dados,
       opcoesPacote: _opcoes(map['opcoesPacote']),
       produtos: _produtos(map['produtos']),
     );
+  }
+
+  static List<ModeloDadosOpcoesPacotes>? _ordenarVinculos(List<ModeloDadosOpcoesPacotes>? dados) {
+    if (dados == null) return null;
+    final itens = dados.indexed.toList()
+      ..sort((a, b) {
+        final ordemA = a.$2.ordem > 0 ? a.$2.ordem : 0x7fffffff;
+        final ordemB = b.$2.ordem > 0 ? b.$2.ordem : 0x7fffffff;
+        final comparacao = ordemA.compareTo(ordemB);
+        return comparacao != 0 ? comparacao : a.$1.compareTo(b.$1);
+      });
+    return itens.map((item) => item.$2).toList();
   }
 
   String toJson() => json.encode(toMap());
