@@ -245,6 +245,36 @@ void main() {
     expect(carrinho.itensCarrinho.quantidadeTotal, 20);
   });
 
+  test('produto preparado em outra abertura da mesma comanda nao muda de conta', () async {
+    await abrir('4', '104');
+    final origem = carrinho.contexto!;
+    await abrir('4', '204');
+    final produto = produtoCarrinho();
+    expect(await carrinho.inserir(produto, 'Comanda', '0', '4', '10', '', produto.id, produto.nome, 1, '', contextoEsperado: origem), isFalse);
+    expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+    await abrir('4', '104');
+    expect(carrinho.itensCarrinho.listaComandosPedidos, isEmpty);
+  });
+
+  test('48 contas com 40 inclusoes pendentes conservam o destino ao navegar', () async {
+    final pendentes = <Future<bool>>[];
+    for (var i = 0; i < 48; i++) {
+      await abrir('${1000+i}', '${100000+i}', tipo: i.isEven ? 'mesa' : 'comanda');
+      final origem = carrinho.contexto!;
+      for (var j = 0; j < 40; j++) {
+        final produto = produtoCarrinho()..observacao = 'conta:$i/item:$j';
+        pendentes.add(carrinho.inserir(produto, origem.tipo, origem.tipo == 'mesa' ? origem.idRecurso : '0', origem.tipo == 'comanda' ? origem.idRecurso : '0', produto.valorVenda, '', produto.id, produto.nome, 1, produto.observacao, contextoEsperado: origem));
+      }
+    }
+    expect((await Future.wait(pendentes)).every((salvo) => salvo), isTrue);
+    for (var i = 0; i < 48; i++) {
+      final contexto = ContextoCarrinho(empresa: '32', tipo: i.isEven ? 'mesa' : 'comanda', idAtendimento: '${100000+i}');
+      final itens = await armazenamento.listar(contexto);
+      expect(itens, hasLength(40));
+      expect(itens.every((p) => p.observacao?.startsWith('conta:$i/') == true), isTrue);
+    }
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
   test('mesa, balcao e outra empresa nao recebem produtos da comanda',
       () async {
     await abrir('4', '104');

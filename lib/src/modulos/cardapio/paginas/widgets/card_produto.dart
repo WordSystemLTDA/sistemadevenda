@@ -187,12 +187,14 @@ class _CardProdutoState extends State<CardProduto> {
         final personalizavel = _produtoPersonalizavel(item);
         Future<void> selecionar() async {
           if (indisponivel) return;
+          final contextoPedido = carrinhoProvedor.contexto;
 
           FocusManager.instance.primaryFocus?.unfocus();
           if (widget.aoSelecionarSabor != null) {
             widget.aoSelecionarSabor!(item);
             return;
           }
+          if (contextoPedido == null) return;
           final idComanda = provedorCardapio.idComanda;
           final idMesa = provedorCardapio.idMesa;
 
@@ -334,6 +336,7 @@ class _CardProdutoState extends State<CardProduto> {
             item.nome,
             quantidade,
             '',
+            contextoEsperado: contextoPedido,
           )
               .then((sucesso) {
             if (sucesso) {

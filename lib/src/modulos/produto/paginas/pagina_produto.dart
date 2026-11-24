@@ -3,6 +3,7 @@ import 'package:app/src/essencial/utils/url_imagem.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
+import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/montagem_ingrediente_cardapio.dart';
 import 'package:app/src/modulos/cardapio/modelos/observacao_produto.dart';
 import 'package:app/src/modulos/cardapio/provedores/provedor_cardapio.dart';
@@ -55,6 +56,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
   final ProvedorCarrinho carrinhoProvedor = Modular.get<ProvedorCarrinho>();
   final ProvedorProduto _provedorProduto = Modular.get<ProvedorProduto>();
   final ProvedorCardapio provedorCardapio = Modular.get<ProvedorCardapio>();
+  late final ContextoCarrinho? _contextoPedido;
 
   Modelowordprodutos? itemProduto;
   bool carregando = false;
@@ -88,6 +90,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
   @override
   void initState() {
     super.initState();
+    _contextoPedido = carrinhoProvedor.contexto;
     _animacaoEtapa = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 180),
@@ -298,6 +301,14 @@ class _PaginaProdutoState extends State<PaginaProduto>
 
   void inserirNoCarrinho() async {
     if (carregando || itemProduto == null) return;
+    if (widget.inserirEmItensRecorrentes == null &&
+        (_contextoPedido == null ||
+            !identical(_contextoPedido, carrinhoProvedor.contexto))) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('O atendimento mudou. Abra o produto novamente.'),
+      ));
+      return;
+    }
     final erroOpcoes =
         _provedorProduto.validarOpcoesVenda(itemProduto!.opcoesPacotes ?? []);
     if (erroOpcoes != null) {
@@ -414,7 +425,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
 
     if (widget.editar) {
       sucesso =
-          await carrinhoProvedor.editar(itemProduto!, widget.indexProduto!);
+          await carrinhoProvedor.editar(itemProduto!, widget.indexProduto!, contexto: _contextoPedido);
     } else {
       sucesso = await carrinhoProvedor.inserir(
         itemProduto!,
@@ -427,6 +438,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
         itemProduto!.nome,
         itemProduto!.quantidade,
         observacao,
+        contextoEsperado: _contextoPedido,
       );
     }
 

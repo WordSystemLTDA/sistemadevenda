@@ -149,9 +149,11 @@ class ProvedorCarrinho extends ChangeNotifier {
       idProduto,
       String nomeProduto,
       quantidade,
-      observacao) async {
+      observacao, {ContextoCarrinho? contextoEsperado}) async {
     final alvo = _contexto;
     if (alvo == null || !alvo.valido) return false;
+    if (contextoEsperado != null && !identical(contextoEsperado, alvo)) return false;
+    if (alvo.empresa != _servico.usuarioProvedor.usuario?.empresa) return false;
     if (alvo.idRecurso.isNotEmpty &&
         ((alvo.tipo == 'comanda' && idComanda.toString() != alvo.idRecurso) ||
             (alvo.tipo == 'mesa' && idMesa.toString() != alvo.idRecurso))) {
