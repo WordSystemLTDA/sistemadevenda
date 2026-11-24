@@ -75,7 +75,7 @@ class ServicoAutenticacao {
       if (response.statusCode == 200 && sucesso == true) {
         ServicoDiagnostico.instancia.configurarEnvio(
           url: Uri.parse(servidor)
-              .resolve('../../diagnosticos/receber.php')
+              .resolve('diagnosticos/receber.php')
               .toString(),
           token: result['token_diagnostico']?.toString() ?? '',
           empresa: dados['empresa']?.toString() ?? '',
