@@ -29,6 +29,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   String _projeto = 'sistemarestaurante';
   final String sessao = DateTime.now().microsecondsSinceEpoch.toString();
   String _destino = '';
+  String _diretorio = '';
+  String get diretorio => _diretorio;
   Timer? _pulso;
 
   void inicializar({required String projeto, String versao = '', String? diretorio}) {
@@ -42,6 +44,7 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   Future<void> _iniciar(String? diretorio) async {
     try {
       final pasta = diretorio ?? '${(await getApplicationSupportDirectory()).path}/diagnosticos';
+      _diretorio = pasta;
       _enviar = await iniciarGravadorDiagnostico(projeto: _projeto, diretorio: pasta);
       while (_inicioPendente.isNotEmpty) {
         _enviar!(_inicioPendente.removeFirst());
