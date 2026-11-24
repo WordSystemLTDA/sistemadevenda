@@ -99,8 +99,14 @@ class BancoLocal {
 
   Future<void> atualizarOperacao(String id, Map<String, Object?> campos) async {
     if (campos['erro'] != null && campos['erro'] != '') {
-      ServicoDiagnostico.instancia.registrar(origem: 'lancamento.fila_local', mensagem: campos['erro'].toString(),
-        dados: {'id_operacao': id, 'estado_operacao': campos});
+      ServicoDiagnostico.instancia.registrar(
+          origem: 'lancamento.fila_local',
+          mensagem: campos['erro'].toString(),
+          dados: {
+            'id_operacao': id,
+            'estado_operacao': campos,
+            'operacao': ServicoDiagnostico.instancia.contextoOperacao(id)
+          });
     }
     await db.update('operacoes', campos, where: 'id = ?', whereArgs: [id]);
   }
@@ -146,6 +152,12 @@ class BancoLocal {
       carrinho[campo] = [];
       if (recorrentes) carrinho['recorrentesImportados'] = true;
       await gravarDocumento(tx, chaveCarrinhos, jsonEncode(carrinhos));
+    });
+    ServicoDiagnostico.instancia.lembrarOperacao(id, {
+      'atendimento': atendimento,
+      'acao': acao,
+      'dados': dados,
+      'itens': itens
     });
     return id;
   }

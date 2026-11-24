@@ -976,8 +976,11 @@ class Sincronizador extends ChangeNotifier {
       }
     } catch (e, pilha) {
       if (alvo != null && alvo != escopo) return;
-      ServicoDiagnostico.instancia.registrar(origem: 'sincronizacao.estado', mensagem: e.toString(), pilha: pilha,
-        dados: {'escopo': alvo});
+      ServicoDiagnostico.instancia.registrar(
+          origem: 'sincronizacao.estado',
+          mensagem: e.toString(),
+          pilha: pilha,
+          dados: {'escopo': alvo});
       _registrarFalhaConsultaEstado();
       erro = e is StateError
           ? e.message.toString()
@@ -1447,6 +1450,7 @@ class Sincronizador extends ChangeNotifier {
       if (_descartado || escopo != alvo || usuario.usuario == null) return;
       final id = op['id'] as String;
       final atendimento = op['atendimento'] as String;
+      ServicoDiagnostico.instancia.lembrarOperacao(id, op);
       if (op['acao'] == 'cancelar_delivery' && op['estado'] == 'conflito') {
         // Uma senha recusada nao segura nova autorizacao do mesmo pedido.
         continue;

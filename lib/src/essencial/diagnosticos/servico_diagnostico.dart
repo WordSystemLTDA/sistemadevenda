@@ -19,6 +19,7 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   final _repeticoes = <String, ({DateTime inicio, int quantidade})>{};
   final _contexto = <String, Object?>{};
   final _frequenciaHttp = <String, ({DateTime inicio, int quantidade})>{};
+  final _operacoes = <String, Object?>{};
   void Function(Map<String, Object?>)? _enviar;
   bool _iniciado = false;
   int _sequencia = 0;
@@ -30,7 +31,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   String _destino = '';
   Timer? _pulso;
 
-  void inicializar({required String projeto, String versao = '', String? diretorio}) {
+  void inicializar(
+      {required String projeto, String versao = '', String? diretorio}) {
     if (_iniciado || kIsWeb) return;
     _iniciado = true;
     _projeto = projeto;
@@ -40,8 +42,10 @@ class ServicoDiagnostico with WidgetsBindingObserver {
 
   Future<void> _iniciar(String? diretorio) async {
     try {
-      final pasta = diretorio ?? '${(await getApplicationSupportDirectory()).path}/diagnosticos';
-      _enviar = await iniciarGravadorDiagnostico(projeto: _projeto, diretorio: pasta);
+      final pasta = diretorio ??
+          '${(await getApplicationSupportDirectory()).path}/diagnosticos';
+      _enviar =
+          await iniciarGravadorDiagnostico(projeto: _projeto, diretorio: pasta);
       while (_inicioPendente.isNotEmpty) {
         _enviar!(_inicioPendente.removeFirst());
       }
@@ -50,7 +54,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
         _enviar?.call({'comando': 'pulso', 'contexto': Map.of(_contexto)});
         _resumirRepeticoes();
       });
-      didChangeAppLifecycleState(WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed);
+      didChangeAppLifecycleState(
+          WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed);
     } catch (_) {
       // Falta de plugin, permissao ou disco nao impede a operacao.
       _inicioPendente.clear();
@@ -58,17 +63,32 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   }
 
   void atualizarContexto(Map<String, Object?> contexto) {
-    _contexto.addAll(SanitizadorDiagnostico.mapa(contexto));
+    try {
+      _contexto.addAll(SanitizadorDiagnostico.mapa(contexto));
+    } catch (_) {/* Diagnostico e opcional. */}
   }
 
   /// Credenciais permanecem apenas em memoria e nunca entram no evento.
-  void configurarEnvio({required String url, required String token, required String empresa, required String usuario}) {
+  void configurarEnvio(
+      {required String url,
+      required String token,
+      required String empresa,
+      required String usuario}) {
     if (token.isEmpty || empresa.isEmpty || usuario.isEmpty) return;
     final uri = Uri.tryParse(url);
-    if (uri == null || !['http', 'https'].contains(uri.scheme) || uri.userInfo.isNotEmpty) return;
+    if (uri == null ||
+        !['http', 'https'].contains(uri.scheme) ||
+        uri.userInfo.isNotEmpty) {
+      return;
+    }
     _destino = '${uri.replace(query: '', fragment: '')}|$empresa|$usuario';
     atualizarContexto({'empresa': empresa, 'usuario_id': usuario});
-    _mandar({'comando': 'configurar', 'url': url, 'token': token, 'escopo': _destino});
+    _mandar({
+      'comando': 'configurar',
+      'url': url,
+      'token': token,
+      'escopo': _destino
+    });
   }
 
   void encerrarEnvio() {
@@ -78,14 +98,58 @@ class ServicoDiagnostico with WidgetsBindingObserver {
     _mandar({'comando': 'configurar', 'url': '', 'token': '', 'escopo': ''});
   }
 
-  void contexto({required String origem, required String mensagem, Map<String, Object?> dados = const {}}) {
-    _anteriores.add({'hora': DateTime.now().toIso8601String(), 'origem': origem, 'mensagem': mensagem, 'dados': SanitizadorDiagnostico.limpar(dados)});
+  void contexto(
+      {required String origem,
+      required String mensagem,
+      Map<String, Object?> dados = const {}}) {
+    try {
+      _adicionarContexto(origem, mensagem, dados);
+    } catch (_) {/* Nunca interromper operacoes. */}
+  }
+
+  void _adicionarContexto(
+      String origem, String mensagem, Map<String, Object?> dados) {
+    _anteriores.add({
+      'hora': DateTime.now().toIso8601String(),
+      'origem': origem,
+      'mensagem': mensagem,
+      'dados': SanitizadorDiagnostico.limpar(dados)
+    });
     while (_anteriores.length > 18) {
       _anteriores.removeFirst();
     }
   }
 
-  void registrar({required String origem, required String mensagem, String nivel = 'error', StackTrace? pilha, Map<String, Object?> dados = const {}}) {
+  void lembrarOperacao(String id, Map<String, Object?> dados) {
+    if (!_iniciado) return;
+    if (_operacoes.length >= 40) _operacoes.remove(_operacoes.keys.first);
+    _operacoes[id] = SanitizadorDiagnostico.limpar(dados);
+  }
+
+  Object? contextoOperacao(String id) => _operacoes[id];
+
+  void registrar(
+      {required String origem,
+      required String mensagem,
+      String nivel = 'error',
+      StackTrace? pilha,
+      Map<String, Object?> dados = const {}}) {
+    try {
+      _registrar(
+          origem: origem,
+          mensagem: mensagem,
+          nivel: nivel,
+          pilha: pilha,
+          dados: dados);
+    } catch (_) {/* Nao propagar falhas do diagnostico. */}
+  }
+
+  void _registrar(
+      {required String origem,
+      required String mensagem,
+      required String nivel,
+      StackTrace? pilha,
+      required Map<String, Object?> dados}) {
     if (!_iniciado) return;
     final agora = DateTime.now();
     if (agora.difference(_janela).inSeconds >= 60) {
@@ -93,13 +157,36 @@ class ServicoDiagnostico with WidgetsBindingObserver {
       _enviadosNaJanela = 0;
       _descartados = 0;
       _janela = agora;
-      if (omitidos > 0) _gravar('diagnostico.limite', 'Eventos agrupados por excesso de volume', 'warning', {'quantidade': omitidos}, null);
+      if (omitidos > 0) {
+        _gravar('diagnostico.limite', 'Eventos agrupados por excesso de volume',
+            'warning', {'quantidade': omitidos}, null);
+      }
     }
     // Limite antes de copiar payload/pilha: um loop nao pode lotar o SendPort.
-    final chave = '$origem|${mensagem.length > 180 ? mensagem.substring(0, 180) : mensagem}';
+    final requisicao = dados['requisicao'];
+    final assinatura = requisicao == null
+        ? '${dados['id_operacao'] ?? dados['id_requisicao'] ?? dados['pedido_id'] ?? ''}'
+        : jsonEncode(SanitizadorDiagnostico.limpar(requisicao, 0, [100, 4000]))
+            .hashCode
+            .toString();
+    final chave =
+        '$origem|${mensagem.length > 180 ? mensagem.substring(0, 180) : mensagem}|$assinatura';
     final anterior = _repeticoes[chave];
     if (anterior != null && agora.difference(anterior.inicio).inSeconds < 60) {
-      _repeticoes[chave] = (inicio: anterior.inicio, quantidade: anterior.quantidade + 1);
+      _repeticoes[chave] =
+          (inicio: anterior.inicio, quantidade: anterior.quantidade + 1);
+      if (anterior.quantidade == 19) {
+        _gravar(
+            'diagnostico.possivel_loop',
+            'Falha repetida pelo menos 20 vezes: $origem',
+            'warning',
+            {
+              'falha': mensagem,
+              'primeira_ocorrencia': anterior.inicio.toIso8601String(),
+              'observacao': 'Repeticao detectada; nao confirma loop.'
+            },
+            null);
+      }
       return;
     }
     if (_enviadosNaJanela >= 120) {
@@ -132,7 +219,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
     }
   }
 
-  void _gravar(String origem, String mensagem, String nivel, Map<String, Object?> dados, StackTrace? pilha) {
+  void _gravar(String origem, String mensagem, String nivel,
+      Map<String, Object?> dados, StackTrace? pilha) {
     final agora = DateTime.now();
     final evento = SanitizadorDiagnostico.mapa({
       'id': '$_projeto-$sessao-${++_sequencia}',
@@ -145,8 +233,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
       'origem': origem,
       'mensagem': mensagem,
       'contexto': Map.of(_contexto),
-      'dados': dados,
       if (pilha != null) 'pilha': pilha.toString(),
+      'dados': dados,
       'eventos_anteriores': _anteriores.toList(),
     });
     _mandar({'comando': 'evento', 'evento': evento, 'escopo': _destino});
@@ -161,73 +249,150 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   }
 
   void console(String texto) {
-    if (texto.startsWith('[observabilidade]') || texto.startsWith('[Erro recuperavel]')) return;
-    final classificar = texto.replaceAll(RegExp(r'\bErro:\s*Nenhum\s*$', caseSensitive: false), '');
-    if (RegExp(r'\b(erro|error|exception|falha|failed|fatal|timeout)\b', caseSensitive: false).hasMatch(classificar)) {
+    if (texto.startsWith('[observabilidade]') ||
+        texto.startsWith('[Erro recuperavel]')) {
+      return;
+    }
+    final classificar = texto.replaceAll(
+        RegExp(r'\bErro:\s*Nenhum\s*$', caseSensitive: false), '');
+    if (RegExp(r'\b(erro|error|exception|falha|failed|fatal|timeout)\b',
+            caseSensitive: false)
+        .hasMatch(classificar)) {
       registrar(origem: 'console', mensagem: texto, nivel: 'warning');
     }
   }
 
   void iniciarRequisicao(RequestOptions options) {
-    if (options.path.contains('/diagnosticos/') || options.path.startsWith('diagnosticos/')) return;
+    try {
+      _iniciarRequisicao(options);
+    } catch (_) {/* Conservar o fluxo HTTP. */}
+  }
+
+  void _iniciarRequisicao(RequestOptions options) {
+    if (options.path.contains('/diagnosticos/') ||
+        options.path.startsWith('diagnosticos/')) {
+      return;
+    }
     options.extra['diagnostico_inicio'] = DateTime.now().millisecondsSinceEpoch;
     final agora = DateTime.now();
     final caminho = '${options.method} ${options.uri.path}';
     final janela = _frequenciaHttp[caminho];
     if (janela == null || agora.difference(janela.inicio).inSeconds >= 10) {
-      if (_frequenciaHttp.length > 150) _frequenciaHttp.remove(_frequenciaHttp.keys.first);
+      if (_frequenciaHttp.length > 150) {
+        _frequenciaHttp.remove(_frequenciaHttp.keys.first);
+      }
       _frequenciaHttp[caminho] = (inicio: agora, quantidade: 1);
     } else {
       final quantidade = janela.quantidade + 1;
-      _frequenciaHttp[caminho] = (inicio: janela.inicio, quantidade: quantidade);
+      _frequenciaHttp[caminho] =
+          (inicio: janela.inicio, quantidade: quantidade);
       if (quantidade == 50) {
-        registrar(origem: 'http.possivel_loop', mensagem: 'Requisições em excesso: $caminho', nivel: 'warning', dados: {'quantidade': quantidade, 'janela_segundos': 10, 'observacao': 'Alerta de frequencia; nao confirma loop.'});
+        registrar(
+            origem: 'http.possivel_loop',
+            mensagem: 'Requisições em excesso: $caminho',
+            nivel: 'warning',
+            dados: {
+              'quantidade': quantidade,
+              'janela_segundos': 10,
+              'observacao': 'Alerta de frequencia; nao confirma loop.'
+            });
       }
     }
-    options.headers.putIfAbsent('X-Correlation-Id', () => '$sessao-${++_sequencia}');
-    contexto(origem: 'http.request', mensagem: '${options.method} ${options.path}', dados: {
-      'correlacao': options.headers['X-Correlation-Id'] ?? options.headers['x-correlation-id'],
-      'campos': _campos(options.data),
-      'parametros': options.queryParameters,
-    });
+    options.headers
+        .putIfAbsent('X-Correlation-Id', () => '$sessao-${++_sequencia}');
+    contexto(
+        origem: 'http.request',
+        mensagem: '${options.method} ${options.path}',
+        dados: {
+          'correlacao': options.headers['X-Correlation-Id'] ??
+              options.headers['x-correlation-id'],
+          'campos': _campos(options.data),
+          'parametros': options.queryParameters,
+        });
   }
 
   void resposta(Response response) {
+    try {
+      _resposta(response);
+    } catch (_) {/* Conservar a resposta original. */}
+  }
+
+  void _resposta(Response response) {
     final options = response.requestOptions;
     if (options.path.contains('diagnosticos/')) return;
     final corpo = _campos(response.data);
-    final falhou = corpo is Map && (corpo['sucesso'] == false || corpo['success'] == false || (corpo['erro'] != null && corpo['erro'] != false && corpo['erro'] != '') || corpo['status'] == 'erro');
-    final duracao = DateTime.now().millisecondsSinceEpoch - ((options.extra['diagnostico_inicio'] as int?) ?? DateTime.now().millisecondsSinceEpoch);
+    final falhaPhp = corpo is String &&
+        RegExp(r'Fatal error|Parse error|SQLSTATE\[|PDOException|Uncaught\s+\w*(?:Error|Exception)|Warning:\s',
+                caseSensitive: false)
+            .hasMatch(corpo);
+    final falhou = falhaPhp ||
+        (corpo is Map &&
+            (corpo['sucesso'] == false ||
+                corpo['sucesso'] == 'false' ||
+                corpo['success'] == false ||
+                (corpo['erro'] != null &&
+                    corpo['erro'] != false &&
+                    corpo['erro'] != '') ||
+                (corpo['error'] != null &&
+                    corpo['error'] != false &&
+                    corpo['error'] != '') ||
+                corpo['status'] == 'erro'));
+    final duracao = DateTime.now().millisecondsSinceEpoch -
+        ((options.extra['diagnostico_inicio'] as int?) ??
+            DateTime.now().millisecondsSinceEpoch);
     if (falhou || (response.statusCode ?? 0) >= 400 || duracao >= 8000) {
       registrar(
           origem: falhou ? 'http.contrato' : 'http.resposta',
           mensagem: '${options.method} ${options.path}',
-          nivel: falhou || (response.statusCode ?? 0) >= 400 ? 'error' : 'warning',
+          nivel:
+              falhou || (response.statusCode ?? 0) >= 400 ? 'error' : 'warning',
           dados: _dadosHttp(options, response.statusCode, corpo, duracao));
     } else {
-      contexto(origem: 'http.response', mensagem: '${options.method} ${options.path}', dados: {
-        'status': response.statusCode,
-        'duracao_ms': duracao,
-        'resumo': _resumo(corpo),
-      });
+      contexto(
+          origem: 'http.response',
+          mensagem: '${options.method} ${options.path}',
+          dados: {
+            'status': response.statusCode,
+            'duracao_ms': duracao,
+            'resumo': _resumo(corpo),
+          });
     }
   }
 
   void erroHttp(DioException erro) {
-    if (erro.type == DioExceptionType.cancel || erro.requestOptions.path.contains('diagnosticos/')) return;
+    try {
+      _erroHttp(erro);
+    } catch (_) {/* Conservar a falha original. */}
+  }
+
+  void _erroHttp(DioException erro) {
+    if (erro.type == DioExceptionType.cancel ||
+        erro.requestOptions.path.contains('diagnosticos/')) {
+      return;
+    }
     final options = erro.requestOptions;
-    final duracao = DateTime.now().millisecondsSinceEpoch - ((options.extra['diagnostico_inicio'] as int?) ?? DateTime.now().millisecondsSinceEpoch);
+    final duracao = DateTime.now().millisecondsSinceEpoch -
+        ((options.extra['diagnostico_inicio'] as int?) ??
+            DateTime.now().millisecondsSinceEpoch);
     registrar(
         origem: 'http.${erro.type.name}',
         mensagem: '${options.method} ${options.path}',
         pilha: erro.stackTrace,
-        dados: {..._dadosHttp(options, erro.response?.statusCode, _campos(erro.response?.data), duracao), 'erro': erro.message, 'causa': erro.error?.toString()});
+        dados: {
+          ..._dadosHttp(options, erro.response?.statusCode,
+              _campos(erro.response?.data), duracao),
+          'erro': erro.message,
+          'causa': erro.error?.toString()
+        });
   }
 
-  Map<String, Object?> _dadosHttp(RequestOptions o, int? status, Object? corpo, int duracao) => {
+  Map<String, Object?> _dadosHttp(
+          RequestOptions o, int? status, Object? corpo, int duracao) =>
+      {
         'metodo': o.method,
         'url': o.uri.replace(userInfo: '', query: '', fragment: '').toString(),
-        'correlacao': o.headers['x-correlation-id'] ?? o.headers['X-Correlation-Id'],
+        'correlacao':
+            o.headers['x-correlation-id'] ?? o.headers['X-Correlation-Id'],
         'status': status,
         'duracao_ms': duracao,
         'empresa': o.headers['x-audit-company-id'],
@@ -235,11 +400,20 @@ class ServicoDiagnostico with WidgetsBindingObserver {
         'requisicao': _campos(o.data),
         'parametros': o.queryParameters,
         'resposta': corpo,
-        'prazos_ms': {'conexao': o.connectTimeout?.inMilliseconds, 'envio': o.sendTimeout?.inMilliseconds, 'resposta': o.receiveTimeout?.inMilliseconds},
+        'prazos_ms': {
+          'conexao': o.connectTimeout?.inMilliseconds,
+          'envio': o.sendTimeout?.inMilliseconds,
+          'resposta': o.receiveTimeout?.inMilliseconds
+        },
       };
 
   static Object? _campos(Object? data) {
-    if (data is FormData) return {'campos': Map.fromEntries(data.fields), 'arquivos_quantidade': data.files.length};
+    if (data is FormData) {
+      return {
+        'campos': Map.fromEntries(data.fields),
+        'arquivos_quantidade': data.files.length
+      };
+    }
     if (data is String && data.length <= 65536) {
       try {
         return jsonDecode(data);
@@ -253,12 +427,17 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   static Object? _resumo(Object? data) => data is List
       ? {'quantidade': data.length}
       : data is Map
-          ? {'campos': data.keys.take(30).toList(), if (data['resultado'] is List) 'quantidade': (data['resultado'] as List).length}
+          ? {
+              'campos': data.keys.take(30).toList(),
+              if (data['resultado'] is List)
+                'quantidade': (data['resultado'] as List).length
+            }
           : data?.runtimeType.toString();
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _mandar({'comando': 'atividade', 'ativa': state == AppLifecycleState.resumed});
+    _mandar(
+        {'comando': 'atividade', 'ativa': state == AppLifecycleState.resumed});
   }
 
   @visibleForTesting
@@ -285,7 +464,8 @@ class ServicoDiagnostico with WidgetsBindingObserver {
 
 class ObservadorDiagnostico extends NavigatorObserver {
   void _registrar(Route<dynamic>? rota) {
-    final nome = rota?.settings.name ?? rota?.runtimeType.toString() ?? 'inicio';
+    final nome =
+        rota?.settings.name ?? rota?.runtimeType.toString() ?? 'inicio';
     ServicoDiagnostico.instancia.atualizarContexto({'rota': nome});
     ServicoDiagnostico.instancia.contexto(origem: 'navegacao', mensagem: nome);
   }
