@@ -1,5 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'dart:developer';
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:app/src/essencial/api/socket/monitor_atualizacao_tela.dart';

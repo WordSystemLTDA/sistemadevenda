@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart';
 
 import 'package:app/src/modulos/cardapio/modelos/contexto_carrinho.dart';
 import 'package:app/src/modulos/cardapio/modelos/itens_comanda_modelo.dart';

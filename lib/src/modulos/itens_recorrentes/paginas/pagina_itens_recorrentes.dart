@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart';
 
 import 'package:app/src/essencial/sincronizacao/estado_servidor.dart';
 

@@ -2,6 +2,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/tema/theme_controller.dart';
 import 'package:app/src/modulos/autenticacao/paginas/pagina_login.dart';
 import 'package:flutter/material.dart';
+import 'package:app/src/essencial/diagnosticos/servico_diagnostico.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:app/src/essencial/sincronizacao/pendencias_sincronizacao.dart';
 
@@ -16,6 +17,7 @@ class AppWidget extends StatefulWidget {
 }
 
 class _AppWidgetState extends State<AppWidget> {
+  final _observadorDiagnostico = ObservadorDiagnostico();
   @override
   Widget build(BuildContext context) {
     const appBarTheme = AppBarThemeData(
@@ -43,6 +45,7 @@ class _AppWidgetState extends State<AppWidget> {
               debugShowCheckedModeBanner: false,
               initialRoute: "login",
               navigatorKey: navigatorKey,
+              navigatorObservers: [_observadorDiagnostico],
               // O indicador fica fora do Navigator e precisa de Overlay para a legenda.
               builder: (context, child) => Overlay.wrap(
                 child: Stack(children: [

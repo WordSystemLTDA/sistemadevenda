@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+import 'package:app/src/essencial/diagnosticos/servico_diagnostico.dart';
 import 'package:app/src/app_module.dart';
 import 'package:app/src/app_widget.dart';
 import 'package:app/src/managers/app_lifecycle_observer.dart';
@@ -7,17 +10,47 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('pt_BR');
-  await iniciarAplicativo();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    final diagnostico = ServicoDiagnostico.instancia;
+    diagnostico.inicializar(projeto: 'sistemadevenda', versao: '1.0.49+50');
+    FlutterError.onError = (detalhes) {
+      FlutterError.presentError(detalhes);
+      diagnostico.registrar(
+          origem: 'flutter',
+          mensagem: detalhes.exceptionAsString(),
+          pilha: detalhes.stack,
+          dados: {
+            'biblioteca': detalhes.library,
+            'contexto': detalhes.context?.toDescription()
+          });
+    };
+    PlatformDispatcher.instance.onError = (erro, pilha) {
+      diagnostico.registrar(
+          origem: 'platform', mensagem: erro.toString(), pilha: pilha);
+      return true;
+    };
+    await initializeDateFormatting('pt_BR');
+    await iniciarAplicativo();
+  }, (erro, pilha) {
+    ServicoDiagnostico.instancia
+        .registrar(origem: 'zone', mensagem: erro.toString(), pilha: pilha);
+  }, zoneSpecification: ZoneSpecification(print: (self, parent, zone, linha) {
+    parent.print(zone, linha);
+    ServicoDiagnostico.instancia.console(linha);
+  }));
 }
 
 Future<void> iniciarAplicativo() async {
   try {
     BancoLocal.instancia ??= await BancoLocal.abrir();
     BancoLocal.instancia!.servidor = (await Apis().getConexao()).servidor;
-  } catch (_) {
+  } catch (erro, pilha) {
+    ServicoDiagnostico.instancia.registrar(
+        origem: 'banco_local.inicializacao',
+        mensagem: erro.toString(),
+        pilha: pilha);
     runApp(const MaterialApp(home: FalhaArmazenamento()));
     return;
   }

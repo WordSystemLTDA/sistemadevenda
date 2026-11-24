@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:app/src/essencial/diagnosticos/servico_diagnostico.dart';
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
@@ -72,6 +73,14 @@ class ServicoAutenticacao {
       dynamic dados = result['resultado'];
 
       if (response.statusCode == 200 && sucesso == true) {
+        ServicoDiagnostico.instancia.configurarEnvio(
+          url: Uri.parse(servidor)
+              .resolve('../../diagnosticos/receber.php')
+              .toString(),
+          token: result['token_diagnostico']?.toString() ?? '',
+          empresa: dados['empresa']?.toString() ?? '',
+          usuario: dados['id']?.toString() ?? '',
+        );
         await prefs.setString(
             ConfigSharedPreferences.usuario, jsonEncode(dados));
         await banco?.gravar(

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import '../diagnosticos/servico_diagnostico.dart';
 
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
@@ -973,8 +974,10 @@ class Sincronizador extends ChangeNotifier {
             ? 'Acesso nao autorizado. Entre novamente.'
             : 'Nao foi possivel sincronizar. Verifique a atualizacao do servidor.';
       }
-    } catch (e) {
+    } catch (e, pilha) {
       if (alvo != null && alvo != escopo) return;
+      ServicoDiagnostico.instancia.registrar(origem: 'sincronizacao.estado', mensagem: e.toString(), pilha: pilha,
+        dados: {'escopo': alvo});
       _registrarFalhaConsultaEstado();
       erro = e is StateError
           ? e.message.toString()

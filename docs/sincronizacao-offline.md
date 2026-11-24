@@ -1,5 +1,27 @@
 # Pedidos offline do garcom
 
+## Carga de mesas/comandas (24/11/2026)
+
+Simulacao isolada da API com 300 mesas + 300 comandas, 120 itens por conta,
+32 aparelhos e 384 pedidos. Metade dos aparelhos usou o mesmo usuario; reenvios
+mantiveram o ID da operacao. Conferidos todos os destinos, centavos e 384 preparos
+unicos. Quatro destinos invalidos foram recusados sem gravacao. Nao houve acesso
+a banco da empresa nem impressoras fisicas.
+
+Detalhes de produto/modais agora conservam o ContextoCarrinho da abertura; o
+provedor rejeita inclusao se a conta/empresa mudou. Seletor de sabores para edicao
+continua independente do carrinho. Testes cobrem 48 contas com 40 inclusoes cada,
+troca rapida, retomada, prioridade HTTP, recibos e impressao. Os JSONs exportados
+pelo runner sao validados pelos models com `carga_paineis_contrato_test.dart`
+e `--dart-define=CARGA_PAINEL_DIR=...`.
+
+API45 Comandas consulta totais em lotes e usa o indice de atendimento definido
+no schema.sql oficial (provisionamento manual em banco existente). Travas de
+catalogo ordenadas corrigem deadlock de pedidos com produtos em ordem inversa.
+Relatorio: sistemarestaurante/build/carga_restaurante_20261124/RELATORIO.txt.
+Apps precisam ser recompilados; teste de carga nao equivale a teste fisico dos
+celulares, rede Wi-Fi, impressoras ou TEF.
+
 ## Varios aparelhos na mesma rede (24/11/2026)
 
 Avisos de Mesa/Comanda/Balcao/Delivery sao agrupados com intervalo minimo de

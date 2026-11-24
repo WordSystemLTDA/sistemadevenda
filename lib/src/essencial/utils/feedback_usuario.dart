@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:developer';
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';

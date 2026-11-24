@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../diagnosticos/servico_diagnostico.dart';
 import 'package:app/src/essencial/api/socket/canal_atualizacao_online.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 
@@ -414,6 +415,18 @@ class FilaImpressao extends ChangeNotifier {
                     DateTime.now().microsecondsSinceEpoch.toString()
               })
             : proximos[index].mensagem;
+        if (erro != null || estado == EstadoImpressao.semConfirmacao) {
+          ServicoDiagnostico.instancia.registrar(
+              origem: 'impressao.fila',
+              mensagem: erro ?? 'Impressao sem confirmacao',
+              nivel: 'warning',
+              dados: {
+                'id_requisicao': id,
+                'estado': estado.name,
+                'tentativas': proximos[index].tentativas,
+                'pedido': proximos[index].dados
+              });
+        }
         proximos[index] = ImpressaoPendente(mensagem,
             estado: estado,
             erro: erro,

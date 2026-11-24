@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import '../diagnosticos/servico_diagnostico.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -97,6 +98,10 @@ class BancoLocal {
       );
 
   Future<void> atualizarOperacao(String id, Map<String, Object?> campos) async {
+    if (campos['erro'] != null && campos['erro'] != '') {
+      ServicoDiagnostico.instancia.registrar(origem: 'lancamento.fila_local', mensagem: campos['erro'].toString(),
+        dados: {'id_operacao': id, 'estado_operacao': campos});
+    }
     await db.update('operacoes', campos, where: 'id = ?', whereArgs: [id]);
   }
 

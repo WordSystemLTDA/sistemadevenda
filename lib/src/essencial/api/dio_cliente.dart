@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../diagnosticos/servico_diagnostico.dart';
 
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:dio/dio.dart';
@@ -38,6 +39,7 @@ class DioCliente {
             PoliticaConsultasHttp.preparar(options);
             options.baseUrl = options.extra['servidorFixo'] as String? ??
                 await obterServidor();
+            ServicoDiagnostico.instancia.iniciarRequisicao(options);
             handler.next(options);
           } catch (erro, stack) {
             handler.reject(DioException(
@@ -46,11 +48,13 @@ class DioCliente {
         },
         onResponse: (response, handler) {
           _normalizarJsonLegado(response);
+          ServicoDiagnostico.instancia.resposta(response);
           handler.next(response);
         },
         onError: (erro, handler) {
           final resposta = erro.response;
           if (resposta != null) _normalizarJsonLegado(resposta);
+          ServicoDiagnostico.instancia.erroHttp(erro);
           handler.next(erro);
         },
       ),

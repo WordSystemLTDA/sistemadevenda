@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:app/src/essencial/sincronizacao/recebimentos_atendimento.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
-import 'dart:developer';
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/essencial/sincronizacao/atendimentos_locais.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';

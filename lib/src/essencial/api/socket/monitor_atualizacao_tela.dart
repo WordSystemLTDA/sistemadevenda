@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../diagnosticos/servico_diagnostico.dart';
 import 'dart:math';
 
 import 'package:flutter/widgets.dart';
@@ -62,7 +63,9 @@ class MonitorAtualizacaoTela with WidgetsBindingObserver {
         // ou o app suspenso. Revalida antes de iniciar a leitura pendente.
         if (_podeAtualizar) await atualizar();
       });
-    } catch (erro) {
+    } catch (erro, pilha) {
+      ServicoDiagnostico.instancia.registrar(
+          origem: 'tela.atualizacao', mensagem: erro.toString(), pilha: pilha);
       // A tela conserva os dados anteriores; o proximo ciclo tenta novamente.
       debugPrint('[AtualizacaoTela] Falha ao reconciliar: $erro');
     } finally {
