@@ -158,6 +158,10 @@ class ServicoDelivery {
     bool post, {
     Duration? receiveTimeout,
   }) async {
+    final sync = Sincronizador.instancia;
+    if (!post && sync != null && identical(sync.api, dio)) {
+      await sync.configurar();
+    }
     final empresa = usuario.usuario?.empresa;
     final idUsuario = usuario.usuario?.id;
     if (empresa == null || idUsuario == null) {
@@ -176,6 +180,7 @@ class ServicoDelivery {
           'delivery/listar_opcoes.php',
           'permissoes_bigchef/listar_permissoes_bigchef.php',
           'config_bigchef/listar.php',
+          'comandas/listar_clientes.php',
           'enderecos_clientes/listar_por_cliente.php',
         }.contains(rota);
     final opcoes = Options(

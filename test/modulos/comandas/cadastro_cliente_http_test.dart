@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/comandas/provedores/provedor_comandas.dart';
@@ -68,8 +69,11 @@ void main() {
         expect(chamada.uri.scheme, modo == 'online' ? 'https' : 'http');
         expect(chamada.uri.host,
             modo == 'online' ? 'bigchef.com.br' : '192.168.2.113');
-        expect(chamada.uri.path,
-            '/sistema/apis_restaurantes/api_restaurantes_venda/api42/comandas/inserir_cliente.php');
+        expect(
+            chamada.uri.path,
+            Uri.parse((await Apis().getConexao()).servidor)
+                .resolve('comandas/inserir_cliente.php')
+                .path);
         expect(chamada.data['empresa'], '2');
         expect(chamada.data['acao'], 'cadastrar');
         expect(chamada.data, isNot(contains('id')));

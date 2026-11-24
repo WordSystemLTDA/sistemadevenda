@@ -210,6 +210,8 @@ class ServicoBalcao {
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null && identical(sync.api, dio)) await sync.configurar();
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final resultados = <dynamic>[];
@@ -239,11 +241,18 @@ class ServicoBalcao {
 
   Future<List<Modelowordenderecosclientes>> listarEnderecosClientes(
       String pesquisa, String idCliente) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null && identical(sync.api, dio)) await sync.configurar();
     var idEmpresa = usuarioProvedor.usuario!.empresa;
     var idUsuario = usuarioProvedor.usuario!.id;
 
-    var response = await dio.cliente.post(
-        'enderecos_clientes/listar_por_cliente.php?empresa=$idEmpresa&id_usuario=$idUsuario&pesquisa=$pesquisa&cliente=$idCliente');
+    var response = await dio.cliente
+        .get('enderecos_clientes/listar_por_cliente.php', queryParameters: {
+      'empresa': idEmpresa,
+      'id_usuario': idUsuario,
+      'pesquisa': pesquisa,
+      'cliente': idCliente,
+    });
     var jsonData = response.data;
 
     dynamic dados = jsonData;

@@ -161,6 +161,8 @@ class ServicoComandas {
   }
 
   Future<List<dynamic>> listarClientes(String pesquisa) async {
+    final sync = Sincronizador.instancia;
+    if (sync != null && identical(sync.api, dio)) await sync.configurar();
     final empresa = usuarioProvedor.usuario!.empresa;
 
     final response = await dio.cliente.get(

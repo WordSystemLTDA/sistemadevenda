@@ -27,7 +27,6 @@ import 'seguranca_pendencias.dart';
 import 'impressoes_aguardando_pedido.dart';
 import 'pedidos_na_rede.dart';
 import 'recebimentos_atendimento.dart';
-import 'politica_offline_online.dart';
 import 'pedidos_compartilhados.dart';
 
 class Sincronizador extends ChangeNotifier {
@@ -69,7 +68,6 @@ class Sincronizador extends ChangeNotifier {
   DateTime? _ultimoCatalogo;
   DateTime? _ultimasListas;
   DateTime? _ultimosClientesCompletos;
-  bool _integracaoPainelOnline = false;
   DateTime? _ultimasFormasPagamento;
   DateTime? _proximaConsultaEstado;
   int _falhasConsultaEstado = 0;
@@ -274,8 +272,6 @@ class Sincronizador extends ChangeNotifier {
     final url = (await Apis().getConexao()).servidor;
     final conexao = await ConfigSharedPreferences().getConexao();
     if (!identical(conta, usuario.usuario) || _descartado) return;
-    _integracaoPainelOnline =
-        PoliticaOfflineOnline.permite(conexao?.tipoConexao);
     final novo = BancoLocal.escopo(url, conta.empresa ?? '', conta.id ?? '');
     _escopoImpressaoOnline = conexao?.tipoConexao == 'online'
         ? CanalAtualizacaoOnline.criarEscopo(url, conta.empresa ?? '')
@@ -998,10 +994,9 @@ class Sincronizador extends ChangeNotifier {
               agora.difference(_ultimasFormasPagamento!) >=
                   const Duration(minutes: 5))
             _prepararFormasPagamento(alvo, url, empresa, idUsuario),
-          if (_integracaoPainelOnline &&
-              (_ultimosClientesCompletos == null ||
-                  agora.difference(_ultimosClientesCompletos!) >=
-                      const Duration(minutes: 5)))
+          if (_ultimosClientesCompletos == null ||
+              agora.difference(_ultimosClientesCompletos!) >=
+                  const Duration(minutes: 5))
             _prepararClientesCompletos(alvo, url, empresa, idUsuario),
         ]);
       } catch (_) {
@@ -1045,7 +1040,9 @@ class Sincronizador extends ChangeNotifier {
 
   Future<void> _prepararClientesCompletos(
       String alvo, String url, String empresa, String idUsuario) async {
+    final inicio = DateTime.now().millisecondsSinceEpoch;
     final clientes = <Map<String, dynamic>>[];
+    final ids = <String>{};
     String? cursor;
     do {
       final resposta = await api.cliente.get('comandas/listar_clientes.php',
@@ -1058,18 +1055,39 @@ class Sincronizador extends ChangeNotifier {
           },
           cancelToken: _cancelamentoPreparacao,
           options: _opcoes(url, preparacao: true));
-      if (alvo != escopo || _descartado || !_integracaoPainelOnline) return;
-      if (resposta.data is! Map || resposta.data['dados'] is! List) {
+      if (alvo != escopo || _descartado) return;
+      if (resposta.data is! Map ||
+          resposta.data['dados'] is! List ||
+          resposta.data['tem_mais'] is! bool) {
         throw StateError('Listagem offline de clientes incompleta.');
       }
       final pagina = Map<String, dynamic>.from(resposta.data as Map);
-      clientes.addAll((pagina['dados'] as List)
-          .map((c) => Map<String, dynamic>.from(c as Map)));
+      final dados = (pagina['dados'] as List)
+          .map((c) => Map<String, dynamic>.from(c as Map))
+          .toList();
+      final limite = int.tryParse(cursor ?? '');
+      for (final cliente in dados) {
+        final id = '${cliente['id']}';
+        final numero = int.tryParse(id);
+        if (numero == null ||
+            numero <= 0 ||
+            (limite != null && numero >= limite) ||
+            !ids.add(id)) {
+          throw StateError('Paginacao de clientes invalida.');
+        }
+      }
       final proximo = pagina['proximo_id']?.toString();
       if (pagina['tem_mais'] == true &&
-          (proximo == null || proximo == cursor)) {
+          (dados.isEmpty ||
+              proximo != '${dados.last['id']}' ||
+              (int.tryParse(proximo ?? '') ?? 0) <= 0)) {
         throw StateError('Paginacao de clientes invalida.');
       }
+      // A primeira pagina ja pode ser usada se a rede cair antes das demais.
+      // O retrato completo anterior permanece ate concluir a nova listagem.
+      await banco.guardarConsultaPreparada(alvo,
+          CacheConsultas.chave(resposta.requestOptions), resposta.data, inicio);
+      clientes.addAll(dados);
       cursor = pagina['tem_mais'] == true ? proximo : null;
     } while (cursor != null);
     if (alvo != escopo || _descartado) return;

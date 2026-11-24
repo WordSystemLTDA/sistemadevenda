@@ -36,6 +36,7 @@ class _ApiPreparacao implements HttpClientAdapter {
   bool falharDetalhe = false;
   String? falharDetalheId;
   bool offline = false;
+  List<Map<String, dynamic>> clientes = [];
   List<Map<String, dynamic>> produtos = [
     {'id': '5', 'nome': 'Produto', 'valorVenda': '10.00'},
   ];
@@ -52,6 +53,27 @@ class _ApiPreparacao implements HttpClientAdapter {
           requestOptions: options, type: DioExceptionType.connectionError);
     }
     final rota = CacheConsultas.caminho(options);
+    if (rota == 'comandas/listar_clientes.php') {
+      if (options.uri.queryParameters['paginado'] != '1') {
+        return _json(clientes.take(15).toList());
+      }
+      final antes = int.tryParse(options.uri.queryParameters['antes_id'] ?? '');
+      final disponiveis = clientes
+          .where((c) => antes == null || int.parse(c['id']) < antes)
+          .toList()
+        ..sort((a, b) => int.parse(b['id']).compareTo(int.parse(a['id'])));
+      final pagina = disponiveis.take(15).toList();
+      return _json({
+        'dados': pagina,
+        'tem_mais': disponiveis.length > 15,
+        'proximo_id': disponiveis.length > 15 ? pagina.last['id'] : null
+      });
+    }
+    if (rota == 'enderecos_clientes/listar_por_cliente.php') {
+      return _json([
+        {'id': 'end-${options.uri.queryParameters['cliente']}', 'padrao': 'Sim'}
+      ]);
+    }
     if (rota == 'tela_nfe_saida/listar_bancos.php') {
       final versao = versaoPagamentos;
       if (!pagamentoIniciado.isCompleted) pagamentoIniciado.complete();
@@ -231,6 +253,36 @@ void main() {
     expect(transporte.quantidade('tela_nfe_saida/listar_bancos.php'), 1);
     expect(transporte.quantidade('comandas/listar.php'), 1);
     expect(transporte.quantidade('produtos/listar_por_categoria.php'), 1);
+  });
+
+  test('modo Local prepara todos os clientes e enderecos sem abrir seletor',
+      () async {
+    transporte.clientes = List.generate(31,
+        (i) => {'id': '${i + 1}', 'nome': 'Cliente ${i + 1}', 'celular': ''});
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    final completo = await banco.ler('clientes-completos:${sync.escopo}');
+    expect(completo, isNotNull);
+    expect(jsonDecode(completo!), hasLength(31));
+    expect(
+        transporte.chamadas.where((c) =>
+            CacheConsultas.caminho(c) == 'comandas/listar_clientes.php' &&
+            c.uri.queryParameters['paginado'] == '1'),
+        hasLength(3));
+    expect(
+        transporte.quantidade('enderecos_clientes/listar_por_cliente.php'), 31);
+    transporte.offline = true;
+    final resposta = await api.cliente.get('comandas/listar_clientes.php',
+        queryParameters: {'empresa': '32', 'pesquisa': 'Cliente 31'});
+    expect((resposta.data as List).single['id'], '31');
+    final endereco = await api.cliente
+        .get('enderecos_clientes/listar_por_cliente.php', queryParameters: {
+      'empresa': '32',
+      'id_usuario': '1',
+      'cliente': '31',
+      'pesquisa': '',
+    });
+    expect(endereco.data.single['id'], 'end-31');
   });
 
   test('evento financeiro durante consulta nao perde invalidacao do preparo',

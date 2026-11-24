@@ -354,16 +354,23 @@ class CacheConsultas extends Interceptor {
       if (detalhe != null) return detalhe;
     }
     if (rota == _rotaClientes) {
-      final completo = await banco.ler('clientes-completos:$alvo');
-      if (completo != null) {
+      final preparados = await _clientesPreparados(alvo);
+      if (preparados != null) {
         final termo = normalizarBusca(q['pesquisa'] ?? '');
         final numeros = termo.replaceAll(RegExp(r'\D'), '');
-        final encontrados = (jsonDecode(completo) as List)
+        final encontrados = preparados
             .whereType<Map>()
             .where((cliente) =>
-                ['id', 'nome', 'nome_puro', 'razao_social', 'celular', 'email']
-                    .any((campo) => normalizarBusca('${cliente[campo] ?? ''}')
-                        .contains(termo)) ||
+                [
+                  'id',
+                  'nome',
+                  'nome_puro',
+                  'razao_social',
+                  'razaoSocial',
+                  'celular',
+                  'email'
+                ].any((campo) => normalizarBusca('${cliente[campo] ?? ''}')
+                    .contains(termo)) ||
                 numeros.isNotEmpty &&
                     '${cliente['celular'] ?? ''}'
                         .replaceAll(RegExp(r'\D'), '')
@@ -486,6 +493,45 @@ class CacheConsultas extends Interceptor {
       }
     }
     return null;
+  }
+
+  Future<List<dynamic>?> _clientesPreparados(String alvo) async {
+    final completo = await banco.ler('clientes-completos:$alvo');
+    if (completo != null) return jsonDecode(completo) as List;
+
+    // Instalacoes que ainda nao terminaram a primeira preparacao aproveitam
+    // as paginas ja salvas. Nunca misturar buscas filtradas nem outra empresa.
+    final consultas = await banco.db.query('consultas',
+        columns: ['chave', 'valor'],
+        where: 'escopo = ? AND chave LIKE ?',
+        whereArgs: [alvo, '["$_rotaClientes",%'],
+        orderBy: 'atualizado DESC');
+    final clientes = <String, Map>{};
+    var temRetrato = false;
+    for (final consulta in consultas) {
+      final chaveSalva = jsonDecode(consulta['chave'] as String) as List;
+      if (chaveSalva.first != _rotaClientes) continue;
+      final parametros = chaveSalva[1] as Map;
+      if (parametros['empresa'] != empresa ||
+          '${parametros['pesquisa'] ?? ''}'.trim().isNotEmpty) {
+        continue;
+      }
+      final resposta = jsonDecode(consulta['valor'] as String);
+      final dados = resposta is List
+          ? resposta
+          : resposta is Map
+              ? resposta['dados']
+              : null;
+      if (dados is! List) continue;
+      temRetrato = true;
+      for (final cliente in dados.whereType<Map>()) {
+        final id = '${cliente['id'] ?? ''}';
+        if ((int.tryParse(id) ?? 0) > 0) {
+          clientes.putIfAbsent(id, () => cliente);
+        }
+      }
+    }
+    return temRetrato ? clientes.values.toList() : null;
   }
 
   Future<Object?> _detalheCompativel(RequestOptions opcoes, String alvo) async {

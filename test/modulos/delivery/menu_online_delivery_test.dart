@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
+import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_modelo.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
@@ -12,7 +13,8 @@ import 'delivery_test.dart' show AdaptadorDelivery, pedidoTeste;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('ações do menu Online usam API43, empresa e pedido atuais', () async {
+  test('ações do menu Online usam API configurada, empresa e pedido atuais',
+      () async {
     SharedPreferences.setMockInitialValues({
       'conexao': jsonEncode({
         'tipoConexao': 'online',
@@ -50,8 +52,11 @@ void main() {
       final chamada = adapter.chamadas.last;
       expect(chamada.uri.scheme, 'https');
       expect(chamada.uri.host, 'bigchef.com.br');
-      expect(chamada.uri.path,
-          '/sistema/apis_restaurantes/api_restaurantes_venda/api43/delivery/acoes_pedido.php');
+      expect(
+          chamada.uri.path,
+          Uri.parse((await Apis().getConexao()).servidor)
+              .resolve('delivery/acoes_pedido.php')
+              .path);
       final payload = jsonDecode(chamada.data as String) as Map;
       expect(payload['empresa'], '2');
       expect(payload['id_usuario'], '2');
