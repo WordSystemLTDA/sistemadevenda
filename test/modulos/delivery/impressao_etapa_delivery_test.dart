@@ -83,6 +83,7 @@ void main() {
     expect(servico.enviosPix, isEmpty);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
   });
   testWidgets('falha ao preparar impressao impede mudanca de etapa',
       (tester) async {
@@ -100,6 +101,8 @@ void main() {
     expect(find.text('Dados indisponiveis'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+    // A leitura agrupada do provedor pode terminar depois de fechar a pagina.
+    await tester.pump(const Duration(seconds: 1));
   });
 
   test('envia etapa e mensagens com os mesmos IDs preparados antes da gravacao',
