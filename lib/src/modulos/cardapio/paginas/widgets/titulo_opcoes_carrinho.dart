@@ -44,7 +44,7 @@ class TituloOpcoesCarrinho extends StatelessWidget {
     );
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 4),
-      child: !montagemCardapio && [6, 7, 10].contains(grupo.id)
+      child: !montagemCardapio && [6, 7, 10, 13].contains(grupo.id)
           ? LinhaValor(
               descricao: titulo,
               valor: Text(

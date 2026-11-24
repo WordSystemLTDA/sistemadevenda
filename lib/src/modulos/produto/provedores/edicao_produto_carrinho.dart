@@ -351,6 +351,10 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
               ? MontagemCardapio.iniciar(copia.dados ?? [])
               : [];
           selecionadas.add(copia);
+        } else if (opcao.ehCategoriaOpcoes) {
+          selecionadas[indiceSelecionada] =
+              ModeloOpcoesPacotes.fromMap(opcao.toMap())
+                ..dados = selecionadas[indiceSelecionada].dados;
         } else if (_modeloRecorrente && _ehMontagemCardapio(opcao)) {
           final salva = selecionadas[indiceSelecionada];
           final mesclada = ModeloOpcoesPacotes.fromMap(opcao.toMap());
@@ -460,6 +464,12 @@ class EdicaoProdutoCarrinho extends ChangeNotifier {
     }
     for (final opcao in opcoes) {
       if (validarOpcao != null && !validarOpcao(opcao.id)) continue;
+      if (opcao.ehCategoriaOpcoes) {
+        final selecionada = ModeloOpcoesPacotes.fromMap(opcao.toMap())
+          ..dados = produto.retornarDadosPorID([opcao.id], false, '0');
+        final erro = selecionada.validarOpcoes();
+        if (erro != null) return erro;
+      }
       if ((opcao.obrigatorio || opcao.id == 4 || opcao.id == 11) &&
           (opcao.dados?.isNotEmpty ?? false) &&
           produto.retornarDadosPorID([opcao.id], false, '0').isEmpty) {

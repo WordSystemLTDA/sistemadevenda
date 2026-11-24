@@ -68,12 +68,15 @@ class ProvedorProduto extends ChangeNotifier {
           if (element.id == 2) {
             element.produtos!.map((e1) {
               e1.opcoesPacotes?.map((e2) {
+                final fatorOpcoes =
+                    e2.ehCategoriaOpcoes ? (e1.quantidade ?? 1) : 1;
                 for (var element22 in e2.dados!) {
                   if (element22.quantidade != null) {
                     soma += double.parse(element22.valor ?? '0') *
-                        (element22.quantidade ?? 0);
+                        (element22.quantidade ?? 0) *
+                        fatorOpcoes;
                   } else {
-                    soma += double.parse(element22.valor ?? '0');
+                    soma += double.parse(element22.valor ?? '0') * fatorOpcoes;
                   }
                 }
 
@@ -242,6 +245,14 @@ class ProvedorProduto extends ChangeNotifier {
       item.estaSelecionado = true;
     }
 
+    if (opcoesPacote.ehCategoriaOpcoes) {
+      // Usa a lista correta também para os componentes do kit.
+      final selecionado = ModeloOpcoesPacotes.fromMap(opcoesPacote.toMap())
+        ..dados = dadosID;
+      selecionado.alternarOpcao(item);
+      calcularValorVenda(kit, idProduto);
+      return;
+    }
     // CORTESIA
     if (opcoesPacote.tipo == 6) {
       if (dadosID.where((element) => element.id == item.id).isNotEmpty) {
@@ -346,6 +357,29 @@ class ProvedorProduto extends ChangeNotifier {
       provedorCardapio.configBigchef?.modeloValorAdicionalPizza ??
       usuarioProvedor.usuario?.configuracoes?.modelovaloradicionalpizza ??
       'media';
+
+  String? validarOpcoesVenda(List<ModeloOpcoesPacotes> catalogo,
+      [List<ModeloOpcoesPacotes>? salvas]) {
+    final selecionadas = salvas ?? opcoesPacotesListaFinal;
+    for (final grupo in catalogo) {
+      final finalizado =
+          selecionadas.where((g) => g.id == grupo.id).firstOrNull;
+      if (grupo.ehCategoriaOpcoes) {
+        final regra = ModeloOpcoesPacotes.fromMap(grupo.toMap())
+          ..dados = finalizado?.dados ?? [];
+        final erro = regra.validarOpcoes();
+        if (erro != null) return erro;
+      }
+      for (final filho in grupo.produtos ?? []) {
+        final salvo =
+            finalizado?.produtos?.where((p) => p.id == filho.id).firstOrNull;
+        final erro = validarOpcoesVenda(filho.opcoesPacotes ?? [],
+            salvo?.opcoesPacotesListaFinal ?? salvo?.opcoesPacotes ?? []);
+        if (erro != null) return '${filho.nome}: $erro';
+      }
+    }
+    return null;
+  }
 
   List<ModeloOpcoesPacotes> opcoesParaCarrinho() =>
       opcoesPacotesListaFinal.map((opcao) {

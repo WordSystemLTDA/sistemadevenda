@@ -157,7 +157,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
       if (e.id == 2) {
         e.produtos = e.produtos?.map((produto) {
           produto.opcoesPacotes = produto.opcoesPacotes?.map((opcao) {
-            if (opcao.id == 1 || opcao.id == 5) {
+            if (opcao.id == 1 || opcao.id == 5 || opcao.id == 13) {
               opcao.dados = (opcao.dados ?? [])
                   .where((element) => element.estaSelecionado == true)
                   .toList();
@@ -172,7 +172,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
         return e;
       }
 
-      if (e.id == 1 || e.id == 5) {
+      if (e.id == 1 || e.id == 5 || e.id == 13) {
         e.dados = (e.dados ?? [])
             .where((element) => element.estaSelecionado == true)
             .toList();
@@ -298,6 +298,13 @@ class _PaginaProdutoState extends State<PaginaProduto>
 
   void inserirNoCarrinho() async {
     if (carregando || itemProduto == null) return;
+    final erroOpcoes =
+        _provedorProduto.validarOpcoesVenda(itemProduto!.opcoesPacotes ?? []);
+    if (erroOpcoes != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(erroOpcoes)));
+      return;
+    }
 
     if (widget.montagemPizza &&
         (provedorCardapio.tamanhosPizza == null ||
@@ -737,7 +744,8 @@ class _PaginaProdutoState extends State<PaginaProduto>
       return const [];
     }
     final opcoes = itemProduto?.opcoesPacotes ?? const <ModeloOpcoesPacotes>[];
-    if (!opcoes.any((grupo) => grupo.id == 4 || grupo.id == 5)) {
+    if (!opcoes
+        .any((grupo) => grupo.id == 4 || grupo.id == 5 || grupo.id == 13)) {
       return const [];
     }
     final etapas = opcoes
@@ -745,10 +753,11 @@ class _PaginaProdutoState extends State<PaginaProduto>
             grupo.id != 6 &&
             !grupoObservacaoProduto(grupo) &&
             !_grupoMontagemCardapio(grupo) &&
-            ((grupo.dados?.isNotEmpty ?? false) ||
+            ((grupo.ehCategoriaOpcoes && grupo.obrigatorio) ||
+                (grupo.dados?.isNotEmpty ?? false) ||
                 (grupo.produtos?.isNotEmpty ?? false)))
         .toList();
-    const ordem = [4, 11, 1, 2, 5, 7, 8];
+    const ordem = [4, 11, 1, 2, 5, 13, 7, 8];
     int prioridade(ModeloOpcoesPacotes grupo) {
       final index = ordem.indexOf(grupo.id);
       return index < 0 ? ordem.length : index;
@@ -761,6 +770,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
   String _nomeEtapa(ModeloOpcoesPacotes grupo) => switch (grupo.id) {
         4 => 'Tamanho',
         5 => 'Acompanhamentos',
+        13 => 'Opções',
         7 => 'Adicionais',
         8 => 'Itens para retirar',
         11 => 'Sabor',
@@ -1078,6 +1088,8 @@ class _PaginaProdutoState extends State<PaginaProduto>
                                   Expanded(
                                     child: Text(
                                       _nomeEtapa(etapaAtual!),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,

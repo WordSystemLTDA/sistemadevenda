@@ -72,6 +72,11 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
     );
     if (estadoAnterior != _assinaturaOpcaoSelecionada()) {
       FeedbackUsuario.selecaoAlterada();
+    } else if (widget.opcoesPacote.ehCategoriaOpcoes &&
+        widget.opcoesPacote.limiteOpcoes > 1) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Selecione até ${widget.opcoesPacote.limiteOpcoes} opções.')));
     } else if (widget.opcoesPacote.id == 6) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content:
@@ -183,7 +188,8 @@ class _CardOpcoesPacotesState extends State<CardOpcoesPacotes> {
                   const SizedBox(width: 8),
                 ],
                 if (!adicional)
-                  if ([1, 4, 11].contains(grupo.id))
+                  if ([1, 4, 11].contains(grupo.id) ||
+                      (grupo.ehCategoriaOpcoes && grupo.limiteOpcoes == 1))
                     Radio<bool>(
                         value: true,
                         groupValue: ativo,

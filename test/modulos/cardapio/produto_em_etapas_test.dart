@@ -136,6 +136,53 @@ void main() {
   Future<void> avancar(WidgetTester tester) =>
       tocar(tester, find.byKey(const Key('avancar_etapa_produto')));
 
+  testWidgets(
+      'Opções entram entre acompanhamentos e adicionais, com troca única e preço',
+      (tester) async {
+    produtos.acai.opcoesPacotes!.add(ModeloOpcoesPacotes(
+        id: 13,
+        tipo: 9,
+        titulo: 'Opções',
+        obrigatorio: true,
+        limiteSelecao: 1,
+        dados: [
+          ModeloDadosOpcoesPacotes(
+              id: 'agua',
+              nome: 'Com Água',
+              valor: '2',
+              quantidade: 1,
+              estaSelecionado: true),
+          ModeloDadosOpcoesPacotes(
+              id: 'leiteOpcao', nome: 'Com Leite', valor: '4', quantidade: 1),
+        ]));
+    await abrir(tester);
+    await tocar(tester, find.text('Copo 500ml'));
+    await avancar(tester);
+    expect(find.text('Leite Condensado'), findsOneWidget);
+    expect(find.text('Com Água'), findsNothing);
+    await avancar(tester);
+    expect(find.text('Com Água'), findsOneWidget);
+    expect(find.byType(Radio<bool>), findsNWidgets(2));
+    final provedor = Modular.get<ProvedorProduto>();
+    expect(provedor.retornarDadosPorID([13], false, '0').single.id, 'agua');
+    await tocar(tester, find.text('Com Leite'));
+    expect(provedor.retornarDadosPorID([13], false, '0').map((d) => d.id),
+        ['leiteOpcao']);
+    expect(provedor.valorVenda, 36);
+    await avancar(tester);
+    expect(find.text('Creme'), findsOneWidget);
+    await tocar(tester, find.byKey(const Key('adicionar_produto_carrinho')));
+    expect(
+        salvos.single.opcoesPacotesListaFinal!
+            .firstWhere((g) => g.id == 13)
+            .dados!
+            .single
+            .id,
+        'leiteOpcao');
+    expect(salvos.single.valorVenda, '36.00');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('separa etapas, conserva escolhas ao voltar e salva uma vez',
       (tester) async {
     await abrir(tester);
@@ -166,7 +213,7 @@ void main() {
 
     await tocar(tester, find.byType(BackButton));
     expect(find.text('2 de 3'), findsOneWidget);
-    expect(provedor.retornarDadosPorID([5], false, '0').single.id, 'leite');
+    expect(provedor.retornarDadosPorID([5], false, '0').single.id, 'po');
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('1 de 3'), findsOneWidget);

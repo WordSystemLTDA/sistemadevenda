@@ -176,6 +176,48 @@ void main() {
       categorias: CategoriasTeste(),
       usuario: usuario);
 
+  test(
+      'editar Opções conserva preços, substitui escolha única e prepara JSON para impressão',
+      () async {
+    final catalogo =
+        grupo(13, 'Opções', [opcao('Com Água', '2'), opcao('Com Leite', '4')]);
+    final definicao = ModeloOpcoesPacotes.fromMap({
+      ...catalogo.toMap(),
+      'tipo': 9,
+      'limiteSelecao': 1,
+      'obrigatorio': true
+    });
+    final item = sabor('suco', 'Suco', '29')
+      ..valorVenda = '29'
+      ..habilTipo = 'Pacote'
+      ..tamanhosPizza = []
+      ..quantidade = 2
+      ..opcoesPacotesListaFinal = [
+        ModeloOpcoesPacotes.fromMap(definicao.toMap())
+          ..dados = [opcao('Com Leite', '4')]
+      ];
+    api.respostaPersonalizada = Modelowordprodutos.fromMap(item.toMap())
+      ..valorVenda = '25'
+      ..opcoesPacotes = [definicao];
+    final edicao = criar(item);
+    addTearDown(edicao.dispose);
+    await edicao.carregar(configuracao: configBigchef());
+    expect(edicao.erro, isNull);
+    expect(edicao.produto.retornarDadosPorID([13], false, '0').single.id,
+        'Com Leite');
+    edicao.produto
+        .selecionarItem(definicao.dados!.first, definicao, false, '0');
+    final salvo = await edicao.concluir();
+    expect(salvo.valorVenda, '27.00');
+    expect(salvo.quantidade, 2);
+    final json = DadosImpressaoPreparo.produto(salvo);
+    final impresso = (json['opcoesPacotesListaFinal'] as List).single;
+    expect(impresso['id'], 13);
+    expect(impresso['limiteSelecao'], 1);
+    expect((impresso['dados'] as List).single['nome'], 'Com Água');
+    expect((impresso['dados'] as List).single['estaSelecionado'], isTrue);
+  });
+
   test('abrir e salvar conserva preco, quantidade, bordas e observacao',
       () async {
     final item = api.pizza();
@@ -1331,7 +1373,9 @@ void main() {
         await mostrar(tester, abrir);
         await tester.tap(abrir);
         await tester.pumpAndSettle();
-        await tester.tap(grupoId == 7 ? find.byTooltip('Diminuir $retirar') : find.text(retirar));
+        await tester.tap(grupoId == 7
+            ? find.byTooltip('Diminuir $retirar')
+            : find.text(retirar));
         await tester.tap(find.text(incluir));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('salvar_etapa_produto')));
