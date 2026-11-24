@@ -108,7 +108,7 @@ class ServicoDiagnostico with WidgetsBindingObserver {
   }
 
   void _adicionarContexto(String origem, String mensagem, Map<String, Object?> dados) {
-    _anteriores.add({'hora': DateTime.now().toIso8601String(), 'origem': origem, 'mensagem': mensagem, 'dados': SanitizadorDiagnostico.limpar(dados)});
+    _anteriores.add({'hora': DateTime.now().toIso8601String(), 'origem': origem, 'mensagem': mensagem.length > 2000 ? '${mensagem.substring(0, 2000)} [truncado]' : mensagem, 'dados': SanitizadorDiagnostico.limpar(dados)});
     while (_anteriores.length > 18) {
       _anteriores.removeFirst();
     }
@@ -213,13 +213,14 @@ class ServicoDiagnostico with WidgetsBindingObserver {
     if (_inicioPendente.length < 40) _inicioPendente.add(comando);
   }
 
-  void console(String texto) {
+  void console(String texto, {String origem = 'console'}) {
     if (texto.startsWith('[observabilidade]') || texto.startsWith('[Erro recuperavel]')) {
       return;
     }
-    final classificar = texto.replaceAll(RegExp(r'\bErro:\s*Nenhum\s*$', caseSensitive: false), '');
+    final mensagem = texto.length > 20000 ? '${texto.substring(0, 20000)} [truncado]' : texto;
+    final classificar = mensagem.replaceAll(RegExp(r'\bErro:\s*Nenhum\s*$', caseSensitive: false), '');
     if (RegExp(r'\b(erro|error|exception|falha|failed|fatal|timeout)\b', caseSensitive: false).hasMatch(classificar)) {
-      registrar(origem: 'console', mensagem: texto, nivel: 'warning');
+      registrar(origem: origem, mensagem: mensagem, nivel: 'warning', pilha: StackTrace.current);
     }
   }
 

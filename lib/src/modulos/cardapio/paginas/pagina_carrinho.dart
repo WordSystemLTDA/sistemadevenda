@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:app/src/modulos/voz/configuracao_voz.dart';
 import 'package:app/src/modulos/voz/fluxo_comanda_voz.dart';
-import 'dart:developer' as developer;
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart' as developer;
 import 'package:app/src/modulos/delivery/modelos/modelo_delivery.dart';
 import 'package:app/src/modulos/delivery/servicos/servico_delivery.dart';
 import 'package:app/src/essencial/api/conexao.dart';

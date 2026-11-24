@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart' as developer;
 
 import 'package:app/src/essencial/servicos/modelos/modelo_config_bigchef.dart';
 import 'package:app/src/essencial/utils/feedback_usuario.dart';

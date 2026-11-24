@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
+import 'package:app/src/essencial/diagnosticos/registrador_diagnostico.dart' as developer;
 import 'dart:math' as math;
 
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
