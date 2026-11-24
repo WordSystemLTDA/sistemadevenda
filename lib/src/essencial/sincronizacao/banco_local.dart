@@ -158,6 +158,25 @@ class BancoLocal {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// O preparo iniciado antes de uma consulta da tela nao substitui seu preco
+  /// ou configuracao mais recente. A comparacao faz parte da mesma gravacao.
+  Future<void> guardarConsultaPreparada(
+      String escopo, String chave, Object? valor, int inicio) async {
+    await db.rawInsert(
+      'INSERT INTO consultas (escopo, chave, valor, atualizado) VALUES (?, ?, ?, ?) '
+      'ON CONFLICT (escopo, chave) DO UPDATE SET '
+      'valor = excluded.valor, atualizado = excluded.atualizado '
+      'WHERE consultas.atualizado < ?',
+      [
+        escopo,
+        chave,
+        jsonEncode(valor),
+        DateTime.now().millisecondsSinceEpoch,
+        inicio
+      ],
+    );
+  }
+
   Future<Map<String, Object?>?> consulta(String escopo, String chave) async =>
       (await db.query('consultas',
               where: 'escopo = ? AND chave = ?',

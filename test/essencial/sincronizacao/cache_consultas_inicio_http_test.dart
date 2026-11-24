@@ -285,4 +285,36 @@ void main() {
     expect(banco.consultas, 0);
     expect(banco.leituras, 0);
   });
+
+  test('servidor ja indisponivel abre retrato sem esperar outro timeout',
+      () async {
+    const rota = 'produtos/listar_por_categoria.php';
+    final salvo = [
+      {'id': '1', 'nome': 'Disponivel offline'},
+    ];
+    await banco.guardarConsulta(escopo, chave(rota), salvo);
+    cache.servidorDisponivel = false;
+    http.liberar = Completer<void>();
+    addTearDown(() {
+      if (!http.liberar!.isCompleted) http.liberar!.complete();
+    });
+    http.resposta = [
+      {'id': '1', 'nome': 'Atualizado'},
+    ];
+    final atualizou = Completer<void>();
+    cache.aoAtualizar = () => atualizou.complete();
+
+    final resposta = await dio
+        .get(rota, queryParameters: parametros)
+        .timeout(const Duration(seconds: 1));
+    expect(resposta.data, salvo);
+    expect(resposta.extra['cacheLocal'], isTrue);
+    http.liberar!.complete();
+    await atualizou.future.timeout(const Duration(seconds: 2));
+    expect(cache.servidorDisponivel, isTrue);
+    expect(
+        jsonDecode(
+            (await banco.consulta(escopo, chave(rota)))!['valor'] as String),
+        http.resposta);
+  });
 }

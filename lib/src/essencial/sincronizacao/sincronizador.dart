@@ -1851,12 +1851,28 @@ class Sincronizador extends ChangeNotifier {
           options: _opcoes(url, preparacao: true));
       if (resposta.data is! List) throw StateError('Cardapio invalido.');
       final itens = List<Map<String, dynamic>>.from(resposta.data as List);
+      if (alvo != escopo || _descartado) return;
+      await banco.guardarConsultaPreparada(
+          alvo, CacheConsultas.chave(resposta.requestOptions), itens, inicio);
       produtos.addAll(itens);
       if (itens.length < 15) break;
     }
     final detalhes = <String, dynamic>{};
     for (final produto in produtos) {
       if (produto['detalhesCompletos'] == true) {
+        if (alvo != escopo || _descartado) return;
+        await banco.guardarConsultaPreparada(
+            alvo,
+            CacheConsultas.chave(RequestOptions(
+                path: 'produtos/listar_por_id.php',
+                queryParameters: {
+                  'id': produto['id'],
+                  'empresa': empresa,
+                  'id_usuario': idUsuario,
+                  'id_tamanhos_pizza': '0',
+                })),
+            produto,
+            inicio);
         detalhes['${produto['id']}:0'] = produto;
         detalhes['${produto['id']}:'] = produto;
         continue;
@@ -1881,6 +1897,14 @@ class Sincronizador extends ChangeNotifier {
           throw StateError(
               'Nao foi possivel preparar todas as opcoes do cardapio.');
         }
+        if (alvo != escopo || _descartado) return;
+        // Cada detalhe completo fica duravel antes da proxima consulta. Uma
+        // queda no meio do catalogo nao descarta os produtos ja preparados.
+        await banco.guardarConsultaPreparada(
+            alvo,
+            CacheConsultas.chave(resposta.requestOptions),
+            resposta.data,
+            inicio);
         detalhes['${produto['id']}:$tamanho'] = resposta.data;
         if (tamanho == '0') detalhes['${produto['id']}:'] = resposta.data;
       }

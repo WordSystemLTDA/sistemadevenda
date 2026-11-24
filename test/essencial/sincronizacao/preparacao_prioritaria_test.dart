@@ -9,6 +9,7 @@ import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
 import 'package:app/src/essencial/sincronizacao/banco_local.dart';
 import 'package:app/src/essencial/sincronizacao/cache_consultas.dart';
 import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
+import 'package:app/src/modulos/produto/servicos/servico_produto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,8 @@ class _ApiPreparacao implements HttpClientAdapter {
   Completer<void>? liberarPagamentos;
   int versaoPagamentos = 1;
   bool falharDetalhe = false;
+  String? falharDetalheId;
+  bool offline = false;
   List<Map<String, dynamic>> produtos = [
     {'id': '5', 'nome': 'Produto', 'valorVenda': '10.00'},
   ];
@@ -44,6 +47,10 @@ class _ApiPreparacao implements HttpClientAdapter {
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
     chamadas.add(options);
+    if (offline) {
+      throw DioException(
+          requestOptions: options, type: DioExceptionType.connectionError);
+    }
     final rota = CacheConsultas.caminho(options);
     if (rota == 'tela_nfe_saida/listar_bancos.php') {
       final versao = versaoPagamentos;
@@ -78,7 +85,8 @@ class _ApiPreparacao implements HttpClientAdapter {
       if (options.extra['preparacaoOffline'] == true) {
         if (!detalheIniciado.isCompleted) detalheIniciado.complete();
         await liberarDetalhe?.future;
-        if (falharDetalhe) {
+        if (falharDetalhe ||
+            options.uri.queryParameters['id'] == falharDetalheId) {
           throw DioException(
               requestOptions: options, type: DioExceptionType.connectionError);
         }
@@ -282,6 +290,100 @@ void main() {
         jsonDecode((await banco.ler('catalogo:${sync.escopo}'))!) as Map;
     expect(catalogo['detalhes']['completo:0']['valorVenda'], '12.00');
     expect(catalogo['detalhes']['legado:G']['id'], 'legado');
+  });
+
+  test('queda durante preparo conserva cada produto ja baixado ao reabrir',
+      () async {
+    transporte.produtos.add({'id': '6', 'nome': 'Outro produto'});
+    transporte.falharDetalheId = '6';
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    expect(sync.catalogoPronto, isFalse);
+    expect(await banco.ler('catalogo:${sync.escopo}'), isNull);
+
+    // Outra instancia de HTTP, sem memoria de consultas da sessao anterior.
+    final reaberto = DioCliente();
+    reaberto.cache!
+      ..escopo = sync.escopo
+      ..empresa = '32'
+      ..servidor = sync.servidor;
+    transporte.offline = true;
+    reaberto.cliente.httpClientAdapter = transporte;
+    try {
+      final produto =
+          await ServicoProduto(reaberto, usuario).listarPorId('5', '0');
+      expect(produto!.id, '5');
+      expect(produto.valorVenda, '10.00');
+      expect(produto.opcoesPacotes, isEmpty);
+    } finally {
+      reaberto.cliente.close(force: true);
+    }
+  });
+
+  test('produto aguarda restauracao local do escopo sem depender da rede',
+      () async {
+    final acai = {
+      ...produto(id: '5', nome: 'Açaí no Copo', codigo: '5').toMap(),
+      'habilTipo': 'Pacote',
+      'valorVenda': '0.00',
+      'opcoesPacotes': [
+        {
+          'id': 4,
+          'tipo': 1,
+          'titulo': 'Selecione um Tamanho',
+          'obrigatorio': true,
+          'dados': [
+            {'id': '500', 'nome': 'Copo 500ml', 'valor': '32.00'}
+          ],
+        },
+        {
+          'id': 5,
+          'tipo': 2,
+          'titulo': 'Acompanhamentos',
+          'obrigatorio': false,
+          'dados': [
+            {
+              'id': 'leite',
+              'nome': 'Leite em Pó',
+              'valor': '0.00',
+              'estaSelecionado': true
+            }
+          ],
+        },
+        {
+          'id': 7,
+          'tipo': 3,
+          'titulo': 'Adicionais',
+          'obrigatorio': false,
+          'dados': [
+            {'id': 'creme', 'nome': 'Creme', 'valor': '6.00'}
+          ],
+        },
+      ],
+    };
+    await banco.guardarConsulta(
+        sync.escopo,
+        CacheConsultas.chave(RequestOptions(
+            path: 'produtos/listar_por_id.php',
+            queryParameters: {
+              'id': '5',
+              'empresa': '32',
+              'id_usuario': '1',
+              'id_tamanhos_pizza': '0'
+            })),
+        acai);
+    Sincronizador.instancia = sync;
+    sync.escopo = '';
+    api.cache!.escopo = '';
+    transporte.offline = true;
+
+    final salvo = await ServicoProduto(api, usuario).listarPorId('5', '0');
+    expect(salvo!.nome, 'Açaí no Copo');
+    expect(salvo.opcoesPacotes!.map((g) => g.id), [4, 5, 7]);
+    expect(salvo.opcoesPacotes![0].dados!.single.valor, '32.00');
+    expect(salvo.opcoesPacotes![1].dados!.single.estaSelecionado, isTrue);
+    expect(salvo.opcoesPacotes![2].dados!.single.valor, '6.00');
+    expect(sync.escopo, isNotEmpty);
   });
 
   test('catalogo de fundo preserva resposta fresca recebida pela tela',

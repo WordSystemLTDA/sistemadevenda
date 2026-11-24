@@ -185,6 +185,68 @@ void main() {
         CacheConsultas.chave(consulta('2')));
   });
 
+  test('atendimento aberto pelo QR usa o mesmo retrato completo offline',
+      () async {
+    final parametros = {
+      'id': '104',
+      'empresa': '32',
+      'id_usuario': '1',
+      'tipo': 'Comanda',
+      'mostrar_itens': 'Sim',
+      'codigoQrcode': 'null',
+    };
+    final atendimento = {
+      'id': '104',
+      'valorTotal': '51.00',
+      'versao_atendimento': 'versao-1',
+      'produtos': [almoco],
+    };
+    await guardar('cardapio/listar_por_id.php', parametros, atendimento);
+    adapter.offline = true;
+    final resposta =
+        await api.cliente.get('cardapio/listar_por_id.php', queryParameters: {
+      ...parametros,
+      'codigoQrcode': '4',
+      'mostrar_itens': 'Não',
+    });
+    expect(resposta.extra['cacheLocal'], isTrue);
+    expect(resposta.data, atendimento);
+
+    // Outro atendimento, empresa ou tipo nunca recebe esse retrato.
+    for (final alteracao in [
+      {'id': '105'},
+      {'empresa': '33'},
+      {'tipo': 'Mesa'},
+      {'imprimir': 'true'},
+    ]) {
+      await expectLater(
+          api.cliente.get('cardapio/listar_por_id.php', queryParameters: {
+            ...parametros,
+            'codigoQrcode': '4',
+            ...alteracao,
+          }),
+          throwsA(isA<DioException>()));
+    }
+  });
+
+  test('detalhe offline aceita tamanho padrao vazio e preserva opcoes',
+      () async {
+    await guardar(
+        'produtos/listar_por_id.php',
+        {
+          ...getDetalhe(),
+          'id_tamanhos_pizza': '',
+        },
+        almoco);
+    adapter.offline = true;
+    final produto = await produtos.listarPorId('436', '0');
+    expect(produto!.opcoesPacotes!.first.dados, hasLength(3));
+    await expectLater(
+        produtos.listarPorId('436', 'G'), throwsA(isA<DioException>()));
+    await expectLater(produtos.listarPorId('436', '0', modeloRecorrente: true),
+        throwsA(isA<DioException>()));
+  });
+
   test('clientes offline permitem celular sem mascara, ID e razao social',
       () async {
     await guardar('comandas/listar_clientes.php', {

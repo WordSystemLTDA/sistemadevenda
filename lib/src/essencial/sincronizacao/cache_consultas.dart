@@ -208,29 +208,30 @@ class CacheConsultas extends Interceptor {
     }
     final falhouRecentemente = _ultimaFalha != null &&
         DateTime.now().difference(_ultimaFalha!) < const Duration(seconds: 5);
+    final usarOffline = !servidorDisponivel || falhouRecentemente;
     options.connectTimeout = const Duration(seconds: 3);
     options.receiveTimeout = const Duration(seconds: 8);
     // Online o retrato nao sera usado: nao ler SQLite nem decodificar todo o
     // catalogo antes de iniciar o HTTP. A falha continua usando onError abaixo.
-    if (!falhouRecentemente && _exigeConsultaAtual(caminho(options))) {
+    if (!usarOffline && _exigeConsultaAtual(caminho(options))) {
       return handler.next(options);
     }
     try {
       final consulta = await banco.consulta(alvo, chave(options));
       Object? dados =
           consulta == null ? null : jsonDecode(consulta['valor'] as String);
-      if (falhouRecentemente && caminho(options) == _rotaClientes) {
+      if (usarOffline && caminho(options) == _rotaClientes) {
         dados = await _derivar(options, alvo) ?? dados;
       }
       dados ??= await _derivar(options, alvo);
       final projetado = await _projetarRede(options, dados);
       if (projetado != null &&
-          (falhouRecentemente || !_exigeConsultaAtual(caminho(options)))) {
+          (usarOffline || !_exigeConsultaAtual(caminho(options)))) {
         final recente = consulta != null &&
             DateTime.now().millisecondsSinceEpoch -
                     (consulta['atualizado'] as int) <
                 10000;
-        if (!recente) _atualizar(options, alvo);
+        if (usarOffline || !recente) _atualizar(options, alvo);
         return handler.resolve(Response(
             requestOptions: options,
             statusCode: 200,
@@ -347,6 +348,11 @@ class CacheConsultas extends Interceptor {
   Future<Object?> _derivar(RequestOptions opcoes, String alvo) async {
     final rota = caminho(opcoes);
     final q = opcoes.uri.queryParameters;
+    if (rota == 'produtos/listar_por_id.php' ||
+        rota == 'cardapio/listar_por_id.php') {
+      final detalhe = await _detalheCompativel(opcoes, alvo);
+      if (detalhe != null) return detalhe;
+    }
     if (rota == _rotaClientes) {
       final completo = await banco.ler('clientes-completos:$alvo');
       if (completo != null) {
@@ -391,8 +397,14 @@ class CacheConsultas extends Interceptor {
       if (salvo == null) return null;
       final catalogo = jsonDecode(salvo) as Map<String, dynamic>;
       if (rota == 'produtos/listar_por_id.php') {
-        final tamanho = q['id_tamanhos_pizza'] ?? '';
-        return (catalogo['detalhes'] as Map?)?['${q['id']}:$tamanho'];
+        // O catalogo geral nao contem modelos de itens recorrentes.
+        if (q['modelo_recorrente'] == 'Sim') return null;
+        final tamanho = (q['id_tamanhos_pizza'] ?? '').isEmpty
+            ? '0'
+            : q['id_tamanhos_pizza'];
+        final detalhes = catalogo['detalhes'] as Map?;
+        return detalhes?['${q['id']}:$tamanho'] ??
+            (tamanho == '0' ? (detalhes?['${q['id']}:']) : null);
       }
       if (rota != 'produtos/listar.php' &&
           rota != 'produtos/listar_por_categoria.php') {
@@ -471,6 +483,55 @@ class CacheConsultas extends Interceptor {
                 : e)
             .where((e) => e[campo] is List || corresponde(e))
             .toList();
+      }
+    }
+    return null;
+  }
+
+  Future<Object?> _detalheCompativel(RequestOptions opcoes, String alvo) async {
+    final rota = caminho(opcoes);
+    final parametros = opcoes.uri.queryParameters;
+    final id = parametros['id'];
+    if (id == null || id.isEmpty || id == '0') return null;
+
+    Map<String, String> normalizar(Map<String, String> origem) {
+      final copia = SplayTreeMap<String, String>.from(origem)
+        ..remove('_consulta_atual')
+        ..remove('_atualizacao');
+      if (rota == 'produtos/listar_por_id.php') {
+        if ((copia['id_tamanhos_pizza'] ?? '').isEmpty) {
+          copia['id_tamanhos_pizza'] = '0';
+        }
+      } else {
+        // Com ID definitivo, o QR foi apenas o caminho para abrir a conta.
+        // Sem ID nao se pode reaproveitar o atendimento de outro QR.
+        copia.remove('codigoQrcode');
+      }
+      return copia;
+    }
+
+    final esperado = normalizar(parametros);
+    final linhas = await banco.db.query('consultas',
+        columns: ['chave', 'valor'],
+        where: 'escopo = ? AND chave LIKE ?',
+        whereArgs: [alvo, '["$rota",%'],
+        orderBy: 'atualizado DESC');
+    for (final linha in linhas) {
+      try {
+        final chaveSalva = jsonDecode(linha['chave'] as String) as List;
+        final salvo =
+            normalizar(Map<String, String>.from(chaveSalva[1] as Map));
+        // A consulta completa pode atender ao resumo, nunca o inverso.
+        if (rota == 'cardapio/listar_por_id.php' &&
+            esperado['mostrar_itens'] == 'Não' &&
+            salvo['mostrar_itens'] == 'Sim') {
+          salvo['mostrar_itens'] = 'Não';
+        }
+        if (jsonEncode(salvo) != jsonEncode(esperado)) continue;
+        final dados = jsonDecode(linha['valor'] as String);
+        if (dados is Map && '${dados['id']}' == id) return dados;
+      } on FormatException {
+        continue;
       }
     }
     return null;

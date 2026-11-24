@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:app/src/essencial/api/dio_cliente.dart';
 import 'package:app/src/essencial/provedores/usuario/usuario_provedor.dart';
+import 'package:app/src/essencial/sincronizacao/sincronizador.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_dados_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_opcoes_pacotes.dart';
 import 'package:app/src/modulos/cardapio/modelos/modelo_produto.dart';
@@ -31,6 +32,11 @@ class ServicoProduto {
       _catalogosDesktop = {};
   final Map<String, _DetalheAntecipado> _detalhesAntecipados = {};
   static const _validadeDetalheAntecipado = Duration(seconds: 20);
+
+  Future<void> _configurarCache() async {
+    final sync = Sincronizador.instancia;
+    if (sync != null && identical(sync.api, dio)) await sync.configurar();
+  }
   // final sharedPrefs = SharedPrefsConfig();
 
   // var usuarioProvider = usuarioProvider.getUsuario();
@@ -40,6 +46,7 @@ class ServicoProduto {
   Future<List<Modelowordprodutos>> listarPorCategoria(
       String categoria, int pagina,
       {bool cachePrimeiro = false}) async {
+    await _configurarCache();
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
     final filtroPersonalizados = usuarioProvedor
@@ -83,6 +90,7 @@ class ServicoProduto {
   Future<List<Modelowordprodutos>> listarPorNome(
       String pesquisa, String categoria, String idcliente,
       {bool codigoExato = false}) async {
+    await _configurarCache();
     var empresa = usuarioProvedor.usuario!.empresa;
     var idusuario = usuarioProvedor.usuario!.id;
     final filtroPersonalizados = usuarioProvedor
@@ -129,6 +137,7 @@ class ServicoProduto {
     String idtamanhospizza, {
     bool modeloRecorrente = false,
   }) async {
+    await _configurarCache();
     final chave = _chaveDetalhe(id, idtamanhospizza, modeloRecorrente);
     final antecipado = _detalhesAntecipados[chave];
     if (antecipado != null &&
@@ -202,6 +211,7 @@ class ServicoProduto {
     String idtamanhospizza, {
     required bool modeloRecorrente,
   }) async {
+    await _configurarCache();
     final empresa = usuarioProvedor.usuario!.empresa ?? '';
     final idUsuario = usuarioProvedor.usuario!.id ?? '';
     final response = await dio.cliente.get(
@@ -327,7 +337,8 @@ class ServicoProduto {
   ) {
     final empresa = usuarioProvedor.usuario?.empresa ?? '';
     final usuario = usuarioProvedor.usuario?.id ?? '';
-    return '$empresa|$usuario|$id|$tamanho|$modeloRecorrente';
+    final escopo = dio.cache?.escopo ?? '';
+    return '$escopo|$empresa|$usuario|$id|$tamanho|$modeloRecorrente';
   }
 
   bool _idCardapioValido(String? id) =>
