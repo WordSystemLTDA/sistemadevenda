@@ -43,7 +43,7 @@ class ProvedorDelivery extends ChangeNotifier {
   final _pedidosRecentes = <String, ({PedidoDelivery pedido, DateTime ate})>{};
   Set<String> _cancelamentosLocais = {};
 
-  final _atualizacao = AtualizacaoAgrupada();
+  final _atualizacao = AtualizacaoAgrupada(intervaloMinimo: const Duration(milliseconds: 750));
 
   Future<void> listar({bool mostrarCarregamento = true}) async {
     if (_descartado) return;

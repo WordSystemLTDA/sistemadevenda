@@ -38,7 +38,7 @@ class ProvedorBalcao extends ChangeNotifier {
   int paginaSelecionada = 1;
   int maximoItensSelecionado = 30;
 
-  final _atualizacao = AtualizacaoAgrupada();
+  final _atualizacao = AtualizacaoAgrupada(intervaloMinimo: const Duration(milliseconds: 750));
 
   Future<void> listar(
       {int? pagina,

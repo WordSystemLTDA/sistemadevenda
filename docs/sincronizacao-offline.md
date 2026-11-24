@@ -1,5 +1,30 @@
 # Pedidos offline do garcom
 
+## Varios aparelhos na mesma rede (24/11/2026)
+
+Avisos de Mesa/Comanda/Balcao/Delivery sao agrupados com intervalo minimo de
+750 ms entre leituras. A ultima atualizacao continua pendente, mesmo com
+avisos constantes. Polling inicia 5-6 s apos a conclusao da leitura anterior,
+com variacao aleatoria entre aparelhos, e para quando o app fica suspenso.
+
+O retrato geral de sincronizacao atende avisos em grupos de 5-6 s; a primeira
+consulta e a atualizacao explicita continuam imediatas. Falhas preservam o
+backoff de 30-300 s com jitter independente. A espera desse retrato nao segura
+os pedidos novos, a retomada da fila duravel ou a recuperacao de impressao.
+O adaptador prioritario continua liberando GET interativo e POST enquanto o
+preparo do catalogo ocupa somente uma conexao por vez.
+
+API45 mesas/listar.php usa consultas em lote e conserva pesquisa, ordenacao e
+campos do JSON: 404 -> 4 consultas em fixture com 100 contas. Itens de Mesa
+preenchem id_delivery=0, necessario no MySQL estrito do schema oficial.
+Dados/recibos/preparos continuam na mesma transacao e usam os mesmos IDs.
+
+157 testes Flutter do app aprovados e analise focada sem apontamentos.
+Integracao em MySQL descartavel validou Mesa, Comanda, Delivery, contrato PDV,
+replay, outbox de cozinha e ajustes simultaneos de estoque. Nao houve venda
+real, impressao fisica ou publicacao online. Publicar os PHP e distribuir
+nova compilacao dos dois aplicativos para aplicar o conjunto em toda a rede.
+
 ## Gravacao e recebimento em 14/10/2026
 
 O cliente HTTP aceita objetos e listas JSON completos mesmo quando uma

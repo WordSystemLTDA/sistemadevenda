@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:app/src/essencial/api/conexao.dart';
 import 'package:app/src/essencial/api/dio_cliente.dart';
@@ -43,6 +44,8 @@ class Sincronizador extends ChangeNotifier {
   late final _pedidosRede = PedidosNaRede(banco, socket, usuario);
   Timer? _timerRede;
   Timer? _timer;
+  Timer? _consultaEstadoAdiada;
+  final _sorteioConsultas = Random();
   Timer? _retentativaEnvio;
   Future<void>? _emAndamento;
   Future<void>? _enviando;
@@ -156,6 +159,8 @@ class Sincronizador extends ChangeNotifier {
     online = false;
     erro = null;
     _proximaConsultaEstado = null;
+    _consultaEstadoAdiada?.cancel();
+    _consultaEstadoAdiada = null;
     _falhasConsultaEstado = 0;
     catalogoPronto = false;
     ultimaAtualizacao = null;
@@ -243,6 +248,16 @@ class Sincronizador extends ChangeNotifier {
     if (_emAndamento == null &&
         _proximaConsultaEstado != null &&
         DateTime.now().isBefore(_proximaConsultaEstado!)) {
+      // Avisos de outros aparelhos renovam o retrato em lote. A fila de novos
+      // pedidos e a recuperacao da impressao continuam independentes da leitura.
+      if (escopo.isNotEmpty) unawaited(enviarPendentes());
+      _consultaEstadoAdiada ??= Timer(
+        _proximaConsultaEstado!.difference(DateTime.now()),
+        () {
+          _consultaEstadoAdiada = null;
+          solicitar();
+        },
+      );
       return;
     }
     _solicitada = true;
@@ -714,6 +729,8 @@ class Sincronizador extends ChangeNotifier {
     if (_descartado) return Future.value();
     _solicitada = false;
     if (_emAndamento != null) return _emAndamento!;
+    _consultaEstadoAdiada?.cancel();
+    _consultaEstadoAdiada = null;
     final execucao = _emAndamento = _sincronizar().whenComplete(() {
       _emAndamento = null;
       _notificar();
@@ -735,7 +752,9 @@ class Sincronizador extends ChangeNotifier {
 
   void _registrarSucessoConsultaEstado() {
     _falhasConsultaEstado = 0;
-    _proximaConsultaEstado = null;
+    _proximaConsultaEstado = DateTime.now().add(
+      Duration(milliseconds: 5000 + _sorteioConsultas.nextInt(1001)),
+    );
   }
 
   void _registrarFalhaConsultaEstado() {
@@ -748,8 +767,7 @@ class Sincronizador extends ChangeNotifier {
       _ => 300,
     };
     // Evita que varios celulares reconectem no mesmo instante apos uma queda.
-    final jitter =
-        escopo.codeUnits.fold<int>(0, (soma, item) => soma + item) % 5000;
+    final jitter = _sorteioConsultas.nextInt(5000);
     _proximaConsultaEstado = DateTime.now().add(
       Duration(milliseconds: segundos * 1000 + jitter),
     );
@@ -2004,6 +2022,7 @@ class Sincronizador extends ChangeNotifier {
     _liberarRecebimentosDelivery();
     _cancelamentoPreparacao?.cancel('Sincronizador encerrado.');
     _timer?.cancel();
+    _consultaEstadoAdiada?.cancel();
     _timerRede?.cancel();
     _pedidosRede.dispose();
     _retentativaEnvio?.cancel();

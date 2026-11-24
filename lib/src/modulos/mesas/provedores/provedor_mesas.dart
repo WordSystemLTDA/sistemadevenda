@@ -203,7 +203,7 @@ class ProvedorMesas extends ChangeNotifier {
     }
   }
 
-  final _atualizacao = AtualizacaoAgrupada();
+  final _atualizacao = AtualizacaoAgrupada(intervaloMinimo: const Duration(milliseconds: 750));
 
   Future<List<MesasModel>> listarMesas(String pesquisa,
       {bool mostrarCarregamento = true}) async {

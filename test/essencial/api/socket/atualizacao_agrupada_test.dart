@@ -66,6 +66,7 @@ void main() {
     var ativa = true;
     var leituras = 0;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async => leituras++,
       estaAtiva: () => ativa,
     );
@@ -92,6 +93,7 @@ void main() {
     final resposta = Completer<void>();
     var leituras = 0;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async {
         leituras++;
         await resposta.future;
@@ -112,6 +114,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     var leituras = 0;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async => leituras++,
       estaAtiva: () => true,
     );
@@ -131,6 +134,7 @@ void main() {
     final resposta = Completer<void>();
     var leituras = 0;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async {
         leituras++;
         if (leituras == 1) await resposta.future;
@@ -160,6 +164,7 @@ void main() {
     final resposta = Completer<void>();
     var leituras = 0;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async {
         leituras++;
         if (leituras == 1) await resposta.future;
@@ -185,6 +190,7 @@ void main() {
     var leituras = 0;
     var ativa = true;
     final monitor = MonitorAtualizacaoTela(
+      variacao: Duration.zero,
       atualizar: () async {
         leituras++;
         await resposta.future;
@@ -198,6 +204,49 @@ void main() {
     await Future.wait([primeira, pendente]);
     await tester.pump(const Duration(seconds: 30));
     expect(leituras, 1);
+    monitor.dispose();
+  });
+  testWidgets('intervalo limita rajada sem perder o ultimo evento',
+      (tester) async {
+    final fila =
+        AtualizacaoAgrupada(intervaloMinimo: const Duration(milliseconds: 750));
+    final executadas = <int>[];
+    await fila.executar(() async => executadas.add(0));
+    final chamadas = <Future<void>>[];
+    for (var i = 1; i <= 100; i++) {
+      final valor = i;
+      chamadas.add(fila.executar(() async => executadas.add(valor)));
+    }
+    await tester.pump(const Duration(milliseconds: 749));
+    expect(executadas, [0]);
+    await tester.pump(const Duration(milliseconds: 1));
+    await Future.wait(chamadas);
+    expect(executadas, [0, 100]);
+    fila.dispose();
+  });
+
+  testWidgets('dispose libera quem aguarda o intervalo', (tester) async {
+    final fila =
+        AtualizacaoAgrupada(intervaloMinimo: const Duration(seconds: 1));
+    await fila.executar(() async {});
+    var executou = false;
+    final pendente = fila.executar(() async => executou = true);
+    fila.dispose();
+    await pendente;
+    expect(executou, isFalse);
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('variacao de polling fica entre cinco e seis segundos',
+      (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    var consultas = 0;
+    final monitor = MonitorAtualizacaoTela(
+        atualizar: () async => consultas++, estaAtiva: () => true);
+    await tester.pump(const Duration(milliseconds: 4999));
+    expect(consultas, 0);
+    await tester.pump(const Duration(milliseconds: 1002));
+    expect(consultas, 1);
     monitor.dispose();
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 
@@ -12,9 +13,12 @@ class MonitorAtualizacaoTela with WidgetsBindingObserver {
     required this.atualizar,
     required this.estaAtiva,
     Duration intervalo = const Duration(seconds: 5),
-  }) : _intervalo = intervalo {
-    if (intervalo <= Duration.zero) {
-      throw ArgumentError.value(intervalo, 'intervalo', 'Deve ser positivo');
+    Duration variacao = const Duration(seconds: 1),
+  })  : _intervalo = intervalo,
+        _variacao = variacao {
+    if (intervalo <= Duration.zero || variacao < Duration.zero) {
+      throw ArgumentError(
+          'Intervalo deve ser positivo e variacao nao negativa.');
     }
     WidgetsBinding.instance.addObserver(this);
     _agendarProxima();
@@ -23,6 +27,8 @@ class MonitorAtualizacaoTela with WidgetsBindingObserver {
   final Future<void> Function() atualizar;
   final bool Function() estaAtiva;
   final Duration _intervalo;
+  final Duration _variacao;
+  final _sorteio = Random();
   final _fila = AtualizacaoAgrupada();
   Timer? _timer;
   bool _descartado = false;
@@ -37,7 +43,10 @@ class MonitorAtualizacaoTela with WidgetsBindingObserver {
     _timer?.cancel();
     _timer = null;
     if (!_descartado && _appAtivo && !_fila.emAndamento) {
-      _timer = Timer(_intervalo, () => unawaited(solicitar()));
+      // Aparelhos da mesma empresa nao consultam todos no mesmo instante.
+      final variacao = Duration(
+          microseconds: _sorteio.nextInt(_variacao.inMicroseconds + 1));
+      _timer = Timer(_intervalo + variacao, () => unawaited(solicitar()));
     }
   }
 

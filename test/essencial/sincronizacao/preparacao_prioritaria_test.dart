@@ -206,6 +206,23 @@ void main() {
     return id;
   }
 
+  test('avisos em rajada adiam somente o estado e enviam novo pedido', () async {
+    transporte.produtos.single['detalhesCompletos'] = true;
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    final id = await incluirPedidoPendente();
+    for (var i = 0; i < 100; i++) { sync.solicitar(); }
+    await sync.enviarPendentes();
+    expect(transporte.quantidade('sincronizacao/operacao.php'), 1);
+    expect(transporte.quantidade('sincronizacao/estado.php'), 1);
+    expect(await banco.operacoes(sync.escopo), isEmpty);
+    final operacao = await banco.db.query('operacoes', where: 'id = ?', whereArgs: [id]);
+    expect(operacao.single['estado'], 'concluido');
+    // Atualizacao explicita continua disponivel durante a pausa automatica.
+    await sync.sincronizar();
+    expect(transporte.quantidade('sincronizacao/estado.php'), 2);
+  });
+
   test('detalhe lento nao bloqueia estado, conclusao do ciclo nem novo pedido',
       () async {
     transporte.liberarDetalhe = Completer<void>();

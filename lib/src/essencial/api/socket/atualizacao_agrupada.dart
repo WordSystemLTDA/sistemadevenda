@@ -4,6 +4,15 @@ import 'dart:async';
 /// durante a consulta em uma nova leitura com os parametros mais recentes.
 /// Nao armazena respostas: toda execucao consulta novamente o servidor.
 class AtualizacaoAgrupada {
+  AtualizacaoAgrupada({this.intervaloMinimo = Duration.zero}) {
+    if (intervaloMinimo < Duration.zero) {
+      throw ArgumentError.value(intervaloMinimo, 'intervaloMinimo');
+    }
+  }
+
+  final Duration intervaloMinimo;
+  Timer? _intervalo;
+  Completer<void>? _liberarIntervalo;
   Future<void>? _execucao;
   Future<void> Function()? _pendente;
   bool _descartada = false;
@@ -25,8 +34,16 @@ class AtualizacaoAgrupada {
     Object? falha;
     StackTrace? pilha;
     while (!_descartada && _pendente != null) {
+      // Mantem a ultima atualizacao mesmo durante uma rajada prolongada.
+      final espera = _liberarIntervalo;
+      if (espera != null && !espera.isCompleted) await espera.future;
+      if (_descartada) break;
       final atualizar = _pendente!;
       _pendente = null;
+      if (intervaloMinimo > Duration.zero) {
+        final liberar = _liberarIntervalo = Completer<void>();
+        _intervalo = Timer(intervaloMinimo, () => liberar.complete());
+      }
       try {
         await atualizar();
         falha = null;
@@ -47,5 +64,8 @@ class AtualizacaoAgrupada {
   void dispose() {
     _descartada = true;
     _pendente = null;
+    _intervalo?.cancel();
+    final liberar = _liberarIntervalo;
+    if (liberar != null && !liberar.isCompleted) liberar.complete();
   }
 }
