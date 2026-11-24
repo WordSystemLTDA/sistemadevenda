@@ -135,6 +135,75 @@ void main() {
     expect(enviados, hasLength(1));
   });
 
+  for (final tipo in ['2', '3']) {
+    test('comprovante $tipo recupera ACK perdido apos reinicio sem reimprimir',
+        () async {
+      final dados = {
+        ...jsonDecode(mensagem('caixa-$tipo')) as Map<String, dynamic>,
+        'tipo': 'Delivery',
+        'tipoImpressao': tipo,
+        'protocoloImpressao': 2,
+      };
+      final fila = FilaImpressao();
+      await fila.registrar([jsonEncode(dados)]);
+      await fila.iniciarEnvio('caixa-$tipo', agora: DateTime(2020));
+      fila.dispose();
+      final server = Server()..connected = true;
+      addTearDown(server.dispose);
+      final enviados = <Map<String, dynamic>>[];
+      server.channel = CanalTeste(SaidaTeste((data) => enviados.add(
+          Map<String, dynamic>.from(
+              jsonDecode(data as String)['data']['customData']))));
+
+      await server.processarImpressoesPendentes();
+      expect(enviados.single['tipo'], 'ConsultarImpressao');
+      expect(enviados.single['idRequisicao'], 'caixa-$tipo');
+      expect(enviados.single.containsKey('tipoImpressao'), isFalse);
+      await server.onData({
+        'tipo': 'RespostaImpressao',
+        'tipoResposta': 'impressao',
+        'statusResposta': 'sucesso',
+        'protocoloImpressao': 2,
+        'idRequisicao': 'caixa-$tipo',
+      });
+      expect(server.filaImpressao.itens, isEmpty);
+      final restaurada = FilaImpressao();
+      addTearDown(restaurada.dispose);
+      await restaurada.carregar();
+      await restaurada.registrar([jsonEncode(dados)]);
+      expect(restaurada.itens, isEmpty);
+      expect(enviados, hasLength(1));
+    });
+
+    test(
+        'servidor antigo sem registro $tipo nao autoriza segunda via automatica',
+        () async {
+      final server = Server()..connected = true;
+      addTearDown(server.dispose);
+      final enviados = <dynamic>[];
+      server.channel = CanalTeste(SaidaTeste(enviados.add));
+      await server.enviarImpressoes([
+        jsonEncode({
+          ...jsonDecode(mensagem('antigo-$tipo')) as Map<String, dynamic>,
+          'tipoImpressao': tipo,
+          'protocoloImpressao': 2,
+        })
+      ]);
+      await server.onData({
+        'tipo': 'RespostaImpressao',
+        'tipoResposta': 'impressao',
+        'statusResposta': 'naoEncontrada',
+        'protocoloImpressao': 2,
+        'idRequisicao': 'antigo-$tipo',
+      });
+      await server.processarImpressoesPendentes();
+      expect(enviados, hasLength(1));
+      expect(server.filaImpressao.itens.single.id, 'antigo-$tipo');
+      expect(server.filaImpressao.itens.single.estado,
+          isNot(EstadoImpressao.aguardandoEnvio));
+    });
+  }
+
   test('impressao em processamento no servidor permanece na fila ate concluir',
       () async {
     final server = Server()..connected = true;

@@ -337,7 +337,10 @@ class Server extends ChangeNotifier {
         continue;
       }
       if (item.estado != EstadoImpressao.aguardandoEnvio) {
-        if (item.dados['tipoImpressao']?.toString() != '1') continue;
+        if (!const {'1', '2', '3'}
+            .contains(item.dados['tipoImpressao']?.toString())) {
+          continue;
+        }
         final ultima = _consultasImpressao[item.id] ?? item.ultimaTentativa;
         final intervalo = !_consultasImpressao.containsKey(item.id)
             ? const Duration(seconds: 15)
@@ -1203,7 +1206,12 @@ class Server extends ChangeNotifier {
                     'Impressão pausada no servidor.');
           } else if (mensagem['statusResposta'] == 'naoEncontrada' &&
               protocoloConfirmado) {
-            if (item.dados['protocoloImpressao'] == 2) {
+            if (item.dados['tipoImpressao']?.toString() != '1') {
+              // Servidores antigos nao registravam consumo/entregador. A
+              // ausencia do registro nao prova que o papel deixou de sair.
+              await filaImpressao.registrarErro(idRequisicao,
+                  'O servidor nao localizou a confirmacao deste comprovante. Confira se o papel ja saiu antes de reenviar.');
+            } else if (item.dados['protocoloImpressao'] == 2) {
               await filaImpressao.autorizarReenvio(idRequisicao);
               unawaited(processarImpressoesPendentes());
             } else {
