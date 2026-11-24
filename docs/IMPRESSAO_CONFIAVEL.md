@@ -1,5 +1,24 @@
 # Impressao da cozinha
 
+## Diagnosticos centralizados (24/11/2026)
+
+Falhas de impressao/fila, HTTP, lancamentos, sincronizacao, Flutter e console
+tambem entram em essencial/diagnosticos. Historico no suporte local do app,
+com gravador em isolate e envio limitado para a API. Nao aguardar o logger
+para confirmar vendas, concluir pedidos ou enviar bytes a impressoras.
+
+Login na API45 atualizada entrega token_diagnostico opcional em memoria. Os
+registros aparecem em Central de Debug > Erros do sistemarestaurante quando
+ambos usam a mesma API/banco/empresa. Sem rede/API atualizada, a operacao
+continua e os diagnosticos ficam no aparelho. Fila retoma no proximo login
+valido, sujeita a 400 eventos/4 MB; historico de ate 30 dias/128 MB. Esses
+limites pertencem ao diagnostico e nao devem limitar as filas de pedidos.
+
+Repeticoes agrupadas e ausencia de pulso >=12 s indicam possivel travamento;
+nenhum alerta confirma sozinho a causa. Snapshots sao limitados/sanitizados
+e nao equivalem a backup do banco. O nucleo Dart tem uma copia no
+sistemarestaurante e precisa permanecer compativel nos dois projetos.
+
 ## Canal de atualizacao online (08/10/2026)
 
 Com conexao `Online`, o app atualizado descobre o desktop `sistemarestaurante`
