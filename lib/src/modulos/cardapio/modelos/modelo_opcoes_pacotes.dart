@@ -91,9 +91,12 @@ class ModeloOpcoesPacotes {
   String? validarOpcoes() {
     if (!ehCategoriaOpcoes) return null;
     final quantidade = dados?.length ?? 0;
-    if (obrigatorio && quantidade == 0) return 'Selecione ao menos uma opção.';
-    if (limiteOpcoes > 0 && quantidade > limiteOpcoes)
+    if (obrigatorio && quantidade == 0) {
+      return 'Selecione ao menos uma opção.';
+    }
+    if (limiteOpcoes > 0 && quantidade > limiteOpcoes) {
       return 'Selecione até $limiteOpcoes opções.';
+    }
     return null;
   }
 
@@ -102,8 +105,9 @@ class ModeloOpcoesPacotes {
     final selecionadas = dados ??= [];
     final existe = selecionadas.any((dado) => dado.id == item.id);
     if (existe) {
-      if (limiteOpcoes != 1 || !obrigatorio)
+      if (limiteOpcoes != 1 || !obrigatorio) {
         selecionadas.removeWhere((dado) => dado.id == item.id);
+      }
     } else {
       if (limiteOpcoes == 1) {
         selecionadas.clear();
