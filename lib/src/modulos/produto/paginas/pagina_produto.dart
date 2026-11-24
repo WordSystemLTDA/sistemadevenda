@@ -157,8 +157,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
       if (e.id == 2) {
         e.produtos = e.produtos?.map((produto) {
           produto.opcoesPacotes = produto.opcoesPacotes?.map((opcao) {
-            if (opcao.id == 5) return opcao;
-            if (opcao.id == 1) {
+            if (opcao.id == 1 || opcao.id == 5) {
               opcao.dados = (opcao.dados ?? [])
                   .where((element) => element.estaSelecionado == true)
                   .toList();
@@ -173,9 +172,7 @@ class _PaginaProdutoState extends State<PaginaProduto>
         return e;
       }
 
-      if (e.id == 5) return e;
-
-      if (e.id == 1) {
+      if (e.id == 1 || e.id == 5) {
         e.dados = (e.dados ?? [])
             .where((element) => element.estaSelecionado == true)
             .toList();

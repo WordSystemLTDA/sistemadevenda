@@ -1015,6 +1015,82 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  for (final kit in [false, true]) {
+    testWidgets(
+        'acompanhamentos respeitam seleção inicial no ${kit ? 'combo' : 'produto'}',
+        (tester) async {
+      Modular.init(ModuloTeste(cardapio, usuario, produtos));
+      addTearDown(Modular.destroy);
+      final acompanhamentos = ModeloOpcoesPacotes(
+        id: 5,
+        titulo: 'Selecione os Acompanhamentos',
+        tipo: 2,
+        obrigatorio: false,
+        dados: [
+          ModeloDadosOpcoesPacotes.fromMap({
+            'id': '3',
+            'nome': 'Com Agua',
+            'valor': '2',
+            'estaSelecionado': true
+          }),
+          ModeloDadosOpcoesPacotes.fromMap({
+            'id': '4',
+            'nome': 'Com Leite',
+            'valor': '4',
+            'estaSelecionado': false
+          }),
+          ModeloDadosOpcoesPacotes.fromMap(
+              {'id': '5', 'nome': 'Sem seleção configurada', 'valor': '6'}),
+        ],
+      );
+      final suco = sabor('Suco', 'Bebidas', '25')
+        ..tamanhosPizza = []
+        ..habilTipo = 'Pacote'
+        ..valorVenda = '25'
+        ..opcoesPacotes = [acompanhamentos];
+      final produto = kit
+          ? (sabor('Combo', 'Bebidas', '25')
+            ..tamanhosPizza = []
+            ..habilTipo = 'Pacote'
+            ..valorVenda = '25'
+            ..opcoesPacotes = [
+              ModeloOpcoesPacotes(
+                  id: 2,
+                  titulo: 'Combo',
+                  tipo: 5,
+                  obrigatorio: false,
+                  dados: [],
+                  produtos: [suco])
+            ])
+          : suco;
+      await tester.pumpWidget(MaterialApp(
+          home: PaginaProduto(produto: produto, detalhesJaCarregados: true)));
+      // O combo possui imagem remota; sua animação não participa da seleção.
+      await tester.pump();
+      if (!kit) await tester.pumpAndSettle();
+      final provedor = Modular.get<ProvedorProduto>();
+      expect(provedor.retornarDadosPorID([5], kit, suco.id).map((e) => e.id),
+          ['3']);
+      expect(provedor.valorVenda, 27);
+      expect(acompanhamentos.dados!.map((e) => e.estaSelecionado),
+          [true, false, null]);
+      if (!kit) {
+        await tester.tap(find.text('Com Leite'));
+        await tester.pumpAndSettle();
+        expect(provedor.retornarDadosPorID([5], false, '0').map((e) => e.id),
+            ['3', '4']);
+        expect(provedor.valorVenda, 31);
+        await tester.tap(find.text('Com Agua'));
+        await tester.pumpAndSettle();
+        expect(provedor.retornarDadosPorID([5], false, '0').map((e) => e.id),
+            ['4']);
+        expect(provedor.valorVenda, 29);
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('botao adicionar mostra quantidade de adicionais selecionados',
       (tester) async {
     produtos = ProdutosComAdicionaisTeste();
