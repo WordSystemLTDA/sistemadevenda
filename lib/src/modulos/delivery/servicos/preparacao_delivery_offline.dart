@@ -56,8 +56,26 @@ class PreparacaoDeliveryOffline {
         }
       }
 
+      Future<void> prepararRecorrentes() async {
+        try {
+          final configuracao = await consultar('config_bigchef/listar.php', {});
+          final habilitado = configuracao is Map
+              ? '${configuracao['clientecompedidosdecorrentes'] ?? configuracao['cliente_com_pedidos_decorrentes'] ?? ''}'
+                      .trim()
+                      .toLowerCase() ==
+                  'sim'
+              : false;
+          if (habilitado) {
+            await opcional('recorrentes/listar.php',
+                {'inicio': hoje, 'fim': hoje, 'cadastros': 'Não'});
+          }
+        } catch (_) {
+          // Configuracao desconhecida nao autoriza consultar um modulo opcional.
+        }
+      }
+
       await Future.wait([
-        opcional('config_bigchef/listar.php', {}),
+        prepararRecorrentes(),
         opcional('permissoes_bigchef/listar_permissoes_bigchef.php', {}),
         opcional('delivery/listar_opcoes.php', {
           'dataInicio': hoje,
@@ -67,8 +85,6 @@ class PreparacaoDeliveryOffline {
           'pesquisa': '',
           'tipoentrega': '0',
         }),
-        opcional('recorrentes/listar.php',
-            {'inicio': hoje, 'fim': hoje, 'cadastros': 'Não'}),
       ]);
       // O seletor de clientes nao envia id_usuario. Preserve a mesma chave.
       if (!ativa()) return;
