@@ -287,6 +287,59 @@ void main() {
     await pasta.delete(recursive: true);
   });
 
+  test('preparacao offline faz uma consulta auxiliar por vez', () async {
+    conectado = true;
+    var simultaneas = 0;
+    var pico = 0;
+    var consultas = 0;
+    api.cliente.interceptors.insert(0, InterceptorsWrapper(onRequest: (opcoes, handler) async {
+      if (opcoes.extra['preparacaoOffline'] == true) {
+        consultas++;
+        simultaneas++;
+        if (simultaneas > pico) pico = simultaneas;
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        simultaneas--;
+      }
+      handler.next(opcoes);
+    }));
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    expect(consultas, greaterThan(5));
+    expect(pico, 1);
+    expect(sync.catalogoPronto, isTrue);
+  });
+
+  test('falha na preparacao interrompe leituras e adia nova tentativa sem bloquear estado', () async {
+    conectado = true;
+    var auxiliares = 0;
+    var estados = 0;
+    api.cliente.interceptors.insert(0, InterceptorsWrapper(onRequest: (opcoes, handler) {
+      if (CacheConsultas.caminho(opcoes) == 'sincronizacao/estado.php') estados++;
+      if (opcoes.extra['preparacaoOffline'] == true) {
+        auxiliares++;
+        handler.reject(DioException(requestOptions: opcoes, type: DioExceptionType.connectionTimeout), true);
+        return;
+      }
+      handler.next(opcoes);
+    }));
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    expect(estados, 2);
+    expect(auxiliares, 1);
+    expect(sync.online, isTrue);
+    final servidorAnterior = sync.servidor;
+    SharedPreferences.setMockInitialValues({
+      'conexao': jsonEncode({'tipoConexao': 'local', 'servidor': 'nova-cozinha', 'porta': '9980'})
+    });
+    await sync.configurar();
+    expect(sync.servidor, isNot(servidorAnterior));
+    await sync.sincronizar();
+    await sync.aguardarPreparacaoOffline();
+    expect(auxiliares, 2, reason: 'Outro servidor nao herda o adiamento da conexao anterior.');
+  });
+
   Future<void> guardar(
       {ContextoCarrinho alvo = contexto, bool recorrentes = false}) async {
     final item =

@@ -35,6 +35,7 @@ void main() {
   test('evento Balcao sem acento tambem atualiza o atendimento', () async {
     final servico = _Servico();
     final provedor = ProvedorBalcao(servico);
+    addTearDown(provedor.dispose);
     Modular.init(_Modulo(provedor));
     addTearDown(Modular.destroy);
     AtualizacaoDeTela().call(ModeloRetornoSocket(tipo: 'balcao'));
@@ -42,8 +43,8 @@ void main() {
     servico.respostas.single.complete([]);
     await Future<void>.delayed(Duration.zero);
   });
-  test('evento durante pesquisa mantem filtro novo e ignora resposta anterior',
-      () async {
+  testWidgets('evento durante pesquisa mantem filtro novo e ignora resposta anterior',
+      (tester) async {
     final servico = _Servico();
     final provedor = ProvedorBalcao(servico);
     addTearDown(provedor.dispose);
@@ -55,16 +56,17 @@ void main() {
     expect(servico.pesquisas, ['arroz']);
     final antiga = _Venda();
     servico.respostas.first.complete([antiga]);
-    await Future<void>.delayed(Duration.zero);
+    await tester.pump(const Duration(milliseconds: 750));
     expect(servico.pesquisas, ['arroz', 'feijao']);
     expect(respostasVisiveis.any((itens) => itens.contains(antiga)), isFalse);
     final atual = _Venda();
     servico.respostas.last.complete([atual]);
     await Future.wait([primeira, pesquisa, evento]);
     expect(provedor.dados, [atual]);
+    await tester.pump(const Duration(milliseconds: 750));
   });
 
-  test('falha nao apaga os pedidos e a proxima tentativa recupera', () async {
+  testWidgets('falha nao apaga os pedidos e a proxima tentativa recupera', (tester) async {
     final servico = _Servico();
     final provedor = ProvedorBalcao(servico);
     addTearDown(provedor.dispose);
@@ -75,8 +77,10 @@ void main() {
     await falha;
     expect(provedor.dados, [venda]);
     final recuperacao = provedor.listar();
+    await tester.pump(const Duration(milliseconds: 750));
     servico.respostas.last.complete([]);
     await recuperacao;
     expect(provedor.dados, isEmpty);
+    await tester.pump(const Duration(milliseconds: 750));
   });
 }

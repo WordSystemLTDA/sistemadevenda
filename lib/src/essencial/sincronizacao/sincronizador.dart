@@ -74,6 +74,8 @@ class Sincronizador extends ChangeNotifier {
   DateTime? _ultimosClientesCompletos;
   DateTime? _ultimasFormasPagamento;
   DateTime? _proximaConsultaEstado;
+  DateTime? _proximaPreparacao;
+  int _falhasPreparacao = 0;
   int _falhasConsultaEstado = 0;
   int _geracaoCatalogo = 0;
   int _geracaoPagamentos = 0;
@@ -163,6 +165,8 @@ class Sincronizador extends ChangeNotifier {
     _consultaEstadoAdiada?.cancel();
     _consultaEstadoAdiada = null;
     _falhasConsultaEstado = 0;
+    _proximaPreparacao = null;
+    _falhasPreparacao = 0;
     catalogoPronto = false;
     ultimaAtualizacao = null;
     _notificar();
@@ -300,6 +304,8 @@ class Sincronizador extends ChangeNotifier {
       return;
     }
     escopo = novo;
+    _proximaPreparacao = null;
+    _falhasPreparacao = 0;
     ultimaAtualizacao = null;
     servidor = url;
     banco.servidor = url;
@@ -999,6 +1005,7 @@ class Sincronizador extends ChangeNotifier {
         usuario.usuario == null) {
       return;
     }
+    if (_proximaPreparacao?.isAfter(DateTime.now()) == true) return;
     final alvo = escopo;
     final url = servidor;
     final empresa = usuario.usuario!.empresa!;
@@ -1007,22 +1014,51 @@ class Sincronizador extends ChangeNotifier {
     final agora = DateTime.now();
     _preparandoDados = () async {
       try {
-        await Future.wait<void>([
-          if (_ultimasListas == null ||
-              agora.difference(_ultimasListas!) >= const Duration(minutes: 1))
-            _atualizarConsultas(alvo, url, empresa, idUsuario),
+        // Somente uma consulta auxiliar por vez em cada aparelho. As operacoes
+        // do usuario e os pedidos duraveis continuam em suas filas independentes.
+        final tarefas = <Future<void> Function()>[
           if (_ultimoCatalogo == null ||
               agora.difference(_ultimoCatalogo!) >= const Duration(minutes: 2))
-            _carregarCatalogo(alvo, url, empresa, idUsuario),
+            () => _carregarCatalogo(alvo, url, empresa, idUsuario),
+          if (_ultimasListas == null ||
+              agora.difference(_ultimasListas!) >= const Duration(minutes: 1))
+            () => _atualizarConsultas(alvo, url, empresa, idUsuario),
           if (_ultimasFormasPagamento == null ||
               agora.difference(_ultimasFormasPagamento!) >=
                   const Duration(minutes: 5))
-            _prepararFormasPagamento(alvo, url, empresa, idUsuario),
+            () => _prepararFormasPagamento(alvo, url, empresa, idUsuario),
           if (_ultimosClientesCompletos == null ||
               agora.difference(_ultimosClientesCompletos!) >=
                   const Duration(minutes: 5))
-            _prepararClientesCompletos(alvo, url, empresa, idUsuario),
-        ]);
+            () => _prepararClientesCompletos(alvo, url, empresa, idUsuario),
+        ];
+        for (final tarefa in tarefas) {
+          if (_descartado || alvo != escopo || cancelamento.isCancelled) return;
+          try {
+            await tarefa();
+          } on DioException catch (erro) {
+            if (CacheConsultas.falhaDeConexao(erro) ||
+                CancelToken.isCancel(erro)) {
+              rethrow;
+            }
+            // Falha de um recurso nao impede preparar os demais.
+          } catch (_) {
+            // Preservar o retrato valido de cada recurso independentemente.
+          }
+        }
+        if (alvo == escopo && !_descartado) {
+          _falhasPreparacao = 0;
+          _proximaPreparacao = null;
+        }
+      } on DioException catch (erro) {
+        if (alvo != escopo || _descartado || CancelToken.isCancel(erro)) return;
+        if (CacheConsultas.falhaDeConexao(erro)) {
+          // Nao reiniciar milhares de consultas a cada pulso quando o Wi-Fi cai.
+          _falhasPreparacao = (_falhasPreparacao + 1).clamp(1, 4);
+          final segundos = 30 * (1 << (_falhasPreparacao - 1));
+          _proximaPreparacao = DateTime.now().add(Duration(seconds: segundos));
+          cancelamento.cancel('Preparacao offline adiada apos falha de rede.');
+        }
       } catch (_) {
         // Preserva o retrato anterior; nao interrompe a fila duravel nem
         // transforma manutencao auxiliar em bloqueio da tela.
@@ -1996,6 +2032,7 @@ class Sincronizador extends ChangeNotifier {
   Future<void> _tentarNovamente() async {
     await configurar();
     if (escopo.isEmpty || _descartado) return;
+    _proximaPreparacao = null;
     final impressao =
         socket.processarImpressoesPendentes(reconectarAgora: true);
     try {
